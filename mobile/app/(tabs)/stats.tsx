@@ -1,41 +1,76 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StatCard } from "../../components/ui/StatCard";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
+import { apiJson } from "../../lib/client";
+import type { SessionStatsDto } from "../../types/session";
 
 const FILTERS = ["Week", "Month", "All"] as const;
 
-const trendData = [
-  20, 32, 24, 48, 51, 43, 62,
-];
-
-const breakdownData = [
-  { label: "Beat", value: 50, color: colors.primary },
-  { label: "Mix", value: 30, color: colors.secondary },
-  { label: "Sound", value: 20, color: colors.success },
-];
+const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
 
 export default function StatsScreen() {
+  const { token } = useAuth();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("Week");
   const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState<SessionStatsDto | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const mapFilterToPeriod = useCallback((value: (typeof FILTERS)[number]) => {
+    if (value === "Week") return "week";
+    if (value === "Month") return "month";
+    return "all";
+  }, []);
+
+  const loadStats = useCallback(
+    async (activeFilter: (typeof FILTERS)[number]) => {
+      if (!token) return;
+      setError(null);
+      const period = mapFilterToPeriod(activeFilter);
+      const data = await apiJson<SessionStatsDto>(`/sessions/stats?period=${period}`, { token });
+      setStats(data);
+    },
+    [mapFilterToPeriod, token]
+  );
 
   const summary = useMemo(
     () => ({
-      hours: filter === "Week" ? "12.4h" : filter === "Month" ? "48.1h" : "132.7h",
-      sessions: filter === "Week" ? "14" : filter === "Month" ? "52" : "180",
-      bestStreak: "9",
+      hours: `${((stats?.summary.total_seconds ?? 0) / 3600).toFixed(1)}h`,
+      sessions: String(stats?.summary.total_sessions ?? 0),
+      bestStreak: String(stats?.summary.best_streak_days ?? 0),
     }),
-    [filter]
+    [stats]
   );
+
+  const trendData = useMemo(() => {
+    const points = stats?.trend ?? [];
+    const values = points.map((point) => Math.max(8, point.sessions * 12));
+    return values.length > 0 ? values : [8, 8, 8, 8, 8, 8, 8];
+  }, [stats]);
+
+  const breakdownData = useMemo(
+    () =>
+      (stats?.breakdown ?? []).map((item, idx) => ({
+        label: item.session_type,
+        value: Math.max(0, Math.round(item.percent)),
+        color: BREAKDOWN_COLORS[idx % BREAKDOWN_COLORS.length],
+      })),
+    [stats]
+  );
+
+  useEffect(() => {
+    loadStats(filter).catch((e) => setError(e instanceof Error ? e.message : "Failed to load stats"));
+  }, [filter, loadStats]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 550));
+    await loadStats(filter).catch((e) => setError(e instanceof Error ? e.message : "Failed to load stats"));
     setRefreshing(false);
-  }, []);
+  }, [filter, loadStats]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -44,7 +79,13 @@ export default function StatsScreen() {
           <Text style={styles.title}>Your Stats</Text>
           <View style={styles.filterRow}>
             {FILTERS.map((item) => (
-              <Pressable key={item} style={[styles.filterChip, filter === item && styles.filterChipActive]} onPress={() => setFilter(item)}>
+              <Pressable
+                key={item}
+                style={[styles.filterChip, filter === item && styles.filterChipActive]}
+                onPress={() => {
+                  setFilter(item);
+                }}
+              >
                 <Text style={[styles.filterLabel, filter === item && styles.filterLabelActive]}>{item}</Text>
               </Pressable>
             ))}
@@ -70,20 +111,27 @@ export default function StatsScreen() {
 
         <View style={styles.chartCard}>
           <Text style={styles.cardTitle}>Session Type Breakdown</Text>
-          <View style={styles.breakdownWrap}>
-            {breakdownData.map((item) => (
-              <View key={item.label} style={styles.breakdownRow}>
-                <View style={styles.breakdownLabelWrap}>
-                  <View style={[styles.breakdownDot, { backgroundColor: item.color }]} />
-                  <Text style={styles.breakdownLabel}>{item.label}</Text>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {breakdownData.length > 0 ? (
+            <View style={styles.breakdownWrap}>
+              {breakdownData.map((item) => (
+                <View key={item.label} style={styles.breakdownRow}>
+                  <View style={styles.breakdownLabelWrap}>
+                    <View style={[styles.breakdownDot, { backgroundColor: item.color }]} />
+                    <Text style={styles.breakdownLabel}>{item.label}</Text>
+                  </View>
+                  <View style={styles.breakdownTrack}>
+                    <View style={[styles.breakdownFill, { width: `${item.value}%`, backgroundColor: item.color }]} />
+                  </View>
+                  <Text style={styles.breakdownValue}>{item.value}%</Text>
                 </View>
-                <View style={styles.breakdownTrack}>
-                  <View style={[styles.breakdownFill, { width: `${item.value}%`, backgroundColor: item.color }]} />
-                </View>
-                <Text style={styles.breakdownValue}>{item.value}%</Text>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyText}>No stats yet. Complete a session to see your insights.</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -177,6 +225,25 @@ const styles = StyleSheet.create({
     width: 40,
     textAlign: "right",
     fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+  },
+  errorText: {
+    marginTop: spacing.sm,
+    color: colors.danger,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+  },
+  emptyWrap: {
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    backgroundColor: colors.background,
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
     ...typography.caption,
   },
 });

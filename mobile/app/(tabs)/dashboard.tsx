@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { Bell, Flame } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
@@ -16,9 +16,7 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
-import type { SessionDto } from "../../types/session";
-
-const SESSION_TYPES = ["Beat Making", "Mixing", "Sound Design"] as const;
+import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
 
 function parseApiDate(value: string) {
   const hasTimezone = /([zZ]|[+\-]\d{2}:\d{2})$/.test(value);
@@ -80,23 +78,20 @@ export default function DashboardScreen() {
   const { token, user } = useAuth();
   const [sessions, setSessions] = useState<SessionDto[]>([]);
   const [active, setActive] = useState<SessionDto | null>(null);
-  const [selectedType, setSelectedType] = useState<(typeof SESSION_TYPES)[number]>("Beat Making");
+  const [selectedType, setSelectedType] = useState<SessionType>("Beat Making");
+  const [sessionNote, setSessionNote] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
-  const [hiddenSessionIds, setHiddenSessionIds] = useState<number[]>([]);
 
   const pulse = useSharedValue(1);
   const rotate = useSharedValue(0);
 
   const streak = useMemo(() => getStreak(sessions), [sessions]);
   const weekProgress = useMemo(() => getLast7DaysProgress(sessions), [sessions]);
-  const visibleSessions = useMemo(
-    () => sessions.filter((session) => session.stopped_at !== null && !hiddenSessionIds.includes(session.id)),
-    [hiddenSessionIds, sessions]
-  );
+  const visibleSessions = useMemo(() => sessions.filter((session) => session.stopped_at !== null), [sessions]);
   const activeSeconds = useMemo(() => {
     if (!active) return 0;
     return Math.max(0, Math.floor((nowMs - parseApiDate(active.started_at).getTime()) / 1000));
@@ -150,7 +145,15 @@ export default function DashboardScreen() {
     });
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-      await apiJson("/sessions/start", { token, method: "POST", body: { notes: selectedType } });
+      await apiJson("/sessions/start", {
+        token,
+        method: "POST",
+        body: {
+          session_type: selectedType,
+          notes: sessionNote.trim() ? sessionNote.trim() : undefined,
+        },
+      });
+      setSessionNote("");
       await loadSessions();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Start failed");
@@ -174,13 +177,22 @@ export default function DashboardScreen() {
     }
   }, [active, busy, loadSessions, token]);
 
-  const dismissSession = useCallback((id: number) => {
-    Haptics.selectionAsync().catch(() => undefined);
-    setHiddenSessionIds((prev) => [...prev, id]);
-  }, []);
+  const dismissSession = useCallback(
+    async (id: number) => {
+      if (!token) return;
+      Haptics.selectionAsync().catch(() => undefined);
+      try {
+        await apiJson(`/sessions/${id}`, { token, method: "DELETE" });
+        await loadSessions();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Delete failed");
+      }
+    },
+    [loadSessions, token]
+  );
 
   const renderRightActions = (id: number) => (
-    <Pressable style={styles.deleteAction} onPress={() => dismissSession(id)}>
+    <Pressable style={styles.deleteAction} onPress={() => dismissSession(id).catch(() => undefined)}>
       <Text style={styles.deleteActionText}>Delete</Text>
     </Pressable>
   );
@@ -239,6 +251,15 @@ export default function DashboardScreen() {
                 <SessionTypeChip key={type} label={type} active={selectedType === type} onPress={() => setSelectedType(type)} />
               ))}
             </View>
+            {!active ? (
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Optional note (project, mood, focus)"
+                placeholderTextColor={colors.textSecondary}
+                value={sessionNote}
+                onChangeText={setSessionNote}
+              />
+            ) : null}
 
             <Text style={styles.sectionTitle}>Today's Sessions</Text>
             {error ? (
@@ -259,7 +280,7 @@ export default function DashboardScreen() {
           <Animated.View entering={FadeInUp.delay(100 + index * 70).duration(400)}>
             <Swipeable renderRightActions={() => renderRightActions(item.id)}>
               <View style={styles.sessionRow}>
-                <Text style={styles.sessionType}>{item.notes || "Beat Making"}</Text>
+                <Text style={styles.sessionType}>{item.session_type || "Beat Making"}</Text>
                 <Text style={styles.sessionMeta}>{Math.round((item.duration_seconds ?? 0) / 60)} min</Text>
               </View>
             </Swipeable>
@@ -356,7 +377,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  noteInput: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     marginBottom: spacing.lg,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
   },
   sectionTitle: {
     color: colors.textPrimary,
