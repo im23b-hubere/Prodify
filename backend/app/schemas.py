@@ -55,6 +55,7 @@ class SessionStatsSummary(BaseModel):
     total_seconds: int
     total_sessions: int
     best_streak_days: int
+    avg_session_seconds: int
 
 
 class SessionStatsTrendPoint(BaseModel):

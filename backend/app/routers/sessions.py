@@ -124,6 +124,7 @@ def sessions_stats(
     completed = [row for row in rows if row.duration_seconds is not None]
     total_sessions = len(completed)
     total_seconds = int(sum((row.duration_seconds or 0) for row in completed))
+    avg_session_seconds = int(total_seconds / total_sessions) if total_sessions > 0 else 0
 
     day_keys = sorted({as_utc_aware(row.started_at).date().isoformat() for row in rows})
     best_streak = 0
@@ -167,6 +168,7 @@ def sessions_stats(
             total_seconds=total_seconds,
             total_sessions=total_sessions,
             best_streak_days=best_streak,
+            avg_session_seconds=avg_session_seconds,
         ),
         trend=trend,
         breakdown=breakdown,

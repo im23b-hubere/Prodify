@@ -17,6 +17,7 @@ export type SessionStatsDto = {
     total_seconds: number;
     total_sessions: number;
     best_streak_days: number;
+    avg_session_seconds: number;
   };
   trend: Array<{
     label: string;

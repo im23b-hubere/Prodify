@@ -13,6 +13,19 @@ const FILTERS = ["Week", "Month", "All"] as const;
 
 const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
 
+function formatDuration(seconds: number) {
+  const mins = Math.round(seconds / 60);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const rest = mins % 60;
+  return `${hours}h ${rest}m`;
+}
+
+function dayLabel(iso: string) {
+  const date = new Date(`${iso}T12:00:00`);
+  return date.toLocaleDateString(undefined, { weekday: "short" });
+}
+
 export default function StatsScreen() {
   const { token } = useAuth();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("Week");
@@ -41,15 +54,18 @@ export default function StatsScreen() {
     () => ({
       hours: `${((stats?.summary.total_seconds ?? 0) / 3600).toFixed(1)}h`,
       sessions: String(stats?.summary.total_sessions ?? 0),
-      bestStreak: String(stats?.summary.best_streak_days ?? 0),
+      avgSession: formatDuration(stats?.summary.avg_session_seconds ?? 0),
     }),
     [stats]
   );
 
   const trendData = useMemo(() => {
     const points = stats?.trend ?? [];
-    const values = points.map((point) => Math.max(8, point.sessions * 12));
-    return values.length > 0 ? values : [8, 8, 8, 8, 8, 8, 8];
+    if (points.length === 0) return [{ label: "-", value: 8 }];
+    return points.map((point) => ({
+      label: dayLabel(point.label),
+      value: Math.max(8, point.sessions * 12),
+    }));
   }, [stats]);
 
   const breakdownData = useMemo(
@@ -95,7 +111,7 @@ export default function StatsScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardRow}>
           <StatCard label="Total Time" value={summary.hours} />
           <StatCard label="Total Sessions" value={summary.sessions} />
-          <StatCard label="Best Streak" value={summary.bestStreak} />
+          <StatCard label="Avg Session" value={summary.avgSession} />
         </ScrollView>
 
         <View style={styles.chartCard}>
@@ -103,7 +119,8 @@ export default function StatsScreen() {
           <View style={styles.sparklineWrap}>
             {trendData.map((value, idx) => (
               <View key={idx} style={styles.sparkItem}>
-                <View style={[styles.sparkBar, { height: value * 1.7 }]} />
+                <View style={[styles.sparkBar, { height: value.value * 1.7 }]} />
+                <Text style={styles.sparkLabel}>{value.label}</Text>
               </View>
             ))}
           </View>
@@ -183,6 +200,12 @@ const styles = StyleSheet.create({
     maxWidth: 22,
     borderRadius: 8,
     backgroundColor: "rgba(255,61,0,0.75)",
+  },
+  sparkLabel: {
+    marginTop: spacing.xs,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    fontSize: 11,
   },
   breakdownWrap: {
     marginTop: spacing.md,
