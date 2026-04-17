@@ -1,54 +1,100 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { BarChart3, LayoutGrid, UserRound, Users } from "lucide-react-native";
+import { StyleSheet, View } from "react-native";
 
-function TabIcon({ name, color }: { name: keyof typeof Ionicons.glyphMap; color: string }) {
-  return <Ionicons name={name} size={22} color={color} />;
+import { colors, spacing } from "../../constants/theme";
+
+type TabIconProps = {
+  focused: boolean;
+  color: string;
+  icon: "dashboard" | "stats" | "friends" | "profil";
+};
+
+function TabIcon({ focused, color, icon }: TabIconProps) {
+  const Icon = {
+    dashboard: LayoutGrid,
+    stats: BarChart3,
+    friends: Users,
+    profil: UserRound,
+  }[icon];
+
+  return (
+    <View style={styles.tabIconWrap}>
+      {focused ? <View style={styles.activeDot} /> : <View style={styles.dotSpacer} />}
+      <Icon size={20} color={color} strokeWidth={2.2} />
+    </View>
+  );
 }
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: "#0a0a0a" },
-        headerTintColor: "#fafafa",
-        headerTitleStyle: { fontWeight: "700" },
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: { fontFamily: "Syne_700Bold", fontSize: 20 },
         headerShadowVisible: false,
         tabBarStyle: {
-          backgroundColor: "#0a0a0a",
-          borderTopColor: "#262626",
+          backgroundColor: colors.background,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          height: 72,
+          paddingTop: spacing.xs,
+          paddingBottom: spacing.sm,
         },
-        tabBarActiveTintColor: "#fafafa",
-        tabBarInactiveTintColor: "#737373",
+        tabBarLabelStyle: { fontSize: 12, fontFamily: "DMSans_500Medium" },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        sceneStyle: { backgroundColor: colors.background },
+        animation: "fade",
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color }) => <TabIcon name="grid-outline" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon color={color} focused={focused} icon="dashboard" />,
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: "Stats",
-          tabBarIcon: ({ color }) => <TabIcon name="stats-chart-outline" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon color={color} focused={focused} icon="stats" />,
         }}
       />
       <Tabs.Screen
         name="friends"
         options={{
           title: "Friends",
-          tabBarIcon: ({ color }) => <TabIcon name="people-outline" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon color={color} focused={focused} icon="friends" />,
         }}
       />
       <Tabs.Screen
         name="profil"
         options={{
           title: "Profil",
-          tabBarIcon: ({ color }) => <TabIcon name="person-circle-outline" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon color={color} focused={focused} icon="profil" />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabIconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+  },
+  dotSpacer: {
+    width: 6,
+    height: 6,
+  },
+});

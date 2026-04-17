@@ -1,409 +1,442 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  ListRenderItem,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { Bell, Flame } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Swipeable } from "react-native-gesture-handler";
+import * as Haptics from "expo-haptics";
+import Animated, { FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 
+import { GlassCard } from "../../components/ui/GlassCard";
+import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { SessionTypeChip } from "../../components/ui/SessionTypeChip";
+import { WeekProgressDots } from "../../components/ui/WeekProgressDots";
+import { fontFamily } from "../../constants/fonts";
+import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import type { SessionDto } from "../../types/session";
 
-function getLocalDateKey(value: string | Date) {
-  const date = typeof value === "string" ? new Date(value) : value;
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const SESSION_TYPES = ["Beat Making", "Mixing", "Sound Design"] as const;
+
+function parseApiDate(value: string) {
+  const hasTimezone = /([zZ]|[+\-]\d{2}:\d{2})$/.test(value);
+  return new Date(hasTimezone ? value : `${value}Z`);
 }
 
-function addDays(base: Date, delta: number) {
-  const next = new Date(base);
-  next.setDate(next.getDate() + delta);
-  return next;
+function formatTimer(totalSeconds: number) {
+  const min = Math.floor(totalSeconds / 60);
+  const sec = totalSeconds % 60;
+  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-function getStreakData(sessions: SessionDto[]) {
-  const dayKeys = Array.from(new Set(sessions.map((session) => getLocalDateKey(session.started_at)))).sort();
+function toDateKey(value: Date) {
+  const y = value.getFullYear();
+  const m = String(value.getMonth() + 1).padStart(2, "0");
+  const d = String(value.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
-  if (dayKeys.length === 0) {
-    return { current: 0, best: 0 };
+function getStreak(sessions: SessionDto[]) {
+  const dayKeys = Array.from(new Set(sessions.map((session) => toDateKey(parseApiDate(session.started_at))))).sort();
+  if (dayKeys.length === 0) return 0;
+  const set = new Set(dayKeys);
+  let streak = 0;
+  const cursor = new Date();
+  if (!set.has(toDateKey(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+    if (!set.has(toDateKey(cursor))) return 0;
   }
-
-  const keySet = new Set(dayKeys);
-  const today = new Date();
-  const todayKey = getLocalDateKey(today);
-  const yesterdayKey = getLocalDateKey(addDays(today, -1));
-
-  let current = 0;
-  if (keySet.has(todayKey) || keySet.has(yesterdayKey)) {
-    let cursor = keySet.has(todayKey) ? new Date(today) : addDays(today, -1);
-    while (keySet.has(getLocalDateKey(cursor))) {
-      current += 1;
-      cursor = addDays(cursor, -1);
-    }
+  while (set.has(toDateKey(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
   }
+  return streak;
+}
 
-  let best = 1;
-  let run = 1;
-  for (let i = 1; i < dayKeys.length; i += 1) {
-    const prev = new Date(`${dayKeys[i - 1]}T12:00:00`);
-    const currentDay = new Date(`${dayKeys[i]}T12:00:00`);
-    const diffDays = Math.round((currentDay.getTime() - prev.getTime()) / 86_400_000);
-    if (diffDays === 1) {
-      run += 1;
-      if (run > best) best = run;
-    } else {
-      run = 1;
-    }
+function getLast7DaysProgress(sessions: SessionDto[]) {
+  const set = new Set(sessions.map((session) => toDateKey(parseApiDate(session.started_at))));
+  const result: boolean[] = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    result.push(set.has(toDateKey(d)));
   }
+  return result;
+}
 
-  return { current, best };
+function SessionSkeleton() {
+  return (
+    <View style={styles.skeletonWrap}>
+      <View style={styles.skeletonRow} />
+      <View style={styles.skeletonRow} />
+      <View style={styles.skeletonRowShort} />
+    </View>
+  );
 }
 
 export default function DashboardScreen() {
   const { token, user } = useAuth();
   const [sessions, setSessions] = useState<SessionDto[]>([]);
   const [active, setActive] = useState<SessionDto | null>(null);
-  const [notes, setNotes] = useState("");
+  const [selectedType, setSelectedType] = useState<(typeof SESSION_TYPES)[number]>("Beat Making");
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const streak = getStreakData(sessions);
+  const [error, setError] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now());
+  const [hiddenSessionIds, setHiddenSessionIds] = useState<number[]>([]);
 
-  const load = useCallback(async () => {
+  const pulse = useSharedValue(1);
+  const rotate = useSharedValue(0);
+
+  const streak = useMemo(() => getStreak(sessions), [sessions]);
+  const weekProgress = useMemo(() => getLast7DaysProgress(sessions), [sessions]);
+  const visibleSessions = useMemo(
+    () => sessions.filter((session) => session.stopped_at !== null && !hiddenSessionIds.includes(session.id)),
+    [hiddenSessionIds, sessions]
+  );
+  const activeSeconds = useMemo(() => {
+    if (!active) return 0;
+    return Math.max(0, Math.floor((nowMs - parseApiDate(active.started_at).getTime()) / 1000));
+  }, [active, nowMs]);
+
+  const loadSessions = useCallback(async () => {
     if (!token) return;
-    setError(null);
     const list = await apiJson<SessionDto[]>("/sessions/list", { token });
     setSessions(list);
-    const open = list.find((s) => s.stopped_at === null) ?? null;
-    setActive(open);
+    setActive(list.find((item) => item.stopped_at === null) ?? null);
   }, [token]);
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : "Laden fehlgeschlagen"));
-  }, [load]);
+    setLoading(true);
+    loadSessions()
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load sessions"))
+      .finally(() => setLoading(false));
+  }, [loadSessions]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSessions().catch(() => null);
+    }, [loadSessions])
+  );
+
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [active]);
+
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(1.08, { duration: 1000 }), -1, true);
+  }, [pulse]);
+
+  const streakPulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+  const buttonRotateStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotate.value}deg` }] }));
 
   const onRefresh = useCallback(async () => {
-    if (!token) return;
     setRefreshing(true);
-    try {
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Laden fehlgeschlagen");
-    } finally {
-      setRefreshing(false);
-    }
-  }, [load, token]);
+    await loadSessions().catch(() => undefined);
+    setRefreshing(false);
+  }, [loadSessions]);
 
-  async function startSession() {
-    if (!token || busy) return;
+  const startSession = useCallback(async () => {
+    if (!token || busy || active) return;
     setBusy(true);
     setError(null);
+    rotate.value = withSpring(360, { damping: 12 }, () => {
+      rotate.value = 0;
+    });
     try {
-      const body = notes.trim() ? { notes: notes.trim() } : {};
-      await apiJson<SessionDto>("/sessions/start", { token, method: "POST", body });
-      setNotes("");
-      await load();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+      await apiJson("/sessions/start", { token, method: "POST", body: { notes: selectedType } });
+      await loadSessions();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Start fehlgeschlagen");
+      setError(e instanceof Error ? e.message : "Start failed");
     } finally {
       setBusy(false);
     }
-  }
+  }, [active, busy, loadSessions, rotate, selectedType, token]);
 
-  async function stopSession() {
-    if (!token || !active || busy) return;
+  const stopSession = useCallback(async () => {
+    if (!token || busy || !active) return;
     setBusy(true);
     setError(null);
     try {
-      await apiJson<SessionDto>("/sessions/stop", {
-        token,
-        method: "POST",
-        body: { session_id: active.id },
-      });
-      await load();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      await apiJson("/sessions/stop", { token, method: "POST", body: { session_id: active.id } });
+      await loadSessions();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Stopp fehlgeschlagen");
+      setError(e instanceof Error ? e.message : "Stop failed");
     } finally {
       setBusy(false);
     }
-  }
+  }, [active, busy, loadSessions, token]);
 
-  const renderSessionItem: ListRenderItem<SessionDto> = ({ item }) => (
-    <View style={styles.row}>
-      <Text style={styles.rowTitle}>Session #{item.id}</Text>
-      <Text style={styles.rowMeta}>
-        {item.stopped_at ? `${Math.round((item.duration_seconds ?? 0) / 60)} min` : "laeuft..."}
-      </Text>
-    </View>
+  const dismissSession = useCallback((id: number) => {
+    Haptics.selectionAsync().catch(() => undefined);
+    setHiddenSessionIds((prev) => [...prev, id]);
+  }, []);
+
+  const renderRightActions = (id: number) => (
+    <Pressable style={styles.deleteAction} onPress={() => dismissSession(id)}>
+      <Text style={styles.deleteActionText}>Delete</Text>
+    </Pressable>
   );
 
   return (
-    <View style={styles.root}>
-      <View style={styles.streakCard}>
-        <View>
-          <Text style={styles.streakEyebrow}>Dein Streak</Text>
-          <Text style={styles.streakValue}>{streak.current} Tage</Text>
-          <Text style={styles.streakHint}>
-            {streak.current > 0 ? "Bleib dran - heute zaehlt." : "Starte heute deinen ersten Run."}
-          </Text>
-        </View>
-        <View style={styles.flameWrap}>
-          <Text style={styles.flame}>🔥</Text>
-        </View>
-      </View>
-
-      <View style={styles.streakMetaRow}>
-        <View style={styles.streakMetaCard}>
-          <Text style={styles.streakMetaLabel}>Bester Streak</Text>
-          <Text style={styles.streakMetaValue}>{streak.best} Tage</Text>
-        </View>
-        <View style={styles.streakMetaCard}>
-          <Text style={styles.streakMetaLabel}>Sessions</Text>
-          <Text style={styles.streakMetaValue}>{sessions.length}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.greeting}>Hallo{user ? `, ${user.username}` : ""}</Text>
-      <Text style={styles.lead}>Tracke deine Produktion heute.</Text>
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <View style={styles.panel}>
-        {active ? (
-          <>
-            <Text style={styles.activeLabel}>Laufende Session</Text>
-            <Text style={styles.mono}>#{active.id} · seit {new Date(active.started_at).toLocaleString()}</Text>
-            <Pressable
-              style={({ pressed }) => [styles.dangerBtn, pressed && styles.btnPressed, busy && styles.btnDisabled]}
-              onPress={stopSession}
-              disabled={busy}
-            >
-              {busy ? <ActivityIndicator color="#fafafa" /> : <Text style={styles.dangerBtnText}>Session stoppen</Text>}
-            </Pressable>
-          </>
-        ) : (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Notizen (optional)"
-              placeholderTextColor="#737373"
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-            />
-            <Pressable
-              style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed, busy && styles.btnDisabled]}
-              onPress={startSession}
-              disabled={busy}
-            >
-              {busy ? (
-                <ActivityIndicator color="#0a0a0a" />
-              ) : (
-                <Text style={styles.primaryBtnText}>Session starten</Text>
-              )}
-            </Pressable>
-          </>
-        )}
-      </View>
-
-      <Text style={styles.sectionTitle}>Letzte Sessions</Text>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <FlatList
-        data={sessions}
+        data={visibleSessions}
         keyExtractor={(item) => String(item.id)}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fafafa" />}
-        ListEmptyComponent={
-          <Text style={styles.empty}>Noch keine Sessions — starte deine erste.</Text>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        ListHeaderComponent={
+          <View style={styles.headerContent}>
+            <View style={styles.topBar}>
+              <Text style={styles.username}>Hey, {user?.username ?? "Producer"}</Text>
+              <Pressable style={styles.iconButton}>
+                <Bell color={colors.textPrimary} size={20} />
+              </Pressable>
+            </View>
+
+            {loading ? <SessionSkeleton /> : null}
+
+            {!loading ? (
+              <Animated.View entering={FadeInUp.duration(500)}>
+                <GlassCard>
+                  <View style={styles.streakCenter}>
+                    <Animated.View style={streakPulseStyle}>
+                      <Flame color={colors.primary} size={40} />
+                    </Animated.View>
+                    <Text style={styles.streakNumber}>{streak}</Text>
+                    <Text style={styles.streakLabel}>Day Streak</Text>
+                    <WeekProgressDots activeDays={weekProgress} />
+                  </View>
+                </GlassCard>
+              </Animated.View>
+            ) : null}
+
+            <Animated.View style={[styles.sessionCircleWrap, buttonRotateStyle]}>
+              {!active ? (
+                <Pressable onPress={startSession} disabled={busy || loading}>
+                  <LinearGradient colors={["#ff6a3d", colors.primary]} style={styles.sessionCircle}>
+                    <Text style={styles.tapLabel}>TAP TO START</Text>
+                  </LinearGradient>
+                </Pressable>
+              ) : (
+                <Pressable onPress={stopSession} disabled={busy}>
+                  <View style={[styles.sessionCircle, styles.sessionCircleActive]}>
+                    <Text style={styles.timerLabel}>{formatTimer(activeSeconds)}</Text>
+                    <Text style={styles.stopLabel}>STOP</Text>
+                  </View>
+                </Pressable>
+              )}
+            </Animated.View>
+
+            <View style={styles.chipsRow}>
+              {SESSION_TYPES.map((type) => (
+                <SessionTypeChip key={type} label={type} active={selectedType === type} onPress={() => setSelectedType(type)} />
+              ))}
+            </View>
+
+            <Text style={styles.sectionTitle}>Today's Sessions</Text>
+            {error ? (
+              <View style={styles.errorCard}>
+                <Text style={styles.errorText}>{error}</Text>
+                <PrimaryButton label="Retry" onPress={() => loadSessions().catch(() => undefined)} />
+              </View>
+            ) : null}
+          </View>
         }
-        renderItem={renderSessionItem}
+        ListEmptyComponent={
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>No sessions yet - start producing!</Text>
+          </View>
+        }
+        contentContainerStyle={styles.listContainer}
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInUp.delay(100 + index * 70).duration(400)}>
+            <Swipeable renderRightActions={() => renderRightActions(item.id)}>
+              <View style={styles.sessionRow}>
+                <Text style={styles.sessionType}>{item.notes || "Beat Making"}</Text>
+                <Text style={styles.sessionMeta}>{Math.round((item.duration_seconds ?? 0) / 60)} min</Text>
+              </View>
+            </Swipeable>
+          </Animated.View>
+        )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  safe: {
     flex: 1,
-    backgroundColor: "#0a0a0a",
-    padding: 20,
+    backgroundColor: colors.background,
   },
-  streakCard: {
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    backgroundColor: "#171717",
-    borderWidth: 1,
-    borderColor: "#2f2f2f",
-    marginBottom: 12,
+  listContainer: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  headerContent: {
+    paddingTop: spacing.sm,
+  },
+  topBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
   },
-  streakEyebrow: {
-    fontSize: 13,
-    color: "#a3a3a3",
-    fontWeight: "600",
-    marginBottom: 6,
+  username: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
   },
-  streakValue: {
-    fontSize: 34,
-    fontWeight: "900",
-    color: "#fafafa",
-    letterSpacing: -0.8,
-  },
-  streakHint: {
-    marginTop: 4,
-    color: "#d4d4d4",
-    fontSize: 14,
-  },
-  flameWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "#262626",
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#404040",
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  flame: {
-    fontSize: 32,
+  streakCenter: {
+    alignItems: "center",
+    gap: spacing.sm,
   },
-  streakMetaRow: {
+  streakNumber: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 72,
+    lineHeight: 74,
+  },
+  streakLabel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+  },
+  sessionCircleWrap: {
+    alignSelf: "center",
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  sessionCircle: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadows.button,
+  },
+  sessionCircleActive: {
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  tapLabel: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    letterSpacing: 1.5,
+    ...typography.subheadline,
+  },
+  timerLabel: {
+    color: colors.textPrimary,
+    fontSize: 44,
+    fontFamily: fontFamily.heading,
+  },
+  stopLabel: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
+  chipsRow: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 18,
-  },
-  streakMetaCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 14,
-    backgroundColor: "#111111",
-    borderWidth: 1,
-    borderColor: "#242424",
-  },
-  streakMetaLabel: {
-    color: "#8f8f8f",
-    fontSize: 12,
-    marginBottom: 4,
-    fontWeight: "600",
-  },
-  streakMetaValue: {
-    color: "#f5f5f5",
-    fontSize: 20,
-    fontWeight: "800",
-  },
-  greeting: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#fafafa",
-  },
-  lead: {
-    marginTop: 6,
-    fontSize: 15,
-    color: "#a3a3a3",
-    marginBottom: 16,
-  },
-  error: {
-    color: "#f87171",
-    marginBottom: 12,
-  },
-  panel: {
-    borderRadius: 18,
-    padding: 18,
-    backgroundColor: "#141414",
-    borderWidth: 1,
-    borderColor: "#262626",
-    marginBottom: 20,
-  },
-  activeLabel: {
-    color: "#86efac",
-    fontWeight: "700",
-    marginBottom: 6,
-  },
-  mono: {
-    color: "#a3a3a3",
-    fontSize: 13,
-    marginBottom: 16,
-  },
-  input: {
-    minHeight: 72,
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 15,
-    color: "#fafafa",
-    backgroundColor: "#1f1f1f",
-    borderWidth: 1,
-    borderColor: "#2a2a2a",
-    textAlignVertical: "top",
-    marginBottom: 12,
-  },
-  primaryBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    backgroundColor: "#fafafa",
-  },
-  primaryBtnText: {
-    fontWeight: "700",
-    color: "#0a0a0a",
-    fontSize: 16,
-  },
-  dangerBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    backgroundColor: "#450a0a",
-    borderWidth: 1,
-    borderColor: "#7f1d1d",
-  },
-  dangerBtnText: {
-    fontWeight: "700",
-    color: "#fecaca",
-    fontSize: 16,
-  },
-  btnPressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.99 }],
-  },
-  btnDisabled: {
-    opacity: 0.6,
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fafafa",
-    marginBottom: 10,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.subheadline,
+    marginBottom: spacing.sm,
   },
-  row: {
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#262626",
+  sessionRow: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    ...shadows.card,
   },
-  rowTitle: {
-    color: "#fafafa",
-    fontWeight: "600",
+  sessionType: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.body,
   },
-  rowMeta: {
-    color: "#737373",
-    marginTop: 4,
-    fontSize: 13,
+  sessionMeta: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
   },
-  empty: {
-    color: "#737373",
-    fontSize: 15,
-    marginTop: 8,
+  deleteAction: {
+    backgroundColor: colors.danger,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 90,
+    borderRadius: radii.md,
+    marginBottom: spacing.sm,
+  },
+  deleteActionText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+  },
+  emptyCard: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  emptyTitle: {
+    color: colors.textSecondary,
+    textAlign: "center",
+    fontFamily: fontFamily.body,
+    ...typography.body,
+  },
+  errorCard: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    color: colors.danger,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+  },
+  skeletonWrap: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  skeletonRow: {
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#242424",
+  },
+  skeletonRowShort: {
+    height: 16,
+    width: "60%",
+    borderRadius: 8,
+    backgroundColor: "#242424",
   },
 });

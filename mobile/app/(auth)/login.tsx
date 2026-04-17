@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,6 +12,9 @@ import {
 } from "react-native";
 
 import { useAuth } from "../../context/AuthContext";
+import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { fontFamily } from "../../constants/fonts";
+import { colors, radii, spacing, typography } from "../../constants/theme";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -38,46 +42,47 @@ export default function LoginScreen() {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.card}>
-        <Text style={styles.title}>BeatTrack</Text>
-        <Text style={styles.subtitle}>Sessions tracken, Fokus behalten.</Text>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.hero}>
+          <Text style={styles.badge}>BeatTrack</Text>
+          <Text style={styles.title}>Willkommen zurueck</Text>
+          <Text style={styles.subtitle}>Sessions tracken, Fokus halten, taeglich besser werden.</Text>
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="E-Mail"
-          placeholderTextColor="#737373"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Passwort"
-          placeholderTextColor="#737373"
-          secureTextEntry
-          autoComplete="password"
-          value={password}
-          onChangeText={setPassword}
-        />
+        <View style={styles.card}>
+          <Text style={styles.fieldLabel}>E-Mail</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="you@example.com"
+            placeholderTextColor="#737373"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <Text style={styles.fieldLabel}>Passwort</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Dein Passwort"
+            placeholderTextColor="#737373"
+            secureTextEntry
+            autoComplete="password"
+            value={password}
+            onChangeText={setPassword}
+          />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed, loading && styles.buttonDisabled]}
-          onPress={onSubmit}
-          disabled={loading}
-        >
-          <Text style={styles.buttonLabel}>{loading ? "…" : "Einloggen"}</Text>
-        </Pressable>
+          <PrimaryButton label="Einloggen" onPress={onSubmit} loading={loading} />
+        </View>
 
         <Link href="/(auth)/register" asChild>
           <Pressable style={styles.linkWrap}>
             <Text style={styles.link}>Noch kein Konto? Registrieren</Text>
           </Pressable>
         </Link>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -85,70 +90,84 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: colors.background,
+  },
+  content: {
+    flexGrow: 1,
     justifyContent: "center",
-    padding: 24,
+    padding: spacing.lg,
+  },
+  hero: {
+    marginBottom: 18,
+  },
+  badge: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radii.round,
+    color: colors.textPrimary,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontWeight: "700",
+    overflow: "hidden",
   },
   card: {
-    borderRadius: 20,
-    padding: 24,
-    backgroundColor: "#141414",
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#262626",
+    borderColor: colors.border,
+    shadowColor: colors.background,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#fafafa",
-    letterSpacing: -0.5,
+    marginTop: 12,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    letterSpacing: -0.8,
+    ...typography.headline,
   },
   subtitle: {
     marginTop: 8,
-    marginBottom: 24,
-    fontSize: 15,
-    color: "#a3a3a3",
+    marginBottom: 8,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.body,
+  },
+  fieldLabel: {
+    color: colors.textSecondary,
+    fontSize: typography.caption.fontSize,
+    fontFamily: fontFamily.bodyMedium,
+    marginBottom: 8,
   },
   input: {
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: "#fafafa",
+    color: colors.textPrimary,
     backgroundColor: "#1f1f1f",
     borderWidth: 1,
-    borderColor: "#2a2a2a",
-    marginBottom: 12,
+    borderColor: colors.border,
+    marginBottom: 14,
+    fontFamily: fontFamily.body,
   },
   error: {
-    color: "#f87171",
+    color: colors.danger,
     marginBottom: 12,
     fontSize: 14,
   },
-  button: {
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    backgroundColor: "#fafafa",
-    marginTop: 8,
-  },
-  buttonPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.99 }],
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonLabel: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0a0a0a",
-  },
   linkWrap: {
-    marginTop: 20,
+    marginTop: 18,
     alignItems: "center",
   },
   link: {
-    color: "#a3a3a3",
-    fontSize: 15,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
   },
 });
