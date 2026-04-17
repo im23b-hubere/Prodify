@@ -10,6 +10,8 @@ backend/*.db
 mobile/node_modules/
 mobile/.expo/
 mobile/dist/
+mobile/.env
+mobile/.env.*
 *.log
 
 # OS / IDE

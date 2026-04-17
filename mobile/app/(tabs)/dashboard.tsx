@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  ListRenderItem,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -14,6 +15,58 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import type { SessionDto } from "../../types/session";
 
+function getLocalDateKey(value: string | Date) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(base: Date, delta: number) {
+  const next = new Date(base);
+  next.setDate(next.getDate() + delta);
+  return next;
+}
+
+function getStreakData(sessions: SessionDto[]) {
+  const dayKeys = Array.from(new Set(sessions.map((session) => getLocalDateKey(session.started_at)))).sort();
+
+  if (dayKeys.length === 0) {
+    return { current: 0, best: 0 };
+  }
+
+  const keySet = new Set(dayKeys);
+  const today = new Date();
+  const todayKey = getLocalDateKey(today);
+  const yesterdayKey = getLocalDateKey(addDays(today, -1));
+
+  let current = 0;
+  if (keySet.has(todayKey) || keySet.has(yesterdayKey)) {
+    let cursor = keySet.has(todayKey) ? new Date(today) : addDays(today, -1);
+    while (keySet.has(getLocalDateKey(cursor))) {
+      current += 1;
+      cursor = addDays(cursor, -1);
+    }
+  }
+
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < dayKeys.length; i += 1) {
+    const prev = new Date(`${dayKeys[i - 1]}T12:00:00`);
+    const currentDay = new Date(`${dayKeys[i]}T12:00:00`);
+    const diffDays = Math.round((currentDay.getTime() - prev.getTime()) / 86_400_000);
+    if (diffDays === 1) {
+      run += 1;
+      if (run > best) best = run;
+    } else {
+      run = 1;
+    }
+  }
+
+  return { current, best };
+}
+
 export default function DashboardScreen() {
   const { token, user } = useAuth();
   const [sessions, setSessions] = useState<SessionDto[]>([]);
@@ -22,6 +75,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const streak = getStreakData(sessions);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -82,10 +136,43 @@ export default function DashboardScreen() {
     }
   }
 
+  const renderSessionItem: ListRenderItem<SessionDto> = ({ item }) => (
+    <View style={styles.row}>
+      <Text style={styles.rowTitle}>Session #{item.id}</Text>
+      <Text style={styles.rowMeta}>
+        {item.stopped_at ? `${Math.round((item.duration_seconds ?? 0) / 60)} min` : "laeuft..."}
+      </Text>
+    </View>
+  );
+
   return (
     <View style={styles.root}>
+      <View style={styles.streakCard}>
+        <View>
+          <Text style={styles.streakEyebrow}>Dein Streak</Text>
+          <Text style={styles.streakValue}>{streak.current} Tage</Text>
+          <Text style={styles.streakHint}>
+            {streak.current > 0 ? "Bleib dran - heute zaehlt." : "Starte heute deinen ersten Run."}
+          </Text>
+        </View>
+        <View style={styles.flameWrap}>
+          <Text style={styles.flame}>🔥</Text>
+        </View>
+      </View>
+
+      <View style={styles.streakMetaRow}>
+        <View style={styles.streakMetaCard}>
+          <Text style={styles.streakMetaLabel}>Bester Streak</Text>
+          <Text style={styles.streakMetaValue}>{streak.best} Tage</Text>
+        </View>
+        <View style={styles.streakMetaCard}>
+          <Text style={styles.streakMetaLabel}>Sessions</Text>
+          <Text style={styles.streakMetaValue}>{sessions.length}</Text>
+        </View>
+      </View>
+
       <Text style={styles.greeting}>Hallo{user ? `, ${user.username}` : ""}</Text>
-      <Text style={styles.lead}>Produktionssession starten oder beenden.</Text>
+      <Text style={styles.lead}>Tracke deine Produktion heute.</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -135,16 +222,7 @@ export default function DashboardScreen() {
         ListEmptyComponent={
           <Text style={styles.empty}>Noch keine Sessions — starte deine erste.</Text>
         }
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <Text style={styles.rowTitle}>Session #{item.id}</Text>
-            <Text style={styles.rowMeta}>
-              {item.stopped_at
-                ? `${Math.round((item.duration_seconds ?? 0) / 60)} min`
-                : "läuft…"}
-            </Text>
-          </View>
-        )}
+        renderItem={renderSessionItem}
       />
     </View>
   );
@@ -155,6 +233,77 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0a0a0a",
     padding: 20,
+  },
+  streakCard: {
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    backgroundColor: "#171717",
+    borderWidth: 1,
+    borderColor: "#2f2f2f",
+    marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  streakEyebrow: {
+    fontSize: 13,
+    color: "#a3a3a3",
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  streakValue: {
+    fontSize: 34,
+    fontWeight: "900",
+    color: "#fafafa",
+    letterSpacing: -0.8,
+  },
+  streakHint: {
+    marginTop: 4,
+    color: "#d4d4d4",
+    fontSize: 14,
+  },
+  flameWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#262626",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#404040",
+  },
+  flame: {
+    fontSize: 32,
+  },
+  streakMetaRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 18,
+  },
+  streakMetaCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: "#111111",
+    borderWidth: 1,
+    borderColor: "#242424",
+  },
+  streakMetaLabel: {
+    color: "#8f8f8f",
+    fontSize: 12,
+    marginBottom: 4,
+    fontWeight: "600",
+  },
+  streakMetaValue: {
+    color: "#f5f5f5",
+    fontSize: 20,
+    fontWeight: "800",
   },
   greeting: {
     fontSize: 22,
