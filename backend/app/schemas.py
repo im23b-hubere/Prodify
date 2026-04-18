@@ -163,3 +163,24 @@ class StreakPublic(BaseModel):
     current_streak: int
     longest_streak: int
     last_session_date: datetime | None
+
+
+class StreakOverviewPublic(BaseModel):
+    current_streak: int
+    longest_streak: int
+    last_7_day_states: list[str]
+    last_7_day_labels: list[str]
+    next_milestone_at: int | None
+    next_milestone_title: str | None
+    days_to_next_milestone: int | None
+    freezes_remaining: int
+    can_use_freeze: bool
+    streak_at_risk: bool
+    tagline: str
+
+
+class StreakFreezeResult(BaseModel):
+    success: bool
+    message: str
+    current_streak: int
+    freezes_remaining: int

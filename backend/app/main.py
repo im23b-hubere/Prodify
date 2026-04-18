@@ -6,7 +6,7 @@ from sqlalchemy import inspect
 
 from app.config import settings
 from app.database import engine
-from app.routers import auth, sessions
+from app.routers import auth, sessions, streak
 
 
 def validate_schema() -> None:
@@ -17,6 +17,15 @@ def validate_schema() -> None:
     if missing_tables:
         missing = ", ".join(sorted(missing_tables))
         raise RuntimeError(f"Database schema is missing required tables: {missing}. Run Alembic migrations.")
+
+    streak_cols = {column["name"] for column in inspector.get_columns("streaks")}
+    required_streak = {"frozen_day_keys", "freezes_remaining", "billing_month"}
+    missing_streak = required_streak.difference(streak_cols)
+    if missing_streak:
+        miss = ", ".join(sorted(missing_streak))
+        raise RuntimeError(
+            f"Database schema is missing columns for 'streaks': {miss}. Run Alembic migrations before starting the API."
+        )
 
     column_names = {column["name"] for column in inspector.get_columns("sessions")}
     required_columns = {
@@ -54,6 +63,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(sessions.router)
+app.include_router(streak.router)
 
 
 @app.get("/health")

@@ -11,6 +11,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "../context/AuthContext";
 import { colors } from "../constants/theme";
+import { configureNotificationHandler } from "../lib/streakNotifications";
+
+configureNotificationHandler();
 
 export default function RootLayout() {
   const [syneLoaded] = useSyneFonts({ Syne_700Bold });

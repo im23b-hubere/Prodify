@@ -1,6 +1,5 @@
 import json
 from collections import Counter, defaultdict
-from datetime import date
 from datetime import timedelta
 from typing import Annotated
 
@@ -10,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import ProductionSession, SessionType, User, utcnow
+from app.models import ProductionSession, SessionType, Streak, User, utcnow
+from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 from app.schemas import (
     SessionPublic,
@@ -33,25 +33,6 @@ def _accumulate_pause_if_needed(row: ProductionSession, end_time) -> None:
     if delta > 0:
         row.paused_duration_seconds = (row.paused_duration_seconds or 0) + delta
     row.pause_started_at = None
-
-
-def _compute_current_streak(day_strings: list[str]) -> int:
-    if not day_strings:
-        return 0
-    dates = {date.fromisoformat(s) for s in day_strings}
-    today = utcnow().date()
-    yesterday = today - timedelta(days=1)
-    if today in dates:
-        cursor = today
-    elif yesterday in dates:
-        cursor = yesterday
-    else:
-        return 0
-    streak = 0
-    while cursor in dates:
-        streak += 1
-        cursor -= timedelta(days=1)
-    return streak
 
 
 def _productivity_hint(rows: list[ProductionSession]) -> str | None:
@@ -330,21 +311,6 @@ def sessions_stats(
     total_seconds = int(sum((row.duration_seconds or 0) for row in completed))
     avg_session_seconds = int(total_seconds / total_sessions) if total_sessions > 0 else 0
 
-    day_keys = sorted({as_utc_aware(row.started_at).date().isoformat() for row in rows})
-    best_streak = 0
-    if day_keys:
-        streak_run = 1
-        best_streak = 1
-        for idx in range(1, len(day_keys)):
-            prev = date.fromisoformat(day_keys[idx - 1])
-            cur = date.fromisoformat(day_keys[idx])
-            if (cur - prev).days == 1:
-                streak_run += 1
-                if streak_run > best_streak:
-                    best_streak = streak_run
-            else:
-                streak_run = 1
-
     all_for_streak = db.scalars(
         select(ProductionSession)
         .where(
@@ -355,7 +321,11 @@ def sessions_stats(
         .order_by(ProductionSession.started_at.asc())
     ).all()
     streak_days = [as_utc_aware(r.started_at).date().isoformat() for r in all_for_streak]
-    current_streak = _compute_current_streak(streak_days)
+    streak_row = db.scalar(select(Streak).where(Streak.user_id == current.id))
+    frozen_keys = parse_frozen_json(streak_row.frozen_day_keys) if streak_row else []
+    merged = list(set(streak_days) | set(frozen_keys))
+    current_streak = compute_current_streak(merged)
+    best_streak = best_streak_run(merged)
 
     hours_delta: float | None = None
     if since is not None and period_days is not None:

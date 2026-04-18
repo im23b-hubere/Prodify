@@ -41,9 +41,11 @@ export function TutorialOverlay() {
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>Track every session</Text>
           <Text style={styles.body}>
-            Tap <Text style={styles.bold}>START SESSION</Text> to pick your session type, optional mood, notes, and tags.
+            Tap <Text style={styles.bold}>START SESSION</Text> to set type, mood, notes, and tags — the sheet slides away
+            and your timer stays right here on the dashboard.
             {"\n\n"}
-            While a session runs, keep the timer open or return anytime from the banner on this screen.
+            Swipe up on the timer for focus mode; swipe down from there to come back. End with{" "}
+            <Text style={styles.bold}>STOP SESSION</Text> when you are done.
           </Text>
           <PrimaryButton label="Got it" onPress={dismiss} />
         </Pressable>

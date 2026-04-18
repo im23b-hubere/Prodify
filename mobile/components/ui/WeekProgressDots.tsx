@@ -4,13 +4,26 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 
 import { colors, spacing } from "../../constants/theme";
 
+export type WeekDotKind = "none" | "session" | "freeze";
+
 type WeekProgressDotsProps = {
-  activeDays: boolean[];
+  /** @deprecated prefer dayKinds */
+  activeDays?: boolean[];
+  /** Per column: session = primary, freeze = secondary accent, none = empty */
+  dayKinds?: WeekDotKind[];
 };
 
-function ProgressDot({ filled, delay }: { filled: boolean; delay: number }) {
+function ProgressDot({
+  kind,
+  delay,
+}: {
+  kind: WeekDotKind;
+  delay: number;
+}) {
   const scale = useSharedValue(0.6);
   const opacity = useSharedValue(0.3);
+
+  const filled = kind !== "none";
 
   useEffect(() => {
     scale.value = withDelay(delay, withTiming(filled ? 1 : 0.6, { duration: 350 }));
@@ -22,14 +35,21 @@ function ProgressDot({ filled, delay }: { filled: boolean; delay: number }) {
     opacity: opacity.value,
   }));
 
-  return <Animated.View style={[styles.dot, filled ? styles.dotFilled : styles.dotEmpty, animatedStyle]} />;
+  const base =
+    kind === "session" ? styles.dotSession : kind === "freeze" ? styles.dotFreeze : styles.dotEmpty;
+
+  return <Animated.View style={[styles.dot, base, animatedStyle]} />;
 }
 
-export function WeekProgressDots({ activeDays }: WeekProgressDotsProps) {
+export function WeekProgressDots({ activeDays, dayKinds }: WeekProgressDotsProps) {
+  const kinds: WeekDotKind[] =
+    dayKinds ??
+    (activeDays?.map((filled) => (filled ? "session" : "none")) ?? ["none", "none", "none", "none", "none", "none", "none"]);
+
   return (
     <View style={styles.row}>
-      {activeDays.map((filled, idx) => (
-        <ProgressDot key={idx} filled={filled} delay={idx * 80} />
+      {kinds.map((kind, idx) => (
+        <ProgressDot key={idx} kind={kind} delay={idx * 80} />
       ))}
     </View>
   );
@@ -46,8 +66,11 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
   },
-  dotFilled: {
+  dotSession: {
     backgroundColor: colors.primary,
+  },
+  dotFreeze: {
+    backgroundColor: colors.secondary,
   },
   dotEmpty: {
     backgroundColor: "#2a2a2a",

@@ -1,10 +1,12 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { PENDING_SESSION_SETUP_KEY } from "../../constants/sessionUi";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -67,7 +69,17 @@ export default function SessionCompleteScreen() {
           label="View session details"
           onPress={() => router.replace({ pathname: "/session/[id]", params: { id: String(id) } })}
         />
-        <PrimaryButton label="Start another session" onPress={() => router.replace("/session/setup")} />
+        <PrimaryButton
+          label="Start another session"
+          onPress={async () => {
+            try {
+              await SecureStore.setItemAsync(PENDING_SESSION_SETUP_KEY, "1");
+            } catch {
+              /* still navigate */
+            }
+            router.replace("/(tabs)/dashboard");
+          }}
+        />
         <Pressable style={styles.textBtn} onPress={() => router.replace("/(tabs)/dashboard")}>
           <Text style={styles.textBtnLabel}>Back to dashboard</Text>
         </Pressable>
