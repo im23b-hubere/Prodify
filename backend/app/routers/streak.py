@@ -8,10 +8,17 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import ProductionSession, Streak, User, utcnow
-from app.schemas import StreakFreezeResult, StreakOverviewPublic
+from app.schemas import (
+    StreakFreezeResult,
+    StreakMilestoneItem,
+    StreakMilestonesPublic,
+    StreakOverviewPublic,
+    StreakRunPublic,
+)
 from app.streakutil import (
     best_streak_run,
     compute_current_streak,
+    compute_streak_runs,
     dump_frozen_json,
     last_7_day_states,
     parse_frozen_json,
@@ -122,6 +129,52 @@ def streak_overview(
         streak_at_risk=streak_at_risk,
         tagline="Don't break the chain!",
     )
+
+
+@router.get("/history", response_model=list[StreakRunPublic])
+def streak_history(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    limit: int = 40,
+):
+    streak = _get_or_create_streak(db, current.id)
+    _ensure_monthly_freeze(streak)
+    session_days = _session_day_keys(db, current.id)
+    frozen = parse_frozen_json(streak.frozen_day_keys)
+    merged = list(set(session_days) | set(frozen))
+    runs = compute_streak_runs(merged)
+    if limit < 1:
+        limit = 1
+    if limit > 120:
+        limit = 120
+    out: list[StreakRunPublic] = []
+    for start, end, length in runs[:limit]:
+        out.append(StreakRunPublic(start_date=start, end_date=end, length_days=length))
+    return out
+
+
+@router.get("/milestones", response_model=StreakMilestonesPublic)
+def streak_milestones(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    streak = _get_or_create_streak(db, current.id)
+    _ensure_monthly_freeze(streak)
+    session_days = _session_day_keys(db, current.id)
+    frozen = parse_frozen_json(streak.frozen_day_keys)
+    merged = list(set(session_days) | set(frozen))
+    cur = compute_current_streak(merged)
+    best = best_streak_run(merged)
+    streak.current_streak = cur
+    streak.longest_streak = max(streak.longest_streak, best, cur)
+    db.commit()
+    db.refresh(streak)
+    longest = streak.longest_streak
+    items = [
+        StreakMilestoneItem(days=days, title=title, unlocked=longest >= days)
+        for days, title in MILESTONES
+    ]
+    return StreakMilestonesPublic(milestones=items, longest_streak_days=longest)
 
 
 @router.post("/freeze", response_model=StreakFreezeResult)

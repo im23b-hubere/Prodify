@@ -29,12 +29,14 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { parseSessionList, sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../lib/sessionTime";
 import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
 
 function formatClock(totalSeconds: number) {
-  const min = Math.floor(totalSeconds / 60);
-  const sec = totalSeconds % 60;
+  const s = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? Math.floor(totalSeconds) : 0;
+  const min = Math.floor(s / 60);
+  const sec = s % 60;
   return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
@@ -50,7 +52,11 @@ export default function SessionActiveScreen() {
   useKeepAwake();
   const { token } = useAuth();
   const router = useRouter();
-  const { id, source } = useLocalSearchParams<{ id: string; source?: string }>();
+  const params = useLocalSearchParams<{ id: string | string[]; source?: string | string[] }>();
+  const rawId = params.id;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
+  const rawSource = params.source;
+  const source = Array.isArray(rawSource) ? rawSource[0] : rawSource;
   const [session, setSession] = useState<SessionDto | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [busy, setBusy] = useState(false);
@@ -59,6 +65,7 @@ export default function SessionActiveScreen() {
   const [draftNotes, setDraftNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const longSessionWarned = useRef(false);
+  const stopSessionInFlight = useRef(false);
 
   const pulse = useSharedValue(1);
   const pulseStyle = useAnimatedStyle(() => ({
@@ -67,19 +74,40 @@ export default function SessionActiveScreen() {
 
   const load = useCallback(async () => {
     if (!token || !id) return;
-    const data = await apiJson<SessionDto>(`/sessions/item/${id}`, { token });
-    setSession(data);
-    setDraftNotes(data.notes ?? "");
-  }, [id, token]);
+    if (!Number.isFinite(Number(id))) {
+      setError("Invalid session");
+      return;
+    }
+    try {
+      const raw = await apiJson<unknown>(`/sessions/item/${id}`, { token });
+      const data = tryParseSessionDto(raw);
+      if (!data) {
+        setError("Invalid session data from server.");
+        setSession(null);
+        return;
+      }
+      if (data.stopped_at != null) {
+        router.replace(`/session/${data.id}`);
+        return;
+      }
+      setSession(data);
+      setDraftNotes(data.notes ?? "");
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load");
+      setSession(null);
+    }
+  }, [id, token, router]);
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : "Failed to load"));
+    void load();
   }, [load]);
 
   useEffect(() => {
     if (!token) return;
-    apiJson<SessionDto[]>("/sessions/list?limit=200", { token })
-      .then((list) => {
+    apiJson<unknown>("/sessions/list?limit=200", { token })
+      .then((raw) => {
+        const list = parseSessionList(raw);
         const max = list
           .filter((s) => s.stopped_at && (s.duration_seconds ?? 0) > 0)
           .reduce((acc, s) => Math.max(acc, s.duration_seconds ?? 0), 0);
@@ -131,8 +159,10 @@ export default function SessionActiveScreen() {
     setBusy(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-      const s = await apiJson<SessionDto>(`/sessions/item/${session.id}/pause`, { token, method: "POST" });
-      setSession(s);
+      const raw = await apiJson<unknown>(`/sessions/item/${session.id}/pause`, { token, method: "POST" });
+      const s = tryParseSessionDto(raw);
+      if (s) setSession(s);
+      else setError("Invalid response from server.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Pause failed");
     } finally {
@@ -145,8 +175,10 @@ export default function SessionActiveScreen() {
     setBusy(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-      const s = await apiJson<SessionDto>(`/sessions/item/${session.id}/resume`, { token, method: "POST" });
-      setSession(s);
+      const raw = await apiJson<unknown>(`/sessions/item/${session.id}/resume`, { token, method: "POST" });
+      const s = tryParseSessionDto(raw);
+      if (s) setSession(s);
+      else setError("Invalid response from server.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Resume failed");
     } finally {
@@ -160,12 +192,14 @@ export default function SessionActiveScreen() {
     if (trimmed === (session.notes ?? "").trim()) return;
     setSavingNotes(true);
     try {
-      const updated = await apiJson<SessionDto>(`/sessions/item/${session.id}`, {
+      const raw = await apiJson<unknown>(`/sessions/item/${session.id}`, {
         token,
         method: "PATCH",
         body: { notes: trimmed.length ? trimmed : null },
       });
-      setSession(updated);
+      const updated = tryParseSessionDto(raw);
+      if (updated) setSession(updated);
+      else setError("Invalid response from server.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save notes");
@@ -180,12 +214,14 @@ export default function SessionActiveScreen() {
       setBusy(true);
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-        const updated = await apiJson<SessionDto>(`/sessions/item/${session.id}`, {
+        const raw = await apiJson<unknown>(`/sessions/item/${session.id}`, {
           token,
           method: "PATCH",
           body: { session_type: next },
         });
-        setSession(updated);
+        const updated = tryParseSessionDto(raw);
+        if (updated) setSession(updated);
+        else setError("Invalid response from server.");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Update failed");
       } finally {
@@ -196,43 +232,37 @@ export default function SessionActiveScreen() {
   );
 
   const confirmStop = useCallback(() => {
-    if (!session) return;
+    if (!session || stopSessionInFlight.current) return;
+    const sid = session.id;
     Alert.alert("End session?", `You worked for ${formatDurationWords(elapsed)}.`, [
       { text: "Keep going", style: "cancel" },
       {
         text: "End session",
         style: "destructive",
         onPress: async () => {
-          if (!token) return;
+          if (!token || stopSessionInFlight.current) return;
+          stopSessionInFlight.current = true;
           setBusy(true);
           try {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
             await apiJson<SessionDto>("/sessions/stop", {
               token,
               method: "POST",
-              body: { session_id: session.id },
+              body: { session_id: sid },
             });
-            router.replace({ pathname: "/session/complete", params: { id: String(session.id) } });
+            router.replace({ pathname: "/session/complete", params: { id: String(sid) } });
           } catch (e) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
             setError(e instanceof Error ? e.message : "Stop failed");
+            void load();
           } finally {
+            stopSessionInFlight.current = false;
             setBusy(false);
           }
         },
       },
     ]);
-  }, [elapsed, router, session, token]);
-
-  if (!session) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <Text style={styles.muted}>{error ?? "Loading session…"}</Text>
-      </SafeAreaView>
-    );
-  }
-
-  const isPaused = !!session.pause_started_at;
+  }, [elapsed, load, router, session, token]);
 
   const insightLine = useMemo(() => {
     if (longestCompletedSeconds == null) {
@@ -243,6 +273,17 @@ export default function SessionActiveScreen() {
     }
     return `Your longest session so far: ${formatDurationWords(longestCompletedSeconds)}`;
   }, [elapsed, longestCompletedSeconds]);
+
+  if (!session) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Text style={styles.muted}>{error ?? "Loading session…"}</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const isPaused = !!session.pause_started_at;
+  const tagList = sessionTagsList(session.tags);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -319,9 +360,9 @@ export default function SessionActiveScreen() {
             </Pressable>
           </View>
 
-          {session.tags && session.tags.length > 0 ? (
+          {tagList.length > 0 ? (
             <View style={styles.tags}>
-              {session.tags.map((t) => (
+              {tagList.map((t) => (
                 <View key={t} style={styles.tag}>
                   <Text style={styles.tagTxt}>{t}</Text>
                 </View>

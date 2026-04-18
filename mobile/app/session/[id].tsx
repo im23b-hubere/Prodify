@@ -4,13 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { SessionInsightSections } from "../../components/session/SessionInsightSections";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { SessionTypeChip } from "../../components/ui/SessionTypeChip";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { tryParseSessionDto } from "../../lib/sessionDto";
 import { formatDurationWords, parseSessionDate } from "../../lib/sessionTime";
+import { sessionTagsList } from "../../lib/sessionDto";
+import type { SessionDetailInsightsDto } from "../../types/insights";
 import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
 
 const MOOD_LABEL: Record<number, string> = {
@@ -22,9 +26,10 @@ const MOOD_LABEL: Record<number, string> = {
 };
 
 export default function SessionDetailScreen() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const raw = useLocalSearchParams<{ id: string | string[] }>().id;
+  const id = Array.isArray(raw) ? raw[0] : raw;
 
   const [session, setSession] = useState<SessionDto | null>(null);
   const [selectedType, setSelectedType] = useState<SessionType>("Beat Making");
@@ -32,14 +37,36 @@ export default function SessionDetailScreen() {
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [insights, setInsights] = useState<SessionDetailInsightsDto | null>(null);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
+    if (!Number.isFinite(Number(id))) {
+      setError("Invalid session id");
+      setSession(null);
+      return;
+    }
     setError(null);
-    const data = await apiJson<SessionDto>(`/sessions/item/${id}`, { token });
+    const raw = await apiJson<unknown>(`/sessions/item/${id}`, { token });
+    const data = tryParseSessionDto(raw);
+    if (!data) {
+      setError("Invalid session data from server.");
+      setSession(null);
+      return;
+    }
     setSession(data);
     setSelectedType((data.session_type as SessionType) || "Beat Making");
     setNote(data.notes ?? "");
+    if (data.stopped_at != null && data.duration_seconds != null) {
+      try {
+        const ins = await apiJson<SessionDetailInsightsDto>(`/sessions/item/${id}/insights`, { token });
+        setInsights(ins);
+      } catch {
+        setInsights(null);
+      }
+    } else {
+      setInsights(null);
+    }
   }, [id, token]);
 
   useEffect(() => {
@@ -57,7 +84,7 @@ export default function SessionDetailScreen() {
     setBusy(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-      const updated = await apiJson<SessionDto>(`/sessions/item/${id}`, {
+      const raw = await apiJson<unknown>(`/sessions/item/${id}`, {
         token,
         method: "PATCH",
         body: {
@@ -65,6 +92,11 @@ export default function SessionDetailScreen() {
           notes: note.trim() ? note.trim() : null,
         },
       });
+      const updated = tryParseSessionDto(raw);
+      if (!updated) {
+        setError("Invalid response from server.");
+        return;
+      }
       setSession(updated);
       setNote(updated.notes ?? "");
       setSelectedType((updated.session_type as SessionType) || "Beat Making");
@@ -107,9 +139,12 @@ export default function SessionDetailScreen() {
   }
 
   const start = parseSessionDate(session.started_at);
+  const startOk = Number.isFinite(start.getTime());
   const end = session.stopped_at ? parseSessionDate(session.stopped_at) : null;
+  const endOk = end ? Number.isFinite(end.getTime()) : false;
   const durationLabel =
     session.duration_seconds != null ? formatDurationWords(session.duration_seconds) : "In progress";
+  const tagList = sessionTagsList(session.tags);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -126,21 +161,28 @@ export default function SessionDetailScreen() {
           <Text style={styles.heroType}>{session.session_type}</Text>
           <Text style={styles.heroDur}>{durationLabel}</Text>
           <Text style={styles.heroMeta}>
-            {start.toLocaleString("en-US", { weekday: "long", month: "short", day: "numeric" })} ·{" "}
-            {start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-            {end ? ` – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : ""}
+            {startOk
+              ? `${start.toLocaleString("en-US", { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+              : "—"}
+            {endOk && end ? ` – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : ""}
           </Text>
         </View>
+
+        {insights ? (
+          <SessionInsightSections session={session} insights={insights} producerName={user?.username} />
+        ) : null}
 
         <View style={styles.grid}>
           <View style={styles.gridCell}>
             <Text style={styles.gridLabel}>Start</Text>
-            <Text style={styles.gridVal}>{start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</Text>
+            <Text style={styles.gridVal}>
+              {startOk ? start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—"}
+            </Text>
           </View>
           <View style={styles.gridCell}>
             <Text style={styles.gridLabel}>End</Text>
             <Text style={styles.gridVal}>
-              {end ? end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—"}
+              {endOk && end ? end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—"}
             </Text>
           </View>
           <View style={styles.gridCell}>
@@ -178,11 +220,11 @@ export default function SessionDetailScreen() {
           />
         </View>
 
-        {session.tags && session.tags.length > 0 ? (
+        {tagList.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tags</Text>
             <View style={styles.tagRow}>
-              {session.tags.map((t) => (
+              {tagList.map((t) => (
                 <View key={t} style={styles.tag}>
                   <Text style={styles.tagTxt}>{t}</Text>
                 </View>

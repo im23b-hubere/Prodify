@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionSetupForm } from "../../components/session/SessionSetupForm";
+import { CrashBoundary } from "../../components/ui/CrashBoundary";
 import { colors } from "../../constants/theme";
 
 export default function SessionSetupScreen() {
@@ -10,10 +11,17 @@ export default function SessionSetupScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <SessionSetupForm
-        onStarted={() => router.replace("/(tabs)/dashboard")}
-        onRequestClose={() => router.back()}
-      />
+      <CrashBoundary
+        scope="session_setup_screen"
+        fallbackTitle="Session setup failed"
+        fallbackMessage="Please go back and open setup again."
+        onRecover={() => router.back()}
+      >
+        <SessionSetupForm
+          onStarted={() => router.replace("/(tabs)/dashboard")}
+          onRequestClose={() => router.back()}
+        />
+      </CrashBoundary>
     </SafeAreaView>
   );
 }

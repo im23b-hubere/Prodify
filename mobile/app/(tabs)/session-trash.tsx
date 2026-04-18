@@ -6,6 +6,7 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { parseSessionList } from "../../lib/sessionDto";
 import type { SessionDto } from "../../types/session";
 
 function formatDate(iso: string) {
@@ -22,8 +23,8 @@ export default function SessionTrashScreen() {
   const load = useCallback(async () => {
     if (!token) return;
     setError(null);
-    const data = await apiJson<SessionDto[]>("/sessions/trash", { token });
-    setSessions(data);
+    const raw = await apiJson<unknown>("/sessions/trash", { token });
+    setSessions(parseSessionList(raw));
   }, [token]);
 
   useEffect(() => {

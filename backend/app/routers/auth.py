@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,6 +12,7 @@ from app.schemas import Token, UserCreate, UserLogin, UserPublic
 from app.security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+_log = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -39,6 +41,7 @@ def register(payload: UserCreate, db: Annotated[Session, Depends(get_db)]):
 def login(payload: UserLogin, db: Annotated[Session, Depends(get_db)]):
     user = db.scalar(select(User).where(User.email == payload.email))
     if user is None or not verify_password(payload.password, user.hashed_password):
+        _log.warning("auth_login_failed")
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     token = create_access_token(str(user.id))
     return Token(access_token=token)

@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { ApiError, apiJson } from "../lib/client";
+import { ApiError, apiJson, setApiUnauthorizedHandler } from "../lib/client";
 
 const TOKEN_KEY = "beattrack_token";
 
@@ -43,6 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    setApiUnauthorizedHandler(async () => {
+      await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
+      setToken(null);
+      setUser(null);
+    });
+    return () => setApiUnauthorizedHandler(null);
+  }, []);
+
   const refreshUser = useCallback(async () => {
     if (!token) {
       setUser(null);
@@ -70,21 +79,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [hydrated, token, refreshUser]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const data = await apiJson<{ access_token: string }>("/auth/login", {
+    const data = await apiJson<{ access_token?: string }>("/auth/login", {
       method: "POST",
       body: { email, password },
     });
-    const access = data.access_token.trim();
+    const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
+    if (!access) {
+      throw new Error("Unexpected server response. Please try again.");
+    }
     await SecureStore.setItemAsync(TOKEN_KEY, access);
     setToken(access);
   }, []);
 
   const signUp = useCallback(async (email: string, username: string, password: string) => {
-    const data = await apiJson<{ access_token: string }>("/auth/register", {
+    const data = await apiJson<{ access_token?: string }>("/auth/register", {
       method: "POST",
       body: { email, username, password },
     });
-    const access = data.access_token.trim();
+    const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
+    if (!access) {
+      throw new Error("Unexpected server response. Please try again.");
+    }
     await SecureStore.setItemAsync(TOKEN_KEY, access);
     setToken(access);
   }, []);

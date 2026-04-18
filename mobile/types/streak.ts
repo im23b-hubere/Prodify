@@ -18,3 +18,20 @@ export type StreakFreezeResultDto = {
   current_streak: number;
   freezes_remaining: number;
 };
+
+export type StreakRunDto = {
+  start_date: string;
+  end_date: string;
+  length_days: number;
+};
+
+export type StreakMilestoneItemDto = {
+  days: number;
+  title: string;
+  unlocked: boolean;
+};
+
+export type StreakMilestonesDto = {
+  milestones: StreakMilestoneItemDto[];
+  longest_streak_days: number;
+};

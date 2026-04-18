@@ -39,11 +39,29 @@ async function cancelStreakRiskScheduled() {
   );
 }
 
-const SLOTS = [
-  { h: 22, m: 0, title: "Streak in danger", body: "⚠️ Your streak needs a session today — about 2 hours left in the day." },
-  { h: 23, m: 0, title: "Last chance", body: "🔥 One hour left to save your streak. Start a quick session!" },
-  { h: 23, m: 30, title: "30 minutes left", body: "⏰ Your streak resets soon. Tap to open BeatTrack." },
-];
+function streakSlots(streakCount: number) {
+  const n = Math.max(1, streakCount);
+  return [
+    {
+      h: 22,
+      m: 0,
+      title: "Streak in danger",
+      body: `⚠️ Your ${n}-day streak needs a session today — about 2 hours left.`,
+    },
+    {
+      h: 23,
+      m: 0,
+      title: "Last chance",
+      body: `🔥 One hour left to save your ${n}-day streak. Start a quick session!`,
+    },
+    {
+      h: 23,
+      m: 30,
+      title: "30 minutes left",
+      body: `⏰ 30 minutes until your ${n}-day streak resets. Open BeatTrack.`,
+    },
+  ];
+}
 
 export async function syncStreakRiskNotifications(atRisk: boolean, streakCount: number) {
   await ensureAndroidChannel();
@@ -59,7 +77,7 @@ export async function syncStreakRiskNotifications(atRisk: boolean, streakCount: 
 
   const now = new Date();
 
-  for (const slot of SLOTS) {
+  for (const slot of streakSlots(streakCount)) {
     const fire = new Date(now);
     fire.setHours(slot.h, slot.m, 0, 0);
     if (fire.getTime() <= now.getTime()) continue;

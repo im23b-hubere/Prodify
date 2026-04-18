@@ -9,6 +9,7 @@ import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { NotificationNavBridge } from "../components/NotificationNavBridge";
 import { AuthProvider } from "../context/AuthContext";
 import { colors } from "../constants/theme";
 import { configureNotificationHandler } from "../lib/streakNotifications";
@@ -28,6 +29,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
+          <NotificationNavBridge />
           <StatusBar style="light" />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
         </AuthProvider>

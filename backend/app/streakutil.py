@@ -63,6 +63,31 @@ def best_streak_run(day_iso_strings: list[str]) -> int:
     return best
 
 
+def compute_streak_runs(day_iso_strings: list[str]) -> list[tuple[str, str, int]]:
+    """
+    Split unique calendar days into maximal consecutive runs.
+    Returns list of (start_iso, end_iso, length_days), sorted by end date descending (newest first).
+    """
+    if not day_iso_strings:
+        return []
+    days = sorted({date.fromisoformat(s) for s in day_iso_strings})
+    if not days:
+        return []
+    runs: list[tuple[date, date, int]] = []
+    start = days[0]
+    prev = days[0]
+    for d in days[1:]:
+        if (d - prev).days == 1:
+            prev = d
+        else:
+            runs.append((start, prev, (prev - start).days + 1))
+            start = d
+            prev = d
+    runs.append((start, prev, (prev - start).days + 1))
+    runs.sort(key=lambda x: x[1], reverse=True)
+    return [(s.isoformat(), e.isoformat(), n) for s, e, n in runs]
+
+
 def last_7_day_states(session_days: list[str], frozen_days: list[str]) -> tuple[list[str], list[str]]:
     """
     Returns parallel arrays length 7: oldest → newest (index 0 = 6 days ago, 6 = today).

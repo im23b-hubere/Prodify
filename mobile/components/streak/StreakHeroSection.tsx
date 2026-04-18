@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { Shield } from "lucide-react-native";
+import { ChevronRight, Shield } from "lucide-react-native";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -15,9 +15,10 @@ type StreakHeroSectionProps = {
   loading: boolean;
   freezeBusy: boolean;
   onUseFreeze: () => void;
+  onOpenHistory?: () => void;
 };
 
-export function StreakHeroSection({ overview, loading, freezeBusy, onUseFreeze }: StreakHeroSectionProps) {
+export function StreakHeroSection({ overview, loading, freezeBusy, onUseFreeze, onOpenHistory }: StreakHeroSectionProps) {
   const target = overview?.current_streak ?? 0;
   const displayStreak = useAnimatedStreakCount(target, 900);
 
@@ -65,6 +66,21 @@ export function StreakHeroSection({ overview, loading, freezeBusy, onUseFreeze }
 
         <Text style={styles.milestoneHint}>{nextLine}</Text>
         <Text style={styles.longest}>Longest streak: {overview.longest_streak} days</Text>
+
+        {onOpenHistory ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="View streak history"
+            style={({ pressed }) => [styles.historyLink, pressed && { opacity: 0.85 }]}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => undefined);
+              onOpenHistory();
+            }}
+          >
+            <Text style={styles.historyLinkText}>Streak history</Text>
+            <ChevronRight color={colors.secondary} size={18} />
+          </Pressable>
+        ) : null}
 
         {overview.streak_at_risk ? (
           <View style={styles.riskBanner}>
@@ -181,6 +197,25 @@ const styles = StyleSheet.create({
     ...typography.caption,
     textAlign: "center",
     marginTop: 4,
+  },
+  historyLink: {
+    marginTop: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    alignSelf: "center",
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  historyLinkText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
   },
   riskBanner: {
     marginTop: spacing.md,

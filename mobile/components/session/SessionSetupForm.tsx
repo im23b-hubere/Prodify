@@ -226,7 +226,20 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
   );
 
   const onSubmit = useCallback(async () => {
+    console.log("=== SESSION START DEBUG ===");
+    console.log("Step 1: Button pressed");
+    console.log("Selected type:", selectedType);
+    console.log("Notes:", notes);
+    console.log("Mood:", mood);
+    console.log("Tags:", tags);
     if (!hydrated || !token?.trim() || !selectedType || busy || startRequestInFlight.current) {
+      console.log("ABORT: Preconditions failed", {
+        hydrated,
+        hasToken: Boolean(token?.trim()),
+        selectedType,
+        busy,
+        inFlight: startRequestInFlight.current,
+      });
       if (hydrated && !token?.trim()) {
         setError("Not signed in. Please log in again.");
       }
@@ -234,29 +247,60 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
     }
     startRequestInFlight.current = true;
     if (mounted.current) setBusy(true);
+    console.log("Step 2: Set submitting to true");
     if (mounted.current) setError(null);
     debugLog("session", "start_attempt", { hasNotes: Boolean(notes.trim()), moodLevel: mood ?? null, tagCount: tags.length });
     try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      console.log("Step 3: Calling startSession API...");
+      const sessionData = {
+        session_type: selectedType,
+        notes: notes.trim() ? notes.trim().slice(0, 200) : undefined,
+        mood_level: mood ?? undefined,
+        tags: tags.length ? tags : undefined,
+      };
+      console.log("Step 4: Session data prepared:", sessionData);
       const raw = await apiJson<unknown>("/sessions/start", {
         token: token.trim(),
         method: "POST",
-        body: {
-          session_type: selectedType,
-          notes: notes.trim() ? notes.trim().slice(0, 200) : undefined,
-          mood_level: mood ?? undefined,
-          tags: tags.length ? tags : undefined,
-        },
+        body: sessionData,
       });
+      console.log("Step 5: API response received");
+      console.log("Step 6: Response data:", raw);
+      if (!raw || typeof raw !== "object") {
+        throw new Error(`Invalid response format: ${JSON.stringify(raw)}`);
+      }
       const created = tryParseSessionDto(raw);
       if (!created) {
+        console.error("Step 6b: DTO parse failed");
         debugLog("session", "start_invalid_dto", {});
-        if (mounted.current) setError("Invalid response from server. Please try again.");
+        throw new Error(`Invalid response DTO: ${JSON.stringify(raw)}`);
+      }
+      console.log("Step 7: Triggering haptic feedback");
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (hapticsError) {
+        console.warn("Haptics not available:", hapticsError);
+      }
+      console.log("Step 8: Calling onStarted callback");
+      debugLog("session", "start_success", { sessionId: created.id });
+      if (!mounted.current) {
+        console.warn("Component unmounted before success callback");
         return;
       }
-      debugLog("session", "start_success", { sessionId: created.id });
-      if (mounted.current) onStarted(created);
+      await Promise.resolve(onStarted(created));
+      console.log("Step 9: onStarted callback completed");
+      console.log("Step 10: SUCCESS - Session started");
     } catch (e) {
+      console.error("=== CRASH POINT ===");
+      console.error("Error type:", e instanceof Error ? e.constructor.name : typeof e);
+      console.error("Error message:", e instanceof Error ? e.message : String(e));
+      if (e instanceof ApiError) {
+        console.error("Error response:", e.payload);
+        console.error("Error status:", e.status);
+      }
+      if (e instanceof Error) {
+        console.error("Stack trace:", e.stack);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       const msg = e instanceof Error ? e.message : "Could not start session";
       debugLog("session", "start_failure", { status: e instanceof ApiError ? e.status : 0, message: msg });
@@ -295,10 +339,13 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
         return;
       }
       if (mounted.current) setError(msg);
+      Alert.alert("Debug Info", msg);
     } finally {
+      console.log("Step 11: Finally block - resetting submitting");
       if (submitCooldownTimeout.current) clearTimeout(submitCooldownTimeout.current);
       submitCooldownTimeout.current = setTimeout(() => {
         startRequestInFlight.current = false;
+        console.log("Step 12: Submitting reset complete");
       }, 800);
       if (mounted.current) setBusy(false);
     }
