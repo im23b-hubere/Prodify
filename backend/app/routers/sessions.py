@@ -1,4 +1,5 @@
-from collections import Counter
+import json
+from collections import Counter, defaultdict
 from datetime import date
 from datetime import timedelta
 from typing import Annotated
@@ -25,11 +26,56 @@ from app.schemas import (
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
+def _accumulate_pause_if_needed(row: ProductionSession, end_time) -> None:
+    if row.pause_started_at is None:
+        return
+    delta = int((end_time - as_utc_aware(row.pause_started_at)).total_seconds())
+    if delta > 0:
+        row.paused_duration_seconds = (row.paused_duration_seconds or 0) + delta
+    row.pause_started_at = None
+
+
+def _compute_current_streak(day_strings: list[str]) -> int:
+    if not day_strings:
+        return 0
+    dates = {date.fromisoformat(s) for s in day_strings}
+    today = utcnow().date()
+    yesterday = today - timedelta(days=1)
+    if today in dates:
+        cursor = today
+    elif yesterday in dates:
+        cursor = yesterday
+    else:
+        return 0
+    streak = 0
+    while cursor in dates:
+        streak += 1
+        cursor -= timedelta(days=1)
+    return streak
+
+
+def _productivity_hint(rows: list[ProductionSession]) -> str | None:
+    if len(rows) < 10:
+        return None
+    by_dow: Counter[int] = Counter()
+    by_hour: Counter[int] = Counter()
+    for row in rows:
+        if row.duration_seconds is None:
+            continue
+        dt = as_utc_aware(row.started_at)
+        by_dow[dt.weekday()] += 1
+        by_hour[dt.hour] += 1
+    top_dow = by_dow.most_common(1)[0][0]
+    top_hour = by_hour.most_common(1)[0][0]
+    names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    return f"You're most productive on {names[top_dow]} around {top_hour}:00–{(top_hour + 3) % 24}:00 (UTC)."
+
+
 @router.post("/start", response_model=SessionPublic, status_code=status.HTTP_201_CREATED)
 def start_session(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
-    body: SessionStart | None = None,
+    body: SessionStart,
 ):
     active = db.scalar(
         select(ProductionSession).where(
@@ -41,12 +87,36 @@ def start_session(
     if active is not None:
         raise HTTPException(status_code=400, detail="You already have an active session")
 
-    notes = body.notes if body else None
-    session_type = body.session_type.value if body and body.session_type else SessionType.beat_making.value
-    row = ProductionSession(user_id=current.id, started_at=utcnow(), notes=notes, session_type=session_type)
+    tags_str = json.dumps(body.tags) if body.tags else None
+    row = ProductionSession(
+        user_id=current.id,
+        started_at=utcnow(),
+        notes=body.notes,
+        session_type=body.session_type.value,
+        mood_level=body.mood_level,
+        tags=tags_str,
+        paused_duration_seconds=0,
+    )
     db.add(row)
     db.commit()
     db.refresh(row)
+    return row
+
+
+@router.get("/active", response_model=SessionPublic)
+def get_active_session(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.scalar(
+        select(ProductionSession).where(
+            ProductionSession.user_id == current.id,
+            ProductionSession.stopped_at.is_(None),
+            ProductionSession.deleted_at.is_(None),
+        )
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="No active session")
     return row
 
 
@@ -63,9 +133,53 @@ def stop_session(
         raise HTTPException(status_code=400, detail="Session already stopped")
 
     end = utcnow()
-    delta = end - as_utc_aware(row.started_at)
+    _accumulate_pause_if_needed(row, end)
+    gross = int((end - as_utc_aware(row.started_at)).total_seconds())
+    paused = row.paused_duration_seconds or 0
     row.stopped_at = end
-    row.duration_seconds = max(0, int(delta.total_seconds()))
+    row.duration_seconds = max(0, gross - paused)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.post("/item/{session_id}/pause", response_model=SessionPublic)
+def pause_session(
+    session_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(ProductionSession, session_id)
+    if row is None or row.user_id != current.id or row.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if row.stopped_at is not None:
+        raise HTTPException(status_code=400, detail="Session already stopped")
+    if row.pause_started_at is not None:
+        raise HTTPException(status_code=400, detail="Session is already paused")
+    row.pause_started_at = utcnow()
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.post("/item/{session_id}/resume", response_model=SessionPublic)
+def resume_session(
+    session_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(ProductionSession, session_id)
+    if row is None or row.user_id != current.id or row.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if row.stopped_at is not None:
+        raise HTTPException(status_code=400, detail="Session already stopped")
+    if row.pause_started_at is None:
+        raise HTTPException(status_code=400, detail="Session is not paused")
+    now = utcnow()
+    delta = int((now - as_utc_aware(row.pause_started_at)).total_seconds())
+    if delta > 0:
+        row.paused_duration_seconds = (row.paused_duration_seconds or 0) + delta
+    row.pause_started_at = None
     db.commit()
     db.refresh(row)
     return row
@@ -139,6 +253,10 @@ def update_session(
         row.session_type = updates["session_type"].value
     if "notes" in updates:
         row.notes = updates["notes"]
+    if "mood_level" in updates:
+        row.mood_level = updates["mood_level"]
+    if "tags" in updates:
+        row.tags = json.dumps(updates["tags"]) if updates["tags"] else None
 
     db.commit()
     db.refresh(row)
@@ -183,8 +301,21 @@ def sessions_stats(
     period: str = "week",
 ):
     now = utcnow()
-    period_days = {"week": 7, "month": 30}.get(period)
-    since = now - timedelta(days=period_days) if period_days else None
+    period_label = period
+    if period in ("7d", "week"):
+        period_label = "week"
+        period_days = 7
+    elif period in ("30d", "month"):
+        period_label = "month"
+        period_days = 30
+    elif period == "all":
+        period_label = "all"
+        period_days = None
+    else:
+        period_label = "week"
+        period_days = 7
+
+    since = now - timedelta(days=period_days) if period_days is not None else None
 
     query = select(ProductionSession).where(
         ProductionSession.user_id == current.id,
@@ -202,17 +333,44 @@ def sessions_stats(
     day_keys = sorted({as_utc_aware(row.started_at).date().isoformat() for row in rows})
     best_streak = 0
     if day_keys:
-        streak = 1
+        streak_run = 1
         best_streak = 1
         for idx in range(1, len(day_keys)):
             prev = date.fromisoformat(day_keys[idx - 1])
             cur = date.fromisoformat(day_keys[idx])
             if (cur - prev).days == 1:
-                streak += 1
-                if streak > best_streak:
-                    best_streak = streak
+                streak_run += 1
+                if streak_run > best_streak:
+                    best_streak = streak_run
             else:
-                streak = 1
+                streak_run = 1
+
+    all_for_streak = db.scalars(
+        select(ProductionSession)
+        .where(
+            ProductionSession.user_id == current.id,
+            ProductionSession.deleted_at.is_(None),
+            ProductionSession.duration_seconds.is_not(None),
+        )
+        .order_by(ProductionSession.started_at.asc())
+    ).all()
+    streak_days = [as_utc_aware(r.started_at).date().isoformat() for r in all_for_streak]
+    current_streak = _compute_current_streak(streak_days)
+
+    hours_delta: float | None = None
+    if since is not None and period_days is not None:
+        prior_start = since - timedelta(days=period_days)
+        prior_rows = db.scalars(
+            select(ProductionSession).where(
+                ProductionSession.user_id == current.id,
+                ProductionSession.deleted_at.is_(None),
+                ProductionSession.started_at >= prior_start,
+                ProductionSession.started_at < since,
+                ProductionSession.duration_seconds.is_not(None),
+            )
+        ).all()
+        prior_seconds = int(sum((r.duration_seconds or 0) for r in prior_rows))
+        hours_delta = round((total_seconds - prior_seconds) / 3600, 1)
 
     trend_map: dict[str, tuple[int, int]] = {}
     for row in completed:
@@ -221,7 +379,7 @@ def sessions_stats(
         trend_map[key] = (sessions_count + 1, seconds_count + int(row.duration_seconds or 0))
     trend = [
         SessionStatsTrendPoint(label=key, sessions=sessions_count, seconds=seconds_count)
-        for key, (sessions_count, seconds_count) in trend_map.items()
+        for key, (sessions_count, seconds_count) in sorted(trend_map.items())
     ]
 
     type_counts = Counter((str(row.session_type) or "Beat Making") for row in completed)
@@ -235,14 +393,26 @@ def sessions_stats(
     ]
     breakdown.sort(key=lambda item: item.sessions, reverse=True)
 
+    recent = sorted(
+        completed,
+        key=lambda r: as_utc_aware(r.started_at),
+        reverse=True,
+    )[:10]
+
+    hint = _productivity_hint(completed)
+
     return SessionStatsPublic(
-        period=period,
+        period=period_label,
         summary=SessionStatsSummary(
             total_seconds=total_seconds,
             total_sessions=total_sessions,
             best_streak_days=best_streak,
             avg_session_seconds=avg_session_seconds,
+            current_streak_days=current_streak,
+            hours_delta_vs_prior_period=hours_delta,
         ),
         trend=trend,
         breakdown=breakdown,
+        recent_sessions=[SessionPublic.model_validate(r) for r in recent],
+        productivity_hint=hint,
     )

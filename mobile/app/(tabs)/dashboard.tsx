@@ -2,22 +2,23 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { Bell, Flame } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { GlassCard } from "../../components/ui/GlassCard";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
-import { SessionTypeChip } from "../../components/ui/SessionTypeChip";
+import { TutorialOverlay } from "../../components/TutorialOverlay";
 import { WeekProgressDots } from "../../components/ui/WeekProgressDots";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
-import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
+import { effectiveElapsedSeconds } from "../../lib/sessionTime";
+import type { SessionDto } from "../../types/session";
 
 function parseApiDate(value: string) {
   const hasTimezone = /([zZ]|[+\-]\d{2}:\d{2})$/.test(value);
@@ -80,30 +81,36 @@ export default function DashboardScreen() {
   const router = useRouter();
   const [sessions, setSessions] = useState<SessionDto[]>([]);
   const [active, setActive] = useState<SessionDto | null>(null);
-  const [selectedType, setSelectedType] = useState<SessionType>("Beat Making");
-  const [sessionNote, setSessionNote] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const pulse = useSharedValue(1);
-  const rotate = useSharedValue(0);
 
   const streak = useMemo(() => getStreak(sessions), [sessions]);
   const weekProgress = useMemo(() => getLast7DaysProgress(sessions), [sessions]);
   const visibleSessions = useMemo(() => sessions.filter((session) => session.stopped_at !== null), [sessions]);
   const activeSeconds = useMemo(() => {
     if (!active) return 0;
-    return Math.max(0, Math.floor((nowMs - parseApiDate(active.started_at).getTime()) / 1000));
+    return effectiveElapsedSeconds(active, nowMs);
   }, [active, nowMs]);
 
   const loadSessions = useCallback(async () => {
     if (!token) return;
     const list = await apiJson<SessionDto[]>("/sessions/list", { token });
     setSessions(list);
-    setActive(list.find((item) => item.stopped_at === null) ?? null);
+    let running = list.find((item) => item.stopped_at === null) ?? null;
+    if (!running) {
+      try {
+        running = await apiJson<SessionDto>("/sessions/active", { token });
+      } catch {
+        running = null;
+      }
+    }
+    setActive(running);
+    setLastUpdated(new Date());
   }, [token]);
 
   useEffect(() => {
@@ -130,65 +137,35 @@ export default function DashboardScreen() {
   }, [pulse]);
 
   const streakPulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-  const buttonRotateStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotate.value}deg` }] }));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     await loadSessions().catch(() => undefined);
     setRefreshing(false);
   }, [loadSessions]);
 
-  const startSession = useCallback(async () => {
-    if (!token || busy || active) return;
-    setBusy(true);
-    setError(null);
-    rotate.value = withSpring(360, { damping: 12 }, () => {
-      rotate.value = 0;
-    });
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-      await apiJson("/sessions/start", {
-        token,
-        method: "POST",
-        body: {
-          session_type: selectedType,
-          notes: sessionNote.trim() ? sessionNote.trim() : undefined,
-        },
-      });
-      setSessionNote("");
-      await loadSessions();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Start failed";
-      if (msg.toLowerCase().includes("already have an active session")) {
-        await loadSessions().catch(() => undefined);
-      }
-      setError(msg);
-    } finally {
-      setBusy(false);
+  const goSetup = useCallback(() => {
+    if (active) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+      return;
     }
-  }, [active, busy, loadSessions, rotate, selectedType, token]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    router.push("/session/setup");
+  }, [active, router]);
 
-  const stopSession = useCallback(async () => {
-    if (!token || busy || !active) return;
-    setBusy(true);
-    setError(null);
-    try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      await apiJson("/sessions/stop", { token, method: "POST", body: { session_id: active.id } });
-      await loadSessions();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Stop failed");
-    } finally {
-      setBusy(false);
-    }
-  }, [active, busy, loadSessions, token]);
+  const goActive = useCallback(() => {
+    if (!active) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    router.push({ pathname: "/session/active", params: { id: String(active.id) } });
+  }, [active, router]);
 
   const dismissSession = useCallback(
-    async (id: number) => {
+    async (sessionId: number) => {
       if (!token) return;
       Haptics.selectionAsync().catch(() => undefined);
       try {
-        await apiJson(`/sessions/item/${id}`, { token, method: "DELETE" });
+        await apiJson(`/sessions/item/${sessionId}`, { token, method: "DELETE" });
         await loadSessions();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Delete failed");
@@ -197,17 +174,49 @@ export default function DashboardScreen() {
     [loadSessions, token]
   );
 
-  const renderRightActions = (id: number) => (
-    <Pressable style={styles.deleteAction} onPress={() => dismissSession(id).catch(() => undefined)}>
-      <Text style={styles.deleteActionText}>Delete</Text>
-    </Pressable>
+  const renderRightActions = useCallback(
+    (sessionId: number) => (
+      <Pressable style={styles.deleteAction} onPress={() => dismissSession(sessionId).catch(() => undefined)}>
+        <Text style={styles.deleteActionText}>Delete</Text>
+      </Pressable>
+    ),
+    [dismissSession]
   );
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: SessionDto; index: number }) => (
+      <Animated.View entering={FadeInUp.delay(100 + index * 70).duration(400)}>
+        <Swipeable renderRightActions={() => renderRightActions(item.id)}>
+          <Pressable
+            style={styles.sessionRow}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+              router.push(`/session/${item.id}`);
+            }}
+          >
+            <Text style={styles.sessionType}>{item.session_type || "Beat Making"}</Text>
+            <Text style={styles.sessionMeta}>{Math.round((item.duration_seconds ?? 0) / 60)} min</Text>
+          </Pressable>
+        </Swipeable>
+      </Animated.View>
+    ),
+    [renderRightActions, router]
+  );
+
+  const lastUpdatedLabel = lastUpdated
+    ? `Updated ${Math.max(0, Math.round((Date.now() - lastUpdated.getTime()) / 60000))}m ago`
+    : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      <TutorialOverlay />
       <FlatList
         data={visibleSessions}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={(item) => `session-${item.id}`}
+        removeClippedSubviews
+        maxToRenderPerBatch={5}
+        windowSize={10}
+        initialNumToRender={8}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         ListHeaderComponent={
           <View style={styles.headerContent}>
@@ -228,51 +237,37 @@ export default function DashboardScreen() {
                       <Flame color={colors.primary} size={40} />
                     </Animated.View>
                     <Text style={styles.streakNumber}>{streak}</Text>
-                    <Text style={styles.streakLabel}>Day Streak</Text>
+                    <Text style={styles.streakLabel}>Day streak</Text>
                     <WeekProgressDots activeDays={weekProgress} />
                   </View>
                 </GlassCard>
               </Animated.View>
             ) : null}
 
-            <Animated.View style={[styles.sessionCircleWrap, buttonRotateStyle]}>
-              {!active ? (
-                <Pressable onPress={startSession} disabled={busy || loading}>
-                  <LinearGradient colors={["#ff6a3d", colors.primary]} style={styles.sessionCircle}>
-                    <Text style={styles.tapLabel}>TAP TO START</Text>
-                  </LinearGradient>
-                </Pressable>
-              ) : (
-                <Pressable onPress={stopSession} disabled={busy}>
-                  <View style={[styles.sessionCircle, styles.sessionCircleActive]}>
-                    <Text style={styles.timerLabel}>{formatTimer(activeSeconds)}</Text>
-                    <Text style={styles.stopLabel}>STOP</Text>
-                  </View>
-                </Pressable>
-              )}
-            </Animated.View>
-
-            <View style={styles.chipsRow}>
-              {SESSION_TYPES.map((type) => (
-                <SessionTypeChip key={type} label={type} active={selectedType === type} onPress={() => setSelectedType(type)} />
-              ))}
-            </View>
-            {!active ? (
-              <TextInput
-                style={styles.noteInput}
-                placeholder="Optional note (project, mood, focus)"
-                placeholderTextColor={colors.textSecondary}
-                value={sessionNote}
-                onChangeText={setSessionNote}
-              />
+            {active ? (
+              <Pressable style={styles.activeBanner} onPress={goActive}>
+                <View>
+                  <Text style={styles.activeBannerTitle}>Session in progress</Text>
+                  <Text style={styles.activeBannerSub}>{formatTimer(activeSeconds)} · tap to continue</Text>
+                </View>
+                <Text style={styles.activeBannerChev}>›</Text>
+              </Pressable>
             ) : null}
 
+            <Pressable onPress={goSetup} disabled={!!active} style={({ pressed }) => [pressed && styles.pressedStart]}>
+              <LinearGradient colors={["#ff6a3d", colors.primary]} style={styles.startCircle}>
+                <Text style={styles.tapLabel}>START SESSION</Text>
+                <Text style={styles.tapHint}>Set type, mood & notes</Text>
+              </LinearGradient>
+            </Pressable>
+
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Today's Sessions</Text>
+              <Text style={styles.sectionTitle}>Recent sessions</Text>
               <Pressable onPress={() => router.push("/(tabs)/session-trash")}>
                 <Text style={styles.trashLink}>Trash</Text>
               </Pressable>
             </View>
+            {lastUpdatedLabel ? <Text style={styles.updatedHint}>{lastUpdatedLabel}</Text> : null}
             {error ? (
               <View style={styles.errorCard}>
                 <Text style={styles.errorText}>{error}</Text>
@@ -282,24 +277,16 @@ export default function DashboardScreen() {
           </View>
         }
         ListEmptyComponent={
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No sessions yet - start producing!</Text>
-          </View>
+          !loading ? (
+            <View style={styles.emptyCard}>
+              <Flame color={colors.primary} size={48} style={{ alignSelf: "center", marginBottom: spacing.sm }} />
+              <Text style={styles.emptyTitle}>Start your first session to begin your streak! 🔥</Text>
+              <PrimaryButton label="Start session" onPress={goSetup} />
+            </View>
+          ) : null
         }
         contentContainerStyle={styles.listContainer}
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInUp.delay(100 + index * 70).duration(400)}>
-            <Swipeable renderRightActions={() => renderRightActions(item.id)}>
-              <Pressable
-                style={styles.sessionRow}
-                onPress={() => router.push({ pathname: "/(tabs)/session/[id]", params: { id: String(item.id) } })}
-              >
-                <Text style={styles.sessionType}>{item.session_type || "Beat Making"}</Text>
-                <Text style={styles.sessionMeta}>{Math.round((item.duration_seconds ?? 0) / 60)} min</Text>
-              </Pressable>
-            </Swipeable>
-          </Animated.View>
-        )}
+        renderItem={renderItem}
       />
     </SafeAreaView>
   );
@@ -313,6 +300,7 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xxl,
+    flexGrow: 1,
   },
   headerContent: {
     paddingTop: spacing.sm,
@@ -353,57 +341,46 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     ...typography.caption,
   },
-  sessionCircleWrap: {
+  activeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.12)",
+  },
+  activeBannerTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  activeBannerSub: { color: colors.textSecondary, ...typography.caption, marginTop: 4 },
+  activeBannerChev: { color: colors.primary, fontSize: 28, fontFamily: fontFamily.heading },
+  pressedStart: { opacity: 0.92, transform: [{ scale: 0.98 }] },
+  startCircle: {
     alignSelf: "center",
     marginTop: spacing.lg,
     marginBottom: spacing.lg,
-  },
-  sessionCircle: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: spacing.md,
     ...shadows.button,
-  },
-  sessionCircleActive: {
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.primary,
   },
   tapLabel: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
     ...typography.subheadline,
+    textAlign: "center",
   },
-  timerLabel: {
-    color: colors.textPrimary,
-    fontSize: 44,
-    fontFamily: fontFamily.heading,
-  },
-  stopLabel: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.body,
-  },
-  chipsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  noteInput: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    color: colors.textPrimary,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
-    fontFamily: fontFamily.body,
+  tapHint: {
+    marginTop: spacing.xs,
+    color: "rgba(255,255,255,0.85)",
     ...typography.caption,
+    textAlign: "center",
   },
   sectionTitle: {
     color: colors.textPrimary,
@@ -414,6 +391,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  updatedHint: {
+    color: colors.textSecondary,
+    ...typography.caption,
     marginBottom: spacing.sm,
   },
   trashLink: {
@@ -461,6 +444,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.lg,
     marginTop: spacing.sm,
+    gap: spacing.md,
   },
   emptyTitle: {
     color: colors.textSecondary,

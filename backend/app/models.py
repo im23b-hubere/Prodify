@@ -50,6 +50,10 @@ class ProductionSession(Base):
     session_type: Mapped[str] = mapped_column(String(64), nullable=False, default=SessionType.beat_making.value)
     notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    mood_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tags: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    paused_duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pause_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="sessions")
 

@@ -1,9 +1,12 @@
 import { API_BASE_URL } from "../constants/api";
 
+const DEFAULT_TIMEOUT_MS = 10_000;
+
 export type ApiOptions = {
   token?: string | null;
   method?: string;
   body?: unknown;
+  timeoutMs?: number;
 };
 
 /** FastAPI/Pydantic validation errors use `detail` as an array of `{ loc, msg, ... }`. */
@@ -52,11 +55,26 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
   };
   if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method: opts.method ?? "GET",
-    headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-  });
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      method: opts.method ?? "GET",
+      headers,
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Request timed out. Check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const text = await res.text();
   let data: unknown = null;

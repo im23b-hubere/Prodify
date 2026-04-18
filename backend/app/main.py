@@ -19,7 +19,14 @@ def validate_schema() -> None:
         raise RuntimeError(f"Database schema is missing required tables: {missing}. Run Alembic migrations.")
 
     column_names = {column["name"] for column in inspector.get_columns("sessions")}
-    required_columns = {"session_type", "deleted_at"}
+    required_columns = {
+        "session_type",
+        "deleted_at",
+        "mood_level",
+        "tags",
+        "paused_duration_seconds",
+        "pause_started_at",
+    }
     missing_columns = required_columns.difference(column_names)
     if missing_columns:
         missing = ", ".join(sorted(missing_columns))

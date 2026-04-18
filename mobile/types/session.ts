@@ -7,8 +7,12 @@ export type SessionDto = {
   started_at: string;
   stopped_at: string | null;
   duration_seconds: number | null;
-  session_type: SessionType;
+  session_type: SessionType | string;
   notes: string | null;
+  mood_level?: number | null;
+  tags?: string[] | null;
+  paused_duration_seconds?: number;
+  pause_started_at?: string | null;
 };
 
 export type SessionStatsDto = {
@@ -18,6 +22,8 @@ export type SessionStatsDto = {
     total_sessions: number;
     best_streak_days: number;
     avg_session_seconds: number;
+    current_streak_days: number;
+    hours_delta_vs_prior_period: number | null;
   };
   trend: Array<{
     label: string;
@@ -29,4 +35,6 @@ export type SessionStatsDto = {
     sessions: number;
     percent: number;
   }>;
+  recent_sessions: SessionDto[];
+  productivity_hint: string | null;
 };

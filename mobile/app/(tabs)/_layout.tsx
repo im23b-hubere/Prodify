@@ -84,13 +84,6 @@ export default function TabsLayout() {
           title: "Session Trash",
         }}
       />
-      <Tabs.Screen
-        name="session/[id]"
-        options={{
-          href: null,
-          title: "Session Detail",
-        }}
-      />
     </Tabs>
   );
 }

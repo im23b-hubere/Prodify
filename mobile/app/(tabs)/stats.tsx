@@ -1,15 +1,22 @@
+import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { VictoryAxis, VictoryBar, VictoryChart, VictoryTheme } from "victory-native";
 
 import { StatCard } from "../../components/ui/StatCard";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
-import type { SessionStatsDto } from "../../types/session";
+import type { SessionDto, SessionStatsDto } from "../../types/session";
 
-const FILTERS = ["Week", "Month", "All"] as const;
+const FILTERS = [
+  { key: "7d" as const, label: "7D", period: "week" as const },
+  { key: "30d" as const, label: "30D", period: "month" as const },
+  { key: "all" as const, label: "All", period: "all" as const },
+];
 
 const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
 
@@ -21,50 +28,72 @@ function formatDuration(seconds: number) {
   return `${hours}h ${rest}m`;
 }
 
-function dayLabel(iso: string) {
-  const date = new Date(`${iso}T12:00:00`);
+function weekdayShort(iso: string) {
+  const date = new Date(`${iso}T12:00:00Z`);
   return date.toLocaleDateString("en-US", { weekday: "short" });
 }
 
 export default function StatsScreen() {
   const { token } = useAuth();
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("Week");
+  const router = useRouter();
+  const [filterIdx, setFilterIdx] = useState(0);
+  const filter = FILTERS[filterIdx];
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const mapFilterToPeriod = useCallback((value: (typeof FILTERS)[number]) => {
-    if (value === "Week") return "week";
-    if (value === "Month") return "month";
-    return "all";
-  }, []);
+  const periodParam = filter.period === "week" ? "week" : filter.period === "month" ? "month" : "all";
 
-  const loadStats = useCallback(
-    async (activeFilter: (typeof FILTERS)[number]) => {
-      if (!token) return;
-      setError(null);
-      const period = mapFilterToPeriod(activeFilter);
-      const data = await apiJson<SessionStatsDto>(`/sessions/stats?period=${period}`, { token });
-      setStats(data);
-    },
-    [mapFilterToPeriod, token]
-  );
+  const loadStats = useCallback(async () => {
+    if (!token) return;
+    setError(null);
+    const data = await apiJson<SessionStatsDto>(`/sessions/stats?period=${periodParam}`, { token });
+    setStats(data);
+  }, [periodParam, token]);
 
-  const summary = useMemo(
-    () => ({
-      hours: `${((stats?.summary.total_seconds ?? 0) / 3600).toFixed(1)}h`,
-      sessions: String(stats?.summary.total_sessions ?? 0),
-      avgSession: formatDuration(stats?.summary.avg_session_seconds ?? 0),
-    }),
-    [stats]
-  );
+  useEffect(() => {
+    loadStats().catch((e) => setError(e instanceof Error ? e.message : "Failed to load stats"));
+  }, [loadStats]);
 
-  const trendData = useMemo(() => {
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    await loadStats().catch((e) => setError(e instanceof Error ? e.message : "Failed to load stats"));
+    setRefreshing(false);
+  }, [loadStats]);
+
+  const summary = useMemo(() => {
+    const s = stats?.summary;
+    if (!s) {
+      return {
+        hours: "0h",
+        sessions: "0",
+        avgSession: "0m",
+        streak: 0,
+        bestStreak: 0,
+        delta: null as number | null,
+      };
+    }
+    const hours = (s.total_seconds / 3600).toFixed(1);
+    const delta = s.hours_delta_vs_prior_period;
+    return {
+      hours: `${hours}h`,
+      sessions: String(s.total_sessions),
+      avgSession: formatDuration(s.avg_session_seconds),
+      streak: s.current_streak_days,
+      bestStreak: s.best_streak_days,
+      delta,
+    };
+  }, [stats]);
+
+  const chartData = useMemo(() => {
     const points = stats?.trend ?? [];
-    if (points.length === 0) return [{ label: "-", value: 8 }];
-    return points.map((point) => ({
-      label: dayLabel(point.label),
-      value: Math.max(8, point.sessions * 12),
+    if (points.length === 0) return [{ x: "—", y: 0, label: "-" }];
+    return points.map((p) => ({
+      x: weekdayShort(p.label),
+      y: p.sessions,
+      label: p.label,
+      seconds: p.seconds,
     }));
   }, [stats]);
 
@@ -73,62 +102,145 @@ export default function StatsScreen() {
       (stats?.breakdown ?? []).map((item, idx) => ({
         label: item.session_type,
         value: Math.max(0, Math.round(item.percent)),
+        sessions: item.sessions,
         color: BREAKDOWN_COLORS[idx % BREAKDOWN_COLORS.length],
       })),
     [stats]
   );
 
-  useEffect(() => {
-    loadStats(filter).catch((e) => setError(e instanceof Error ? e.message : "Failed to load stats"));
-  }, [filter, loadStats]);
+  const recent = stats?.recent_sessions ?? [];
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadStats(filter).catch((e) => setError(e instanceof Error ? e.message : "Failed to load stats"));
-    setRefreshing(false);
-  }, [filter, loadStats]);
+  const weekGoal = useMemo(() => {
+    if (filter.period !== "week" || !stats?.trend) return null;
+    const daysWith = new Set(stats.trend.map((t) => t.label)).size;
+    return { daysWith, goal: 7 };
+  }, [filter.period, stats?.trend]);
+
+  const renderRecent = useCallback(
+    ({ item }: { item: SessionDto }) => (
+      <Pressable
+        style={styles.recentRow}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+          router.push(`/session/${item.id}`);
+        }}
+      >
+        <Text style={styles.recentType}>{item.session_type}</Text>
+        <View style={styles.recentMid}>
+          <Text style={styles.recentDur}>{formatDuration(item.duration_seconds ?? 0)}</Text>
+          <Text style={styles.recentDate}>
+            {new Date(item.started_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          </Text>
+        </View>
+        <Text style={styles.recentChev}>›</Text>
+      </Pressable>
+    ),
+    [router]
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+      >
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Your Stats</Text>
+          <Text style={styles.title}>Your stats</Text>
           <View style={styles.filterRow}>
-            {FILTERS.map((item) => (
+            {FILTERS.map((f, i) => (
               <Pressable
-                key={item}
-                style={[styles.filterChip, filter === item && styles.filterChipActive]}
+                key={f.key}
+                style={[styles.filterChip, filterIdx === i && styles.filterChipActive]}
                 onPress={() => {
-                  setFilter(item);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                  setFilterIdx(i);
                 }}
               >
-                <Text style={[styles.filterLabel, filter === item && styles.filterLabelActive]}>{item}</Text>
+                <Text style={[styles.filterLabel, filterIdx === i && styles.filterLabelActive]}>{f.label}</Text>
               </Pressable>
             ))}
           </View>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardRow}>
-          <StatCard label="Total Time" value={summary.hours} />
-          <StatCard label="Total Sessions" value={summary.sessions} />
-          <StatCard label="Avg Session" value={summary.avgSession} />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={172}
+          decelerationRate="fast"
+          contentContainerStyle={styles.cardRow}
+        >
+          <StatCard
+            label="Total hours"
+            value={summary.hours}
+            sublabel={
+              summary.delta != null
+                ? `${summary.delta >= 0 ? "+" : ""}${summary.delta}h vs prior period`
+                : undefined
+            }
+            subPositive={summary.delta == null || summary.delta >= 0}
+          />
+          <StatCard label="Sessions" value={summary.sessions} />
+          <StatCard
+            label="Current streak"
+            value={`🔥 ${summary.streak}`}
+            sublabel={`Best: ${summary.bestStreak} days`}
+          />
         </ScrollView>
 
+        {weekGoal ? (
+          <View style={styles.goalCard}>
+            <Text style={styles.goalTitle}>
+              Weekly presence {weekGoal.daysWith}/{weekGoal.goal} days
+            </Text>
+            <Text style={styles.goalSub}>
+              {weekGoal.daysWith >= weekGoal.goal
+                ? "Goal crushed — keep the momentum."
+                : `${weekGoal.goal - weekGoal.daysWith} more day${weekGoal.goal - weekGoal.daysWith === 1 ? "" : "s"} to hit 7/7.`}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>Sessions Over Time</Text>
-          <View style={styles.sparklineWrap}>
-            {trendData.map((value, idx) => (
-              <View key={idx} style={styles.sparkItem}>
-                <View style={[styles.sparkBar, { height: value.value * 1.7 }]} />
-                <Text style={styles.sparkLabel}>{value.label}</Text>
-              </View>
-            ))}
+          <Text style={styles.cardTitle}>Sessions per day</Text>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <View style={styles.chartInner}>
+            <VictoryChart
+              height={220}
+              width={Dimensions.get("window").width - spacing.md * 4}
+              theme={VictoryTheme.material}
+              domainPadding={{ x: 24 }}
+              padding={{ top: 20, bottom: 40, left: 48, right: 24 }}
+            >
+              <VictoryAxis
+                style={{
+                  axis: { stroke: "#1f1f1f" },
+                  tickLabels: { fill: colors.textSecondary, fontSize: 10, fontFamily: fontFamily.body },
+                  grid: { stroke: "#1f1f1f", strokeDasharray: "4,4" },
+                }}
+              />
+              <VictoryAxis
+                dependentAxis
+                style={{
+                  axis: { stroke: "#1f1f1f" },
+                  tickLabels: { fill: colors.textSecondary, fontSize: 10, fontFamily: fontFamily.body },
+                  grid: { stroke: "#1f1f1f" },
+                }}
+              />
+              <VictoryBar
+                data={chartData}
+                x="x"
+                y="y"
+                cornerRadius={{ top: 6 }}
+                style={{
+                  data: { fill: colors.primary },
+                }}
+              />
+            </VictoryChart>
           </View>
         </View>
 
         <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>Session Type Breakdown</Text>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <Text style={styles.cardTitle}>Session type mix</Text>
           {breakdownData.length > 0 ? (
             <View style={styles.breakdownWrap}>
               {breakdownData.map((item) => (
@@ -140,7 +252,9 @@ export default function StatsScreen() {
                   <View style={styles.breakdownTrack}>
                     <View style={[styles.breakdownFill, { width: `${item.value}%`, backgroundColor: item.color }]} />
                   </View>
-                  <Text style={styles.breakdownValue}>{item.value}%</Text>
+                  <Text style={styles.breakdownValue}>
+                    {item.sessions} · {item.value}%
+                  </Text>
                 </View>
               ))}
             </View>
@@ -150,6 +264,19 @@ export default function StatsScreen() {
             </View>
           )}
         </View>
+
+        {stats?.productivity_hint ? (
+          <View style={styles.hintCard}>
+            <Text style={styles.hintText}>{stats.productivity_hint}</Text>
+          </View>
+        ) : null}
+
+        <Text style={styles.recentTitle}>Recent sessions</Text>
+        {recent.length === 0 ? (
+          <Text style={styles.emptyText}>No sessions in this range.</Text>
+        ) : (
+          recent.map((item) => <View key={item.id}>{renderRecent({ item })}</View>)
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -173,8 +300,18 @@ const styles = StyleSheet.create({
   filterLabel: { color: colors.textSecondary, fontFamily: fontFamily.bodyMedium, ...typography.caption },
   filterLabelActive: { color: colors.textPrimary },
   cardRow: { gap: spacing.sm, paddingBottom: spacing.md },
+  goalCard: {
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  goalTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  goalSub: { color: colors.textSecondary, marginTop: 4, ...typography.caption },
   chartCard: {
-    marginTop: spacing.md,
+    marginBottom: spacing.md,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -182,31 +319,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   cardTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  sparklineWrap: {
-    marginTop: spacing.md,
-    height: 140,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  sparkItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-end",
-  },
-  sparkBar: {
-    width: "100%",
-    maxWidth: 22,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,61,0,0.75)",
-  },
-  sparkLabel: {
-    marginTop: spacing.xs,
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    fontSize: 11,
-  },
+  chartInner: { alignItems: "center", marginTop: spacing.sm },
   breakdownWrap: {
     marginTop: spacing.md,
     gap: spacing.md,
@@ -219,7 +332,7 @@ const styles = StyleSheet.create({
   breakdownLabelWrap: {
     flexDirection: "row",
     alignItems: "center",
-    width: 78,
+    width: 88,
     gap: spacing.xs,
   },
   breakdownDot: {
@@ -245,7 +358,7 @@ const styles = StyleSheet.create({
   },
   breakdownValue: {
     color: colors.textSecondary,
-    width: 40,
+    width: 72,
     textAlign: "right",
     fontFamily: fontFamily.bodyMedium,
     ...typography.caption,
@@ -269,4 +382,35 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     ...typography.caption,
   },
+  hintCard: {
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: "rgba(162,89,255,0.12)",
+    borderWidth: 1,
+    borderColor: colors.secondary,
+  },
+  hintText: { color: colors.textSecondary, ...typography.caption, lineHeight: 20 },
+  recentTitle: {
+    marginBottom: spacing.sm,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.subheadline,
+  },
+  recentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.sm,
+  },
+  recentType: { flex: 1, color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  recentMid: { alignItems: "flex-end", marginRight: spacing.sm },
+  recentDur: { color: colors.textPrimary, ...typography.caption },
+  recentDate: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+  recentChev: { color: colors.primary, fontSize: 22 },
 });
