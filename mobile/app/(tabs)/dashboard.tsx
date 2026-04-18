@@ -2,7 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { Bell, ChevronUp, Flame } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -15,7 +15,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Gesture, GestureDetector, Swipeable } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import Animated, {
   FadeInUp,
@@ -29,20 +29,36 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
+import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
+import { DashboardSessionStarter } from "../../components/dashboard/DashboardSessionStarter";
+import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
+import { TodayProgressCard } from "../../components/dashboard/TodayProgressCard";
 import { SessionSetupForm } from "../../components/session/SessionSetupForm";
 import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
 import { StreakHeroSection } from "../../components/streak/StreakHeroSection";
+import { CrashBoundary } from "../../components/ui/CrashBoundary";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { TutorialOverlay } from "../../components/TutorialOverlay";
 import { PENDING_SESSION_SETUP_KEY } from "../../constants/sessionUi";
-import { LAST_KNOWN_STREAK_KEY, MILESTONE_CELEBRATED_MAX_KEY } from "../../constants/storageKeys";
+import {
+  LAST_KNOWN_STREAK_KEY,
+  MILESTONE_CELEBRATED_MAX_KEY,
+  userScopedLastKnownStreakKey,
+  userScopedMilestoneCelebratedKey,
+} from "../../constants/storageKeys";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { debugLog } from "../../lib/debugLog";
+import { parseSessionList, tryParseSessionDto } from "../../lib/sessionDto";
+import { generateMotivationMessage, getTimeBasedGreeting, getTimeOfDay } from "../../lib/motivationEngine";
 import { STREAK_MILESTONES } from "../../lib/streakMilestones";
+import { getUnreadCount, prependNotification } from "../../lib/notificationInbox";
+import { registerPushTokenWithBackend } from "../../lib/pushToken";
 import { syncStreakRiskNotifications } from "../../lib/streakNotifications";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../lib/sessionTime";
+import type { FriendActivityDto, FriendLeaderboardDto } from "../../types/friends";
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
 
@@ -54,13 +70,15 @@ function parseApiDate(value: string) {
 }
 
 function formatTimer(totalSeconds: number) {
-  const min = Math.floor(totalSeconds / 60);
-  const sec = totalSeconds % 60;
+  const s = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? Math.floor(totalSeconds) : 0;
+  const min = Math.floor(s / 60);
+  const sec = s % 60;
   return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
 function formatNaturalCounting(totalSeconds: number): string {
-  const mins = Math.floor(totalSeconds / 60);
+  const s = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? totalSeconds : 0;
+  const mins = Math.floor(s / 60);
   if (mins < 1) return "Just getting started…";
   return `${mins} minute${mins === 1 ? "" : "s"} and counting…`;
 }
@@ -80,7 +98,17 @@ function toDateKey(value: Date) {
 }
 
 function getStreak(sessions: SessionDto[]) {
-  const dayKeys = Array.from(new Set(sessions.map((session) => toDateKey(parseApiDate(session.started_at))))).sort();
+  const dayKeys = Array.from(
+    new Set(
+      sessions
+        .map((session) => {
+          if (!session.started_at?.trim()) return null;
+          const d = parseApiDate(session.started_at);
+          return Number.isFinite(d.getTime()) ? toDateKey(d) : null;
+        })
+        .filter((k): k is string => k !== null)
+    )
+  ).sort();
   if (dayKeys.length === 0) return 0;
   const set = new Set(dayKeys);
   let streak = 0;
@@ -97,7 +125,15 @@ function getStreak(sessions: SessionDto[]) {
 }
 
 function getLast7DaysProgress(sessions: SessionDto[]) {
-  const set = new Set(sessions.map((session) => toDateKey(parseApiDate(session.started_at))));
+  const set = new Set(
+    sessions
+      .map((session) => {
+        if (!session.started_at?.trim()) return null;
+        const d = parseApiDate(session.started_at);
+        return Number.isFinite(d.getTime()) ? toDateKey(d) : null;
+      })
+      .filter((k): k is string => k !== null)
+  );
   const result: boolean[] = [];
   for (let i = 6; i >= 0; i -= 1) {
     const d = new Date();
@@ -135,6 +171,20 @@ export default function DashboardScreen() {
   const [breakModalOpen, setBreakModalOpen] = useState(false);
   const [breakModalStreak, setBreakModalStreak] = useState(0);
   const [milestoneToast, setMilestoneToast] = useState<string | null>(null);
+  const [notifUnread, setNotifUnread] = useState(0);
+  const [friendActivity, setFriendActivity] = useState<FriendActivityDto[]>([]);
+  const [friendLeaderboard, setFriendLeaderboard] = useState<FriendLeaderboardDto | null>(null);
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
+  const [weekSessionsCount, setWeekSessionsCount] = useState(0);
+  const userScopedStreakKey = user?.id ? userScopedLastKnownStreakKey(user.id) : LAST_KNOWN_STREAK_KEY;
+  const userScopedMilestoneKey = user?.id
+    ? userScopedMilestoneCelebratedKey(user.id)
+    : MILESTONE_CELEBRATED_MAX_KEY;
+
+  const loadSessionsSeq = useRef(0);
+  const loadStreakSeq = useRef(0);
+  const stopSessionInFlight = useRef(false);
 
   const sheetTranslateY = useSharedValue(SCREEN_HEIGHT);
   const ringPulse = useSharedValue(1);
@@ -149,42 +199,89 @@ export default function DashboardScreen() {
 
   const loadSessions = useCallback(async () => {
     if (!token) return;
-    const list = await apiJson<SessionDto[]>("/sessions/list", { token });
-    setSessions(list);
-    let running = list.find((item) => item.stopped_at === null) ?? null;
-    if (!running) {
-      try {
-        running = await apiJson<SessionDto>("/sessions/active", { token });
-      } catch {
-        running = null;
+    const seq = ++loadSessionsSeq.current;
+    try {
+      const listRaw = await apiJson<unknown>("/sessions/list", { token });
+      if (seq !== loadSessionsSeq.current) return;
+      const list = parseSessionList(listRaw);
+      setSessions(list);
+      let running = list.find((item) => item.stopped_at === null) ?? null;
+      if (!running) {
+        try {
+          const activeRaw = await apiJson<unknown>("/sessions/active", { token });
+          running = tryParseSessionDto(activeRaw);
+        } catch {
+          running = null;
+        }
+        if (seq !== loadSessionsSeq.current) return;
       }
+      setActive(running);
+      setLastUpdated(new Date());
+    } catch (e) {
+      if (seq !== loadSessionsSeq.current) return;
+      setError(e instanceof Error ? e.message : "Failed to load sessions");
     }
-    setActive(running);
-    setLastUpdated(new Date());
+  }, [token]);
+
+  const loadSocial = useCallback(async () => {
+    if (!token) return;
+    setSocialLoading(true);
+    try {
+      const [lbRaw, actRaw, goalRaw] = await Promise.all([
+        apiJson<unknown>("/friends/leaderboard?period=week", { token }),
+        apiJson<unknown>("/friends/activity?limit=8", { token }),
+        apiJson<unknown>("/goals/current", { token }),
+      ]);
+      const lb = lbRaw && typeof lbRaw === "object" && "entries" in lbRaw ? (lbRaw as FriendLeaderboardDto) : null;
+      setFriendLeaderboard(lb);
+      setFriendActivity(Array.isArray(actRaw) ? (actRaw as FriendActivityDto[]) : []);
+      if (goalRaw && typeof goalRaw === "object") {
+        const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
+        const tv = typeof g.target_value === "number" ? g.target_value : null;
+        const cs = typeof g.current_sessions === "number" ? g.current_sessions : 0;
+        setWeeklyGoalTarget(tv);
+        setWeekSessionsCount(cs);
+      } else {
+        setWeeklyGoalTarget(null);
+        setWeekSessionsCount(0);
+      }
+    } catch {
+      setFriendLeaderboard(null);
+      setFriendActivity([]);
+    } finally {
+      setSocialLoading(false);
+    }
   }, [token]);
 
   const loadStreakOverview = useCallback(async () => {
     if (!token) return;
+    const seq = ++loadStreakSeq.current;
     try {
       const data = await apiJson<StreakOverviewDto>("/streak/overview", { token });
+      if (seq !== loadStreakSeq.current) return;
       setStreakOverview(data);
       await syncStreakRiskNotifications(data.streak_at_risk, data.current_streak);
     } catch {
+      if (seq !== loadStreakSeq.current) return;
       setStreakOverview(null);
     }
   }, [token]);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([loadSessions(), loadStreakOverview()])
+    Promise.all([loadSessions(), loadStreakOverview(), loadSocial()])
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
       .finally(() => setLoading(false));
-  }, [loadSessions, loadStreakOverview]);
+  }, [loadSessions, loadStreakOverview, loadSocial]);
 
   useFocusEffect(
     useCallback(() => {
       loadSessions().catch(() => null);
       loadStreakOverview().catch(() => null);
+      loadSocial().catch(() => null);
+      getUnreadCount()
+        .then(setNotifUnread)
+        .catch(() => undefined);
       (async () => {
         try {
           const v = await SecureStore.getItemAsync(PENDING_SESSION_SETUP_KEY);
@@ -198,8 +295,13 @@ export default function DashboardScreen() {
           /* ignore */
         }
       })();
-    }, [loadSessions, loadStreakOverview])
+    }, [loadSessions, loadStreakOverview, loadSocial, sheetTranslateY])
   );
+
+  useEffect(() => {
+    if (!token) return;
+    registerPushTokenWithBackend(token).catch(() => undefined);
+  }, [token]);
 
   useEffect(() => {
     if (!active) return;
@@ -253,13 +355,12 @@ export default function DashboardScreen() {
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-    sheetTranslateY.value = SCREEN_HEIGHT;
-    setSetupModalKey((k) => k + 1);
-    setSetupVisible(true);
-  }, [active, sheetTranslateY]);
+    // Emergency fallback: avoid modal path and open dedicated setup screen.
+    router.push("/session/setup");
+  }, [active, router]);
 
   const openFullscreenActive = useCallback(() => {
-    if (!active) return;
+    if (!active || typeof active.id !== "number" || !Number.isFinite(active.id)) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
     router.push({ pathname: "/session/active", params: { id: String(active.id), source: "dashboard" } });
   }, [active, router]);
@@ -280,9 +381,13 @@ export default function DashboardScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    await Promise.all([loadSessions().catch(() => undefined), loadStreakOverview().catch(() => undefined)]);
+    await Promise.all([
+      loadSessions().catch(() => undefined),
+      loadStreakOverview().catch(() => undefined),
+      loadSocial().catch(() => undefined),
+    ]);
     setRefreshing(false);
-  }, [loadSessions, loadStreakOverview]);
+  }, [loadSessions, loadStreakOverview, loadSocial]);
 
   const weekDayLetters = useMemo(() => {
     const letters = ["M", "T", "W", "T", "F", "S", "S"];
@@ -295,6 +400,51 @@ export default function DashboardScreen() {
     }
     return out;
   }, []);
+
+  const todayStats = useMemo(() => {
+    const key = toDateKey(new Date());
+    const today = visibleSessions.filter((s) => {
+      if (!s.started_at || s.stopped_at === null) return false;
+      return toDateKey(parseApiDate(s.started_at)) === key;
+    });
+    const mins = Math.round(today.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60);
+    return { count: today.length, minutes: mins };
+  }, [visibleSessions]);
+
+  const motivationMessage = useMemo(() => {
+    const streakVal = streakOverview?.current_streak ?? clientStreak;
+    const last = visibleSessions[0];
+    let top: { userId: number; name: string } | null = null;
+    if (friendLeaderboard?.entries?.length) {
+      const others = friendLeaderboard.entries.filter((e) => e.user_id !== user?.id);
+      const sorted = [...others].sort((a, b) => b.sessions_in_period - a.sessions_in_period);
+      const w = sorted[0];
+      if (w) top = { userId: w.user_id, name: w.username };
+    }
+    const cutoff = Date.now() - 90 * 60 * 1000;
+    const activeNow = friendActivity.filter(
+      (a) => user?.id != null && a.user_id !== user.id && new Date(a.completed_at).getTime() >= cutoff
+    ).length;
+    return generateMotivationMessage({
+      streak: streakVal,
+      todayCount: todayStats.count,
+      weekCount: weekSessionsCount,
+      friends: { activeNow, topThisWeek: top },
+      timeOfDay: getTimeOfDay(),
+      lastSessionFocus: last?.focus_score ?? null,
+    });
+  }, [
+    streakOverview?.current_streak,
+    clientStreak,
+    visibleSessions,
+    friendLeaderboard,
+    friendActivity,
+    user?.id,
+    todayStats.count,
+    weekSessionsCount,
+  ]);
+
+  const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
 
   const displayOverview = useMemo((): StreakOverviewDto | null => {
     if (streakOverview) return streakOverview;
@@ -337,13 +487,19 @@ export default function DashboardScreen() {
     const cur = streakOverview.current_streak;
     (async () => {
       try {
-        const raw = await SecureStore.getItemAsync(MILESTONE_CELEBRATED_MAX_KEY);
+        const raw = await SecureStore.getItemAsync(userScopedMilestoneKey);
         const maxSeen = raw ? parseInt(raw, 10) : 0;
         const newlyPassed = STREAK_MILESTONES.filter((m) => cur >= m.days && m.days > maxSeen);
         const best = newlyPassed.length ? newlyPassed[newlyPassed.length - 1] : null;
         if (best) {
-          await SecureStore.setItemAsync(MILESTONE_CELEBRATED_MAX_KEY, String(best.days));
+          await SecureStore.setItemAsync(userScopedMilestoneKey, String(best.days));
           setMilestoneToast(`${best.title} — ${best.reward}`);
+          prependNotification({
+            category: "achievement",
+            title: "Milestone reached",
+            body: `${best.title} — ${best.reward}`,
+          }).catch(() => undefined);
+          getUnreadCount().then(setNotifUnread).catch(() => undefined);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
           setTimeout(() => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
@@ -354,54 +510,64 @@ export default function DashboardScreen() {
         /* ignore */
       }
     })();
-  }, [streakOverview]);
+  }, [streakOverview, userScopedMilestoneKey]);
 
   useEffect(() => {
     if (!streakOverview) return;
     const cur = streakOverview.current_streak;
     (async () => {
       try {
-        const raw = await SecureStore.getItemAsync(LAST_KNOWN_STREAK_KEY);
+        const raw = await SecureStore.getItemAsync(userScopedStreakKey);
         const prev = raw ? parseInt(raw, 10) : 0;
         if (prev > 0 && cur === 0) {
           setBreakModalStreak(prev);
           setBreakModalOpen(true);
         }
-        await SecureStore.setItemAsync(LAST_KNOWN_STREAK_KEY, String(cur));
+        await SecureStore.setItemAsync(userScopedStreakKey, String(cur));
       } catch {
         /* ignore */
       }
     })();
-  }, [streakOverview]);
+  }, [streakOverview, userScopedStreakKey]);
 
   const confirmStop = useCallback(() => {
-    if (!active || !token) return;
-    const elapsed = effectiveElapsedSeconds(active, Date.now());
+    if (!active || !token || stopSessionInFlight.current) return;
+    const sessionToStop = active;
+    const elapsed = effectiveElapsedSeconds(sessionToStop, Date.now());
     Alert.alert("End session?", `You worked for ${formatDurationWords(elapsed)}.`, [
       { text: "Keep going", style: "cancel" },
       {
         text: "End session",
         style: "destructive",
         onPress: async () => {
+          if (stopSessionInFlight.current) return;
+          stopSessionInFlight.current = true;
           setStopBusy(true);
           try {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+            debugLog("session", "stop_attempt", { sessionId: sessionToStop.id });
             await apiJson<SessionDto>("/sessions/stop", {
               token,
               method: "POST",
-              body: { session_id: active.id },
+              body: { session_id: sessionToStop.id },
             });
-            router.replace({ pathname: "/session/complete", params: { id: String(active.id) } });
+            debugLog("session", "stop_success", { sessionId: sessionToStop.id });
+            setActive(null);
+            router.replace({ pathname: "/session/complete", params: { id: String(sessionToStop.id) } });
           } catch (e) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-            setError(e instanceof Error ? e.message : "Stop failed");
+            const msg = e instanceof Error ? e.message : "Stop failed";
+            debugLog("session", "stop_failure", { sessionId: sessionToStop.id, message: msg });
+            setError(msg);
+            await loadSessions().catch(() => undefined);
           } finally {
+            stopSessionInFlight.current = false;
             setStopBusy(false);
           }
         },
       },
     ]);
-  }, [active, token, router]);
+  }, [active, token, router, loadSessions]);
 
   const dismissSession = useCallback(
     async (sessionId: number) => {
@@ -433,6 +599,7 @@ export default function DashboardScreen() {
           <Pressable
             style={styles.sessionRow}
             onPress={() => {
+              if (typeof item.id !== "number" || !Number.isFinite(item.id) || item.id <= 0) return;
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
               router.push(`/session/${item.id}`);
             }}
@@ -471,9 +638,9 @@ export default function DashboardScreen() {
         }}
       />
       <FlatList
-        data={visibleSessions}
+        data={recentSessions}
         keyExtractor={(item) => `session-${item.id}`}
-        removeClippedSubviews
+        removeClippedSubviews={false}
         maxToRenderPerBatch={5}
         windowSize={10}
         initialNumToRender={8}
@@ -482,8 +649,16 @@ export default function DashboardScreen() {
           <View style={styles.headerContent}>
             <View style={styles.topBar}>
               <Text style={styles.username}>Hey, {user?.username ?? "Producer"}</Text>
-              <Pressable style={styles.iconButton}>
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                  router.push("/notifications");
+                }}
+                accessibilityLabel="Notifications"
+              >
                 <Bell color={colors.textPrimary} size={20} />
+                {notifUnread > 0 ? <View style={styles.notifBadge} /> : null}
               </Pressable>
             </View>
 
@@ -494,6 +669,17 @@ export default function DashboardScreen() {
               loading={loading}
               freezeBusy={freezeBusy}
               onUseFreeze={onUseFreeze}
+              onOpenHistory={() => {
+                Haptics.selectionAsync().catch(() => undefined);
+                router.push("/streak/history");
+              }}
+            />
+
+            <DashboardMotivationCard
+              greeting={getTimeBasedGreeting()}
+              userName={user?.username ?? "Producer"}
+              message={motivationMessage}
+              todaySessionCount={todayStats.count}
             />
 
             {active ? (
@@ -532,19 +718,34 @@ export default function DashboardScreen() {
                 </View>
               </GestureDetector>
             ) : (
-              <Pressable onPress={openSetup} style={({ pressed }) => [pressed && styles.pressedStart]}>
-                <LinearGradient colors={["#ff6a3d", colors.primary]} style={styles.startCircle}>
-                  <Text style={styles.tapLabel}>START SESSION</Text>
-                  <Text style={styles.tapHint}>Set type, mood & notes</Text>
-                </LinearGradient>
-              </Pressable>
+              <DashboardSessionStarter onQuickStart={openSetup} />
             )}
+
+            <FriendsActivityWidget
+              currentUserId={user?.id ?? 0}
+              activity={friendActivity}
+              leaderboard={friendLeaderboard?.entries ?? []}
+              loading={socialLoading}
+            />
+
+            <TodayProgressCard
+              todaySessions={todayStats.count}
+              todayMinutes={todayStats.minutes}
+              weekSessions={weekSessionsCount}
+              weekGoalTarget={weeklyGoalTarget}
+            />
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent sessions</Text>
-              <Pressable onPress={() => router.push("/(tabs)/session-trash")}>
-                <Text style={styles.trashLink}>Trash</Text>
-              </Pressable>
+              <View style={styles.sectionHeaderRight}>
+                <Pressable onPress={() => router.push("/(tabs)/stats")}>
+                  <Text style={styles.viewAllLink}>Stats</Text>
+                </Pressable>
+                <Text style={styles.headerSep}>·</Text>
+                <Pressable onPress={() => router.push("/(tabs)/session-trash")}>
+                  <Text style={styles.trashLink}>Trash</Text>
+                </Pressable>
+              </View>
             </View>
             {lastUpdatedLabel ? <Text style={styles.updatedHint}>{lastUpdatedLabel}</Text> : null}
             {error ? (
@@ -553,7 +754,11 @@ export default function DashboardScreen() {
                 <PrimaryButton
                   label="Retry"
                   onPress={() => {
-                    Promise.all([loadSessions().catch(() => undefined), loadStreakOverview().catch(() => undefined)]);
+                    setError(null);
+                    setLoading(true);
+                    Promise.all([loadSessions(), loadStreakOverview(), loadSocial()])
+                      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+                      .finally(() => setLoading(false));
                   }}
                 />
               </View>
@@ -580,36 +785,72 @@ export default function DashboardScreen() {
         onRequestClose={() => closeSetupModal()}
         statusBarTranslucent
       >
-        <View style={styles.modalRoot}>
-          <Pressable style={styles.modalBackdrop} onPress={() => closeSetupModal()} />
-          <Animated.View style={[styles.modalSheet, sheetStyle]}>
-            <SafeAreaView style={styles.modalSafe} edges={["bottom"]}>
-              <View style={styles.modalHandle} />
-              <View style={styles.modalHeaderRow}>
-                <Text style={styles.modalTitle}>New Session</Text>
-                <Pressable
-                  hitSlop={12}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                    closeSetupModal();
-                  }}
-                  style={styles.modalCloseBtn}
-                >
-                  <Text style={styles.modalCloseText}>✕</Text>
-                </Pressable>
-              </View>
-              <SessionSetupForm
-                key={setupModalKey}
-                hideTitleRow
-                onStarted={() => {
-                  closeSetupModal(() => {
-                    Promise.all([loadSessions().catch(() => null), loadStreakOverview().catch(() => null)]);
-                  });
-                }}
-              />
-            </SafeAreaView>
-          </Animated.View>
-        </View>
+        {/* Modals are a separate native hierarchy on iOS — gestures need their own root here. */}
+        <GestureHandlerRootView style={styles.modalGestureRoot}>
+          <View style={styles.modalRoot}>
+            <Pressable style={styles.modalBackdrop} onPress={() => closeSetupModal()} />
+            <Animated.View style={[styles.modalSheet, sheetStyle]}>
+              <SafeAreaView style={styles.modalSafe} edges={["bottom"]}>
+                <View>
+                  <View style={styles.modalHandle} />
+                  <View style={styles.modalHeaderRow}>
+                    <Text style={styles.modalTitle}>New Session</Text>
+                    <Pressable
+                      hitSlop={12}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                        closeSetupModal();
+                      }}
+                      style={styles.modalCloseBtn}
+                    >
+                      <Text style={styles.modalCloseText}>✕</Text>
+                    </Pressable>
+                  </View>
+                  <CrashBoundary
+                    scope="session_setup_modal"
+                    fallbackTitle="Session setup failed"
+                    fallbackMessage="The setup form hit an error. You can retry or open the full setup screen."
+                    onRecover={() => {
+                      closeSetupModal(() => {
+                        router.push("/session/setup");
+                      });
+                    }}
+                  >
+                    <SessionSetupForm
+                      key={setupModalKey}
+                      hideTitleRow
+                      onActiveSessionConflict={() => {
+                        closeSetupModal(() => {
+                          void loadSessions();
+                          void loadStreakOverview();
+                        });
+                      }}
+                      onStarted={(created) => {
+                        const session = tryParseSessionDto(created);
+                        if (!session) {
+                          setError("Could not read the new session. Pull down to refresh.");
+                          closeSetupModal(() => {
+                            void loadSessions();
+                          });
+                          return;
+                        }
+                        setActive(session);
+                        setSessions((prev) => {
+                          const rest = prev.filter((s) => s.id !== session.id);
+                          return [session, ...rest];
+                        });
+                        setNowMs(Date.now());
+                        closeSetupModal(() => {
+                          void Promise.all([loadSessions().catch(() => null), loadStreakOverview().catch(() => null)]);
+                        });
+                      }}
+                    />
+                  </CrashBoundary>
+                </View>
+              </SafeAreaView>
+            </Animated.View>
+          </View>
+        </GestureHandlerRootView>
       </Modal>
     </SafeAreaView>
   );
@@ -668,6 +909,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
+  },
+  notifBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.danger,
+    borderWidth: 2,
+    borderColor: colors.background,
   },
   activeSessionBlock: {
     marginTop: spacing.md,
@@ -810,6 +1062,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     marginTop: spacing.sm,
   },
+  sectionHeaderRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  viewAllLink: {
+    color: colors.secondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  headerSep: { color: colors.textSecondary, ...typography.caption },
   updatedHint: {
     color: colors.textSecondary,
     ...typography.caption,
@@ -895,6 +1154,9 @@ const styles = StyleSheet.create({
     width: "60%",
     borderRadius: 8,
     backgroundColor: "#242424",
+  },
+  modalGestureRoot: {
+    flex: 1,
   },
   modalRoot: {
     flex: 1,

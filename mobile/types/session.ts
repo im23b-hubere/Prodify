@@ -13,6 +13,7 @@ export type SessionDto = {
   tags?: string[] | null;
   paused_duration_seconds?: number;
   pause_started_at?: string | null;
+  focus_score?: number | null;
 };
 
 export type SessionStatsDto = {

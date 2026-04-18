@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -29,6 +30,10 @@ class UserPublic(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class SessionQuickStart(BaseModel):
+    session_type: SessionType = SessionType.beat_making
 
 
 class SessionStart(BaseModel):
@@ -97,6 +102,7 @@ class SessionPublic(BaseModel):
     tags: list[str] | None = None
     paused_duration_seconds: int = 0
     pause_started_at: datetime | None = None
+    focus_score: int | None = None
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -145,6 +151,39 @@ class SessionStatsPublic(BaseModel):
     productivity_hint: str | None = None
 
 
+class FriendRequestCreate(BaseModel):
+    username: str = Field(min_length=2, max_length=64)
+
+
+class FriendIncomingPublic(BaseModel):
+    id: int
+    user_id: int
+    username: str
+    created_at: datetime
+
+
+class FriendLeaderboardEntryPublic(BaseModel):
+    rank: int
+    user_id: int
+    username: str
+    current_streak_days: int
+    sessions_in_period: int
+
+
+class FriendLeaderboardPublic(BaseModel):
+    period: str
+    entries: list[FriendLeaderboardEntryPublic]
+
+
+class FriendActivityPublic(BaseModel):
+    session_id: int
+    user_id: int
+    username: str
+    session_type: str
+    completed_at: datetime
+    duration_seconds: int
+
+
 class FriendshipPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -184,3 +223,173 @@ class StreakFreezeResult(BaseModel):
     message: str
     current_streak: int
     freezes_remaining: int
+
+
+class StreakRunPublic(BaseModel):
+    start_date: str
+    end_date: str
+    length_days: int
+
+
+class StreakMilestoneItem(BaseModel):
+    days: int
+    title: str
+    unlocked: bool
+
+
+class StreakMilestonesPublic(BaseModel):
+    milestones: list[StreakMilestoneItem]
+    longest_streak_days: int
+
+
+# --- Extended stats & engagement ---
+
+
+class PersonalRecordItem(BaseModel):
+    key: str
+    label: str
+    value: str
+    context: str | None = None
+    occurred_at: str | None = None
+
+
+class PersonalRecordsPublic(BaseModel):
+    records: list[PersonalRecordItem]
+
+
+class HeatmapDayPublic(BaseModel):
+    date: str
+    seconds: int
+    intensity: int  # 0-4
+
+
+class HeatmapPublic(BaseModel):
+    days: list[HeatmapDayPublic]
+
+
+class ProductivityInsightsPublic(BaseModel):
+    best_hour_start: int | None = None
+    best_weekday: str | None = None
+    tips: list[str] = Field(default_factory=list)
+
+
+class StatsInsightsPublic(BaseModel):
+    productivity: ProductivityInsightsPublic
+    weekly_goal_sessions: int | None = None
+    weekly_goal_target: int | None = None
+    weekly_goal_met: bool | None = None
+
+
+class SessionTimelineSegmentPublic(BaseModel):
+    kind: str  # "active" | "paused"
+    seconds: int
+
+
+class RelatedSessionPublic(BaseModel):
+    id: int
+    session_type: str
+    duration_seconds: int | None
+    started_at: datetime
+
+
+class SessionDetailInsightsPublic(BaseModel):
+    impact_lines: list[str]
+    focus_score: int
+    focus_label: str
+    focus_percentile: int | None
+    focus_user_average: int | None = None
+    active_seconds: int
+    paused_seconds: int
+    effective_rate_percent: float
+    timeline: list[SessionTimelineSegmentPublic]
+    productivity_insights: list[str]
+    related_sessions: list[RelatedSessionPublic]
+
+
+class MotivationalMessagePublic(BaseModel):
+    message: str
+    variant: str = "default"
+
+
+class PushTokenRegister(BaseModel):
+    token: str = Field(min_length=8, max_length=512)
+    platform: str = Field(default="unknown", max_length=32)
+    channel: Literal["expo", "fcm"] = "expo"
+
+
+class PushPingBody(BaseModel):
+    """`template` selects canned copy; `test` uses optional title/body overrides."""
+
+    template: Literal["test", "session_demo", "streak_demo"] = "test"
+    title: str | None = Field(default=None, max_length=64)
+    body: str | None = Field(default=None, max_length=200)
+    streak_days: int | None = Field(default=None, ge=1, le=999)
+
+
+class PushBulkResultPublic(BaseModel):
+    attempted: int
+    delivered_ok: int
+    message: str | None = None
+
+
+class GoalSetBody(BaseModel):
+    goal_type: str = Field(default="weekly_sessions", max_length=64)
+    target_value: int = Field(ge=1, le=50)
+
+
+class GoalCurrentPublic(BaseModel):
+    goal_type: str
+    target_value: int
+    week_start: str
+    current_sessions: int
+    progress_percent: float
+
+
+class AchievementDefPublic(BaseModel):
+    id: str
+    title: str
+    description: str
+    emoji: str
+
+
+class AchievementUnlockedPublic(BaseModel):
+    id: str
+    unlocked_at: datetime
+
+
+class AchievementsListPublic(BaseModel):
+    definitions: list[AchievementDefPublic]
+    unlocked: list[AchievementUnlockedPublic]
+
+
+class FriendStatusPublic(BaseModel):
+    status: Literal["self", "none", "pending", "accepted"]
+
+
+class UserPublicSessionItem(BaseModel):
+    id: int
+    session_type: str
+    duration_seconds: int
+    started_at: datetime
+    mood_level: int | None = None
+
+
+class UserFriendProfilePublic(BaseModel):
+    id: int
+    username: str
+    total_sessions: int
+    current_streak: int
+    longest_streak: int
+    friends_count: int
+    created_at: datetime
+
+
+class UserFriendStatsPublic(BaseModel):
+    total_hours: float
+    total_sessions: int
+    current_streak: int
+    longest_streak: int
+    type_breakdown: dict[str, int]
+    best_day: str | None
+    heatmap_days: list[HeatmapDayPublic]
+    achievements: list[AchievementUnlockedPublic]

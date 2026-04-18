@@ -12,7 +12,11 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.achievementsutil import grant_achievements_after_completed_session, session_focus_metrics
+from app.achievementsutil import (
+    compute_focus_score_for_session,
+    grant_achievements_after_completed_session,
+    session_focus_metrics,
+)
 from app.models import ProductionSession, SessionType, Streak, User, UserGoal, utcnow
 from app.services.push_dispatch import notify_session_complete
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
@@ -68,34 +72,48 @@ def start_session(
     db: Annotated[Session, Depends(get_db)],
     body: SessionStart,
 ):
-    active = db.scalar(
-        select(ProductionSession).where(
-            ProductionSession.user_id == current.id,
-            ProductionSession.stopped_at.is_(None),
-            ProductionSession.deleted_at.is_(None),
-        )
-    )
-    if active is not None:
-        _log.warning("session_start_rejected_active_exists user_id=%s", current.id)
-        raise HTTPException(
-            status_code=409,
-            detail={"message": "Active session already exists", "session_id": active.id},
-        )
-
-    tags_str = json.dumps(body.tags) if body.tags else None
-    row = ProductionSession(
-        user_id=current.id,
-        started_at=utcnow(),
-        notes=body.notes,
-        session_type=body.session_type.value,
-        mood_level=body.mood_level,
-        tags=tags_str,
-        paused_duration_seconds=0,
-    )
-    db.add(row)
     try:
+        _log.info("=== SESSION START REQUEST ===")
+        _log.info("User ID: %s", current.id)
+        _log.info("User Email: %s", current.email)
+        _log.info("Request Data: %s", body.model_dump())
+        _log.info("Step 1: Checking for active sessions")
+        active = db.scalar(
+            select(ProductionSession).where(
+                ProductionSession.user_id == current.id,
+                ProductionSession.stopped_at.is_(None),
+                ProductionSession.deleted_at.is_(None),
+            )
+        )
+        if active is not None:
+            _log.warning("Active session exists: %s", active.id)
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "Active session already exists", "session_id": active.id},
+            )
+
+        _log.info("Step 2: No active session - creating new")
+        tags_str = json.dumps(body.tags) if body.tags else None
+        row = ProductionSession(
+            user_id=current.id,
+            started_at=utcnow(),
+            notes=body.notes,
+            session_type=body.session_type.value,
+            mood_level=body.mood_level,
+            tags=tags_str,
+            paused_duration_seconds=0,
+        )
+        _log.info("Step 3: Adding to database")
+        db.add(row)
+        _log.info("Step 4: Committing")
         db.commit()
-    except IntegrityError:
+        _log.info("Step 5: Refreshing")
+        db.refresh(row)
+        _log.info("Step 6: SUCCESS - Session created: %s", row.id)
+        _log.info("session_started user_id=%s session_id=%s", current.id, row.id)
+        return row
+    except IntegrityError as exc:
+        _log.error("IntegrityError: %s", str(exc))
         db.rollback()
         existing = db.scalar(
             select(ProductionSession).where(
@@ -108,9 +126,14 @@ def start_session(
             status_code=409,
             detail={"message": "Active session already exists", "session_id": existing.id if existing else None},
         )
-    db.refresh(row)
-    _log.info("session_started user_id=%s session_id=%s", current.id, row.id)
-    return row
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _log.error("UNEXPECTED ERROR: %s", type(exc).__name__)
+        _log.error("Error message: %s", str(exc))
+        _log.error("Traceback:", exc_info=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(exc)}")
 
 
 @router.get("/active", response_model=SessionPublic)
@@ -150,6 +173,7 @@ def stop_session(
     paused = row.paused_duration_seconds or 0
     row.stopped_at = end
     row.duration_seconds = max(0, gross - paused)
+    row.focus_score = compute_focus_score_for_session(row)
     db.flush()
     streak_row = db.scalar(select(Streak).where(Streak.user_id == current.id))
     grant_achievements_after_completed_session(db, current.id, row, streak_row)
@@ -337,9 +361,11 @@ def session_detail_insights(
     ).all()
     peer_scores = [session_focus_metrics(r)[0] for r in peer_rows]
     percentile: int | None = None
+    focus_user_average: int | None = None
     if peer_scores:
         below = sum(1 for s in peer_scores if s < focus_score)
         percentile = int(round(100 * below / len(peer_scores)))
+        focus_user_average = int(round(sum(peer_scores) / len(peer_scores)))
 
     if focus_score >= 95:
         flabel = "Excellent"
@@ -419,6 +445,7 @@ def session_detail_insights(
         focus_score=focus_score,
         focus_label=f"{focus_score}% Focus — {flabel}!",
         focus_percentile=percentile,
+        focus_user_average=focus_user_average,
         active_seconds=dur,
         paused_seconds=paused,
         effective_rate_percent=rate,

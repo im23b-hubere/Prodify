@@ -63,6 +63,7 @@ class ProductionSession(Base):
     tags: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     paused_duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pause_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    focus_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="sessions")
 

@@ -6,13 +6,34 @@ from sqlalchemy import inspect
 
 from app.config import settings
 from app.database import engine
-from app.routers import auth, sessions, streak
+from app.routers import (
+    achievements as achievements_router,
+    auth,
+    friends,
+    goals as goals_router,
+    jobs as jobs_router,
+    motivation,
+    notifications as notifications_router,
+    sessions,
+    stats as stats_router,
+    streak,
+    users as users_router,
+)
 
 
 def validate_schema() -> None:
     inspector = inspect(engine)
     table_names = set(inspector.get_table_names())
-    required_tables = {"users", "sessions", "streaks", "friendships"}
+    required_tables = {
+        "users",
+        "sessions",
+        "streaks",
+        "friendships",
+        "push_tokens",
+        "user_goals",
+        "user_achievements",
+        "streak_reminder_dispatch_log",
+    }
     missing_tables = required_tables.difference(table_names)
     if missing_tables:
         missing = ", ".join(sorted(missing_tables))
@@ -35,6 +56,7 @@ def validate_schema() -> None:
         "tags",
         "paused_duration_seconds",
         "pause_started_at",
+        "focus_score",
     }
     missing_columns = required_columns.difference(column_names)
     if missing_columns:
@@ -43,6 +65,10 @@ def validate_schema() -> None:
             f"Database schema is missing columns for 'sessions': {missing}. "
             "Run Alembic migrations before starting the API."
         )
+
+    push_cols = {column["name"] for column in inspector.get_columns("push_tokens")}
+    if "channel" not in push_cols:
+        raise RuntimeError("Database schema is missing column 'channel' on 'push_tokens'. Run Alembic migrations.")
 
 
 @asynccontextmanager
@@ -64,6 +90,14 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(sessions.router)
 app.include_router(streak.router)
+app.include_router(friends.router)
+app.include_router(users_router.router)
+app.include_router(stats_router.router)
+app.include_router(motivation.router)
+app.include_router(notifications_router.router)
+app.include_router(goals_router.router)
+app.include_router(achievements_router.router)
+app.include_router(jobs_router.router)
 
 
 @app.get("/health")
