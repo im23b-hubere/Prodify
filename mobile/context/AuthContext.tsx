@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { apiJson } from "../lib/client";
+import { ApiError, apiJson } from "../lib/client";
 
 const TOKEN_KEY = "beattrack_token";
 
@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const stored = await SecureStore.getItemAsync(TOKEN_KEY);
-        if (!cancelled) setToken(stored);
+        if (!cancelled) setToken(stored?.trim() ?? null);
       } finally {
         if (!cancelled) setHydrated(true);
       }
@@ -48,8 +48,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       return;
     }
-    const me = await apiJson<UserMe>("/auth/me", { token });
-    setUser(me);
+    try {
+      const me = await apiJson<UserMe>("/auth/me", { token });
+      setUser(me);
+    } catch (e) {
+      setUser(null);
+      if (e instanceof ApiError && e.status === 401) {
+        await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
+        setToken(null);
+      }
+    }
   }, [token]);
 
   useEffect(() => {
@@ -66,8 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: { email, password },
     });
-    await SecureStore.setItemAsync(TOKEN_KEY, data.access_token);
-    setToken(data.access_token);
+    const access = data.access_token.trim();
+    await SecureStore.setItemAsync(TOKEN_KEY, access);
+    setToken(access);
   }, []);
 
   const signUp = useCallback(async (email: string, username: string, password: string) => {
@@ -75,8 +84,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: { email, username, password },
     });
-    await SecureStore.setItemAsync(TOKEN_KEY, data.access_token);
-    setToken(data.access_token);
+    const access = data.access_token.trim();
+    await SecureStore.setItemAsync(TOKEN_KEY, access);
+    setToken(access);
   }, []);
 
   const signOut = useCallback(async () => {

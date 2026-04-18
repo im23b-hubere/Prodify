@@ -2,6 +2,16 @@ import { API_BASE_URL } from "../constants/api";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 export type ApiOptions = {
   token?: string | null;
   method?: string;
@@ -53,7 +63,8 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+  const authToken = typeof opts.token === "string" ? opts.token.trim() : opts.token;
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
@@ -91,7 +102,7 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
     } else if (typeof data === "string" && data) {
       msg = data;
     }
-    throw new Error(msg);
+    throw new ApiError(res.status, msg);
   }
   return data as T;
 }

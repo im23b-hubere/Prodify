@@ -86,7 +86,7 @@ function TypeCard({
 }
 
 export default function SessionSetupScreen() {
-  const { token } = useAuth();
+  const { token, hydrated } = useAuth();
   const router = useRouter();
   const [selectedType, setSelectedType] = useState<SessionType | null>(null);
   const [notes, setNotes] = useState("");
@@ -112,13 +112,18 @@ export default function SessionSetupScreen() {
   );
 
   const onSubmit = useCallback(async () => {
-    if (!token || !selectedType || busy) return;
+    if (!hydrated || !token?.trim() || !selectedType || busy) {
+      if (hydrated && !token?.trim()) {
+        setError("Not signed in. Please log in again.");
+      }
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       const created = await apiJson<SessionDto>("/sessions/start", {
-        token,
+        token: token.trim(),
         method: "POST",
         body: {
           session_type: selectedType,
@@ -134,7 +139,7 @@ export default function SessionSetupScreen() {
     } finally {
       setBusy(false);
     }
-  }, [busy, mood, notes, router, selectedType, tags, token]);
+  }, [busy, hydrated, mood, notes, router, selectedType, tags, token]);
 
   const suggested = useMemo(() => SUGGESTED_TAGS.filter((s) => !tags.includes(s)), [tags]);
 
@@ -243,7 +248,12 @@ export default function SessionSetupScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <PrimaryButton label="START SESSION" onPress={onSubmit} loading={busy} disabled={!canStart} />
+          <PrimaryButton
+            label="START SESSION"
+            onPress={onSubmit}
+            loading={busy}
+            disabled={!hydrated || !canStart}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

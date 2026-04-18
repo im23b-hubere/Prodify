@@ -1,9 +1,9 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Dimensions, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { VictoryAxis, VictoryBar, VictoryChart, VictoryTheme } from "victory-native";
 
 import { StatCard } from "../../components/ui/StatCard";
 import { fontFamily } from "../../constants/fonts";
@@ -31,6 +31,43 @@ function formatDuration(seconds: number) {
 function weekdayShort(iso: string) {
   const date = new Date(`${iso}T12:00:00Z`);
   return date.toLocaleDateString("en-US", { weekday: "short" });
+}
+
+const BAR_CHART_HEIGHT = 168;
+
+type BarPoint = { x: string; y: number; label: string };
+
+function SessionsPerDayChart({ data }: { data: BarPoint[] }) {
+  const maxY = Math.max(1, ...data.map((d) => d.y));
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  return (
+    <ScrollView
+      horizontal
+      nestedScrollEnabled={Platform.OS === "android"}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.barScrollContent}
+    >
+      {data.map((d, i) => {
+        const h = Math.max(3, (d.y / maxY) * BAR_CHART_HEIGHT);
+        const isToday = d.label === todayIso;
+        return (
+          <View key={`${d.label}-${i}`} style={styles.barColumn}>
+            <View style={styles.barTrack}>
+              <LinearGradient
+                colors={isToday ? ["#ff8f66", colors.primary] : ["#ff5a1f", colors.primary]}
+                style={[styles.barFill, { height: h }]}
+              />
+            </View>
+            <Text style={styles.barAxisLabel} numberOfLines={1}>
+              {d.x}
+            </Text>
+            <Text style={styles.barCount}>{d.y}</Text>
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
 }
 
 export default function StatsScreen() {
@@ -86,14 +123,13 @@ export default function StatsScreen() {
     };
   }, [stats]);
 
-  const chartData = useMemo(() => {
+  const chartData = useMemo((): BarPoint[] => {
     const points = stats?.trend ?? [];
     if (points.length === 0) return [{ x: "—", y: 0, label: "-" }];
     return points.map((p) => ({
       x: weekdayShort(p.label),
       y: p.sessions,
       label: p.label,
-      seconds: p.seconds,
     }));
   }, [stats]);
 
@@ -142,6 +178,7 @@ export default function StatsScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView
         contentContainerStyle={styles.content}
+        nestedScrollEnabled
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         <View style={styles.headerRow}>
@@ -204,38 +241,7 @@ export default function StatsScreen() {
           <Text style={styles.cardTitle}>Sessions per day</Text>
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <View style={styles.chartInner}>
-            <VictoryChart
-              height={220}
-              width={Dimensions.get("window").width - spacing.md * 4}
-              theme={VictoryTheme.material}
-              domainPadding={{ x: 24 }}
-              padding={{ top: 20, bottom: 40, left: 48, right: 24 }}
-            >
-              <VictoryAxis
-                style={{
-                  axis: { stroke: "#1f1f1f" },
-                  tickLabels: { fill: colors.textSecondary, fontSize: 10, fontFamily: fontFamily.body },
-                  grid: { stroke: "#1f1f1f", strokeDasharray: "4,4" },
-                }}
-              />
-              <VictoryAxis
-                dependentAxis
-                style={{
-                  axis: { stroke: "#1f1f1f" },
-                  tickLabels: { fill: colors.textSecondary, fontSize: 10, fontFamily: fontFamily.body },
-                  grid: { stroke: "#1f1f1f" },
-                }}
-              />
-              <VictoryBar
-                data={chartData}
-                x="x"
-                y="y"
-                cornerRadius={{ top: 6 }}
-                style={{
-                  data: { fill: colors.primary },
-                }}
-              />
-            </VictoryChart>
+            <SessionsPerDayChart data={chartData} />
           </View>
         </View>
 
@@ -319,7 +325,43 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   cardTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  chartInner: { alignItems: "center", marginTop: spacing.sm },
+  chartInner: { marginTop: spacing.sm },
+  barScrollContent: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 10,
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.md,
+  },
+  barColumn: {
+    width: 44,
+    alignItems: "center",
+  },
+  barTrack: {
+    height: BAR_CHART_HEIGHT,
+    width: "100%",
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  barFill: {
+    width: 28,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+  },
+  barAxisLabel: {
+    marginTop: 8,
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontFamily: fontFamily.body,
+    maxWidth: 44,
+    textAlign: "center",
+  },
+  barCount: {
+    marginTop: 2,
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontFamily: fontFamily.bodyMedium,
+  },
   breakdownWrap: {
     marginTop: spacing.md,
     gap: spacing.md,

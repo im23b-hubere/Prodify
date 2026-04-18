@@ -26,8 +26,13 @@ def decode_token(token: str) -> str | None:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         sub = payload.get("sub")
-        if sub is None or not isinstance(sub, str):
+        if sub is None:
             return None
-        return sub
+        # jose may return sub as int for some token payloads
+        if isinstance(sub, int):
+            return str(sub)
+        if isinstance(sub, str):
+            return sub
+        return None
     except JWTError:
         return None

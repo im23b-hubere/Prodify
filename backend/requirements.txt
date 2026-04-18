@@ -1,5 +1,7 @@
 fastapi==0.115.6
-uvicorn[standard]==0.32.1
+# Plain uvicorn avoids optional native wheels (websockets/watchfiles) that often fail on Windows (WinError 5).
+# For extra performance on Linux/Mac: pip install "uvicorn[standard]==0.32.1"
+uvicorn==0.32.1
 sqlalchemy==2.0.36
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
