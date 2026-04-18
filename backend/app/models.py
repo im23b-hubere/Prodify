@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -41,6 +41,15 @@ class User(Base):
 
 class ProductionSession(Base):
     __tablename__ = "sessions"
+    __table_args__ = (
+        Index(
+            "idx_one_active_session_per_user",
+            "user_id",
+            unique=True,
+            sqlite_where=text("stopped_at IS NULL AND deleted_at IS NULL"),
+            postgresql_where=text("stopped_at IS NULL AND deleted_at IS NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -75,6 +84,53 @@ class Streak(Base):
     billing_month: Mapped[str] = mapped_column(String(7), default="", nullable=False)
 
     user: Mapped["User"] = relationship("User", back_populates="streak")
+
+
+class PushToken(Base):
+    __tablename__ = "push_tokens"
+    __table_args__ = (UniqueConstraint("user_id", "token", "channel", name="uq_push_tokens_user_token_channel"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token: Mapped[str] = mapped_column(String(512), nullable=False)
+    platform: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    channel: Mapped[str] = mapped_column(String(16), nullable=False, default="expo")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StreakReminderDispatchLog(Base):
+    """One row per (user, UTC calendar day, reminder slot) to avoid duplicate server pushes."""
+
+    __tablename__ = "streak_reminder_dispatch_log"
+    __table_args__ = (
+        UniqueConstraint("user_id", "utc_day_key", "slot_kind", name="uq_streak_reminder_dispatch_slot"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    utc_day_key: Mapped[str] = mapped_column(String(10), nullable=False)
+    slot_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class UserGoal(Base):
+    __tablename__ = "user_goals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    goal_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_value: Mapped[int] = mapped_column(Integer, nullable=False)
+    week_start: Mapped[str] = mapped_column(String(10), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class UserAchievement(Base):
+    __tablename__ = "user_achievements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    achievement_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class Friendship(Base):

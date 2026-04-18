@@ -2,8 +2,9 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { Drum, SlidersHorizontal, Waves } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,13 +14,13 @@ import {
   TextInput,
   View,
 } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
-
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-import { apiJson } from "../../lib/client";
+import { ApiError, apiJson } from "../../lib/client";
+import { debugLog } from "../../lib/debugLog";
+import { tryParseSessionDto } from "../../lib/sessionDto";
 import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
 
 const MOODS = [
@@ -131,16 +132,6 @@ function TypeCard({
   active: boolean;
   onSelect: () => void;
 }) {
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
-  const onPressIn = () => {
-    scale.value = withSpring(0.97);
-  };
-  const onPressOut = () => {
-    scale.value = withSpring(1);
-  };
-
   const visual = TYPE_VISUAL[type];
   const Icon = visual.Icon;
 
@@ -153,10 +144,12 @@ function TypeCard({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
         onSelect();
       }}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
+      style={({ pressed }) => [
+        styles.typeCardPressable,
+        pressed && styles.typeCardPressed,
+      ]}
     >
-      <Animated.View style={[styles.typeCardOuter, active && { borderColor: visual.activeBorder }, animStyle]}>
+      <View style={[styles.typeCardOuter, active && { borderColor: visual.activeBorder }]}>
         {active ? (
           <LinearGradient colors={[...visual.gradient]} style={styles.typeGradientActive}>
             <View style={styles.typePatternLayer} pointerEvents="none">
@@ -177,7 +170,7 @@ function TypeCard({
             <Text style={styles.typeLabelMuted}>{visual.label}</Text>
           </View>
         )}
-      </Animated.View>
+      </View>
     </Pressable>
   );
 }
@@ -185,14 +178,30 @@ function TypeCard({
 export type SessionSetupFormProps = {
   /** Called after the session is created successfully (API returned). */
   onStarted: (session: SessionDto) => void;
+  /** Server already has an active session — refresh parent state and stay calm. */
+  onActiveSessionConflict?: (sessionId?: number) => void;
   /** Optional header close (e.g. modal dismiss). */
   onRequestClose?: () => void;
   /** Hide top title row (e.g. when embedded in another header). */
   hideTitleRow?: boolean;
 };
 
-export function SessionSetupForm({ onStarted, onRequestClose, hideTitleRow }: SessionSetupFormProps) {
+export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequestClose, hideTitleRow }: SessionSetupFormProps) {
   const { token, hydrated } = useAuth();
+  const mounted = useRef(true);
+  const startRequestInFlight = useRef(false);
+  const submitCooldownTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (submitCooldownTimeout.current) {
+        clearTimeout(submitCooldownTimeout.current);
+        submitCooldownTimeout.current = null;
+      }
+    };
+  }, []);
   const [selectedType, setSelectedType] = useState<SessionType | null>(null);
   const [notes, setNotes] = useState("");
   const [mood, setMood] = useState<number | null>(null);
@@ -217,17 +226,19 @@ export function SessionSetupForm({ onStarted, onRequestClose, hideTitleRow }: Se
   );
 
   const onSubmit = useCallback(async () => {
-    if (!hydrated || !token?.trim() || !selectedType || busy) {
+    if (!hydrated || !token?.trim() || !selectedType || busy || startRequestInFlight.current) {
       if (hydrated && !token?.trim()) {
         setError("Not signed in. Please log in again.");
       }
       return;
     }
-    setBusy(true);
-    setError(null);
+    startRequestInFlight.current = true;
+    if (mounted.current) setBusy(true);
+    if (mounted.current) setError(null);
+    debugLog("session", "start_attempt", { hasNotes: Boolean(notes.trim()), moodLevel: mood ?? null, tagCount: tags.length });
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      const created = await apiJson<SessionDto>("/sessions/start", {
+      const raw = await apiJson<unknown>("/sessions/start", {
         token: token.trim(),
         method: "POST",
         body: {
@@ -237,14 +248,61 @@ export function SessionSetupForm({ onStarted, onRequestClose, hideTitleRow }: Se
           tags: tags.length ? tags : undefined,
         },
       });
-      onStarted(created);
+      const created = tryParseSessionDto(raw);
+      if (!created) {
+        debugLog("session", "start_invalid_dto", {});
+        if (mounted.current) setError("Invalid response from server. Please try again.");
+        return;
+      }
+      debugLog("session", "start_success", { sessionId: created.id });
+      if (mounted.current) onStarted(created);
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-      setError(e instanceof Error ? e.message : "Could not start session");
+      const msg = e instanceof Error ? e.message : "Could not start session";
+      debugLog("session", "start_failure", { status: e instanceof ApiError ? e.status : 0, message: msg });
+      if (e instanceof ApiError && e.status === 409) {
+        const payload = e.payload as { detail?: unknown; session_id?: unknown } | null;
+        const detailObj =
+          payload && typeof payload.detail === "object" && payload.detail !== null
+            ? (payload.detail as { session_id?: unknown })
+            : null;
+        const rawSessionId = payload?.session_id ?? detailObj?.session_id;
+        const existingSessionId =
+          typeof rawSessionId === "number" && Number.isFinite(rawSessionId) && rawSessionId > 0 ? rawSessionId : null;
+
+        if (existingSessionId) {
+          try {
+            const activeRaw = await apiJson<unknown>(`/sessions/item/${existingSessionId}`, { token: token.trim() });
+            const existing = tryParseSessionDto(activeRaw);
+            if (existing) {
+              Alert.alert(
+                "Session already active",
+                "You already have an active session. We'll continue with it.",
+                [{ text: "Continue" }]
+              );
+              onStarted(existing);
+              onActiveSessionConflict?.(existingSessionId);
+              return;
+            }
+          } catch {
+            // fallback below
+          }
+          onActiveSessionConflict?.(existingSessionId);
+        } else {
+          onActiveSessionConflict?.();
+        }
+        if (mounted.current) setError("You already have an active session.");
+        return;
+      }
+      if (mounted.current) setError(msg);
     } finally {
-      setBusy(false);
+      if (submitCooldownTimeout.current) clearTimeout(submitCooldownTimeout.current);
+      submitCooldownTimeout.current = setTimeout(() => {
+        startRequestInFlight.current = false;
+      }, 800);
+      if (mounted.current) setBusy(false);
     }
-  }, [busy, hydrated, mood, notes, onStarted, selectedType, tags, token]);
+  }, [busy, hydrated, mood, notes, onActiveSessionConflict, onStarted, selectedType, tags, token]);
 
   const suggested = useMemo(() => SUGGESTED_TAGS.filter((s) => !tags.includes(s)), [tags]);
 
@@ -339,7 +397,7 @@ export function SessionSetupForm({ onStarted, onRequestClose, hideTitleRow }: Se
             <Text style={styles.addTagPlus}>+</Text>
           </Pressable>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestedRow}>
+        <View style={styles.suggestedRow}>
           {suggested.map((s) => (
             <Pressable
               key={s}
@@ -352,7 +410,7 @@ export function SessionSetupForm({ onStarted, onRequestClose, hideTitleRow }: Se
               <Text style={styles.suggestedText}>{s}</Text>
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
@@ -399,6 +457,13 @@ const styles = StyleSheet.create({
     ...typography.caption,
   },
   typeColumn: { gap: spacing.sm },
+  typeCardPressable: {
+    borderRadius: radii.lg,
+  },
+  typeCardPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }],
+  },
   typeCardOuter: {
     borderRadius: radii.lg,
     borderWidth: 1,
@@ -565,7 +630,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   addTagPlus: { color: colors.primary, fontSize: 22, fontFamily: fontFamily.bodyBold },
-  suggestedRow: { gap: spacing.sm, marginTop: spacing.sm },
+  suggestedRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   suggestedChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: 8,

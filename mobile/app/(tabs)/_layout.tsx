@@ -1,8 +1,9 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { BarChart3, LayoutGrid, UserRound, Users } from "lucide-react-native";
-import { StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { colors, spacing } from "../../constants/theme";
+import { useAuth } from "../../context/AuthContext";
 
 type TabIconProps = {
   focused: boolean;
@@ -27,6 +28,20 @@ function TabIcon({ focused, color, icon }: TabIconProps) {
 }
 
 export default function TabsLayout() {
+  const { token, hydrated } = useAuth();
+
+  if (!hydrated) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!token) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -89,6 +104,12 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   tabIconWrap: {
     alignItems: "center",
     justifyContent: "center",

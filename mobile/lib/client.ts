@@ -2,13 +2,22 @@ import { API_BASE_URL } from "../constants/api";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+/** Set from AuthProvider: clear stored token when an authenticated request returns 401. */
+let unauthorizedHandler: (() => void | Promise<void>) | null = null;
+
+export function setApiUnauthorizedHandler(handler: (() => void | Promise<void>) | null): void {
+  unauthorizedHandler = handler;
+}
+
 export class ApiError extends Error {
   readonly status: number;
+  readonly payload: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, payload: unknown = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.payload = payload;
   }
 }
 
@@ -82,6 +91,9 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
     if (e instanceof Error && e.name === "AbortError") {
       throw new Error("Request timed out. Check your connection and try again.");
     }
+    if (e instanceof TypeError) {
+      throw new Error("Network error. Check your connection and try again.");
+    }
     throw e;
   } finally {
     clearTimeout(timeoutId);
@@ -102,7 +114,10 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
     } else if (typeof data === "string" && data) {
       msg = data;
     }
-    throw new ApiError(res.status, msg);
+    if (res.status === 401 && authToken && unauthorizedHandler) {
+      void Promise.resolve(unauthorizedHandler()).catch(() => undefined);
+    }
+    throw new ApiError(res.status, msg, data);
   }
   return data as T;
 }

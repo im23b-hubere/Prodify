@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -10,7 +10,13 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { debugLog } from "../../lib/debugLog";
+import { formatSessionListDate, weekdayLetterFromIsoDay } from "../../lib/sessionTime";
+import { tryParseHeatmapDays, tryParsePersonalRecords, tryParseSessionStatsDto } from "../../lib/statsDto";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
+
+type HeatmapDay = { date: string; seconds: number; intensity: number };
+type PersonalRecord = { key: string; label: string; value: string; context: string | null; occurred_at: string | null };
 
 const FILTERS = [
   { key: "7d" as const, label: "7D", period: "week" as const },
@@ -21,16 +27,12 @@ const FILTERS = [
 const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
 
 function formatDuration(seconds: number) {
-  const mins = Math.round(seconds / 60);
+  const s = Number.isFinite(seconds) && seconds >= 0 ? seconds : 0;
+  const mins = Math.round(s / 60);
   if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
   const rest = mins % 60;
   return `${hours}h ${rest}m`;
-}
-
-function weekdayShort(iso: string) {
-  const date = new Date(`${iso}T12:00:00Z`);
-  return date.toLocaleDateString("en-US", { weekday: "short" });
 }
 
 const BAR_CHART_HEIGHT = 168;
@@ -77,15 +79,55 @@ export default function StatsScreen() {
   const filter = FILTERS[filterIdx];
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
+  const [heatmapDays, setHeatmapDays] = useState<HeatmapDay[]>([]);
+  const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const loadSeq = useRef(0);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      loadSeq.current += 1;
+    };
+  }, []);
 
   const periodParam = filter.period === "week" ? "week" : filter.period === "month" ? "month" : "all";
 
   const loadStats = useCallback(async () => {
     if (!token) return;
-    setError(null);
-    const data = await apiJson<SessionStatsDto>(`/sessions/stats?period=${periodParam}`, { token });
-    setStats(data);
+    const seq = ++loadSeq.current;
+    if (mounted.current) setError(null);
+    try {
+      const [rawStats, rawHm, rawRec] = await Promise.all([
+        apiJson<unknown>(`/sessions/stats?period=${periodParam}`, { token }),
+        apiJson<unknown>(`/stats/heatmap`, { token }),
+        apiJson<unknown>(`/stats/records`, { token }),
+      ]);
+      if (!mounted.current || seq !== loadSeq.current) return;
+      const parsed = tryParseSessionStatsDto(rawStats);
+      if (!parsed) {
+        debugLog("stats", "invalid_stats_payload", { period: periodParam });
+        if (mounted.current) {
+          setStats(null);
+          setHeatmapDays([]);
+          setRecords([]);
+          setError("Invalid stats response from server.");
+        }
+        return;
+      }
+      if (mounted.current) {
+        setStats(parsed);
+        setHeatmapDays(tryParseHeatmapDays(rawHm));
+        setRecords(tryParsePersonalRecords(rawRec));
+      }
+    } catch (e) {
+      if (!mounted.current || seq !== loadSeq.current) return;
+      const msg = e instanceof Error ? e.message : "Failed to load stats";
+      debugLog("stats", "stats_fetch_failed", { period: periodParam, message: msg });
+      if (mounted.current) setError(msg);
+    }
   }, [periodParam, token]);
 
   useEffect(() => {
@@ -93,10 +135,12 @@ export default function StatsScreen() {
   }, [loadStats]);
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
+    if (mounted.current) setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    await loadStats().catch((e) => setError(e instanceof Error ? e.message : "Failed to load stats"));
-    setRefreshing(false);
+    await loadStats().catch((e) => {
+      if (mounted.current) setError(e instanceof Error ? e.message : "Failed to load stats");
+    });
+    if (mounted.current) setRefreshing(false);
   }, [loadStats]);
 
   const summary = useMemo(() => {
@@ -111,7 +155,8 @@ export default function StatsScreen() {
         delta: null as number | null,
       };
     }
-    const hours = (s.total_seconds / 3600).toFixed(1);
+    const sec = Number.isFinite(s.total_seconds) && s.total_seconds >= 0 ? s.total_seconds : 0;
+    const hours = (sec / 3600).toFixed(1);
     const delta = s.hours_delta_vs_prior_period;
     return {
       hours: `${hours}h`,
@@ -127,8 +172,8 @@ export default function StatsScreen() {
     const points = stats?.trend ?? [];
     if (points.length === 0) return [{ x: "—", y: 0, label: "-" }];
     return points.map((p) => ({
-      x: weekdayShort(p.label),
-      y: p.sessions,
+      x: weekdayLetterFromIsoDay(p.label),
+      y: Number.isFinite(p.sessions) && p.sessions >= 0 ? p.sessions : 0,
       label: p.label,
     }));
   }, [stats]);
@@ -147,30 +192,34 @@ export default function StatsScreen() {
   const recent = stats?.recent_sessions ?? [];
 
   const weekGoal = useMemo(() => {
-    if (filter.period !== "week" || !stats?.trend) return null;
-    const daysWith = new Set(stats.trend.map((t) => t.label)).size;
+    if (filter.period !== "week" || !stats?.trend?.length) return null;
+    const daysWith = new Set(stats.trend.map((t) => t.label).filter(Boolean)).size;
     return { daysWith, goal: 7 };
   }, [filter.period, stats?.trend]);
 
   const renderRecent = useCallback(
-    ({ item }: { item: SessionDto }) => (
-      <Pressable
-        style={styles.recentRow}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-          router.push(`/session/${item.id}`);
-        }}
-      >
-        <Text style={styles.recentType}>{item.session_type}</Text>
-        <View style={styles.recentMid}>
-          <Text style={styles.recentDur}>{formatDuration(item.duration_seconds ?? 0)}</Text>
-          <Text style={styles.recentDate}>
-            {new Date(item.started_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </Text>
-        </View>
-        <Text style={styles.recentChev}>›</Text>
-      </Pressable>
-    ),
+    ({ item }: { item: SessionDto }) => {
+      const sid = item.id;
+      const canOpen = typeof sid === "number" && Number.isFinite(sid) && sid > 0;
+      return (
+        <Pressable
+          style={styles.recentRow}
+          onPress={() => {
+            if (!canOpen) return;
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+            router.push(`/session/${sid}`);
+          }}
+          disabled={!canOpen}
+        >
+          <Text style={styles.recentType}>{item.session_type ?? "Session"}</Text>
+          <View style={styles.recentMid}>
+            <Text style={styles.recentDur}>{formatDuration(item.duration_seconds ?? 0)}</Text>
+            <Text style={styles.recentDate}>{formatSessionListDate(item.started_at)}</Text>
+          </View>
+          <Text style={styles.recentChev}>›</Text>
+        </Pressable>
+      );
+    },
     [router]
   );
 
@@ -238,6 +287,40 @@ export default function StatsScreen() {
         ) : null}
 
         <View style={styles.chartCard}>
+          <Text style={styles.cardTitle}>Activity heatmap (90 days)</Text>
+          <View style={styles.heatmapGrid}>
+            {heatmapDays.map((d) => (
+              <View
+                key={d.date}
+                style={[
+                  styles.heatCell,
+                  {
+                    opacity: 0.25 + d.intensity * 0.18,
+                    backgroundColor:
+                      d.intensity === 0 ? "#1e1e1e" : d.intensity < 3 ? colors.primary : colors.secondary,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.chartCard}>
+          <Text style={styles.cardTitle}>Personal records</Text>
+          {records.length === 0 ? (
+            <Text style={styles.emptyText}>Complete sessions to unlock records.</Text>
+          ) : (
+            records.map((r) => (
+              <View key={r.key + (r.occurred_at ?? "")} style={styles.recordRow}>
+                <Text style={styles.recordLabel}>{r.label}</Text>
+                <Text style={styles.recordVal}>{r.value}</Text>
+                {r.context ? <Text style={styles.recordCtx}>{r.context}</Text> : null}
+              </View>
+            ))
+          )}
+        </View>
+
+        <View style={styles.chartCard}>
           <Text style={styles.cardTitle}>Sessions per day</Text>
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <View style={styles.chartInner}>
@@ -281,7 +364,11 @@ export default function StatsScreen() {
         {recent.length === 0 ? (
           <Text style={styles.emptyText}>No sessions in this range.</Text>
         ) : (
-          recent.map((item) => <View key={item.id}>{renderRecent({ item })}</View>)
+          recent.map((item) => (
+            <View key={typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}>
+              {renderRecent({ item })}
+            </View>
+          ))
         )}
       </ScrollView>
     </SafeAreaView>
@@ -325,6 +412,26 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   cardTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  heatmapGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 3,
+    marginTop: spacing.sm,
+  },
+  heatCell: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+  },
+  recordRow: {
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  recordLabel: { color: colors.textSecondary, ...typography.caption },
+  recordVal: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.subheadline, marginTop: 4 },
+  recordCtx: { color: colors.textSecondary, ...typography.caption, marginTop: 4 },
   chartInner: { marginTop: spacing.sm },
   barScrollContent: {
     flexDirection: "row",

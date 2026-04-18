@@ -1,29 +1,39 @@
 import json
+import logging
 from collections import Counter, defaultdict
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import ProductionSession, SessionType, Streak, User, utcnow
+from app.achievementsutil import grant_achievements_after_completed_session, session_focus_metrics
+from app.models import ProductionSession, SessionType, Streak, User, UserGoal, utcnow
+from app.services.push_dispatch import notify_session_complete
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 from app.schemas import (
+    RelatedSessionPublic,
+    SessionDetailInsightsPublic,
     SessionPublic,
+    SessionQuickStart,
     SessionStart,
     SessionStatsPublic,
     SessionStatsSummary,
     SessionStatsTrendPoint,
     SessionStatsTypeBreakdownItem,
     SessionStop,
+    SessionTimelineSegmentPublic,
     SessionUpdate,
 )
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+_log = logging.getLogger(__name__)
 
 
 def _accumulate_pause_if_needed(row: ProductionSession, end_time) -> None:
@@ -66,7 +76,11 @@ def start_session(
         )
     )
     if active is not None:
-        raise HTTPException(status_code=400, detail="You already have an active session")
+        _log.warning("session_start_rejected_active_exists user_id=%s", current.id)
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Active session already exists", "session_id": active.id},
+        )
 
     tags_str = json.dumps(body.tags) if body.tags else None
     row = ProductionSession(
@@ -79,8 +93,23 @@ def start_session(
         paused_duration_seconds=0,
     )
     db.add(row)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = db.scalar(
+            select(ProductionSession).where(
+                ProductionSession.user_id == current.id,
+                ProductionSession.stopped_at.is_(None),
+                ProductionSession.deleted_at.is_(None),
+            )
+        )
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Active session already exists", "session_id": existing.id if existing else None},
+        )
     db.refresh(row)
+    _log.info("session_started user_id=%s session_id=%s", current.id, row.id)
     return row
 
 
@@ -109,8 +138,10 @@ def stop_session(
 ):
     row = db.get(ProductionSession, body.session_id)
     if row is None or row.user_id != current.id or row.deleted_at is not None:
+        _log.warning("session_stop_not_found session_id=%s user_id=%s", body.session_id, current.id)
         raise HTTPException(status_code=404, detail="Session not found")
     if row.stopped_at is not None:
+        _log.warning("session_stop_already_stopped session_id=%s user_id=%s", body.session_id, current.id)
         raise HTTPException(status_code=400, detail="Session already stopped")
 
     end = utcnow()
@@ -119,8 +150,22 @@ def stop_session(
     paused = row.paused_duration_seconds or 0
     row.stopped_at = end
     row.duration_seconds = max(0, gross - paused)
+    db.flush()
+    streak_row = db.scalar(select(Streak).where(Streak.user_id == current.id))
+    grant_achievements_after_completed_session(db, current.id, row, streak_row)
     db.commit()
     db.refresh(row)
+    try:
+        notify_session_complete(
+            settings,
+            db,
+            current.id,
+            str(row.session_type),
+            int(row.duration_seconds or 0),
+        )
+    except Exception:
+        _log.exception("Expo push after session stop failed")
+    _log.info("session_stopped user_id=%s session_id=%s duration_s=%s", current.id, row.id, row.duration_seconds)
     return row
 
 
@@ -162,6 +207,52 @@ def resume_session(
         row.paused_duration_seconds = (row.paused_duration_seconds or 0) + delta
     row.pause_started_at = None
     db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.post("/quick-start", response_model=SessionPublic, status_code=status.HTTP_201_CREATED)
+def quick_start_session(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    body: SessionQuickStart = SessionQuickStart(),
+):
+    active = db.scalar(
+        select(ProductionSession).where(
+            ProductionSession.user_id == current.id,
+            ProductionSession.stopped_at.is_(None),
+            ProductionSession.deleted_at.is_(None),
+        )
+    )
+    if active is not None:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Active session already exists", "session_id": active.id},
+        )
+
+    st = body.session_type.value
+    row = ProductionSession(
+        user_id=current.id,
+        started_at=utcnow(),
+        session_type=st,
+        paused_duration_seconds=0,
+    )
+    db.add(row)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = db.scalar(
+            select(ProductionSession).where(
+                ProductionSession.user_id == current.id,
+                ProductionSession.stopped_at.is_(None),
+                ProductionSession.deleted_at.is_(None),
+            )
+        )
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Active session already exists", "session_id": existing.id if existing else None},
+        )
     db.refresh(row)
     return row
 
@@ -216,6 +307,135 @@ def get_session(
     return row
 
 
+def _monday_week_start(d: date) -> str:
+    return (d - timedelta(days=d.weekday())).isoformat()
+
+
+@router.get("/item/{session_id}/insights", response_model=SessionDetailInsightsPublic)
+def session_detail_insights(
+    session_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(ProductionSession, session_id)
+    if row is None or row.user_id != current.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if row.stopped_at is None or row.duration_seconds is None:
+        raise HTTPException(status_code=400, detail="Session must be completed")
+
+    focus_score, rate = session_focus_metrics(row)
+    dur = int(row.duration_seconds or 0)
+    paused = int(row.paused_duration_seconds or 0)
+
+    peer_rows = db.scalars(
+        select(ProductionSession).where(
+            ProductionSession.user_id == current.id,
+            ProductionSession.deleted_at.is_(None),
+            ProductionSession.duration_seconds.is_not(None),
+            ProductionSession.id != row.id,
+        )
+    ).all()
+    peer_scores = [session_focus_metrics(r)[0] for r in peer_rows]
+    percentile: int | None = None
+    if peer_scores:
+        below = sum(1 for s in peer_scores if s < focus_score)
+        percentile = int(round(100 * below / len(peer_scores)))
+
+    if focus_score >= 95:
+        flabel = "Excellent"
+    elif focus_score >= 80:
+        flabel = "Strong"
+    elif focus_score >= 60:
+        flabel = "Solid"
+    else:
+        flabel = "Room to improve"
+
+    impact_lines: list[str] = []
+    all_completed = db.scalars(
+        select(ProductionSession).where(
+            ProductionSession.user_id == current.id,
+            ProductionSession.deleted_at.is_(None),
+            ProductionSession.duration_seconds.is_not(None),
+        )
+    ).all()
+    session_days = [as_utc_aware(r.started_at).date().isoformat() for r in all_completed]
+    streak_row = db.scalar(select(Streak).where(Streak.user_id == current.id))
+    frozen = parse_frozen_json(streak_row.frozen_day_keys) if streak_row else []
+    merged = list(set(session_days) | set(frozen))
+    cur_streak = compute_current_streak(merged)
+    sess_day = as_utc_aware(row.started_at).date().isoformat()
+    if cur_streak > 0 and sess_day == utcnow().date().isoformat():
+        impact_lines.append(f"This session fuels your {cur_streak}-day streak.")
+
+    sess_week = _monday_week_start(as_utc_aware(row.started_at).date())
+    goal = db.scalar(
+        select(UserGoal).where(
+            UserGoal.user_id == current.id,
+            UserGoal.goal_type == "weekly_sessions",
+            UserGoal.week_start == sess_week,
+        )
+    )
+    if goal:
+        same_week = [r for r in all_completed if _monday_week_start(as_utc_aware(r.started_at).date()) == sess_week]
+        cnt = len(same_week)
+        if goal.target_value > 0 and cnt >= goal.target_value:
+            impact_lines.append(f"Weekly goal cleared ({cnt}/{goal.target_value} sessions).")
+        elif goal.target_value > 0:
+            impact_lines.append(f"Week progress: {cnt}/{goal.target_value} sessions.")
+
+    if not impact_lines:
+        impact_lines.append("Another rep in the studio — momentum compounds.")
+
+    prod_lines: list[str] = []
+    hint = _productivity_hint(all_completed)
+    if hint:
+        prod_lines.append(hint)
+    if paused <= 60:
+        prod_lines.append("Minimal pause time — deep work mode.")
+    elif paused > 600:
+        prod_lines.append("You took breaks — recovery fuels the next push.")
+
+    timeline: list[SessionTimelineSegmentPublic] = []
+    if dur > 0:
+        timeline.append(SessionTimelineSegmentPublic(kind="active", seconds=dur))
+    if paused > 0:
+        timeline.append(SessionTimelineSegmentPublic(kind="paused", seconds=paused))
+
+    related = db.scalars(
+        select(ProductionSession)
+        .where(
+            ProductionSession.user_id == current.id,
+            ProductionSession.deleted_at.is_(None),
+            ProductionSession.duration_seconds.is_not(None),
+            ProductionSession.session_type == row.session_type,
+            ProductionSession.id != row.id,
+        )
+        .order_by(ProductionSession.started_at.desc())
+        .limit(4)
+    ).all()
+
+    return SessionDetailInsightsPublic(
+        impact_lines=impact_lines,
+        focus_score=focus_score,
+        focus_label=f"{focus_score}% Focus — {flabel}!",
+        focus_percentile=percentile,
+        active_seconds=dur,
+        paused_seconds=paused,
+        effective_rate_percent=rate,
+        timeline=timeline,
+        productivity_insights=prod_lines,
+        related_sessions=[
+            RelatedSessionPublic(
+                id=r.id,
+                session_type=r.session_type,
+                duration_seconds=r.duration_seconds,
+                started_at=r.started_at,
+            )
+            for r in related
+        ],
+    )
+
+
 @router.patch("/item/{session_id}", response_model=SessionPublic)
 def update_session(
     session_id: int,
@@ -253,6 +473,8 @@ def delete_session(
     row = db.get(ProductionSession, session_id)
     if row is None or row.user_id != current.id or row.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Session not found")
+    if row.stopped_at is None:
+        raise HTTPException(status_code=409, detail="Active sessions cannot be deleted")
     row.deleted_at = utcnow()
     db.commit()
     return None
@@ -269,6 +491,19 @@ def restore_session(
         raise HTTPException(status_code=404, detail="Session not found")
     if row.deleted_at is None:
         raise HTTPException(status_code=400, detail="Session is not deleted")
+    if row.stopped_at is None:
+        active = db.scalar(
+            select(ProductionSession).where(
+                ProductionSession.user_id == current.id,
+                ProductionSession.stopped_at.is_(None),
+                ProductionSession.deleted_at.is_(None),
+            )
+        )
+        if active is not None and active.id != row.id:
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "Active session already exists", "session_id": active.id},
+            )
     row.deleted_at = None
     db.commit()
     db.refresh(row)

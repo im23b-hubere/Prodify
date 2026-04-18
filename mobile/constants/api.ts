@@ -8,4 +8,15 @@ import { Platform } from "react-native";
  */
 const defaultApiUrl = Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? defaultApiUrl;
+function getApiUrl(): string {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (envUrl) return envUrl;
+
+  if (!__DEV__) {
+    throw new Error("EXPO_PUBLIC_API_URL must be set for production builds.");
+  }
+
+  return defaultApiUrl;
+}
+
+export const API_BASE_URL = getApiUrl();
