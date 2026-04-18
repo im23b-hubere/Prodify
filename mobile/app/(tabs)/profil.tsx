@@ -66,7 +66,7 @@ export default function ProfilScreen() {
 
         <View style={styles.signoutWrap}>
           <Pressable style={({ pressed }) => [styles.outlineBtn, pressed && styles.pressed]} onPress={logout}>
-            <Text style={styles.outlineBtnText}>Abmelden</Text>
+            <Text style={styles.outlineBtnText}>Sign out</Text>
           </Pressable>
         </View>
       </ScrollView>

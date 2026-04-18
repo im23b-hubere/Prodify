@@ -23,7 +23,7 @@ function formatDuration(seconds: number) {
 
 function dayLabel(iso: string) {
   const date = new Date(`${iso}T12:00:00`);
-  return date.toLocaleDateString(undefined, { weekday: "short" });
+  return date.toLocaleDateString("en-US", { weekday: "short" });
 }
 
 export default function StatsScreen() {

@@ -73,8 +73,22 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profil"
         options={{
-          title: "Profil",
+          title: "Profile",
           tabBarIcon: ({ color, focused }) => <TabIcon color={color} focused={focused} icon="profil" />,
+        }}
+      />
+      <Tabs.Screen
+        name="session-trash"
+        options={{
+          href: null,
+          title: "Session Trash",
+        }}
+      />
+      <Tabs.Screen
+        name="session/[id]"
+        options={{
+          href: null,
+          title: "Session Detail",
         }}
       />
     </Tabs>

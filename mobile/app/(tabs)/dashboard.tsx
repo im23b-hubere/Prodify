@@ -1,4 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { Bell, Flame } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
@@ -76,6 +77,7 @@ function SessionSkeleton() {
 
 export default function DashboardScreen() {
   const { token, user } = useAuth();
+  const router = useRouter();
   const [sessions, setSessions] = useState<SessionDto[]>([]);
   const [active, setActive] = useState<SessionDto | null>(null);
   const [selectedType, setSelectedType] = useState<SessionType>("Beat Making");
@@ -156,7 +158,11 @@ export default function DashboardScreen() {
       setSessionNote("");
       await loadSessions();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Start failed");
+      const msg = e instanceof Error ? e.message : "Start failed";
+      if (msg.toLowerCase().includes("already have an active session")) {
+        await loadSessions().catch(() => undefined);
+      }
+      setError(msg);
     } finally {
       setBusy(false);
     }
@@ -182,7 +188,7 @@ export default function DashboardScreen() {
       if (!token) return;
       Haptics.selectionAsync().catch(() => undefined);
       try {
-        await apiJson(`/sessions/${id}`, { token, method: "DELETE" });
+        await apiJson(`/sessions/item/${id}`, { token, method: "DELETE" });
         await loadSessions();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Delete failed");
@@ -261,7 +267,12 @@ export default function DashboardScreen() {
               />
             ) : null}
 
-            <Text style={styles.sectionTitle}>Today's Sessions</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Today's Sessions</Text>
+              <Pressable onPress={() => router.push("/(tabs)/session-trash")}>
+                <Text style={styles.trashLink}>Trash</Text>
+              </Pressable>
+            </View>
             {error ? (
               <View style={styles.errorCard}>
                 <Text style={styles.errorText}>{error}</Text>
@@ -279,10 +290,13 @@ export default function DashboardScreen() {
         renderItem={({ item, index }) => (
           <Animated.View entering={FadeInUp.delay(100 + index * 70).duration(400)}>
             <Swipeable renderRightActions={() => renderRightActions(item.id)}>
-              <View style={styles.sessionRow}>
+              <Pressable
+                style={styles.sessionRow}
+                onPress={() => router.push({ pathname: "/(tabs)/session/[id]", params: { id: String(item.id) } })}
+              >
                 <Text style={styles.sessionType}>{item.session_type || "Beat Making"}</Text>
                 <Text style={styles.sessionMeta}>{Math.round((item.duration_seconds ?? 0) / 60)} min</Text>
-              </View>
+              </Pressable>
             </Swipeable>
           </Animated.View>
         )}
@@ -395,7 +409,17 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
     ...typography.subheadline,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.sm,
+  },
+  trashLink: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
   },
   sessionRow: {
     borderRadius: radii.md,

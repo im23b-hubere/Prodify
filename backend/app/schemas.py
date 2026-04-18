@@ -39,6 +39,11 @@ class SessionStop(BaseModel):
     session_id: int
 
 
+class SessionUpdate(BaseModel):
+    session_type: SessionType | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
 class SessionPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -47,7 +52,7 @@ class SessionPublic(BaseModel):
     started_at: datetime
     stopped_at: datetime | None
     duration_seconds: int | None
-    session_type: SessionType
+    session_type: str
     notes: str | None
 
 

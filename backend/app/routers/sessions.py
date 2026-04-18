@@ -19,6 +19,7 @@ from app.schemas import (
     SessionStatsTrendPoint,
     SessionStatsTypeBreakdownItem,
     SessionStop,
+    SessionUpdate,
 )
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -41,7 +42,7 @@ def start_session(
         raise HTTPException(status_code=400, detail="You already have an active session")
 
     notes = body.notes if body else None
-    session_type = body.session_type if body and body.session_type else SessionType.beat_making
+    session_type = body.session_type.value if body and body.session_type else SessionType.beat_making.value
     row = ProductionSession(user_id=current.id, started_at=utcnow(), notes=notes, session_type=session_type)
     db.add(row)
     db.commit()
@@ -89,7 +90,62 @@ def list_sessions(
     return list(rows)
 
 
-@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.get("/trash", response_model=list[SessionPublic])
+def list_deleted_sessions(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    limit: int = 50,
+    offset: int = 0,
+):
+    if limit > 200:
+        limit = 200
+    rows = db.scalars(
+        select(ProductionSession)
+        .where(ProductionSession.user_id == current.id, ProductionSession.deleted_at.is_not(None))
+        .order_by(ProductionSession.started_at.desc())
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    return list(rows)
+
+
+@router.get("/item/{session_id}", response_model=SessionPublic)
+def get_session(
+    session_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(ProductionSession, session_id)
+    if row is None or row.user_id != current.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return row
+
+
+@router.patch("/item/{session_id}", response_model=SessionPublic)
+def update_session(
+    session_id: int,
+    body: SessionUpdate,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(ProductionSession, session_id)
+    if row is None or row.user_id != current.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if row.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="Deleted sessions cannot be edited")
+
+    updates = body.model_dump(exclude_unset=True)
+    if "session_type" in updates and updates["session_type"] is not None:
+        row.session_type = updates["session_type"].value
+    if "notes" in updates:
+        row.notes = updates["notes"]
+
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.delete("/item/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_session(
     session_id: int,
     current: Annotated[User, Depends(get_current_user)],
@@ -101,6 +157,23 @@ def delete_session(
     row.deleted_at = utcnow()
     db.commit()
     return None
+
+
+@router.post("/item/{session_id}/restore", response_model=SessionPublic)
+def restore_session(
+    session_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(ProductionSession, session_id)
+    if row is None or row.user_id != current.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if row.deleted_at is None:
+        raise HTTPException(status_code=400, detail="Session is not deleted")
+    row.deleted_at = None
+    db.commit()
+    db.refresh(row)
+    return row
 
 
 @router.get("/stats", response_model=SessionStatsPublic)
@@ -151,7 +224,7 @@ def sessions_stats(
         for key, (sessions_count, seconds_count) in trend_map.items()
     ]
 
-    type_counts = Counter(((row.session_type.value if isinstance(row.session_type, SessionType) else str(row.session_type)) or "Beat Making") for row in completed)
+    type_counts = Counter((str(row.session_type) or "Beat Making") for row in completed)
     breakdown = [
         SessionStatsTypeBreakdownItem(
             session_type=session_type,

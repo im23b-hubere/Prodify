@@ -31,7 +31,7 @@ export default function LoginScreen() {
       await signIn(email.trim(), password);
       router.replace("/(tabs)/dashboard");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Login fehlgeschlagen");
+      setError(e instanceof Error ? e.message : "Sign in failed");
     } finally {
       setLoading(false);
     }
@@ -45,12 +45,12 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
           <Text style={styles.badge}>BeatTrack</Text>
-          <Text style={styles.title}>Willkommen zurueck</Text>
-          <Text style={styles.subtitle}>Sessions tracken, Fokus halten, taeglich besser werden.</Text>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Track sessions, stay focused, get better every day.</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.fieldLabel}>E-Mail</Text>
+          <Text style={styles.fieldLabel}>Email</Text>
           <TextInput
             style={styles.input}
             placeholder="you@example.com"
@@ -61,10 +61,10 @@ export default function LoginScreen() {
             value={email}
             onChangeText={setEmail}
           />
-          <Text style={styles.fieldLabel}>Passwort</Text>
+          <Text style={styles.fieldLabel}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="Dein Passwort"
+            placeholder="Your password"
             placeholderTextColor="#737373"
             secureTextEntry
             autoComplete="password"
@@ -74,12 +74,12 @@ export default function LoginScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <PrimaryButton label="Einloggen" onPress={onSubmit} loading={loading} />
+          <PrimaryButton label="Sign in" onPress={onSubmit} loading={loading} />
         </View>
 
         <Link href="/(auth)/register" asChild>
           <Pressable style={styles.linkWrap}>
-            <Text style={styles.link}>Noch kein Konto? Registrieren</Text>
+            <Text style={styles.link}>No account yet? Register</Text>
           </Pressable>
         </Link>
       </ScrollView>

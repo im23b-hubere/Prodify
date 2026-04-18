@@ -47,11 +47,7 @@ class ProductionSession(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    session_type: Mapped[SessionType] = mapped_column(
-        SAEnum(SessionType, native_enum=False, length=32),
-        nullable=False,
-        default=SessionType.beat_making,
-    )
+    session_type: Mapped[str] = mapped_column(String(64), nullable=False, default=SessionType.beat_making.value)
     notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

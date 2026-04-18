@@ -32,7 +32,7 @@ export default function RegisterScreen() {
       await signUp(email.trim(), username.trim(), password);
       router.replace("/(tabs)/dashboard");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Registrierung fehlgeschlagen");
+      setError(e instanceof Error ? e.message : "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -45,13 +45,13 @@ export default function RegisterScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.badge}>Neuer Account</Text>
-          <Text style={styles.title}>Lass uns starten</Text>
-          <Text style={styles.subtitle}>Richte dein Profil ein und beginne deinen ersten Streak.</Text>
+          <Text style={styles.badge}>New account</Text>
+          <Text style={styles.title}>Let's get started</Text>
+          <Text style={styles.subtitle}>Set up your profile and start your first streak.</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.fieldLabel}>E-Mail</Text>
+          <Text style={styles.fieldLabel}>Email</Text>
           <TextInput
             style={styles.input}
             placeholder="you@example.com"
@@ -62,20 +62,20 @@ export default function RegisterScreen() {
             value={email}
             onChangeText={setEmail}
           />
-          <Text style={styles.fieldLabel}>Nutzername</Text>
+          <Text style={styles.fieldLabel}>Username</Text>
           <TextInput
             style={styles.input}
-            placeholder="Dein Name"
+            placeholder="Your name"
             placeholderTextColor="#737373"
             autoCapitalize="none"
             autoComplete="username"
             value={username}
             onChangeText={setUsername}
           />
-          <Text style={styles.fieldLabel}>Passwort</Text>
+          <Text style={styles.fieldLabel}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="Mindestens 8 Zeichen"
+            placeholder="At least 8 characters"
             placeholderTextColor="#737373"
             secureTextEntry
             autoComplete="new-password"
@@ -85,12 +85,12 @@ export default function RegisterScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <PrimaryButton label="Registrieren" onPress={onSubmit} loading={loading} />
+          <PrimaryButton label="Create account" onPress={onSubmit} loading={loading} />
         </View>
 
         <Link href="/(auth)/login" asChild>
           <Pressable style={styles.linkWrap}>
-            <Text style={styles.link}>Schon ein Konto? Login</Text>
+            <Text style={styles.link}>Already have an account? Sign in</Text>
           </Pressable>
         </Link>
       </ScrollView>
