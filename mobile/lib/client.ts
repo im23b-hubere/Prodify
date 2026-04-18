@@ -1,6 +1,8 @@
 import { API_BASE_URL } from "../constants/api";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+const MAX_RETRIES = 2;
+const BASE_RETRY_DELAY_MS = 600;
 
 /** Set from AuthProvider: clear stored token when an authenticated request returns 401. */
 let unauthorizedHandler: (() => void | Promise<void>) | null = null;
@@ -26,6 +28,7 @@ export type ApiOptions = {
   method?: string;
   body?: unknown;
   timeoutMs?: number;
+  retries?: number;
 };
 
 /** FastAPI/Pydantic validation errors use `detail` as an array of `{ loc, msg, ... }`. */
@@ -76,28 +79,43 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const method = (opts.method ?? "GET").toUpperCase();
+  const allowRetry = method === "GET" || method === "HEAD";
+  const retries = allowRetry ? Math.max(0, Math.min(opts.retries ?? MAX_RETRIES, 4)) : 0;
 
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
-      method: opts.method ?? "GET",
-      headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-      signal: controller.signal,
-    });
-  } catch (e) {
-    if (e instanceof Error && e.name === "AbortError") {
-      throw new Error("Request timed out. Check your connection and try again.");
+  let res: Response | null = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      res = await fetch(`${API_BASE_URL}${path}`, {
+        method,
+        headers,
+        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+        signal: controller.signal,
+      });
+    } catch (e) {
+      clearTimeout(timeoutId);
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * 2 ** attempt));
+        continue;
+      }
+      if (e instanceof Error && e.name === "AbortError") {
+        throw new Error("Request timed out. Check your connection and try again.");
+      }
+      if (e instanceof TypeError) {
+        throw new Error("Network error. Check your connection and try again.");
+      }
+      throw e;
     }
-    if (e instanceof TypeError) {
-      throw new Error("Network error. Check your connection and try again.");
-    }
-    throw e;
-  } finally {
     clearTimeout(timeoutId);
+    if (res.status >= 500 && res.status < 600 && attempt < retries) {
+      await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * 2 ** attempt));
+      continue;
+    }
+    break;
   }
+  if (!res) throw new Error("Network error. Check your connection and try again.");
 
   const text = await res.text();
   let data: unknown = null;
