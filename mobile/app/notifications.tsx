@@ -1,7 +1,9 @@
 import { type Href, useFocusEffect, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import type { TFunction } from "i18next";
 import { Bell, Flame, Lightbulb, Trophy, Users } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Switch, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,13 +22,30 @@ import {
   type NotificationSettings,
 } from "../lib/notificationInbox";
 
-const CAT_META: Record<NotificationCategory, { label: string; icon: typeof Flame; emoji: string }> =
-  {
-    streak: { label: "Streak", icon: Flame, emoji: "🔥" },
-    achievement: { label: "Achievements", icon: Trophy, emoji: "🏆" },
-    social: { label: "Social", icon: Users, emoji: "👥" },
-    tips: { label: "Tips", icon: Lightbulb, emoji: "💡" },
-  };
+const CAT_META: Record<NotificationCategory, { icon: typeof Flame; emoji: string }> = {
+  streak: { icon: Flame, emoji: "🔥" },
+  achievement: { icon: Trophy, emoji: "🏆" },
+  social: { icon: Users, emoji: "👥" },
+  tips: { icon: Lightbulb, emoji: "💡" },
+};
+
+const FILTER_LABEL_KEY: Record<NotificationCategory | "all", string> = {
+  all: "notificationsUi.filterAll",
+  streak: "notificationsUi.catStreak",
+  achievement: "notificationsUi.catAchievement",
+  social: "notificationsUi.catSocial",
+  tips: "notificationsUi.catTips",
+};
+
+function formatRelativeTime(ts: number, tr: TFunction) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return tr("notificationsUi.timeNow");
+  if (m < 60) return tr("notificationsUi.timeMin", { m });
+  const h = Math.floor(m / 60);
+  if (h < 24) return tr("notificationsUi.timeHour", { h });
+  return tr("notificationsUi.timeDay", { d: Math.floor(h / 24) });
+}
 
 function safeCategory(cat: string): NotificationCategory {
   if (cat === "streak" || cat === "achievement" || cat === "social" || cat === "tips") {
@@ -35,17 +54,8 @@ function safeCategory(cat: string): NotificationCategory {
   return "tips";
 }
 
-function formatTime(ts: number) {
-  const diff = Date.now() - ts;
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "Just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [items, setItems] = useState<InboxItem[]>([]);
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
@@ -96,10 +106,10 @@ export default function NotificationsScreen() {
             .catch(() => undefined);
         }}
       >
-        <Text style={styles.deleteTxt}>Delete</Text>
+        <Text style={styles.deleteTxt}>{t("notificationsUi.delete")}</Text>
       </Pressable>
     ),
-    [load],
+    [load, t],
   );
 
   const renderItem = useCallback(
@@ -120,7 +130,7 @@ export default function NotificationsScreen() {
                 </Text>
                 <Text style={styles.cardMsg}>{item.body}</Text>
                 <View style={styles.cardFooter}>
-                  <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
+                  <Text style={styles.time}>{formatRelativeTime(item.createdAt, t)}</Text>
                   {item.actionLabel && item.actionRoute ? (
                     <Pressable
                       onPress={() => {
@@ -146,7 +156,7 @@ export default function NotificationsScreen() {
         </Swipeable>
       );
     },
-    [renderRight, router],
+    [renderRight, router, t],
   );
 
   return (
@@ -163,9 +173,9 @@ export default function NotificationsScreen() {
           }}
           hitSlop={12}
         >
-          <Text style={styles.back}>‹ Back</Text>
+          <Text style={styles.back}>{t("notificationsUi.back")}</Text>
         </Pressable>
-        <Text style={styles.title}>Notifications</Text>
+        <Text style={styles.title}>{t("notificationsUi.title")}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -180,7 +190,7 @@ export default function NotificationsScreen() {
             style={[styles.filterChip, filter === k && styles.filterChipOn]}
           >
             <Text style={[styles.filterTxt, filter === k && styles.filterTxtOn]}>
-              {k === "all" ? "All" : CAT_META[k].label}
+              {t(FILTER_LABEL_KEY[k])}
             </Text>
           </Pressable>
         ))}
@@ -200,8 +210,8 @@ export default function NotificationsScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Bell color={colors.textSecondary} size={40} style={{ marginBottom: spacing.sm }} />
-            <Text style={styles.emptyTitle}>All caught up!</Text>
-            <Text style={styles.emptySub}>Streak alerts and wins will land here.</Text>
+            <Text style={styles.emptyTitle}>{t("notificationsUi.emptyTitle")}</Text>
+            <Text style={styles.emptySub}>{t("notificationsUi.emptySub")}</Text>
           </View>
         }
         renderItem={renderItem}
@@ -209,9 +219,9 @@ export default function NotificationsScreen() {
 
       {settings ? (
         <View style={styles.settings}>
-          <Text style={styles.settingsTitle}>Preferences</Text>
+          <Text style={styles.settingsTitle}>{t("notificationsUi.preferences")}</Text>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Streak reminders</Text>
+            <Text style={styles.rowLabel}>{t("notificationsUi.streakReminders")}</Text>
             <Switch
               value={settings.streak && settings.frequency !== "off"}
               onValueChange={(v) => updateSetting({ streak: v })}
@@ -220,7 +230,7 @@ export default function NotificationsScreen() {
             />
           </View>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Achievements</Text>
+            <Text style={styles.rowLabel}>{t("notificationsUi.achievements")}</Text>
             <Switch
               value={settings.achievements && settings.frequency !== "off"}
               onValueChange={(v) => updateSetting({ achievements: v })}
@@ -229,7 +239,7 @@ export default function NotificationsScreen() {
             />
           </View>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Quiet hours (23:00–07:00)</Text>
+            <Text style={styles.rowLabel}>{t("notificationsUi.quietHours")}</Text>
             <Switch
               value={settings.quietStartHour === 23 && settings.quietEndHour === 7}
               onValueChange={(v) =>

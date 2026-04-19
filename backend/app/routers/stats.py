@@ -14,6 +14,7 @@ from app.models import ProductionSession, Streak, User, UserGoal, utcnow
 from app.schemas import (
     HeatmapDayPublic,
     HeatmapPublic,
+    InsightItemPublic,
     PersonalRecordItem,
     PersonalRecordsPublic,
     ProductivityInsightsPublic,
@@ -50,14 +51,15 @@ def stats_insights(
         by_dow[dt.weekday()] += int(r.duration_seconds or 0)
 
     best_hour = max(by_hour, key=lambda h: by_hour[h]) if by_hour else None
-    dow_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    best_dow = dow_names[max(by_dow, key=lambda d: by_dow[d])] if by_dow else None
+    best_dow_idx = max(by_dow, key=lambda d: by_dow[d]) if by_dow else None
 
-    tips: list[str] = []
+    tip_items: list[InsightItemPublic] = []
     if best_hour is not None:
-        tips.append(f"Best hour: {best_hour}:00–{(best_hour + 1) % 24}:00 (UTC) for total focus time.")
-    if best_dow:
-        tips.append(f"You lean toward {best_dow}s for volume.")
+        tip_items.append(InsightItemPublic(key="stats_insights_best_hour", params={"hour": best_hour}))
+    if best_dow_idx is not None:
+        tip_items.append(
+            InsightItemPublic(key="stats_insights_lean_dow", params={"weekday": best_dow_idx})
+        )
 
     week_key = _monday(utcnow().date())
     goal = db.scalar(
@@ -74,8 +76,10 @@ def stats_insights(
     return StatsInsightsPublic(
         productivity=ProductivityInsightsPublic(
             best_hour_start=best_hour,
-            best_weekday=best_dow,
-            tips=tips,
+            best_weekday=None,
+            best_weekday_index=best_dow_idx,
+            tips=[],
+            tip_items=tip_items,
         ),
         weekly_goal_sessions=week_sessions if goal else None,
         weekly_goal_target=target,

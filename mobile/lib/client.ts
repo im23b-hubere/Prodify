@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../constants/api";
+import i18n from "./i18n";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 2;
@@ -72,13 +73,13 @@ function formatApiErrorDetail(detail: unknown): string {
 function humanizeValidationMessage(msg: string, field: string | null): string {
   const lower = msg.toLowerCase();
   if (lower.includes("not a valid email") || lower.includes("value is not a valid email")) {
-    return "Please enter a valid email address.";
+    return i18n.t("errors.validation.email");
   }
   if (lower.includes("at least") && lower.includes("character") && field === "password") {
-    return "Password is too short (at least 8 characters).";
+    return i18n.t("errors.validation.passwordShort");
   }
   if (lower.includes("at least") && lower.includes("character") && field === "username") {
-    return "Username is too short (at least 2 characters).";
+    return i18n.t("errors.validation.usernameShort");
   }
   if (lower.includes("at least") && lower.includes("character")) {
     return msg;
@@ -142,10 +143,10 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
         continue;
       }
       if (e instanceof Error && e.name === "AbortError") {
-        throw new Error("Request timed out. Check your connection and try again.");
+        throw new Error(i18n.t("errors.requestTimeout"));
       }
       if (e instanceof TypeError) {
-        throw new Error("Network error. Check your connection and try again.");
+        throw new Error(i18n.t("errors.network"));
       }
       throw e;
     }
@@ -156,7 +157,7 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
     }
     break;
   }
-  if (!res) throw new Error("Network error. Check your connection and try again.");
+  if (!res) throw new Error(i18n.t("errors.network"));
 
   const text = await res.text();
   let data: unknown = null;

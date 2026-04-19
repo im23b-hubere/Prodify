@@ -17,7 +17,9 @@
   },
   "jest": {
     "preset": "jest-expo",
-    "setupFilesAfterEnv": ["<rootDir>/jest.setup.ts"],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.ts"
+    ],
     "testMatch": [
       "**/__tests__/**/*.(test|spec).(ts|tsx)",
       "**/*.(test|spec).(ts|tsx)"
@@ -41,14 +43,17 @@
     "expo-keep-awake": "~15.0.7",
     "expo-linear-gradient": "~15.0.8",
     "expo-linking": "~8.0.11",
+    "expo-localization": "~17.0.8",
     "expo-notifications": "~0.32.16",
     "expo-router": "~6.0.23",
     "expo-secure-store": "~15.0.8",
     "expo-sharing": "~14.0.8",
     "expo-status-bar": "~3.0.9",
+    "i18next": "^26.0.6",
     "lottie-react-native": "~7.3.1",
     "lucide-react-native": "^1.8.0",
     "react": "19.1.0",
+    "react-i18next": "^17.0.4",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-reanimated": "~4.1.1",

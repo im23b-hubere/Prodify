@@ -1,6 +1,9 @@
 import { Stack } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 export default function AuthLayout() {
+  const { t } = useTranslation();
+
   return (
     <Stack
       screenOptions={{
@@ -11,8 +14,8 @@ export default function AuthLayout() {
         contentStyle: { backgroundColor: "#0a0a0a" },
       }}
     >
-      <Stack.Screen name="login" options={{ title: "Login" }} />
-      <Stack.Screen name="register" options={{ title: "Register" }} />
+      <Stack.Screen name="login" options={{ title: t("auth.stack.login") }} />
+      <Stack.Screen name="register" options={{ title: t("auth.stack.register") }} />
     </Stack>
   );
 }

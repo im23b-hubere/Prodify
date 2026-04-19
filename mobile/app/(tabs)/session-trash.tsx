@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -10,10 +11,14 @@ import { parseSessionList } from "../../lib/sessionDto";
 import type { SessionDto } from "../../types/session";
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("en-US");
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
 export default function SessionTrashScreen() {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const [sessions, setSessions] = useState<SessionDto[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,14 +33,14 @@ export default function SessionTrashScreen() {
   }, [token]);
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : "Failed to load trash"));
-  }, [load]);
+    load().catch((e) => setError(e instanceof Error ? e.message : t("sessionTrash.loadFailed")));
+  }, [load, t]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load().catch((e) => setError(e instanceof Error ? e.message : "Failed to refresh"));
+    await load().catch((e) => setError(e instanceof Error ? e.message : t("sessionTrash.refreshFailed")));
     setRefreshing(false);
-  }, [load]);
+  }, [load, t]);
 
   const restore = useCallback(
     async (id: number) => {
@@ -45,12 +50,12 @@ export default function SessionTrashScreen() {
         await apiJson(`/sessions/item/${id}/restore`, { token, method: "POST" });
         await load();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to restore");
+        setError(e instanceof Error ? e.message : t("sessionTrash.restoreFailed"));
       } finally {
         setBusyId(null);
       }
     },
-    [load, token],
+    [load, token, t],
   );
 
   return (
@@ -65,14 +70,14 @@ export default function SessionTrashScreen() {
           />
         }
       >
-        <Text style={styles.title}>Session Trash</Text>
-        <Text style={styles.subtitle}>Restore sessions you deleted accidentally.</Text>
+        <Text style={styles.title}>{t("sessionTrash.title")}</Text>
+        <Text style={styles.subtitle}>{t("sessionTrash.subtitle")}</Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {sessions.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Trash is empty.</Text>
+            <Text style={styles.emptyText}>{t("sessionTrash.empty")}</Text>
           </View>
         ) : (
           sessions.map((session) => (
@@ -90,7 +95,9 @@ export default function SessionTrashScreen() {
                 onPress={() => restore(session.id).catch(() => undefined)}
                 disabled={busyId === session.id}
               >
-                <Text style={styles.restoreLabel}>{busyId === session.id ? "..." : "Restore"}</Text>
+                <Text style={styles.restoreLabel}>
+                  {busyId === session.id ? t("sessionTrash.restoring") : t("sessionTrash.restore")}
+                </Text>
               </Pressable>
             </View>
           ))
@@ -118,29 +125,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.md,
   },
-  emptyText: { color: colors.textSecondary, fontFamily: fontFamily.body, ...typography.caption },
+  emptyText: { color: colors.textSecondary, ...typography.caption },
   row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: spacing.md,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: spacing.md,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    marginBottom: spacing.sm,
   },
-  rowCopy: { flex: 1, gap: spacing.xs },
+  rowCopy: { flex: 1, marginRight: spacing.md },
   rowTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  rowMeta: { color: colors.textSecondary, fontFamily: fontFamily.body, ...typography.caption },
+  rowMeta: { color: colors.textSecondary, ...typography.caption, marginTop: 4 },
   restoreBtn: {
-    borderRadius: radii.md,
-    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: "rgba(0,255,136,0.2)",
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.success,
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.12)",
   },
-  restoreLabel: { color: colors.success, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  pressed: { opacity: 0.85 },
+  pressed: { opacity: 0.9 },
   disabled: { opacity: 0.5 },
+  restoreLabel: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
 });

@@ -2,6 +2,8 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 /**
+ * User-visible copy lives in locales/de.json and locales/en.json (react-i18next).
+ *
  * Override with EXPO_PUBLIC_API_URL when needed.
  *
  * In dev, without EXPO_PUBLIC_API_URL, we infer the machine IP from Metro (e.g. `192.168.x.x:8081`)

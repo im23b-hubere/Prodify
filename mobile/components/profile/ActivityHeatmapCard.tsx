@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
@@ -17,15 +18,16 @@ const INTENSITY = [
 ];
 
 export const ActivityHeatmapCard = memo(function ActivityHeatmapCard({ days }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Activity (90 days)</Text>
+      <Text style={styles.title}>{t("profileHeatmap.title")}</Text>
       <View style={styles.grid}>
         {days.map((d) => (
           <View
             key={d.date}
             style={[styles.cell, { backgroundColor: INTENSITY[d.intensity] ?? INTENSITY[0] }]}
-            accessibilityLabel={`${d.date}: ${d.seconds} seconds`}
+            accessibilityLabel={t("profileHeatmap.a11y", { date: d.date, seconds: d.seconds })}
           />
         ))}
       </View>

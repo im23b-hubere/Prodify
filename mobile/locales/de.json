@@ -1,0 +1,647 @@
+{
+  "brand": "Prodify",
+  "auth": {
+    "stack": {
+      "login": "Anmelden",
+      "register": "Registrieren"
+    },
+    "login": {
+      "title": "Willkommen zurück",
+      "subtitle": "Sessions tracken, fokussiert bleiben, jeden Tag besser werden.",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "placeholderEmail": "du@beispiel.de",
+      "placeholderPassword": "Dein Passwort",
+      "signIn": "Anmelden",
+      "signInFailed": "Anmeldung fehlgeschlagen",
+      "noAccount": "Noch kein Konto? Registrieren"
+    },
+    "register": {
+      "title": "Los geht's",
+      "subtitle": "Erstelle dein Prodify-Konto und starte deine erste Serie.",
+      "email": "E-Mail",
+      "username": "Benutzername",
+      "password": "Passwort",
+      "placeholderEmail": "du@beispiel.de",
+      "placeholderUsername": "Dein Name",
+      "placeholderPassword": "Mindestens 8 Zeichen",
+      "createAccount": "Konto erstellen",
+      "registerFailed": "Registrierung fehlgeschlagen",
+      "hasAccount": "Schon ein Konto? Anmelden"
+    }
+  },
+  "tabs": {
+    "dashboard": "Übersicht",
+    "stats": "Statistik",
+    "friends": "Freunde",
+    "profile": "Profil",
+    "sessionTrash": "Papierkorb"
+  },
+  "onboarding": {
+    "skip": "Überspringen",
+    "next": "Weiter",
+    "continue": "Weiter",
+    "footerPrivacy": "Datenschutzerklärung",
+    "slide1": {
+      "title": "Willkommen bei Prodify",
+      "body": "Erfasse deine Studio-Zeit klar und strukturiert — Session-Typen, Mood, Tags und streak-bewusster Fokus."
+    },
+    "slide2": {
+      "title": "Baue deine Serie auf",
+      "body": "Beständigkeit schlägt Motivationsschübe. Wir sichern deine Kette mit klugen Erinnerungen."
+    },
+    "slide3": {
+      "title": "Zusammen stärker",
+      "body": "Bestenlisten und Aktivität halten dich auf Kurs — produziere mit Schwung."
+    },
+    "goal": {
+      "title": "Wöchentliches Session-Ziel",
+      "body": "Wähle ein Ziel, das du halten kannst. Du kannst es jederzeit ändern."
+    },
+    "notifications": {
+      "title": "Bleib auf dem Laufenden",
+      "body": "Aktiviere Benachrichtigungen für Streak-Schutz — wir erinnern dich, bevor der Tag verrinnt.",
+      "enable": "Benachrichtigungen aktivieren",
+      "notNow": "Nicht jetzt"
+    }
+  },
+  "common": {
+    "cancel": "Abbrechen",
+    "ok": "OK",
+    "weekdaysFull": [
+      "Montag",
+      "Dienstag",
+      "Mittwoch",
+      "Donnerstag",
+      "Freitag",
+      "Samstag",
+      "Sonntag"
+    ]
+  },
+  "legal": {
+    "linksPrivacy": "Datenschutz",
+    "linksTerms": "Nutzungsbedingungen",
+    "sectionTitle": "Rechtliches",
+    "deleteAccount": {
+      "sectionTitle": "Konto und Daten",
+      "description": "Du kannst dein Konto dauerhaft löschen. Alle zugehörigen Daten werden auf unseren Servern entfernt, soweit keine gesetzliche Aufbewahrungspflicht entgegensteht.",
+      "button": "Konto löschen",
+      "confirmTitle": "Konto wirklich löschen?",
+      "confirmMessage": "Diese Aktion kann nicht rückgängig gemacht werden. Deine Sessions, Streaks und Freundschaften gehen verloren.",
+      "confirmDelete": "Endgültig löschen",
+      "errorTitle": "Löschen fehlgeschlagen",
+      "errorFallback": "Bitte versuche es später erneut oder kontaktiere den Support."
+    },
+    "privacy": {
+      "screenTitle": "Datenschutz",
+      "updated": "Stand: April 2026",
+      "intro": "Diese Erklärung informiert dich über die Verarbeitung personenbezogener Daten in der Prodify-App. Sie ersetzt keine individuelle Rechtsberatung.",
+      "blocks": [
+        {
+          "heading": "1. Verantwortlicher",
+          "body": "Verantwortlich für die Datenverarbeitung im Sinne der DSGVO ist der Betreiber der Prodify-Dienste (Kontaktdaten siehe App-Store-Eintrag oder Support-E-Mail). Für die Nutzung ist außerdem maßgeblich, welche API-Umgebung du in der App konfigurierst."
+        },
+        {
+          "heading": "2. Welche Daten wir verarbeiten",
+          "body": "Wir verarbeiten insbesondere: Registrierungsdaten (E-Mail, Benutzername), technische Nutzungsdaten zur Bereitstellung der App, sowie von dir erzeugte Inhalte wie Studio-Sessions (Zeiten, Typen, optionale Notizen/Mood/Tags), Streak- und Freundschaftsdaten sowie Push-Token, falls du Benachrichtigungen aktivierst."
+        },
+        {
+          "heading": "3. Zwecke und Rechtsgrundlagen",
+          "body": "Die Verarbeitung erfolgt zur Erfüllung des Nutzungsvertrags (Art. 6 Abs. 1 lit. b DSGVO), zur Gewährleistung von Sicherheit und Missbrauchsprävention (berechtigtes Interesse, Art. 6 Abs. 1 lit. f DSGVO) sowie — soweit du eingewilligt hast — für Push-Mitteilungen (Art. 6 Abs. 1 lit. a DSGVO)."
+        },
+        {
+          "heading": "4. Speicherdauer",
+          "body": "Wir speichern Daten so lange, wie dein Konto besteht. Nach Löschung des Kontos entfernen wir die zugehörigen personenbezogenen Daten auf den Servern, soweit keine gesetzlichen Aufbewahrungspflichten entgegenstehen."
+        },
+        {
+          "heading": "5. Deine Rechte",
+          "body": "Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit sowie Widerspruch gegen Verarbeitungen aufgrund berechtigter Interessen. Du kannst eine erteilte Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen. Außerdem hast du das Recht, dich bei einer Aufsichtsbehörde zu beschweren."
+        },
+        {
+          "heading": "6. Kontakt",
+          "body": "Zur Ausübung deiner Rechte oder bei Fragen erreichst du uns über die im App-Store oder in der App angegebene Support-Adresse."
+        }
+      ]
+    },
+    "terms": {
+      "screenTitle": "Nutzungsbedingungen",
+      "updated": "Stand: April 2026",
+      "intro": "Mit der Nutzung von Prodify erklärst du dich mit diesen Bedingungen einverstanden. Bitte lies sie sorgfältig.",
+      "blocks": [
+        {
+          "heading": "1. Leistungsgegenstand",
+          "body": "Prodify bietet Funktionen zum Erfassen und Auswerten von Studio-Sessions, Streaks und sozialen Funktionen unter Freunden. Verfügbarkeit und Features können sich weiterentwickeln."
+        },
+        {
+          "heading": "2. Konto",
+          "body": "Du bist für die Geheimhaltung deines Passworts verantwortlich. Die von dir eingegebenen Inhalte dürfen keine Rechte Dritter verletzen und keine gesetzeswidrigen Inhalte darstellen."
+        },
+        {
+          "heading": "3. Verfügbarkeit",
+          "body": "Wir bemühen uns um eine hohe Verfügbarkeit, können aber keine ununterbrochene Erreichbarkeit garantieren — insbesondere bei Wartung oder höherer Gewalt."
+        },
+        {
+          "heading": "4. Haftung",
+          "body": "Soweit gesetzlich zulässig, haften wir nur bei Vorsatz und grober Fahrlässigkeit. Für leichte Fahrlässigkeit haften wir nur bei Verletzung wesentlicher Vertragspflichten und begrenzt auf den typischen, vorhersehbaren Schaden."
+        },
+        {
+          "heading": "5. Änderungen",
+          "body": "Wir können diese Bedingungen anpassen. Wesentliche Änderungen werden wir in der App oder auf anderem angemessenen Weg mitteilen. Die weitere Nutzung nach Mitteilung kann als Zustimmung gelten, soweit gesetzlich zulässig."
+        }
+      ]
+    }
+  },
+  "profile": {
+    "loadingHint": "Statistik wird geladen…",
+    "tryAgain": "Erneut versuchen",
+    "totalSessions": "Sessions gesamt",
+    "currentStreak": "Aktuelle Serie",
+    "bestStreak": "Beste Serie",
+    "bestStreakDays": "{{days}} Tage",
+    "totalHours": "Stunden gesamt",
+    "milestonesTitle": "Meilensteine",
+    "milestoneSub": "Längste Serie bisher: {{days}} Tage",
+    "milestonesUnavailable": "Meilensteine derzeit nicht verfügbar.",
+    "pushSectionTitle": "Server-Push (Expo + FCM)",
+    "pushHint": "Backend: EXPO_ACCESS_TOKEN für Expo-Tokens; optional Firebase Service Account (JSON oder Pfad) für Android-FCM-Tokens. Vorlagen simulieren echte In-App-Texte.",
+    "pingTemplateTest": "Test",
+    "pingTemplateSession": "Session",
+    "pingTemplateStreak": "Serie",
+    "pingTestTitle": "Prodify",
+    "pingTestBody": "Test-Push vom Server",
+    "pingSending": "Sende…",
+    "pingSend": "Push senden",
+    "pingResultTitle": "Push",
+    "pingDelivered": "Zugestellt: {{ok}} / {{attempted}}",
+    "settingsTitle": "Einstellungen & Rechtliches",
+    "signOut": "Abmelden",
+    "defaultDisplayName": "Prodify-Nutzer",
+    "loadingEmail": "wird geladen…",
+    "defaultInitials": "P",
+    "errorLoadProfile": "Profil konnte nicht geladen werden."
+  },
+  "sessionTypes": {
+    "beatMaking": "Beat Making",
+    "mixing": "Mixing",
+    "soundDesign": "Sound Design",
+    "defaultName": "Session"
+  },
+  "crashBoundary": {
+    "sessionSetupTitle": "Session-Setup fehlgeschlagen",
+    "sessionSetupMessage": "Das Formular ist abgestürzt. Du kannst es erneut versuchen oder den vollständigen Setup-Screen öffnen.",
+    "sessionSetupScreenMessage": "Bitte gehe zurück und öffne das Setup erneut."
+  },
+  "friendsScreen": {
+    "title": "Freunde",
+    "addFriendA11y": "Freund hinzufügen",
+    "loading": "Laden…",
+    "retry": "Erneut versuchen",
+    "loadError": "Freunde konnten nicht geladen werden.",
+    "incomingTitle": "Eingehende Anfragen",
+    "incomingHint": "möchte befreundet sein",
+    "accept": "Annehmen",
+    "decline": "Ablehnen",
+    "modeWeek": "Diese Woche",
+    "modeAll": "Gesamt",
+    "soloLeader": "Du bist allein in der Bestenliste — füge Freunde hinzu, um dich zu vergleichen.",
+    "youPill": "Du",
+    "metaWeek": "{{sessions}} Sessions diese Woche · {{days}}-Tage-Serie",
+    "metaAll": "{{sessions}} Sessions gesamt · {{days}}-Tage-Serie",
+    "activityTitle": "Aktivitäts-Feed",
+    "feedEmpty": "Noch keine Sessions von Freunden.",
+    "feedLine": "{{user}} hat {{type}} beendet · {{duration}} · {{ago}}",
+    "modalTitle": "Freund hinzufügen",
+    "modalHint": "Gib den Prodify-Benutzernamen ein. Die Person muss deine Anfrage annehmen.",
+    "placeholderUsername": "Benutzername",
+    "sendRequest": "Anfrage senden",
+    "sendingRequest": "Senden…",
+    "modalCancel": "Abbrechen",
+    "alertUsername": "Benutzername",
+    "alertUsernameInvalid": "Bitte gib einen gültigen Benutzernamen ein.",
+    "requestSentTitle": "Anfrage gesendet",
+    "requestSentBody": "Freundschaftsanfrage an {{name}} gesendet.",
+    "couldNotSend": "Senden fehlgeschlagen",
+    "errorGeneric": "Fehler",
+    "acceptFailed": "Annehmen fehlgeschlagen.",
+    "declineFailed": "Ablehnen fehlgeschlagen.",
+    "unknownTime": "unbekannt",
+    "durationUnderOne": "<1 Min.",
+    "durationMin": "{{m}} Min.",
+    "durationHours": "{{h}} Std. {{m}} Min."
+  },
+  "sessionActive": {
+    "longSessionTitle": "Lange Session",
+    "longSessionBody": "Du bist seit über 8 Stunden dabei. Arbeitest du noch?",
+    "invalidSession": "Ungültige Session",
+    "invalidData": "Ungültige Session-Daten vom Server.",
+    "loadFailed": "Laden fehlgeschlagen",
+    "loadingSession": "Session wird geladen…",
+    "minimizeHint": "Nach unten wischen zur Übersicht",
+    "inProgress": "Session läuft",
+    "insightDefault": "Bleib im Flow — jede Minute zählt.",
+    "insightPastBest": "Du liegst über deiner bisherigen Bestzeit ({{prev}}). Weiter so!",
+    "insightLongest": "Deine längste Session bisher: {{duration}}",
+    "sessionType": "Session-Typ",
+    "mood": "Stimmung: {{emoji}}",
+    "notes": "Notizen",
+    "notesPlaceholder": "Woran arbeitest du?",
+    "saving": "Speichern…",
+    "save": "Speichern",
+    "pause": "Pause",
+    "resume": "Fortsetzen",
+    "stopSession": "Session beenden",
+    "pauseFailed": "Pause fehlgeschlagen",
+    "resumeFailed": "Fortsetzen fehlgeschlagen",
+    "saveNotesFailed": "Notizen konnten nicht gespeichert werden",
+    "updateFailed": "Aktualisierung fehlgeschlagen",
+    "stopFailed": "Beenden fehlgeschlagen"
+  },
+  "sessionComplete": {
+    "title": "Session beendet",
+    "loadingSession": "Session wird geladen…",
+    "errorTitle": "Etwas ist schiefgelaufen",
+    "unknownError": "Unbekannter Fehler",
+    "tryAgain": "Erneut versuchen",
+    "backToDashboard": "Zur Übersicht",
+    "notSignedIn": "Nicht angemeldet.",
+    "missingSession": "Session fehlt.",
+    "invalidSession": "Ungültige Session.",
+    "invalidData": "Ungültige Session-Daten vom Server.",
+    "stillInProgress": "Diese Session läuft noch.",
+    "loadError": "Session konnte nicht geladen werden.",
+    "streakLine_one": "🔥 {{count}} Tag Serie!",
+    "streakLine_other": "🔥 {{count}} Tage Serie!",
+    "autoReturn": "Zurück zur Übersicht in {{seconds}}s…",
+    "viewDetails": "Session-Details",
+    "startAnother": "Weitere Session starten"
+  },
+  "sessionDetail": {
+    "loading": "Session wird geladen…",
+    "invalidId": "Ungültige Session-ID",
+    "invalidData": "Ungültige Session-Daten vom Server.",
+    "loadFailed": "Session konnte nicht geladen werden.",
+    "refreshFailed": "Aktualisieren fehlgeschlagen",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "invalidResponse": "Ungültige Server-Antwort.",
+    "deleteFailed": "Löschen fehlgeschlagen",
+    "deleteTitle": "Session löschen?",
+    "deleteBody": "Die Session wandert in den Papierkorb.",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "inProgress": "Läuft",
+    "back": "Zurück",
+    "start": "Start",
+    "end": "Ende",
+    "mood": "Stimmung",
+    "pauses": "Pausen",
+    "pauseMin": "{{m}} Min.",
+    "sessionType": "Session-Typ",
+    "notes": "Notizen",
+    "notesPlaceholder": "Kontext zu dieser Session",
+    "tags": "Tags",
+    "saveChanges": "Änderungen speichern",
+    "deleteSession": "Session löschen",
+    "mood1": "Niedrig",
+    "mood2": "Okay",
+    "mood3": "Gut",
+    "mood4": "Super",
+    "mood5": "On fire"
+  },
+  "sessionTrash": {
+    "title": "Session-Papierkorb",
+    "subtitle": "Stelle Sessions wieder her, die du versehentlich gelöscht hast.",
+    "empty": "Papierkorb ist leer.",
+    "restore": "Wiederherstellen",
+    "restoring": "…",
+    "loadFailed": "Papierkorb konnte nicht geladen werden.",
+    "refreshFailed": "Aktualisieren fehlgeschlagen",
+    "restoreFailed": "Wiederherstellen fehlgeschlagen"
+  },
+  "notificationsUi": {
+    "back": "‹ Zurück",
+    "title": "Benachrichtigungen",
+    "filterAll": "Alle",
+    "catStreak": "Serie",
+    "catAchievement": "Erfolge",
+    "catSocial": "Social",
+    "catTips": "Tipps",
+    "delete": "Löschen",
+    "emptyTitle": "Alles erledigt!",
+    "emptySub": "Serien-Hinweise und Erfolge erscheinen hier.",
+    "preferences": "Einstellungen",
+    "streakReminders": "Serien-Erinnerungen",
+    "achievements": "Erfolge",
+    "quietHours": "Ruhezeiten (23:00–07:00)",
+    "timeNow": "Gerade eben",
+    "timeMin": "vor {{m}} Min.",
+    "timeHour": "vor {{h}} Std.",
+    "timeDay": "vor {{d}} T."
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Guten Morgen",
+      "afternoon": "Guten Tag",
+      "evening": "Guten Abend",
+      "night": "Hey"
+    },
+    "defaultUserName": "Producer",
+    "weekdayShort": ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+    "heyUser": "Hey, {{name}}",
+    "notificationsA11y": "Benachrichtigungen",
+    "streakFallbackTagline": "Verbinde dich, um Streak-Freeze und Meilensteine freizuschalten.",
+    "naturalCountingStart": "Gerade erst losgelegt…",
+    "naturalCountingMins_one": "{{mins}} Minute und es geht weiter…",
+    "naturalCountingMins_other": "{{mins}} Minuten und es geht weiter…",
+    "swipeFocusHint": "Nach oben wischen für Fokus-Modus",
+    "stopping": "Beende…",
+    "stopSession": "SESSION BEENDEN",
+    "recentSessions": "Letzte Sessions",
+    "statsLink": "Statistik",
+    "trashLink": "Papierkorb",
+    "updatedAgo": "Aktualisiert vor {{mins}} Min.",
+    "retry": "Erneut versuchen",
+    "emptyStreakTitle": "Starte deine erste Session und beginne deine Serie!",
+    "startSession": "Session starten",
+    "newSessionTitle": "Neue Session",
+    "milestoneNotifTitle": "Meilenstein erreicht",
+    "loadSessionsFailed": "Sessions konnten nicht geladen werden.",
+    "loadFailed": "Laden fehlgeschlagen",
+    "deleteFailed": "Löschen fehlgeschlagen",
+    "stopFailed": "Beenden fehlgeschlagen",
+    "couldNotReadSession": "Neue Session konnte nicht gelesen werden. Zum Aktualisieren nach unten ziehen.",
+    "freezeSuccessTitle": "Streak-Freeze",
+    "freezeSuccessBody": "Du bist für heute abgesichert. Deine Serie bleibt erhalten.",
+    "freezeErrorTitle": "Freeze nicht möglich",
+    "freezeTryAgain": "Erneut versuchen.",
+    "endSessionTitle": "Session beenden?",
+    "endSessionWorked": "Du warst {{duration}} dabei.",
+    "keepGoing": "Weitermachen",
+    "endSessionConfirm": "Session beenden",
+    "sessionMinutes": "{{n}} Min.",
+    "deleteSwipe": "Löschen"
+  },
+  "stats": {
+    "title": "Deine Statistik",
+    "filter7d": "7T",
+    "filter30d": "30T",
+    "filterAll": "Alle",
+    "totalHours": "Stunden gesamt",
+    "vsPrior": "{{sign}}{{hours}}h vs. Vorperiode",
+    "sessions": "Sessions",
+    "currentStreak": "Aktuelle Serie",
+    "bestStreakSub": "Beste: {{days}} Tage",
+    "weeklyPresence": "Wöchentlich aktiv {{have}}/{{goal}} Tage",
+    "weeklyCrushed": "Ziel geschafft — weiter so!",
+    "weeklyMoreDays_one": "Noch {{n}} Tag, um 7/7 zu schaffen.",
+    "weeklyMoreDays_other": "Noch {{n}} Tage, um 7/7 zu schaffen.",
+    "heatmapTitle": "Aktivitäts-Heatmap (90 Tage)",
+    "recordsTitle": "Persönliche Rekorde",
+    "recordsEmpty": "Schließe Sessions ab, um Rekorde freizuschalten.",
+    "perDayTitle": "Sessions pro Tag",
+    "typeMixTitle": "Session-Typen",
+    "typeMixEmpty": "Noch keine Daten. Schließe eine Session ab, um Einblicke zu sehen.",
+    "recentTitle": "Letzte Sessions",
+    "recentEmpty": "Keine Sessions in diesem Zeitraum.",
+    "invalidResponse": "Ungültige Statistik-Antwort vom Server.",
+    "loadFailed": "Statistik konnte nicht geladen werden.",
+    "sessionFallback": "Session"
+  },
+  "streakHero": {
+    "dayStreak": "TAGE SERIE",
+    "nextMilestone_one": "Nächstes: {{title}} · noch {{days}} Tag",
+    "nextMilestone_other": "Nächstes: {{title}} · noch {{days}} Tage",
+    "topTier": "Du bist auf der höchsten Meilenstein-Stufe — legendär.",
+    "longest": "Längste Serie: {{days}} Tage",
+    "historyA11y": "Serien-Verlauf anzeigen",
+    "historyLink": "Serien-Verlauf",
+    "riskBanner": "⚠️ Logge heute eine Session ein, um die Kette zu halten.",
+    "freezeActivating": "Aktiviere…",
+    "freezeAvailable": "{{n}} Streak-Freeze verfügbar (Premium)",
+    "freezeNone": "Keine Freezes mehr diesen Monat",
+    "freezeHint": "Erneuert sich nächsten Monat — oder schließe heute eine Session ab."
+  },
+  "friendsWidget": {
+    "title": "Freunde",
+    "viewAll": "Alle anzeigen",
+    "thisWeek": "Diese Woche",
+    "recent": "Kürzlich",
+    "sessionsMeta": "{{sessions}} Sessions · {{streak}} Serie",
+    "loading": "Freunde werden geladen…",
+    "emptyTitle": "Freunde-Aktivität",
+    "emptySub": "Füge Freunde hinzu, um Sessions und eine Wochen-Bestenliste zu sehen.",
+    "findFriends": "Freunde finden",
+    "agoNow": "gerade eben",
+    "agoMinutes": "vor {{mins}} Min.",
+    "agoHours": "vor {{hours}} Std.",
+    "agoDays": "vor {{days}} T."
+  },
+  "motivation": {
+    "perfectFocus": "Perfekter Fokus! Du bist im Flow.",
+    "producerMode": "Das ist Producer-Modus — behalte dieses Tempo.",
+    "excellentSession": "Starke Session! Du baust etwas Besonderes auf.",
+    "everySessionCounts": "Jede Session zählt — morgen wird's noch besser.",
+    "progressOverPerf": "Fortschritt vor Perfektion. Du warst dabei.",
+    "twoHoursPlus": "2+ Stunden — echtes Commitment.",
+    "fullHour": "Eine volle Stunde — so baust du's aus.",
+    "polishMakesPerfect": "Polish macht den Track rund.",
+    "soundDesignMoves": "Sound Design trägt den ganzen Track.",
+    "anotherBeat": "Wieder ein Beat in der Tasche.",
+    "thirdToday": "Dritte Session heute — du bist on fire.",
+    "secondToday": "Session Nr. 2 heute — Momentum.",
+    "morningClear": "Morning Session — klarer Kopf, klare Moves.",
+    "eveningEnergy": "Abendliche Energie — Zeit zu erschaffen.",
+    "nightOwl": "Nachteule — dein Studio, deine Regeln.",
+    "startStreak": "Starte heute deine Serie — Tag 1 beginnt jetzt.",
+    "streakHigh": "{{days}} Tage — nicht die Kette reißen.",
+    "streakMid": "{{days}} Tage stark — weiterbauen.",
+    "friendsActive": "{{count}} Freunde kürzlich aktiv — steig mit ein.",
+    "leaderWeek": "{{name}} führt diese Woche — hol das Tempo.",
+    "lastSessionStrong": "Letzte Session war stark — direkt nochmal.",
+    "noSessionsWeek": "Noch keine Sessions diese Woche — änder das heute.",
+    "weekPace": "{{count}} Sessions diese Woche — auf Kurs.",
+    "eveningQuestion": "Abend-Session? Oft kommen jetzt die besten Ideen.",
+    "todayUnstoppable": "{{count}} Sessions heute — unaufhaltsam.",
+    "fallback": "Lass uns etwas Großartiges erschaffen."
+  },
+  "todayProgress": {
+    "title": "Heute",
+    "sessions": "Sessions",
+    "minutes": "Minuten",
+    "weekGoal": "{{current}} / {{goal}} Sessions diese Woche",
+    "weekOnly": "{{count}} Sessions diese Woche"
+  },
+  "sessionStarter": {
+    "title": "SESSION STARTEN",
+    "subtitle": "Schnell-Setup — Typ, Mood & Notizen",
+    "customize": "Session anpassen"
+  },
+  "motivationCard": {
+    "sessionsToday_one": "{{count}} Session heute — weiter so!",
+    "sessionsToday_other": "{{count}} Sessions heute — weiter so!"
+  },
+  "streakHistory": {
+    "title": "Serien-Verlauf",
+    "backA11y": "Zurück",
+    "loading": "Läufe werden geladen…",
+    "loadError": "Serien-Verlauf konnte nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "emptyTitle": "Noch keine Serien",
+    "emptySub": "Schließe an aufeinanderfolgenden Tagen Sessions ab, um deine erste Kette zu starten.",
+    "dayUnit_one": "Tag",
+    "dayUnit_other": "Tage"
+  },
+  "friendProfile": {
+    "invalidProfile": "Ungültiges Profil.",
+    "loadError": "Profil konnte nicht geladen werden.",
+    "couldNotLoadTitle": "Profil konnte nicht geladen werden",
+    "back": "Zurück",
+    "backArrow": "← Zurück",
+    "lockedTitle": "Freundesprofil",
+    "lockedPending": "Wenn die Anfrage angenommen wird, siehst du hier die vollen Stats.",
+    "lockedNone": "Füge diese Person als Freund hinzu, um Serie, Heatmap und Sessions zu sehen.",
+    "friendsTab": "Freunde",
+    "overview": "Übersicht",
+    "totalTime": "Gesamtzeit: {{hours}} h",
+    "sessionsLine": "Sessions: {{count}}",
+    "bestDay": "Bester Tag: {{date}}",
+    "achievementsTitle": "Erfolge",
+    "noneUnlocked": "Noch keine freigeschaltet.",
+    "recentSessions": "Letzte Sessions",
+    "noSessionsYet": "Noch keine abgeschlossenen Sessions.",
+    "achievements": {
+      "first_session": "Erste Session",
+      "sessions_10": "10 Sessions",
+      "sessions_50": "50 Sessions",
+      "streak_7": "Wochen-Serie",
+      "marathon_2h": "Marathon-Producer",
+      "night_owl": "Nachteule"
+    }
+  },
+  "weeklyRecap": {
+    "title": "Wochenrückblick",
+    "invalidStats": "Ungültige Statistik-Antwort.",
+    "loadFailed": "Laden fehlgeschlagen",
+    "sessionsHours": "Sessions: {{sessions}} · {{hours}} Stunden",
+    "streakBest": "Serie: {{current}} Tage (Best: {{best}})",
+    "vsPrior": "vs. Vorwoche: {{sign}}{{hours}} h",
+    "quote": "Kleine Sessions, täglich gestapelt, werden zu einem Katalog.",
+    "loading": "Deine Woche wird geladen…",
+    "setGoals": "Ziele für nächste Woche setzen",
+    "close": "Schließen"
+  },
+  "sessionInsights": {
+    "impact": "Session-Impact",
+    "focusScore": "Fokus-Score",
+    "betterThanPercent": "Besser als {{pct}} % deiner Sessions",
+    "tipsTitle": "Tipps für die nächste Session",
+    "timeBreakdown": "Zeitaufteilung",
+    "active": "Aktiv: {{duration}}",
+    "paused": "Pause: {{duration}}",
+    "effectiveRate": "Effektive Rate: {{pct}} %",
+    "productivity": "Produktivität",
+    "similarSessions": "Ähnliche Sessions",
+    "audio": "Audio",
+    "addAudioSnippet": "Audio-Snippet hinzufügen",
+    "comingSoon": "Demnächst",
+    "share": "Teilen",
+    "storyPng": "Story-Bild (PNG)",
+    "shareMinimal": "{{type}} · {{duration}} · Prodify",
+    "shareBold": "🔥 {{type}}\n⏱ {{duration}}\n— Prodify",
+    "shareGradient": "✨ Session-Recap\n{{type}}\n{{duration}}\nFokus {{focus}} %\nProdify",
+    "shareTextMinimal": "Text · Minimal",
+    "shareTextBold": "Text · Fett",
+    "shareTextLong": "Text · Lang",
+    "copyStats": "Stats als Text kopieren",
+    "focusHeadline": "{{score}} % Fokus — {{tier}}!",
+    "focusTier": {
+      "excellent": "Exzellent",
+      "strong": "Stark",
+      "solid": "Solide",
+      "room_to_improve": "Luft nach oben"
+    },
+    "api": {
+      "impact_streak_fuel": "Diese Session stärkt deine {{days}}-Tage-Serie.",
+      "impact_weekly_goal_cleared": "Wochenziel erreicht ({{count}}/{{target}} Sessions).",
+      "impact_week_progress": "Wochenfortschritt: {{count}}/{{target}} Sessions.",
+      "impact_default_momentum": "Wieder eine Einheit im Studio — Momentum wächst.",
+      "prod_peak_pattern": "Am {{weekday}} um {{hourRange}} bist du am produktivsten (UTC).",
+      "prod_minimal_pause": "Kaum Pausen — Deep-Work-Modus.",
+      "prod_long_breaks": "Du hast Pausen gemacht — Regeneration für den nächsten Push."
+    }
+  },
+  "focusScore": {
+    "messages": {
+      "perfect": "Perfekter Fokus! Legendär!",
+      "excellent": "Exzellenter Fokus!",
+      "great": "Starker Fokus!",
+      "good": "Guter Fokus!",
+      "decent": "Solider Fokus",
+      "roomForImprovement": "Luft nach oben"
+    },
+    "tips": {
+      "minimizePauses": "Versuch Pausen zu reduzieren — das hilft dem Flow.",
+      "longerSessions": "Längere Sessions führen oft zu tieferem Fokus.",
+      "addNotes": "Notizen helfen, Fortschritt besser zu tracken.",
+      "lowEnergy": "Wenig Energie? Kurze Pause vor der nächsten Session."
+    },
+    "benchmark": {
+      "above": "{{diff}} Punkte über deinem Durchschnitt",
+      "onAverage": "Genau im Durchschnitt",
+      "below": "{{diff}} Punkte unter dem Durchschnitt — nächstes Mal klappt's"
+    }
+  },
+  "streakComparison": {
+    "title": "Serien-Vergleich",
+    "you": "Du",
+    "them": "Sie",
+    "vs": "VS",
+    "aheadThem_one": "Sie sind {{count}} Tag voraus — Zeit aufzuholen.",
+    "aheadThem_other": "Sie sind {{count}} Tage voraus — Zeit aufzuholen.",
+    "tied": "Gleichstand — weiter so zusammen.",
+    "aheadYou_one": "Du bist {{count}} Tag voraus — nicht nachlassen.",
+    "aheadYou_other": "Du bist {{count}} Tage voraus — nicht nachlassen."
+  },
+  "profileHeatmap": {
+    "title": "Aktivität (90 Tage)",
+    "a11y": "{{date}}: {{seconds}} Sekunden"
+  },
+  "profileHeader": {
+    "sessions": "Sessions",
+    "streak": "Serie",
+    "friends": "Freunde",
+    "addFriend": "Freund hinzufügen",
+    "requestPending": "Anfrage ausstehend",
+    "friendsBadge": "Freunde",
+    "you": "Du"
+  },
+  "motivationApi": {
+    "legend": "So entstehen Legenden! 🔥",
+    "brick": "Noch ein Stein in deinem Imperium! 🏗️",
+    "special": "Du baust etwas Besonderes auf! ✨",
+    "grind": "Der Grind lügt nicht! 💪",
+    "consistency": "Beständigkeit schlägt Talent! 🎯",
+    "compound": "Studio-Zeit ist Zinseszins. 📈",
+    "showed_up": "Du bist erschienen — darum geht's. 🎹",
+    "mastery": "Eine Session näher am Meistern. 🏆",
+    "stacking": "Stapel weiter Erfolge. 🔁",
+    "focus": "Fokus steht dir gut. ✨"
+  },
+  "statsInsights": {
+    "api": {
+      "stats_insights_best_hour": "Stärkste Stunde: {{hourRange}} (UTC) für Fokuszeit insgesamt.",
+      "stats_insights_lean_dow": "Bei {{weekday}}s hast du das meiste Volumen."
+    }
+  },
+  "errors": {
+    "validation": {
+      "email": "Bitte gib eine gültige E-Mail-Adresse ein.",
+      "passwordShort": "Passwort ist zu kurz (mindestens 8 Zeichen).",
+      "usernameShort": "Benutzername ist zu kurz (mindestens 2 Zeichen)."
+    },
+    "requestTimeout": "Zeitüberschreitung. Bitte prüfe deine Verbindung und versuche es erneut.",
+    "network": "Netzwerkfehler. Bitte prüfe deine Verbindung und versuche es erneut.",
+    "unexpectedResponse": "Unerwartete Server-Antwort. Bitte versuche es erneut.",
+    "signInFailed": "Anmeldung fehlgeschlagen",
+    "registerFailed": "Registrierung fehlgeschlagen"
+  }
+}

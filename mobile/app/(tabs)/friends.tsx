@@ -1,7 +1,9 @@
 import { useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { Search } from "lucide-react-native";
+import type { TFunction } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -35,30 +37,31 @@ function rankColor(rank: number) {
   return colors.secondary;
 }
 
-function formatAgo(iso: string): string {
+function formatAgo(iso: string, t: TFunction): string {
   const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "unknown time";
+  if (!Number.isFinite(d.getTime())) return t("friendsScreen.unknownTime");
   const diff = Math.max(0, Date.now() - d.getTime());
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("friendsWidget.agoNow");
+  if (mins < 60) return t("friendsWidget.agoMinutes", { mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 48) return `${hours}h ago`;
+  if (hours < 48) return t("friendsWidget.agoHours", { hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t("friendsWidget.agoDays", { days });
 }
 
-function formatDuration(sec: number): string {
+function formatDuration(sec: number, t: TFunction): string {
   const m = Math.floor(sec / 60);
-  if (m < 1) return "<1 min";
-  if (m < 60) return `${m} min`;
+  if (m < 1) return t("friendsScreen.durationUnderOne");
+  if (m < 60) return t("friendsScreen.durationMin", { m });
   const h = Math.floor(m / 60);
-  return `${h}h ${m % 60}m`;
+  return t("friendsScreen.durationHours", { h, m: m % 60 });
 }
 
 export default function FriendsScreen() {
+  const { t } = useTranslation();
   const { token, user } = useAuth();
-  const [mode, setMode] = useState<"This Week" | "All Time">("This Week");
+  const [mode, setMode] = useState<"week" | "all">("week");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState<FriendLeaderboardDto | null>(null);
@@ -80,7 +83,7 @@ export default function FriendsScreen() {
     };
   }, []);
 
-  const periodParam = mode === "This Week" ? "week" : "all";
+  const periodParam = mode === "week" ? "week" : "all";
 
   const load = useCallback(async () => {
     const seq = ++loadSeq.current;
@@ -101,7 +104,7 @@ export default function FriendsScreen() {
       setIncoming(Array.isArray(inc) ? inc : []);
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
-      setError(e instanceof Error ? e.message : "Could not load friends.");
+      setError(e instanceof Error ? e.message : t("friendsScreen.loadError"));
       setLeaderboard(null);
       setActivity([]);
       setIncoming([]);
@@ -110,7 +113,7 @@ export default function FriendsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, periodParam]);
+  }, [token, periodParam, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -126,7 +129,7 @@ export default function FriendsScreen() {
   async function sendRequest() {
     const u = addName.trim();
     if (u.length < 2) {
-      Alert.alert("Username", "Enter a valid username.");
+      Alert.alert(t("friendsScreen.alertUsername"), t("friendsScreen.alertUsernameInvalid"));
       return;
     }
     if (!token) return;
@@ -137,10 +140,10 @@ export default function FriendsScreen() {
       setAddName("");
       setAddOpen(false);
       await load();
-      Alert.alert("Request sent", `Friend request sent to ${u}.`);
+      Alert.alert(t("friendsScreen.requestSentTitle"), t("friendsScreen.requestSentBody", { name: u }));
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Request failed.";
-      Alert.alert("Could not send", msg);
+      const msg = e instanceof Error ? e.message : t("friendsScreen.couldNotSend");
+      Alert.alert(t("friendsScreen.couldNotSend"), msg);
     } finally {
       setAddBusy(false);
     }
@@ -154,7 +157,7 @@ export default function FriendsScreen() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await load();
     } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Accept failed.");
+      Alert.alert(t("friendsScreen.errorGeneric"), e instanceof Error ? e.message : t("friendsScreen.acceptFailed"));
     } finally {
       setActionBusy(null);
     }
@@ -167,13 +170,18 @@ export default function FriendsScreen() {
       await apiJson(`/friends/${id}`, { token, method: "DELETE" });
       await load();
     } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Decline failed.");
+      Alert.alert(t("friendsScreen.errorGeneric"), e instanceof Error ? e.message : t("friendsScreen.declineFailed"));
     } finally {
       setActionBusy(null);
     }
   }
 
   const entries = leaderboard?.entries ?? [];
+
+  const modeOptions = [
+    { key: "week" as const, label: t("friendsScreen.modeWeek") },
+    { key: "all" as const, label: t("friendsScreen.modeAll") },
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -188,10 +196,10 @@ export default function FriendsScreen() {
         }
       >
         <View style={styles.topBar}>
-          <Text style={styles.title}>Friends</Text>
+          <Text style={styles.title}>{t("friendsScreen.title")}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Add friend"
+            accessibilityLabel={t("friendsScreen.addFriendA11y")}
             style={styles.iconButton}
             onPress={() => {
               Haptics.selectionAsync().catch(() => undefined);
@@ -205,7 +213,7 @@ export default function FriendsScreen() {
         {loading && !refreshing ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.muted}>Loading…</Text>
+            <Text style={styles.muted}>{t("friendsScreen.loading")}</Text>
           </View>
         ) : null}
 
@@ -213,19 +221,19 @@ export default function FriendsScreen() {
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable onPress={() => load().catch(() => undefined)}>
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>{t("friendsScreen.retry")}</Text>
             </Pressable>
           </View>
         ) : null}
 
         {incoming.length > 0 ? (
           <View style={styles.incomingBlock}>
-            <Text style={styles.incomingTitle}>Incoming requests</Text>
+            <Text style={styles.incomingTitle}>{t("friendsScreen.incomingTitle")}</Text>
             {incoming.map((req) => (
               <View key={req.id} style={styles.incomingRow}>
                 <View style={styles.incomingCopy}>
                   <Text style={styles.incomingName}>{req.username}</Text>
-                  <Text style={styles.incomingHint}>wants to be friends</Text>
+                  <Text style={styles.incomingHint}>{t("friendsScreen.incomingHint")}</Text>
                 </View>
                 <View style={styles.incomingActions}>
                   <Pressable
@@ -237,7 +245,7 @@ export default function FriendsScreen() {
                     disabled={actionBusy === req.id}
                     onPress={() => acceptRequest(req.id)}
                   >
-                    <Text style={styles.smallBtnText}>Accept</Text>
+                    <Text style={styles.smallBtnText}>{t("friendsScreen.accept")}</Text>
                   </Pressable>
                   <Pressable
                     style={({ pressed }) => [
@@ -248,7 +256,7 @@ export default function FriendsScreen() {
                     disabled={actionBusy === req.id}
                     onPress={() => declineRequest(req.id)}
                   >
-                    <Text style={styles.smallBtnTextDim}>Decline</Text>
+                    <Text style={styles.smallBtnTextDim}>{t("friendsScreen.decline")}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -257,14 +265,14 @@ export default function FriendsScreen() {
         ) : null}
 
         <View style={styles.toggleRow}>
-          {(["This Week", "All Time"] as const).map((item) => (
+          {modeOptions.map((item) => (
             <Pressable
-              key={item}
-              style={[styles.toggleChip, mode === item && styles.toggleChipActive]}
-              onPress={() => setMode(item)}
+              key={item.key}
+              style={[styles.toggleChip, mode === item.key && styles.toggleChipActive]}
+              onPress={() => setMode(item.key)}
             >
-              <Text style={[styles.toggleText, mode === item && styles.toggleTextActive]}>
-                {item}
+              <Text style={[styles.toggleText, mode === item.key && styles.toggleTextActive]}>
+                {item.label}
               </Text>
             </Pressable>
           ))}
@@ -272,9 +280,7 @@ export default function FriendsScreen() {
 
         <View style={styles.block}>
           {!loading && entries.length === 1 && user?.id === entries[0]?.user_id ? (
-            <Text style={styles.emptyLeader}>
-              {"You're solo on the leaderboard — add friends to compare stats."}
-            </Text>
+            <Text style={styles.emptyLeader}>{t("friendsScreen.soloLeader")}</Text>
           ) : null}
           {entries.map((entry, idx) => (
             <Animated.View
@@ -293,14 +299,20 @@ export default function FriendsScreen() {
                     <Text style={styles.userName}>{entry.username}</Text>
                     {user?.id === entry.user_id ? (
                       <View style={styles.youPill}>
-                        <Text style={styles.youPillText}>You</Text>
+                        <Text style={styles.youPillText}>{t("friendsScreen.youPill")}</Text>
                       </View>
                     ) : null}
                   </View>
                   <Text style={styles.userMeta}>
-                    {mode === "This Week"
-                      ? `${entry.sessions_in_period} session${entry.sessions_in_period === 1 ? "" : "s"} this week · ${entry.current_streak_days} day streak`
-                      : `${entry.sessions_in_period} session${entry.sessions_in_period === 1 ? "" : "s"} total · ${entry.current_streak_days} day streak`}
+                    {mode === "week"
+                      ? t("friendsScreen.metaWeek", {
+                          sessions: entry.sessions_in_period,
+                          days: entry.current_streak_days,
+                        })
+                      : t("friendsScreen.metaAll", {
+                          sessions: entry.sessions_in_period,
+                          days: entry.current_streak_days,
+                        })}
                   </Text>
                 </View>
               </View>
@@ -308,10 +320,10 @@ export default function FriendsScreen() {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Activity feed</Text>
+        <Text style={styles.sectionTitle}>{t("friendsScreen.activityTitle")}</Text>
         <View style={styles.block}>
           {activity.length === 0 && !loading ? (
-            <Text style={styles.feedEmpty}>No recent sessions among friends yet.</Text>
+            <Text style={styles.feedEmpty}>{t("friendsScreen.feedEmpty")}</Text>
           ) : null}
           {activity.map((item, idx) => (
             <View
@@ -320,9 +332,12 @@ export default function FriendsScreen() {
             >
               <View style={styles.feedDot} />
               <Text style={styles.feedText}>
-                <Text style={styles.feedName}>{item.username}</Text>
-                {` finished ${item.session_type}`}
-                {` · ${formatDuration(item.duration_seconds)} · ${formatAgo(item.completed_at)}`}
+                {t("friendsScreen.feedLine", {
+                  user: item.username,
+                  type: item.session_type,
+                  duration: formatDuration(item.duration_seconds, t),
+                  ago: formatAgo(item.completed_at, t),
+                })}
               </Text>
             </View>
           ))}
@@ -337,26 +352,24 @@ export default function FriendsScreen() {
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setAddOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Add friend</Text>
-            <Text style={styles.modalHint}>
-              Enter their Prodify username. They will need to accept your request.
-            </Text>
+            <Text style={styles.modalTitle}>{t("friendsScreen.modalTitle")}</Text>
+            <Text style={styles.modalHint}>{t("friendsScreen.modalHint")}</Text>
             <TextInput
               value={addName}
               onChangeText={setAddName}
-              placeholder="Username"
+              placeholder={t("friendsScreen.placeholderUsername")}
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
               style={styles.input}
             />
             <PrimaryButton
-              label={addBusy ? "Sending…" : "Send request"}
+              label={addBusy ? t("friendsScreen.sendingRequest") : t("friendsScreen.sendRequest")}
               onPress={() => sendRequest()}
               disabled={addBusy}
             />
             <Pressable style={styles.modalCancel} onPress={() => setAddOpen(false)}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
+              <Text style={styles.modalCancelText}>{t("friendsScreen.modalCancel")}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -532,7 +545,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     ...typography.caption,
   },
-  feedName: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold },
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.65)",

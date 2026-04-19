@@ -1,5 +1,6 @@
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,11 +13,13 @@ import {
 } from "react-native";
 
 import { useAuth } from "../../context/AuthContext";
+import { POST_REGISTER_HREF } from "../../lib/postAuthNavigation";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const { signUp } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -30,9 +33,9 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await signUp(email.trim(), username.trim(), password);
-      router.replace("/(tabs)/dashboard");
+      router.replace(POST_REGISTER_HREF);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Registration failed");
+      setError(e instanceof Error ? e.message : t("auth.register.registerFailed"));
     } finally {
       setLoading(false);
     }
@@ -45,18 +48,16 @@ export default function RegisterScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.badge}>Prodify</Text>
-          <Text style={styles.title}>{"Let's get started"}</Text>
-          <Text style={styles.subtitle}>
-            Create your Prodify account and start your first streak.
-          </Text>
+          <Text style={styles.badge}>{t("brand")}</Text>
+          <Text style={styles.title}>{t("auth.register.title")}</Text>
+          <Text style={styles.subtitle}>{t("auth.register.subtitle")}</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.fieldLabel}>Email</Text>
+          <Text style={styles.fieldLabel}>{t("auth.register.email")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="you@example.com"
+            placeholder={t("auth.register.placeholderEmail")}
             placeholderTextColor="#737373"
             autoCapitalize="none"
             keyboardType="email-address"
@@ -64,20 +65,20 @@ export default function RegisterScreen() {
             value={email}
             onChangeText={setEmail}
           />
-          <Text style={styles.fieldLabel}>Username</Text>
+          <Text style={styles.fieldLabel}>{t("auth.register.username")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Your name"
+            placeholder={t("auth.register.placeholderUsername")}
             placeholderTextColor="#737373"
             autoCapitalize="none"
             autoComplete="username"
             value={username}
             onChangeText={setUsername}
           />
-          <Text style={styles.fieldLabel}>Password</Text>
+          <Text style={styles.fieldLabel}>{t("auth.register.password")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="At least 8 characters"
+            placeholder={t("auth.register.placeholderPassword")}
             placeholderTextColor="#737373"
             secureTextEntry
             autoComplete="new-password"
@@ -87,12 +88,12 @@ export default function RegisterScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <PrimaryButton label="Create account" onPress={onSubmit} loading={loading} />
+          <PrimaryButton label={t("auth.register.createAccount")} onPress={onSubmit} loading={loading} />
         </View>
 
         <Link href="/(auth)/login" asChild>
           <Pressable style={styles.linkWrap}>
-            <Text style={styles.link}>Already have an account? Sign in</Text>
+            <Text style={styles.link}>{t("auth.register.hasAccount")}</Text>
           </Pressable>
         </Link>
       </ScrollView>

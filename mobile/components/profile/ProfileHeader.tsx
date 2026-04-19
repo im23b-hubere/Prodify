@@ -1,5 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
@@ -29,6 +30,7 @@ export const ProfileHeader = memo(function ProfileHeader({
   status,
   onAddFriend,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={styles.wrap}>
       <LinearGradient colors={["#3d1510", "#141414"]} style={styles.gradient} />
@@ -40,35 +42,35 @@ export const ProfileHeader = memo(function ProfileHeader({
         <View style={styles.quick}>
           <View style={styles.qItem}>
             <Text style={styles.qVal}>{totalSessions}</Text>
-            <Text style={styles.qLbl}>Sessions</Text>
+            <Text style={styles.qLbl}>{t("profileHeader.sessions")}</Text>
           </View>
           <View style={styles.qItem}>
             <Text style={styles.qVal}>
               {currentStreak}
               <Text style={styles.fire}> 🔥</Text>
             </Text>
-            <Text style={styles.qLbl}>Streak</Text>
+            <Text style={styles.qLbl}>{t("profileHeader.streak")}</Text>
           </View>
           <View style={styles.qItem}>
             <Text style={styles.qVal}>{friendsCount}</Text>
-            <Text style={styles.qLbl}>Friends</Text>
+            <Text style={styles.qLbl}>{t("profileHeader.friends")}</Text>
           </View>
         </View>
         {status === "none" ? (
           <Pressable style={styles.followBtn} onPress={onAddFriend}>
-            <Text style={styles.followTxt}>Add friend</Text>
+            <Text style={styles.followTxt}>{t("profileHeader.addFriend")}</Text>
           </Pressable>
         ) : status === "pending" ? (
           <View style={styles.pendingPill}>
-            <Text style={styles.pendingTxt}>Request pending</Text>
+            <Text style={styles.pendingTxt}>{t("profileHeader.requestPending")}</Text>
           </View>
         ) : status === "accepted" ? (
           <View style={styles.followingPill}>
-            <Text style={styles.followingTxt}>Friends</Text>
+            <Text style={styles.followingTxt}>{t("profileHeader.friendsBadge")}</Text>
           </View>
         ) : (
           <View style={styles.followingPill}>
-            <Text style={styles.followingTxt}>You</Text>
+            <Text style={styles.followingTxt}>{t("profileHeader.you")}</Text>
           </View>
         )}
       </View>

@@ -1,5 +1,6 @@
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,11 +13,13 @@ import {
 } from "react-native";
 
 import { useAuth } from "../../context/AuthContext";
+import { getPostLoginHref } from "../../lib/postAuthNavigation";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const { signIn } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -29,9 +32,10 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      router.replace("/(tabs)/dashboard");
+      const next = await getPostLoginHref();
+      router.replace(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign in failed");
+      setError(e instanceof Error ? e.message : t("auth.login.signInFailed"));
     } finally {
       setLoading(false);
     }
@@ -44,16 +48,16 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.badge}>Prodify</Text>
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Track sessions, stay focused, get better every day.</Text>
+          <Text style={styles.badge}>{t("brand")}</Text>
+          <Text style={styles.title}>{t("auth.login.title")}</Text>
+          <Text style={styles.subtitle}>{t("auth.login.subtitle")}</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.fieldLabel}>Email</Text>
+          <Text style={styles.fieldLabel}>{t("auth.login.email")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="you@example.com"
+            placeholder={t("auth.login.placeholderEmail")}
             placeholderTextColor="#737373"
             autoCapitalize="none"
             keyboardType="email-address"
@@ -61,10 +65,10 @@ export default function LoginScreen() {
             value={email}
             onChangeText={setEmail}
           />
-          <Text style={styles.fieldLabel}>Password</Text>
+          <Text style={styles.fieldLabel}>{t("auth.login.password")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Your password"
+            placeholder={t("auth.login.placeholderPassword")}
             placeholderTextColor="#737373"
             secureTextEntry
             autoComplete="password"
@@ -74,12 +78,12 @@ export default function LoginScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <PrimaryButton label="Sign in" onPress={onSubmit} loading={loading} />
+          <PrimaryButton label={t("auth.login.signIn")} onPress={onSubmit} loading={loading} />
         </View>
 
         <Link href="/(auth)/register" asChild>
           <Pressable style={styles.linkWrap}>
-            <Text style={styles.link}>No account yet? Register</Text>
+            <Text style={styles.link}>{t("auth.login.noAccount")}</Text>
           </Pressable>
         </Link>
       </ScrollView>

@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -16,6 +17,7 @@ import { apiJson } from "../../lib/client";
 const GOALS = [3, 5, 7, 10, 14] as const;
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -24,20 +26,11 @@ export default function OnboardingScreen() {
 
   const slides = useMemo(
     () => [
-      {
-        title: "Welcome to Prodify",
-        body: "Time your studio work with clarity — session types, mood, tags, and streak-aware focus.",
-      },
-      {
-        title: "Build your streak",
-        body: "Daily momentum beats motivation spikes. We will guard your chain with smart reminders.",
-      },
-      {
-        title: "Beat your friends",
-        body: "Leaderboards and activity keep you accountable — produce like it is a sport.",
-      },
+      { title: t("onboarding.slide1.title"), body: t("onboarding.slide1.body") },
+      { title: t("onboarding.slide2.title"), body: t("onboarding.slide2.body") },
+      { title: t("onboarding.slide3.title"), body: t("onboarding.slide3.body") },
     ],
-    [],
+    [t],
   );
 
   const finish = useCallback(async () => {
@@ -87,7 +80,7 @@ export default function OnboardingScreen() {
               setStep(3);
             }}
           >
-            <Text style={styles.skip}>Skip</Text>
+            <Text style={styles.skip}>{t("onboarding.skip")}</Text>
           </Pressable>
           <Text style={styles.dots}>
             {step + 1}/{slides.length}
@@ -98,12 +91,20 @@ export default function OnboardingScreen() {
           <Text style={styles.heroBody}>{s.body}</Text>
         </View>
         <PrimaryButton
-          label={step === slides.length - 1 ? "Continue" : "Next"}
+          label={step === slides.length - 1 ? t("onboarding.continue") : t("onboarding.next")}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
             setStep((x) => x + 1);
           }}
         />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("onboarding.footerPrivacy")}
+          onPress={() => router.push("/legal/privacy" as never)}
+          style={styles.legalFooter}
+        >
+          <Text style={styles.legalFooterTxt}>{t("onboarding.footerPrivacy")}</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }
@@ -112,10 +113,8 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Text style={styles.heroTitle}>Weekly session goal</Text>
-          <Text style={styles.heroBody}>
-            Pick a target you can defend. You can change this anytime.
-          </Text>
+          <Text style={styles.heroTitle}>{t("onboarding.goal.title")}</Text>
+          <Text style={styles.heroBody}>{t("onboarding.goal.body")}</Text>
           <View style={styles.goalRow}>
             {GOALS.map((g) => (
               <Pressable
@@ -130,7 +129,15 @@ export default function OnboardingScreen() {
               </Pressable>
             ))}
           </View>
-          <PrimaryButton label="Continue" onPress={() => setStep(4)} />
+          <PrimaryButton label={t("onboarding.continue")} onPress={() => setStep(4)} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("onboarding.footerPrivacy")}
+            onPress={() => router.push("/legal/privacy" as never)}
+            style={styles.legalFooter}
+          >
+            <Text style={styles.legalFooterTxt}>{t("onboarding.footerPrivacy")}</Text>
+          </Pressable>
         </ScrollView>
       </SafeAreaView>
     );
@@ -139,14 +146,20 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.slide}>
-        <Text style={styles.heroTitle}>Stay in the loop</Text>
-        <Text style={styles.heroBody}>
-          Enable notifications for streak protection — we will ping you before the day slips away.
-        </Text>
+        <Text style={styles.heroTitle}>{t("onboarding.notifications.title")}</Text>
+        <Text style={styles.heroBody}>{t("onboarding.notifications.body")}</Text>
       </View>
-      <PrimaryButton label="Enable notifications" onPress={requestNotif} loading={busy} />
+      <PrimaryButton label={t("onboarding.notifications.enable")} onPress={requestNotif} loading={busy} />
       <Pressable style={styles.secondaryBtn} onPress={finish} disabled={busy}>
-        <Text style={styles.secondaryTxt}>Not now</Text>
+        <Text style={styles.secondaryTxt}>{t("onboarding.notifications.notNow")}</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("onboarding.footerPrivacy")}
+        onPress={() => router.push("/legal/privacy" as never)}
+        style={styles.legalFooter}
+      >
+        <Text style={styles.legalFooterTxt}>{t("onboarding.footerPrivacy")}</Text>
       </Pressable>
     </SafeAreaView>
   );
@@ -188,5 +201,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
     ...typography.body,
+  },
+  legalFooter: { alignItems: "center", paddingVertical: spacing.sm },
+  legalFooterTxt: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+    textDecorationLine: "underline",
   },
 });

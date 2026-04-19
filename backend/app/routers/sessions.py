@@ -22,6 +22,7 @@ from app.services.push_dispatch import notify_session_complete
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 from app.schemas import (
+    InsightItemPublic,
     RelatedSessionPublic,
     SessionDetailInsightsPublic,
     SessionPublic,
@@ -49,7 +50,7 @@ def _accumulate_pause_if_needed(row: ProductionSession, end_time) -> None:
     row.pause_started_at = None
 
 
-def _productivity_hint(rows: list[ProductionSession]) -> str | None:
+def _productivity_hint_item(rows: list[ProductionSession]) -> InsightItemPublic | None:
     if len(rows) < 10:
         return None
     by_dow: Counter[int] = Counter()
@@ -62,8 +63,10 @@ def _productivity_hint(rows: list[ProductionSession]) -> str | None:
         by_hour[dt.hour] += 1
     top_dow = by_dow.most_common(1)[0][0]
     top_hour = by_hour.most_common(1)[0][0]
-    names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    return f"You're most productive on {names[top_dow]} around {top_hour}:00–{(top_hour + 3) % 24}:00 (UTC)."
+    return InsightItemPublic(
+        key="prod_peak_pattern",
+        params={"weekday": top_dow, "hour": top_hour},
+    )
 
 
 @router.post("/start", response_model=SessionPublic, status_code=status.HTTP_201_CREATED)
@@ -368,15 +371,15 @@ def session_detail_insights(
         focus_user_average = int(round(sum(peer_scores) / len(peer_scores)))
 
     if focus_score >= 95:
-        flabel = "Excellent"
+        focus_tier = "excellent"
     elif focus_score >= 80:
-        flabel = "Strong"
+        focus_tier = "strong"
     elif focus_score >= 60:
-        flabel = "Solid"
+        focus_tier = "solid"
     else:
-        flabel = "Room to improve"
+        focus_tier = "room_to_improve"
 
-    impact_lines: list[str] = []
+    impact_items: list[InsightItemPublic] = []
     all_completed = db.scalars(
         select(ProductionSession).where(
             ProductionSession.user_id == current.id,
@@ -391,7 +394,7 @@ def session_detail_insights(
     cur_streak = compute_current_streak(merged)
     sess_day = as_utc_aware(row.started_at).date().isoformat()
     if cur_streak > 0 and sess_day == utcnow().date().isoformat():
-        impact_lines.append(f"This session fuels your {cur_streak}-day streak.")
+        impact_items.append(InsightItemPublic(key="impact_streak_fuel", params={"days": cur_streak}))
 
     sess_week = _monday_week_start(as_utc_aware(row.started_at).date())
     goal = db.scalar(
@@ -405,21 +408,31 @@ def session_detail_insights(
         same_week = [r for r in all_completed if _monday_week_start(as_utc_aware(r.started_at).date()) == sess_week]
         cnt = len(same_week)
         if goal.target_value > 0 and cnt >= goal.target_value:
-            impact_lines.append(f"Weekly goal cleared ({cnt}/{goal.target_value} sessions).")
+            impact_items.append(
+                InsightItemPublic(
+                    key="impact_weekly_goal_cleared",
+                    params={"count": cnt, "target": goal.target_value},
+                )
+            )
         elif goal.target_value > 0:
-            impact_lines.append(f"Week progress: {cnt}/{goal.target_value} sessions.")
+            impact_items.append(
+                InsightItemPublic(
+                    key="impact_week_progress",
+                    params={"count": cnt, "target": goal.target_value},
+                )
+            )
 
-    if not impact_lines:
-        impact_lines.append("Another rep in the studio — momentum compounds.")
+    if not impact_items:
+        impact_items.append(InsightItemPublic(key="impact_default_momentum", params={}))
 
-    prod_lines: list[str] = []
-    hint = _productivity_hint(all_completed)
-    if hint:
-        prod_lines.append(hint)
+    productivity_items: list[InsightItemPublic] = []
+    hint_item = _productivity_hint_item(all_completed)
+    if hint_item:
+        productivity_items.append(hint_item)
     if paused <= 60:
-        prod_lines.append("Minimal pause time — deep work mode.")
+        productivity_items.append(InsightItemPublic(key="prod_minimal_pause", params={}))
     elif paused > 600:
-        prod_lines.append("You took breaks — recovery fuels the next push.")
+        productivity_items.append(InsightItemPublic(key="prod_long_breaks", params={}))
 
     timeline: list[SessionTimelineSegmentPublic] = []
     if dur > 0:
@@ -441,16 +454,19 @@ def session_detail_insights(
     ).all()
 
     return SessionDetailInsightsPublic(
-        impact_lines=impact_lines,
+        impact_lines=[],
+        impact_items=impact_items,
         focus_score=focus_score,
-        focus_label=f"{focus_score}% Focus — {flabel}!",
+        focus_label="",
+        focus_tier=focus_tier,
         focus_percentile=percentile,
         focus_user_average=focus_user_average,
         active_seconds=dur,
         paused_seconds=paused,
         effective_rate_percent=rate,
         timeline=timeline,
-        productivity_insights=prod_lines,
+        productivity_insights=[],
+        productivity_items=productivity_items,
         related_sessions=[
             RelatedSessionPublic(
                 id=r.id,
@@ -631,7 +647,7 @@ def sessions_stats(
         reverse=True,
     )[:10]
 
-    hint = _productivity_hint(completed)
+    hint_item = _productivity_hint_item(completed)
 
     return SessionStatsPublic(
         period=period_label,
@@ -646,5 +662,6 @@ def sessions_stats(
         trend=trend,
         breakdown=breakdown,
         recent_sessions=[SessionPublic.model_validate(r) for r in recent],
-        productivity_hint=hint,
+        productivity_hint=None,
+        productivity_hint_item=hint_item,
     )

@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Platform,
   Pressable,
@@ -20,6 +21,7 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
 import { formatSessionListDate, weekdayLetterFromIsoDay } from "../../lib/sessionTime";
+import { translateInsightItem } from "../../lib/sessionInsightsI18n";
 import {
   tryParseHeatmapDays,
   tryParsePersonalRecords,
@@ -35,12 +37,6 @@ type PersonalRecord = {
   context: string | null;
   occurred_at: string | null;
 };
-
-const FILTERS = [
-  { key: "7d" as const, label: "7D", period: "week" as const },
-  { key: "30d" as const, label: "30D", period: "month" as const },
-  { key: "all" as const, label: "All", period: "all" as const },
-];
 
 const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
 
@@ -91,10 +87,20 @@ function SessionsPerDayChart({ data }: { data: BarPoint[] }) {
 }
 
 export default function StatsScreen() {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const router = useRouter();
+  const filters = useMemo(
+    () =>
+      [
+        { key: "7d" as const, label: t("stats.filter7d"), period: "week" as const },
+        { key: "30d" as const, label: t("stats.filter30d"), period: "month" as const },
+        { key: "all" as const, label: t("stats.filterAll"), period: "all" as const },
+      ] as const,
+    [t],
+  );
   const [filterIdx, setFilterIdx] = useState(0);
-  const filter = FILTERS[filterIdx];
+  const filter = filters[filterIdx];
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
   const [heatmapDays, setHeatmapDays] = useState<HeatmapDay[]>([]);
@@ -132,7 +138,7 @@ export default function StatsScreen() {
           setStats(null);
           setHeatmapDays([]);
           setRecords([]);
-          setError("Invalid stats response from server.");
+          setError(t("stats.invalidResponse"));
         }
         return;
       }
@@ -143,24 +149,24 @@ export default function StatsScreen() {
       }
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
-      const msg = e instanceof Error ? e.message : "Failed to load stats";
+      const msg = e instanceof Error ? e.message : t("stats.loadFailed");
       debugLog("stats", "stats_fetch_failed", { period: periodParam, message: msg });
       if (mounted.current) setError(msg);
     }
-  }, [periodParam, token]);
+  }, [periodParam, token, t]);
 
   useEffect(() => {
-    loadStats().catch((e) => setError(e instanceof Error ? e.message : "Failed to load stats"));
-  }, [loadStats]);
+    loadStats().catch((e) => setError(e instanceof Error ? e.message : t("stats.loadFailed")));
+  }, [loadStats, t]);
 
   const onRefresh = useCallback(async () => {
     if (mounted.current) setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     await loadStats().catch((e) => {
-      if (mounted.current) setError(e instanceof Error ? e.message : "Failed to load stats");
+      if (mounted.current) setError(e instanceof Error ? e.message : t("stats.loadFailed"));
     });
     if (mounted.current) setRefreshing(false);
-  }, [loadStats]);
+  }, [loadStats, t]);
 
   const summary = useMemo(() => {
     const s = stats?.summary;
@@ -210,6 +216,13 @@ export default function StatsScreen() {
 
   const recent = stats?.recent_sessions ?? [];
 
+  const productivityHintText = useMemo(() => {
+    if (stats?.productivity_hint_item) {
+      return translateInsightItem(stats.productivity_hint_item, t);
+    }
+    return stats?.productivity_hint ?? null;
+  }, [stats?.productivity_hint_item, stats?.productivity_hint, t]);
+
   const weekGoal = useMemo(() => {
     if (filter.period !== "week" || !stats?.trend?.length) return null;
     const daysWith = new Set(stats.trend.map((t) => t.label).filter(Boolean)).size;
@@ -230,7 +243,7 @@ export default function StatsScreen() {
           }}
           disabled={!canOpen}
         >
-          <Text style={styles.recentType}>{item.session_type ?? "Session"}</Text>
+          <Text style={styles.recentType}>{item.session_type ?? t("stats.sessionFallback")}</Text>
           <View style={styles.recentMid}>
             <Text style={styles.recentDur}>{formatDuration(item.duration_seconds ?? 0)}</Text>
             <Text style={styles.recentDate}>{formatSessionListDate(item.started_at)}</Text>
@@ -239,7 +252,7 @@ export default function StatsScreen() {
         </Pressable>
       );
     },
-    [router],
+    [router, t],
   );
 
   return (
@@ -256,9 +269,9 @@ export default function StatsScreen() {
         }
       >
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Your stats</Text>
+          <Text style={styles.title}>{t("stats.title")}</Text>
           <View style={styles.filterRow}>
-            {FILTERS.map((f, i) => (
+            {filters.map((f, i) => (
               <Pressable
                 key={f.key}
                 style={[styles.filterChip, filterIdx === i && styles.filterChipActive]}
@@ -283,38 +296,44 @@ export default function StatsScreen() {
           contentContainerStyle={styles.cardRow}
         >
           <StatCard
-            label="Total hours"
+            label={t("stats.totalHours")}
             value={summary.hours}
             sublabel={
               summary.delta != null
-                ? `${summary.delta >= 0 ? "+" : ""}${summary.delta}h vs prior period`
+                ? t("stats.vsPrior", {
+                    sign: summary.delta >= 0 ? "+" : "",
+                    hours: summary.delta,
+                  })
                 : undefined
             }
             subPositive={summary.delta == null || summary.delta >= 0}
           />
-          <StatCard label="Sessions" value={summary.sessions} />
+          <StatCard label={t("stats.sessions")} value={summary.sessions} />
           <StatCard
-            label="Current streak"
+            label={t("stats.currentStreak")}
             value={`🔥 ${summary.streak}`}
-            sublabel={`Best: ${summary.bestStreak} days`}
+            sublabel={t("stats.bestStreakSub", { days: summary.bestStreak })}
           />
         </ScrollView>
 
         {weekGoal ? (
           <View style={styles.goalCard}>
             <Text style={styles.goalTitle}>
-              Weekly presence {weekGoal.daysWith}/{weekGoal.goal} days
+              {t("stats.weeklyPresence", { have: weekGoal.daysWith, goal: weekGoal.goal })}
             </Text>
             <Text style={styles.goalSub}>
               {weekGoal.daysWith >= weekGoal.goal
-                ? "Goal crushed — keep the momentum."
-                : `${weekGoal.goal - weekGoal.daysWith} more day${weekGoal.goal - weekGoal.daysWith === 1 ? "" : "s"} to hit 7/7.`}
+                ? t("stats.weeklyCrushed")
+                : t("stats.weeklyMoreDays", {
+                    count: weekGoal.goal - weekGoal.daysWith,
+                    n: weekGoal.goal - weekGoal.daysWith,
+                  })}
             </Text>
           </View>
         ) : null}
 
         <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>Activity heatmap (90 days)</Text>
+          <Text style={styles.cardTitle}>{t("stats.heatmapTitle")}</Text>
           <View style={styles.heatmapGrid}>
             {heatmapDays.map((d) => (
               <View
@@ -337,9 +356,9 @@ export default function StatsScreen() {
         </View>
 
         <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>Personal records</Text>
+          <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
           {records.length === 0 ? (
-            <Text style={styles.emptyText}>Complete sessions to unlock records.</Text>
+            <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
           ) : (
             records.map((r) => (
               <View key={r.key + (r.occurred_at ?? "")} style={styles.recordRow}>
@@ -352,7 +371,7 @@ export default function StatsScreen() {
         </View>
 
         <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>Sessions per day</Text>
+          <Text style={styles.cardTitle}>{t("stats.perDayTitle")}</Text>
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <View style={styles.chartInner}>
             <SessionsPerDayChart data={chartData} />
@@ -360,7 +379,7 @@ export default function StatsScreen() {
         </View>
 
         <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>Session type mix</Text>
+          <Text style={styles.cardTitle}>{t("stats.typeMixTitle")}</Text>
           {breakdownData.length > 0 ? (
             <View style={styles.breakdownWrap}>
               {breakdownData.map((item) => (
@@ -385,22 +404,20 @@ export default function StatsScreen() {
             </View>
           ) : (
             <View style={styles.emptyWrap}>
-              <Text style={styles.emptyText}>
-                No stats yet. Complete a session to see your insights.
-              </Text>
+              <Text style={styles.emptyText}>{t("stats.typeMixEmpty")}</Text>
             </View>
           )}
         </View>
 
-        {stats?.productivity_hint ? (
+        {productivityHintText ? (
           <View style={styles.hintCard}>
-            <Text style={styles.hintText}>{stats.productivity_hint}</Text>
+            <Text style={styles.hintText}>{productivityHintText}</Text>
           </View>
         ) : null}
 
-        <Text style={styles.recentTitle}>Recent sessions</Text>
+        <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
         {recent.length === 0 ? (
-          <Text style={styles.emptyText}>No sessions in this range.</Text>
+          <Text style={styles.emptyText}>{t("stats.recentEmpty")}</Text>
         ) : (
           recent.map((item) => (
             <View

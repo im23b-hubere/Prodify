@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, time, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -23,6 +23,17 @@ from app.schemas import (
 from app.timeutil import as_utc_aware
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_my_account(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Response:
+    """Permanently delete the authenticated account and associated data (DSGVO / right to erasure)."""
+    db.delete(current)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def _accepted_friendship(db: Session, a: int, b: int) -> bool:

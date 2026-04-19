@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -20,6 +21,7 @@ import type { SessionDto } from "../../types/session";
 const AUTO_RETURN_SECONDS = 5;
 
 export default function SessionCompleteScreen() {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const router = useRouter();
   const raw = useLocalSearchParams<{ id: string | string[] }>().id;
@@ -35,29 +37,29 @@ export default function SessionCompleteScreen() {
   const load = useCallback(async () => {
     if (!token || !id) {
       setLoadState("error");
-      setLoadError(!token ? "Not signed in." : "Missing session.");
+      setLoadError(!token ? t("sessionComplete.notSignedIn") : t("sessionComplete.missingSession"));
       return;
     }
     if (!Number.isFinite(Number(id))) {
       setLoadState("error");
-      setLoadError("Invalid session.");
+      setLoadError(t("sessionComplete.invalidSession"));
       return;
     }
     setLoadState("loading");
     setLoadError(null);
     try {
-      const raw = await apiJson<unknown>(`/sessions/item/${id}`, { token });
+      const rawSession = await apiJson<unknown>(`/sessions/item/${id}`, { token });
       if (cancelled.current) return;
-      const s = tryParseSessionDto(raw);
+      const s = tryParseSessionDto(rawSession);
       if (!s) {
         setLoadState("error");
-        setLoadError("Invalid session data from server.");
+        setLoadError(t("sessionComplete.invalidData"));
         setSession(null);
         return;
       }
       if (s.stopped_at == null) {
         setLoadState("error");
-        setLoadError("This session is still in progress.");
+        setLoadError(t("sessionComplete.stillInProgress"));
         setSession(null);
         return;
       }
@@ -74,10 +76,10 @@ export default function SessionCompleteScreen() {
     } catch (e) {
       if (cancelled.current) return;
       setLoadState("error");
-      setLoadError(e instanceof Error ? e.message : "Could not load session.");
+      setLoadError(e instanceof Error ? e.message : t("sessionComplete.loadError"));
       setSession(null);
     }
-  }, [id, token]);
+  }, [id, token, t]);
 
   useEffect(() => {
     cancelled.current = false;
@@ -94,8 +96,8 @@ export default function SessionCompleteScreen() {
       router.replace("/(tabs)/dashboard");
       return;
     }
-    const t = setTimeout(() => setSecondsLeft((x) => x - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSecondsLeft((x) => x - 1), 1000);
+    return () => clearTimeout(timer);
   }, [loadState, router, secondsLeft]);
 
   const dur = session?.duration_seconds ?? 0;
@@ -120,8 +122,8 @@ export default function SessionCompleteScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.centered}>
-          <Text style={styles.title}>Session complete</Text>
-          <Text style={styles.muted}>Loading your session…</Text>
+          <Text style={styles.title}>{t("sessionComplete.title")}</Text>
+          <Text style={styles.muted}>{t("sessionComplete.loadingSession")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -131,12 +133,12 @@ export default function SessionCompleteScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.centered}>
-          <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.muted}>{loadError ?? "Unknown error"}</Text>
+          <Text style={styles.title}>{t("sessionComplete.errorTitle")}</Text>
+          <Text style={styles.muted}>{loadError ?? t("sessionComplete.unknownError")}</Text>
           <View style={styles.actions}>
-            <PrimaryButton label="Try again" onPress={() => void load()} />
+            <PrimaryButton label={t("sessionComplete.tryAgain")} onPress={() => void load()} />
             <Pressable style={styles.textBtn} onPress={() => router.replace("/(tabs)/dashboard")}>
-              <Text style={styles.textBtnLabel}>Back to dashboard</Text>
+              <Text style={styles.textBtnLabel}>{t("sessionComplete.backToDashboard")}</Text>
             </Pressable>
           </View>
         </View>
@@ -148,22 +150,22 @@ export default function SessionCompleteScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.hero}>
         <Text style={styles.check}>✓</Text>
-        <Text style={styles.title}>Session complete</Text>
+        <Text style={styles.title}>{t("sessionComplete.title")}</Text>
         <Text style={styles.bigDur}>{formatDurationWords(dur)}</Text>
         {streak !== null && streak > 0 ? (
-          <Text style={styles.streak}>🔥 {streak} day streak!</Text>
+          <Text style={styles.streak}>{t("sessionComplete.streakLine", { count: streak })}</Text>
         ) : null}
         {completionMessage ? <Text style={styles.motivation}>{completionMessage}</Text> : null}
-        <Text style={styles.auto}>Returning to dashboard in {secondsLeft}s…</Text>
+        <Text style={styles.auto}>{t("sessionComplete.autoReturn", { seconds: secondsLeft })}</Text>
       </View>
 
       <View style={styles.actions}>
         <PrimaryButton
-          label="View session details"
-          onPress={() => router.replace(`/session/${id}`)}
+          label={t("sessionComplete.viewDetails")}
+          onPress={() => router.replace(`/session/${id}` as never)}
         />
         <PrimaryButton
-          label="Start another session"
+          label={t("sessionComplete.startAnother")}
           onPress={async () => {
             try {
               await SecureStore.setItemAsync(PENDING_SESSION_SETUP_KEY, "1");
@@ -174,7 +176,7 @@ export default function SessionCompleteScreen() {
           }}
         />
         <Pressable style={styles.textBtn} onPress={() => router.replace("/(tabs)/dashboard")}>
-          <Text style={styles.textBtnLabel}>Back to dashboard</Text>
+          <Text style={styles.textBtnLabel}>{t("sessionComplete.backToDashboard")}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

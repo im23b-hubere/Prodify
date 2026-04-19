@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Pressable,
@@ -20,20 +21,14 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { sessionMoodLabel, sessionTypeLabel } from "../../lib/sessionI18n";
 import { sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { formatDurationWords, parseSessionDate } from "../../lib/sessionTime";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
 
-const MOOD_LABEL: Record<number, string> = {
-  1: "Low",
-  2: "Okay",
-  3: "Good",
-  4: "Great",
-  5: "On fire",
-};
-
 export default function SessionDetailScreen() {
+  const { t } = useTranslation();
   const { token, user } = useAuth();
   const router = useRouter();
   const raw = useLocalSearchParams<{ id: string | string[] }>().id;
@@ -50,7 +45,7 @@ export default function SessionDetailScreen() {
   const load = useCallback(async () => {
     if (!token || !id) return;
     if (!Number.isFinite(Number(id))) {
-      setError("Invalid session id");
+      setError(t("sessionDetail.invalidId"));
       setSession(null);
       return;
     }
@@ -58,7 +53,7 @@ export default function SessionDetailScreen() {
     const raw = await apiJson<unknown>(`/sessions/item/${id}`, { token });
     const data = tryParseSessionDto(raw);
     if (!data) {
-      setError("Invalid session data from server.");
+      setError(t("sessionDetail.invalidData"));
       setSession(null);
       return;
     }
@@ -77,17 +72,21 @@ export default function SessionDetailScreen() {
     } else {
       setInsights(null);
     }
-  }, [id, token]);
+  }, [id, token, t]);
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : "Failed to load session"));
-  }, [load]);
+    load().catch((e) =>
+      setError(e instanceof Error ? e.message : t("sessionDetail.loadFailed")),
+    );
+  }, [load, t]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load().catch((e) => setError(e instanceof Error ? e.message : "Failed to refresh"));
+    await load().catch((e) =>
+      setError(e instanceof Error ? e.message : t("sessionDetail.refreshFailed")),
+    );
     setRefreshing(false);
-  }, [load]);
+  }, [load, t]);
 
   const save = useCallback(async () => {
     if (!token || !id) return;
@@ -104,25 +103,25 @@ export default function SessionDetailScreen() {
       });
       const updated = tryParseSessionDto(raw);
       if (!updated) {
-        setError("Invalid response from server.");
+        setError(t("sessionDetail.invalidResponse"));
         return;
       }
       setSession(updated);
       setNote(updated.notes ?? "");
       setSelectedType((updated.session_type as SessionType) || "Beat Making");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save");
+      setError(e instanceof Error ? e.message : t("sessionDetail.saveFailed"));
     } finally {
       setBusy(false);
     }
-  }, [id, note, selectedType, token]);
+  }, [id, note, selectedType, token, t]);
 
   const confirmDelete = useCallback(() => {
     if (!token || !id) return;
-    Alert.alert("Delete session?", "This moves the session to trash.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("sessionDetail.deleteTitle"), t("sessionDetail.deleteBody"), [
+      { text: t("sessionDetail.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("sessionDetail.delete"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -132,18 +131,18 @@ export default function SessionDetailScreen() {
             );
             router.replace("/(tabs)/dashboard");
           } catch (e) {
-            setError(e instanceof Error ? e.message : "Delete failed");
+            setError(e instanceof Error ? e.message : t("sessionDetail.deleteFailed"));
           }
         },
       },
     ]);
-  }, [id, router, token]);
+  }, [id, router, token, t]);
 
   if (!session) {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.loadingWrap}>
-          <Text style={styles.loadingText}>Loading session...</Text>
+          <Text style={styles.loadingText}>{t("sessionDetail.loading")}</Text>
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
       </SafeAreaView>
@@ -157,7 +156,7 @@ export default function SessionDetailScreen() {
   const durationLabel =
     session.duration_seconds != null
       ? formatDurationWords(session.duration_seconds)
-      : "In progress";
+      : t("sessionDetail.inProgress");
   const tagList = sessionTagsList(session.tags);
 
   return (
@@ -174,18 +173,18 @@ export default function SessionDetailScreen() {
       >
         <Pressable onPress={() => router.back()} style={styles.backRow}>
           <Text style={styles.backChevron}>‹</Text>
-          <Text style={styles.backText}>Back</Text>
+          <Text style={styles.backText}>{t("sessionDetail.back")}</Text>
         </Pressable>
 
         <View style={styles.hero}>
-          <Text style={styles.heroType}>{session.session_type}</Text>
+          <Text style={styles.heroType}>{sessionTypeLabel(session.session_type, t)}</Text>
           <Text style={styles.heroDur}>{durationLabel}</Text>
           <Text style={styles.heroMeta}>
             {startOk
-              ? `${start.toLocaleString("en-US", { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+              ? `${start.toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
               : "—"}
             {endOk && end
-              ? ` – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+              ? ` – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
               : ""}
           </Text>
         </View>
@@ -200,44 +199,46 @@ export default function SessionDetailScreen() {
 
         <View style={styles.grid}>
           <View style={styles.gridCell}>
-            <Text style={styles.gridLabel}>Start</Text>
+            <Text style={styles.gridLabel}>{t("sessionDetail.start")}</Text>
             <Text style={styles.gridVal}>
               {startOk
-                ? start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+                ? start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
                 : "—"}
             </Text>
           </View>
           <View style={styles.gridCell}>
-            <Text style={styles.gridLabel}>End</Text>
+            <Text style={styles.gridLabel}>{t("sessionDetail.end")}</Text>
             <Text style={styles.gridVal}>
               {endOk && end
-                ? end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+                ? end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
                 : "—"}
             </Text>
           </View>
           <View style={styles.gridCell}>
-            <Text style={styles.gridLabel}>Mood</Text>
+            <Text style={styles.gridLabel}>{t("sessionDetail.mood")}</Text>
             <Text style={styles.gridVal}>
-              {session.mood_level ? `${MOOD_LABEL[session.mood_level] ?? "—"}` : "—"}
+              {session.mood_level ? sessionMoodLabel(session.mood_level, t) : "—"}
             </Text>
           </View>
           <View style={styles.gridCell}>
-            <Text style={styles.gridLabel}>Pauses</Text>
+            <Text style={styles.gridLabel}>{t("sessionDetail.pauses")}</Text>
             <Text style={styles.gridVal}>
               {session.paused_duration_seconds
-                ? `${Math.round((session.paused_duration_seconds || 0) / 60)} min`
+                ? t("sessionDetail.pauseMin", {
+                    m: Math.round((session.paused_duration_seconds || 0) / 60),
+                  })
                 : "—"}
             </Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Session type</Text>
+          <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
           <View style={styles.chips}>
             {SESSION_TYPES.map((type) => (
               <SessionTypeChip
                 key={type}
-                label={type}
+                label={sessionTypeLabel(type, t)}
                 active={selectedType === type}
                 onPress={() => setSelectedType(type)}
               />
@@ -246,12 +247,12 @@ export default function SessionDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notes</Text>
+          <Text style={styles.sectionTitle}>{t("sessionDetail.notes")}</Text>
           <TextInput
             style={styles.noteInput}
             value={note}
             onChangeText={setNote}
-            placeholder="Add context for this session"
+            placeholder={t("sessionDetail.notesPlaceholder")}
             placeholderTextColor={colors.textSecondary}
             multiline
           />
@@ -259,11 +260,11 @@ export default function SessionDetailScreen() {
 
         {tagList.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tags</Text>
+            <Text style={styles.sectionTitle}>{t("sessionDetail.tags")}</Text>
             <View style={styles.tagRow}>
-              {tagList.map((t) => (
-                <View key={t} style={styles.tag}>
-                  <Text style={styles.tagTxt}>{t}</Text>
+              {tagList.map((tag) => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagTxt}>{tag}</Text>
                 </View>
               ))}
             </View>
@@ -272,9 +273,9 @@ export default function SessionDetailScreen() {
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <PrimaryButton label="Save changes" onPress={save} loading={busy} />
+        <PrimaryButton label={t("sessionDetail.saveChanges")} onPress={save} loading={busy} />
         <Pressable style={styles.dangerBtn} onPress={confirmDelete}>
-          <Text style={styles.dangerTxt}>Delete session</Text>
+          <Text style={styles.dangerTxt}>{t("sessionDetail.deleteSession")}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

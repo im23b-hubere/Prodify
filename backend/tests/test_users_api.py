@@ -1,6 +1,24 @@
 from tests.test_friends import _register
 
 
+def test_delete_me_removes_account(client):
+    token = _register(client, "delete-me@example.com", "deleteme")
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+
+    deleted = client.delete("/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert deleted.status_code == 204
+
+    stale = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert stale.status_code == 401
+
+    relogin = client.post(
+        "/auth/login",
+        json={"email": "delete-me@example.com", "password": "strong-pass-123"},
+    )
+    assert relogin.status_code == 401
+
+
 def test_friend_status_and_user_profile(client):
     t_a = _register(client, "g1@example.com", "galuser")
     t_b = _register(client, "g2@example.com", "haluser")

@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 import { GlassCard } from "../ui/GlassCard";
@@ -9,6 +10,8 @@ type Props = {
   greeting: string;
   userName: string;
   message: string;
+  /** Optional line from `GET /motivational-messages/random` (translated). */
+  serverMessage?: string | null;
   todaySessionCount: number;
 };
 
@@ -16,8 +19,10 @@ export const DashboardMotivationCard = memo(function DashboardMotivationCard({
   greeting,
   userName,
   message,
+  serverMessage,
   todaySessionCount,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <GlassCard>
       <View style={styles.inner}>
@@ -25,10 +30,11 @@ export const DashboardMotivationCard = memo(function DashboardMotivationCard({
           {greeting}, {userName}! 👋
         </Text>
         <Text style={styles.motivationText}>{message}</Text>
+        {serverMessage ? <Text style={styles.serverMotivation}>{serverMessage}</Text> : null}
         {todaySessionCount > 0 ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
-              {todaySessionCount} session{todaySessionCount === 1 ? "" : "s"} today — keep going
+              {t("motivationCard.sessionsToday", { count: todaySessionCount })}
             </Text>
           </View>
         ) : null}
@@ -48,6 +54,14 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     ...typography.body,
     lineHeight: 22,
+  },
+  serverMotivation: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    lineHeight: 20,
+    opacity: 0.92,
+    fontStyle: "italic",
+    marginTop: 2,
   },
   badge: {
     alignSelf: "flex-start",

@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -13,6 +14,7 @@ import { tryParseSessionStatsDto } from "../lib/statsDto";
 import type { SessionStatsDto } from "../types/session";
 
 export default function WeeklyRecapScreen() {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
@@ -25,12 +27,12 @@ export default function WeeklyRecapScreen() {
       const raw = await apiJson<unknown>("/sessions/stats?period=week", { token });
       const parsed = tryParseSessionStatsDto(raw);
       setStats(parsed);
-      if (!parsed) setError("Invalid stats response.");
+      if (!parsed) setError(t("weeklyRecap.invalidStats"));
     } catch (e) {
       setStats(null);
-      setError(e instanceof Error ? e.message : "Failed");
+      setError(e instanceof Error ? e.message : t("weeklyRecap.loadFailed"));
     }
-  }, [token]);
+  }, [token, t]);
 
   useEffect(() => {
     void load();
@@ -41,30 +43,37 @@ export default function WeeklyRecapScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Weekly recap</Text>
+        <Text style={styles.title}>{t("weeklyRecap.title")}</Text>
         {error ? <Text style={styles.err}>{error}</Text> : null}
         {s ? (
           <View style={styles.card}>
             <Text style={styles.line}>
-              Sessions: {s.total_sessions} ·{" "}
-              {((Number.isFinite(s.total_seconds) ? s.total_seconds : 0) / 3600).toFixed(1)} hours
+              {t("weeklyRecap.sessionsHours", {
+                sessions: s.total_sessions,
+                hours: ((Number.isFinite(s.total_seconds) ? s.total_seconds : 0) / 3600).toFixed(1),
+              })}
             </Text>
             <Text style={styles.line}>
-              Streak: {s.current_streak_days} days (best {s.best_streak_days})
+              {t("weeklyRecap.streakBest", {
+                current: s.current_streak_days,
+                best: s.best_streak_days,
+              })}
             </Text>
             {s.hours_delta_vs_prior_period != null ? (
               <Text style={styles.line}>
-                vs last week: {s.hours_delta_vs_prior_period >= 0 ? "+" : ""}
-                {s.hours_delta_vs_prior_period}h
+                {t("weeklyRecap.vsPrior", {
+                  sign: s.hours_delta_vs_prior_period >= 0 ? "+" : "",
+                  hours: s.hours_delta_vs_prior_period,
+                })}
               </Text>
             ) : null}
-            <Text style={styles.quote}>“Small sessions, stacked daily, become a catalog.”</Text>
+            <Text style={styles.quote}>{t("weeklyRecap.quote")}</Text>
           </View>
         ) : (
-          <Text style={styles.muted}>Loading your week…</Text>
+          <Text style={styles.muted}>{t("weeklyRecap.loading")}</Text>
         )}
         <PrimaryButton
-          label="Set goals for next week"
+          label={t("weeklyRecap.setGoals")}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
             router.push("/(tabs)/stats");
@@ -77,7 +86,7 @@ export default function WeeklyRecapScreen() {
             router.back();
           }}
         >
-          <Text style={styles.backTxt}>Close</Text>
+          <Text style={styles.backTxt}>{t("weeklyRecap.close")}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

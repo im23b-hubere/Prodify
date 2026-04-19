@@ -1,6 +1,7 @@
 import { Redirect, Tabs } from "expo-router";
 import { BarChart3, LayoutGrid, UserRound, Users } from "lucide-react-native";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -28,6 +29,7 @@ function TabIcon({ focused, color, icon }: TabIconProps) {
 }
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   const { token, hydrated } = useAuth();
 
   if (!hydrated) {
@@ -67,7 +69,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Dashboard",
+          title: t("tabs.dashboard"),
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} icon="dashboard" />
           ),
@@ -76,7 +78,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="stats"
         options={{
-          title: "Stats",
+          title: t("tabs.stats"),
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} icon="stats" />
           ),
@@ -85,7 +87,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="friends"
         options={{
-          title: "Friends",
+          title: t("tabs.friends"),
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} icon="friends" />
           ),
@@ -94,7 +96,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profil"
         options={{
-          title: "Profile",
+          title: t("tabs.profile"),
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} icon="profil" />
           ),
@@ -104,7 +106,7 @@ export default function TabsLayout() {
         name="session-trash"
         options={{
           href: null,
-          title: "Session Trash",
+          title: t("tabs.sessionTrash"),
         }}
       />
     </Tabs>

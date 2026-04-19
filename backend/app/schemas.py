@@ -152,6 +152,13 @@ class SessionStatsTypeBreakdownItem(BaseModel):
     percent: float
 
 
+class InsightItemPublic(BaseModel):
+    """Stable keys + params for client-side i18n (see mobile `sessionInsights.api.*`)."""
+
+    key: str
+    params: dict[str, int | float | str] = Field(default_factory=dict)
+
+
 class SessionStatsPublic(BaseModel):
     period: str
     summary: SessionStatsSummary
@@ -159,6 +166,7 @@ class SessionStatsPublic(BaseModel):
     breakdown: list[SessionStatsTypeBreakdownItem]
     recent_sessions: list[SessionPublic] = Field(default_factory=list)
     productivity_hint: str | None = None
+    productivity_hint_item: InsightItemPublic | None = None
 
 
 class FriendRequestCreate(BaseModel):
@@ -280,7 +288,9 @@ class HeatmapPublic(BaseModel):
 class ProductivityInsightsPublic(BaseModel):
     best_hour_start: int | None = None
     best_weekday: str | None = None
+    best_weekday_index: int | None = None
     tips: list[str] = Field(default_factory=list)
+    tip_items: list[InsightItemPublic] = Field(default_factory=list)
 
 
 class StatsInsightsPublic(BaseModel):
@@ -303,21 +313,27 @@ class RelatedSessionPublic(BaseModel):
 
 
 class SessionDetailInsightsPublic(BaseModel):
-    impact_lines: list[str]
+    impact_lines: list[str] = Field(default_factory=list)
+    impact_items: list[InsightItemPublic] = Field(default_factory=list)
     focus_score: int
-    focus_label: str
+    focus_label: str = ""
+    focus_tier: str = "solid"
     focus_percentile: int | None
     focus_user_average: int | None = None
     active_seconds: int
     paused_seconds: int
     effective_rate_percent: float
     timeline: list[SessionTimelineSegmentPublic]
-    productivity_insights: list[str]
+    productivity_insights: list[str] = Field(default_factory=list)
+    productivity_items: list[InsightItemPublic] = Field(default_factory=list)
     related_sessions: list[RelatedSessionPublic]
 
 
 class MotivationalMessagePublic(BaseModel):
-    message: str
+    """`message_key` selects mobile i18n (`motivationApi.<key>`); `message` is legacy fallback."""
+
+    message: str = ""
+    message_key: str
     variant: str = "default"
 
 

@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -12,16 +13,17 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { StreakOverviewDto } from "../../types/streak";
 
-const ACHIEVEMENT_META: Record<string, { title: string; emoji: string }> = {
-  first_session: { title: "First session", emoji: "🎹" },
-  sessions_10: { title: "10 sessions", emoji: "🔥" },
-  sessions_50: { title: "50 sessions", emoji: "💪" },
-  streak_7: { title: "Week streak", emoji: "⚡" },
-  marathon_2h: { title: "Marathon producer", emoji: "👑" },
-  night_owl: { title: "Night owl", emoji: "🦉" },
+const ACHIEVEMENT_EMOJI: Record<string, string> = {
+  first_session: "🎹",
+  sessions_10: "🔥",
+  sessions_50: "💪",
+  streak_7: "⚡",
+  marathon_2h: "👑",
+  night_owl: "🦉",
 };
 
 type FriendStatus = "self" | "none" | "pending" | "accepted";
@@ -56,6 +58,7 @@ type SessionItem = {
 };
 
 export default function FriendProfileScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { token } = useAuth();
   const raw = useLocalSearchParams<{ id: string | string[] }>().id;
@@ -73,7 +76,7 @@ export default function FriendProfileScreen() {
   const load = useCallback(async () => {
     if (!token || !Number.isFinite(userId) || userId <= 0) {
       setLoadState("error");
-      setError("Invalid profile.");
+      setError(t("friendProfile.invalidProfile"));
       return;
     }
     setLoadState("loading");
@@ -105,9 +108,9 @@ export default function FriendProfileScreen() {
       setLoadState("ready");
     } catch (e) {
       setLoadState("error");
-      setError(e instanceof Error ? e.message : "Could not load profile.");
+      setError(e instanceof Error ? e.message : t("friendProfile.loadError"));
     }
-  }, [token, userId]);
+  }, [token, userId, t]);
 
   useEffect(() => {
     void load();
@@ -127,9 +130,9 @@ export default function FriendProfileScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.centered}>
-          <Text style={styles.errTitle}>{"Couldn't load profile"}</Text>
+          <Text style={styles.errTitle}>{t("friendProfile.couldNotLoadTitle")}</Text>
           <Text style={styles.errSub}>{error}</Text>
-          <PrimaryButton label="Back" onPress={() => router.back()} />
+          <PrimaryButton label={t("friendProfile.back")} onPress={() => router.back()} />
         </View>
       </SafeAreaView>
     );
@@ -147,20 +150,23 @@ export default function FriendProfileScreen() {
           }}
           hitSlop={12}
         >
-          <Text style={styles.back}>← Back</Text>
+          <Text style={styles.back}>{t("friendProfile.backArrow")}</Text>
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {locked ? (
           <View style={styles.locked}>
-            <Text style={styles.lockedTitle}>Friend profile</Text>
+            <Text style={styles.lockedTitle}>{t("friendProfile.lockedTitle")}</Text>
             <Text style={styles.lockedSub}>
               {status === "pending"
-                ? "When they accept your request, you'll see full stats here."
-                : "Add this producer as a friend to see their streak, heatmap, and sessions."}
+                ? t("friendProfile.lockedPending")
+                : t("friendProfile.lockedNone")}
             </Text>
-            <PrimaryButton label="Friends" onPress={() => router.push("/(tabs)/friends")} />
+            <PrimaryButton
+              label={t("friendProfile.friendsTab")}
+              onPress={() => router.push("/(tabs)/friends")}
+            />
           </View>
         ) : profile && stats ? (
           <>
@@ -179,10 +185,18 @@ export default function FriendProfileScreen() {
             ) : null}
 
             <View style={styles.statsCard}>
-              <Text style={styles.cardTitle}>Overview</Text>
-              <Text style={styles.line}>Total time: {stats.total_hours}h</Text>
-              <Text style={styles.line}>Sessions: {stats.total_sessions}</Text>
-              {stats.best_day ? <Text style={styles.line}>Best day: {stats.best_day}</Text> : null}
+              <Text style={styles.cardTitle}>{t("friendProfile.overview")}</Text>
+              <Text style={styles.line}>
+                {t("friendProfile.totalTime", { hours: stats.total_hours })}
+              </Text>
+              <Text style={styles.line}>
+                {t("friendProfile.sessionsLine", { count: stats.total_sessions })}
+              </Text>
+              {stats.best_day ? (
+                <Text style={styles.line}>
+                  {t("friendProfile.bestDay", { date: stats.best_day })}
+                </Text>
+              ) : null}
             </View>
 
             <View style={styles.block}>
@@ -190,15 +204,16 @@ export default function FriendProfileScreen() {
             </View>
 
             <View style={styles.statsCard}>
-              <Text style={styles.cardTitle}>Achievements</Text>
+              <Text style={styles.cardTitle}>{t("friendProfile.achievementsTitle")}</Text>
               {stats.achievements.length === 0 ? (
-                <Text style={styles.muted}>None unlocked yet.</Text>
+                <Text style={styles.muted}>{t("friendProfile.noneUnlocked")}</Text>
               ) : (
                 stats.achievements.map((a) => {
-                  const meta = ACHIEVEMENT_META[a.id] ?? { title: a.id, emoji: "⭐" };
+                  const emoji = ACHIEVEMENT_EMOJI[a.id] ?? "⭐";
+                  const title = t(`friendProfile.achievements.${a.id}`, { defaultValue: a.id });
                   return (
                     <Text key={a.id} style={styles.ach}>
-                      {meta.emoji} {meta.title}
+                      {emoji} {title}
                     </Text>
                   );
                 })
@@ -206,13 +221,13 @@ export default function FriendProfileScreen() {
             </View>
 
             <View style={styles.statsCard}>
-              <Text style={styles.cardTitle}>Recent sessions</Text>
+              <Text style={styles.cardTitle}>{t("friendProfile.recentSessions")}</Text>
               {sessions.length === 0 ? (
-                <Text style={styles.muted}>No completed sessions yet.</Text>
+                <Text style={styles.muted}>{t("friendProfile.noSessionsYet")}</Text>
               ) : (
                 sessions.map((s) => (
                   <View key={s.id} style={styles.sessRow}>
-                    <Text style={styles.sessType}>{s.session_type}</Text>
+                    <Text style={styles.sessType}>{sessionTypeLabel(s.session_type, t)}</Text>
                     <Text style={styles.sessMeta}>{formatDurationWords(s.duration_seconds)}</Text>
                   </View>
                 ))

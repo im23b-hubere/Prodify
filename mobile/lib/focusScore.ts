@@ -1,3 +1,7 @@
+import type { TFunction } from "i18next";
+
+import i18n from "./i18n";
+
 export type FocusScoreData = {
   duration_minutes: number;
   paused_duration_minutes: number;
@@ -36,30 +40,30 @@ export function calculateFocusScore(data: FocusScoreData): number {
 }
 
 export function getFocusScoreMessage(score: number): string {
-  if (score >= 95) return "Perfect focus! Legendary!";
-  if (score >= 85) return "Excellent focus!";
-  if (score >= 75) return "Great focus!";
-  if (score >= 65) return "Good focus!";
-  if (score >= 50) return "Decent focus";
-  return "Room for improvement";
+  if (score >= 95) return i18n.t("focusScore.messages.perfect");
+  if (score >= 85) return i18n.t("focusScore.messages.excellent");
+  if (score >= 75) return i18n.t("focusScore.messages.great");
+  if (score >= 65) return i18n.t("focusScore.messages.good");
+  if (score >= 50) return i18n.t("focusScore.messages.decent");
+  return i18n.t("focusScore.messages.roomForImprovement");
 }
 
-export function getFocusScoreTips(data: FocusScoreData): string[] {
+export function getFocusScoreTips(data: FocusScoreData, tr: TFunction): string[] {
   const tips: string[] = [];
   const denom = data.duration_minutes > 0 ? data.duration_minutes : 1;
   const pauseRatio = data.paused_duration_minutes / denom;
 
   if (pauseRatio > 0.2) {
-    tips.push("Try to minimize pauses for better flow.");
+    tips.push(tr("focusScore.tips.minimizePauses"));
   }
   if (data.duration_minutes < 30) {
-    tips.push("Longer sessions often lead to deeper work.");
+    tips.push(tr("focusScore.tips.longerSessions"));
   }
   if (data.notes_length === 0) {
-    tips.push("Add notes to track your progress better.");
+    tips.push(tr("focusScore.tips.addNotes"));
   }
   if (data.mood_level <= 2) {
-    tips.push("Low energy? Try a quick break before the next session.");
+    tips.push(tr("focusScore.tips.lowEnergy"));
   }
   return tips;
 }
@@ -73,11 +77,11 @@ export function getFocusColor(score: number): string {
 export function getFocusBenchmark(
   score: number,
   userAverage: number | null | undefined,
+  tr: TFunction,
 ): string | null {
   if (userAverage == null || !Number.isFinite(userAverage)) return null;
   const diff = Math.round(score - userAverage);
-  if (diff > 10) return `${diff} points above your average`;
-  if (diff > 0) return `${diff} points above your average`;
-  if (diff === 0) return "Right on your average";
-  return `${Math.abs(diff)} points below average — you got this next time`;
+  if (diff > 0) return tr("focusScore.benchmark.above", { diff });
+  if (diff === 0) return tr("focusScore.benchmark.onAverage");
+  return tr("focusScore.benchmark.below", { diff: Math.abs(diff) });
 }

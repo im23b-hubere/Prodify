@@ -1,6 +1,23 @@
 import type { SessionStatsDto } from "../types/session";
 import { parseSessionList } from "./sessionDto";
 
+function parseInsightItemField(
+  raw: unknown,
+): { key: string; params: Record<string, string | number> } | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.key !== "string" || !o.key.trim()) return null;
+  const pRaw = o.params;
+  const params: Record<string, string | number> = {};
+  if (pRaw && typeof pRaw === "object" && !Array.isArray(pRaw)) {
+    for (const [k, v] of Object.entries(pRaw as Record<string, unknown>)) {
+      if (typeof v === "number" && Number.isFinite(v)) params[k] = v;
+      else if (typeof v === "string") params[k] = v;
+    }
+  }
+  return { key: o.key, params };
+}
+
 function finiteNonNeg(n: unknown, fallback = 0): number {
   const v = typeof n === "number" ? n : typeof n === "string" ? Number(n) : NaN;
   if (!Number.isFinite(v) || v < 0) return fallback;
@@ -84,6 +101,8 @@ export function tryParseSessionStatsDto(value: unknown): SessionStatsDto | null 
         ? v.productivity_hint
         : null;
 
+  const productivity_hint_item = parseInsightItemField(v.productivity_hint_item);
+
   const period =
     v.period === "week" || v.period === "month" || v.period === "all"
       ? v.period
@@ -98,6 +117,7 @@ export function tryParseSessionStatsDto(value: unknown): SessionStatsDto | null 
     breakdown,
     recent_sessions,
     productivity_hint,
+    productivity_hint_item,
   };
 }
 

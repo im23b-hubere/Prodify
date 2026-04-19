@@ -2,7 +2,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { Bell, ChevronUp, Flame } from "lucide-react-native";
+import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Dimensions,
@@ -56,6 +58,11 @@ import { colors, radii, shadows, spacing, typography } from "../../constants/the
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
+import {
+  parseMotivationalMessage,
+  translateMotivationalMessage,
+  type MotivationalMessageDto,
+} from "../../lib/motivationApi";
 import { parseSessionList, tryParseSessionDto } from "../../lib/sessionDto";
 import {
   generateMotivationMessage,
@@ -85,11 +92,11 @@ function formatTimer(totalSeconds: number) {
   return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-function formatNaturalCounting(totalSeconds: number): string {
+function formatNaturalCounting(totalSeconds: number, t: TFunction): string {
   const s = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? totalSeconds : 0;
   const mins = Math.floor(s / 60);
-  if (mins < 1) return "Just getting started…";
-  return `${mins} minute${mins === 1 ? "" : "s"} and counting…`;
+  if (mins < 1) return t("dashboard.naturalCountingStart");
+  return t("dashboard.naturalCountingMins", { count: mins, mins });
 }
 
 function notesPreview(notes: string | null | undefined): string | null {
@@ -163,6 +170,7 @@ function SessionSkeleton() {
 }
 
 export default function DashboardScreen() {
+  const { t } = useTranslation();
   const { token, user } = useAuth();
   const router = useRouter();
   const [sessions, setSessions] = useState<SessionDto[]>([]);
@@ -186,6 +194,7 @@ export default function DashboardScreen() {
   const [socialLoading, setSocialLoading] = useState(false);
   const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
   const [weekSessionsCount, setWeekSessionsCount] = useState(0);
+  const [serverMotivationDto, setServerMotivationDto] = useState<MotivationalMessageDto | null>(null);
   const userScopedStreakKey = user?.id
     ? userScopedLastKnownStreakKey(user.id)
     : LAST_KNOWN_STREAK_KEY;
@@ -233,9 +242,9 @@ export default function DashboardScreen() {
       setLastUpdated(new Date());
     } catch (e) {
       if (seq !== loadSessionsSeq.current) return;
-      setError(e instanceof Error ? e.message : "Failed to load sessions");
+      setError(e instanceof Error ? e.message : t("dashboard.loadSessionsFailed"));
     }
-  }, [token]);
+  }, [token, t]);
 
   const loadSocial = useCallback(async () => {
     if (!token) return;
@@ -284,18 +293,33 @@ export default function DashboardScreen() {
     }
   }, [token]);
 
+  const loadServerMotivation = useCallback(async () => {
+    if (!token) {
+      setServerMotivationDto(null);
+      return;
+    }
+    try {
+      const raw = await apiJson<unknown>("/motivational-messages/random", { token });
+      const parsed = parseMotivationalMessage(raw);
+      setServerMotivationDto(parsed);
+    } catch {
+      setServerMotivationDto(null);
+    }
+  }, [token]);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([loadSessions(), loadStreakOverview(), loadSocial()])
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+    Promise.all([loadSessions(), loadStreakOverview(), loadSocial(), loadServerMotivation()])
+      .catch((e) => setError(e instanceof Error ? e.message : t("dashboard.loadFailed")))
       .finally(() => setLoading(false));
-  }, [loadSessions, loadStreakOverview, loadSocial]);
+  }, [loadSessions, loadStreakOverview, loadSocial, loadServerMotivation, t]);
 
   useFocusEffect(
     useCallback(() => {
       loadSessions().catch(() => null);
       loadStreakOverview().catch(() => null);
       loadSocial().catch(() => null);
+      loadServerMotivation().catch(() => null);
       getUnreadCount()
         .then(setNotifUnread)
         .catch(() => undefined);
@@ -312,7 +336,7 @@ export default function DashboardScreen() {
           /* ignore */
         }
       })();
-    }, [loadSessions, loadStreakOverview, loadSocial, sheetTranslateY]),
+    }, [loadSessions, loadStreakOverview, loadSocial, loadServerMotivation, sheetTranslateY]),
   );
 
   useEffect(() => {
@@ -405,21 +429,23 @@ export default function DashboardScreen() {
       loadSessions().catch(() => undefined),
       loadStreakOverview().catch(() => undefined),
       loadSocial().catch(() => undefined),
+      loadServerMotivation().catch(() => undefined),
     ]);
     setRefreshing(false);
-  }, [loadSessions, loadStreakOverview, loadSocial]);
+  }, [loadSessions, loadStreakOverview, loadSocial, loadServerMotivation]);
 
   const weekDayLetters = useMemo(() => {
-    const letters = ["M", "T", "W", "T", "F", "S", "S"];
+    const letters = t("dashboard.weekdayShort", { returnObjects: true }) as string[];
+    const safe = Array.isArray(letters) && letters.length === 7 ? letters : ["M", "T", "W", "T", "F", "S", "S"];
     const out: string[] = [];
     for (let i = 6; i >= 0; i -= 1) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const wd = d.getDay();
-      out.push(letters[wd === 0 ? 6 : wd - 1]);
+      out.push(safe[wd === 0 ? 6 : wd - 1] ?? "?");
     }
     return out;
-  }, []);
+  }, [t]);
 
   const todayStats = useMemo(() => {
     const key = toDateKey(new Date());
@@ -430,6 +456,11 @@ export default function DashboardScreen() {
     const mins = Math.round(today.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60);
     return { count: today.length, minutes: mins };
   }, [visibleSessions]);
+
+  const serverMotivationLine = useMemo(() => {
+    if (!serverMotivationDto) return null;
+    return translateMotivationalMessage(serverMotivationDto, t);
+  }, [serverMotivationDto, t]);
 
   const motivationMessage = useMemo(() => {
     const streakVal = streakOverview?.current_streak ?? clientStreak;
@@ -486,9 +517,9 @@ export default function DashboardScreen() {
       freezes_remaining: 0,
       can_use_freeze: false,
       streak_at_risk: false,
-      tagline: "Connect to unlock Streak Freeze and sync milestones.",
+      tagline: t("dashboard.streakFallbackTagline"),
     };
-  }, [streakOverview, loading, clientStreak, weekProgress, weekDayLetters]);
+  }, [streakOverview, loading, clientStreak, weekProgress, weekDayLetters, t]);
 
   const onUseFreeze = useCallback(async () => {
     if (!token) return;
@@ -498,14 +529,17 @@ export default function DashboardScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       await loadStreakOverview();
       await loadSessions();
-      Alert.alert("Streak Freeze", "You're safe for today. Your streak is protected.");
+      Alert.alert(t("dashboard.freezeSuccessTitle"), t("dashboard.freezeSuccessBody"));
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-      Alert.alert("Couldn't activate freeze", e instanceof Error ? e.message : "Try again.");
+      Alert.alert(
+        t("dashboard.freezeErrorTitle"),
+        e instanceof Error ? e.message : t("dashboard.freezeTryAgain"),
+      );
     } finally {
       setFreezeBusy(false);
     }
-  }, [token, loadStreakOverview, loadSessions]);
+  }, [token, loadStreakOverview, loadSessions, t]);
 
   useEffect(() => {
     if (!streakOverview) return;
@@ -521,7 +555,7 @@ export default function DashboardScreen() {
           setMilestoneToast(`${best.title} — ${best.reward}`);
           prependNotification({
             category: "achievement",
-            title: "Milestone reached",
+            title: t("dashboard.milestoneNotifTitle"),
             body: `${best.title} — ${best.reward}`,
           }).catch(() => undefined);
           getUnreadCount()
@@ -541,7 +575,7 @@ export default function DashboardScreen() {
         /* ignore */
       }
     })();
-  }, [streakOverview, userScopedMilestoneKey]);
+  }, [streakOverview, userScopedMilestoneKey, t]);
 
   useEffect(() => {
     if (!streakOverview) return;
@@ -565,10 +599,13 @@ export default function DashboardScreen() {
     if (!active || !token || stopSessionInFlight.current) return;
     const sessionToStop = active;
     const elapsed = effectiveElapsedSeconds(sessionToStop, Date.now());
-    Alert.alert("End session?", `You worked for ${formatDurationWords(elapsed)}.`, [
-      { text: "Keep going", style: "cancel" },
+    Alert.alert(
+      t("dashboard.endSessionTitle"),
+      t("dashboard.endSessionWorked", { duration: formatDurationWords(elapsed) }),
+      [
+      { text: t("dashboard.keepGoing"), style: "cancel" },
       {
-        text: "End session",
+        text: t("dashboard.endSessionConfirm"),
         style: "destructive",
         onPress: async () => {
           if (stopSessionInFlight.current) return;
@@ -594,7 +631,7 @@ export default function DashboardScreen() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
               () => undefined,
             );
-            const msg = e instanceof Error ? e.message : "Stop failed";
+            const msg = e instanceof Error ? e.message : t("dashboard.stopFailed");
             debugLog("session", "stop_failure", { sessionId: sessionToStop.id, message: msg });
             setError(msg);
             await loadSessions().catch(() => undefined);
@@ -605,7 +642,7 @@ export default function DashboardScreen() {
         },
       },
     ]);
-  }, [active, token, router, loadSessions]);
+  }, [active, token, router, loadSessions, t]);
 
   const dismissSession = useCallback(
     async (sessionId: number) => {
@@ -615,10 +652,10 @@ export default function DashboardScreen() {
         await apiJson(`/sessions/item/${sessionId}`, { token, method: "DELETE" });
         await loadSessions();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Delete failed");
+        setError(e instanceof Error ? e.message : t("dashboard.deleteFailed"));
       }
     },
-    [loadSessions, token],
+    [loadSessions, token, t],
   );
 
   const renderRightActions = useCallback(
@@ -627,10 +664,10 @@ export default function DashboardScreen() {
         style={styles.deleteAction}
         onPress={() => dismissSession(sessionId).catch(() => undefined)}
       >
-        <Text style={styles.deleteActionText}>Delete</Text>
+        <Text style={styles.deleteActionText}>{t("dashboard.deleteSwipe")}</Text>
       </Pressable>
     ),
-    [dismissSession],
+    [dismissSession, t],
   );
 
   const renderItem = useCallback(
@@ -645,19 +682,23 @@ export default function DashboardScreen() {
               router.push(`/session/${item.id}`);
             }}
           >
-            <Text style={styles.sessionType}>{item.session_type || "Beat Making"}</Text>
+            <Text style={styles.sessionType}>
+              {item.session_type || t("sessionTypes.beatMaking")}
+            </Text>
             <Text style={styles.sessionMeta}>
-              {Math.round((item.duration_seconds ?? 0) / 60)} min
+              {t("dashboard.sessionMinutes", { n: Math.round((item.duration_seconds ?? 0) / 60) })}
             </Text>
           </Pressable>
         </Swipeable>
       </Animated.View>
     ),
-    [renderRightActions, router],
+    [renderRightActions, router, t],
   );
 
   const lastUpdatedLabel = lastUpdated
-    ? `Updated ${Math.max(0, Math.round((Date.now() - lastUpdated.getTime()) / 60000))}m ago`
+    ? t("dashboard.updatedAgo", {
+        mins: Math.max(0, Math.round((Date.now() - lastUpdated.getTime()) / 60000)),
+      })
     : null;
 
   const preview = notesPreview(active?.notes);
@@ -702,14 +743,16 @@ export default function DashboardScreen() {
         ListHeaderComponent={
           <View style={styles.headerContent}>
             <View style={styles.topBar}>
-              <Text style={styles.username}>Hey, {user?.username ?? "Producer"}</Text>
+              <Text style={styles.username}>
+              {t("dashboard.heyUser", { name: user?.username ?? t("dashboard.defaultUserName") })}
+            </Text>
               <Pressable
                 style={styles.iconButton}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
                   router.push("/notifications");
                 }}
-                accessibilityLabel="Notifications"
+                accessibilityLabel={t("dashboard.notificationsA11y")}
               >
                 <Bell color={colors.textPrimary} size={20} />
                 {notifUnread > 0 ? <View style={styles.notifBadge} /> : null}
@@ -731,8 +774,9 @@ export default function DashboardScreen() {
 
             <DashboardMotivationCard
               greeting={getTimeBasedGreeting()}
-              userName={user?.username ?? "Producer"}
+              userName={user?.username ?? t("dashboard.defaultUserName")}
               message={motivationMessage}
+              serverMessage={serverMotivationLine}
               todaySessionCount={todayStats.count}
             />
 
@@ -741,7 +785,9 @@ export default function DashboardScreen() {
                 <View style={styles.activeSessionBlock}>
                   <View style={styles.badgeRow}>
                     <View style={styles.typeBadge}>
-                      <Text style={styles.typeBadgeText}>{active.session_type || "Session"}</Text>
+                      <Text style={styles.typeBadgeText}>
+                        {active.session_type || t("sessionTypes.defaultName")}
+                      </Text>
                     </View>
                   </View>
 
@@ -750,7 +796,7 @@ export default function DashboardScreen() {
                     <LinearGradient colors={["#2a1410", "#1a1a1a"]} style={styles.timerInner}>
                       <Text style={styles.heroTimer}>{formatTimer(activeSeconds)}</Text>
                       <Text style={styles.elapsedNatural}>
-                        {formatNaturalCounting(activeSeconds)}
+                        {formatNaturalCounting(activeSeconds, t)}
                       </Text>
                       {preview ? (
                         <Text style={styles.notesPreview} numberOfLines={2}>
@@ -759,7 +805,7 @@ export default function DashboardScreen() {
                       ) : null}
                       <View style={styles.swipeHint}>
                         <ChevronUp color={colors.textSecondary} size={16} />
-                        <Text style={styles.swipeHintText}>Swipe up for focus mode</Text>
+                        <Text style={styles.swipeHintText}>{t("dashboard.swipeFocusHint")}</Text>
                       </View>
                     </LinearGradient>
                   </View>
@@ -770,7 +816,7 @@ export default function DashboardScreen() {
                     disabled={stopBusy}
                   >
                     <Text style={styles.stopSessionLabel}>
-                      {stopBusy ? "Stopping…" : "STOP SESSION"}
+                      {stopBusy ? t("dashboard.stopping") : t("dashboard.stopSession")}
                     </Text>
                   </Pressable>
                 </View>
@@ -794,14 +840,14 @@ export default function DashboardScreen() {
             />
 
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent sessions</Text>
+              <Text style={styles.sectionTitle}>{t("dashboard.recentSessions")}</Text>
               <View style={styles.sectionHeaderRight}>
                 <Pressable onPress={() => router.push("/(tabs)/stats")}>
-                  <Text style={styles.viewAllLink}>Stats</Text>
+                  <Text style={styles.viewAllLink}>{t("dashboard.statsLink")}</Text>
                 </Pressable>
                 <Text style={styles.headerSep}>·</Text>
                 <Pressable onPress={() => router.push("/(tabs)/session-trash")}>
-                  <Text style={styles.trashLink}>Trash</Text>
+                  <Text style={styles.trashLink}>{t("dashboard.trashLink")}</Text>
                 </Pressable>
               </View>
             </View>
@@ -810,12 +856,12 @@ export default function DashboardScreen() {
               <View style={styles.errorCard}>
                 <Text style={styles.errorText}>{error}</Text>
                 <PrimaryButton
-                  label="Retry"
+                  label={t("dashboard.retry")}
                   onPress={() => {
                     setError(null);
                     setLoading(true);
                     Promise.all([loadSessions(), loadStreakOverview(), loadSocial()])
-                      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+                      .catch((e) => setError(e instanceof Error ? e.message : t("dashboard.loadFailed")))
                       .finally(() => setLoading(false));
                   }}
                 />
@@ -831,10 +877,8 @@ export default function DashboardScreen() {
                 size={48}
                 style={{ alignSelf: "center", marginBottom: spacing.sm }}
               />
-              <Text style={styles.emptyTitle}>
-                Start your first session to begin your streak! 🔥
-              </Text>
-              <PrimaryButton label="Start session" onPress={openSetup} />
+              <Text style={styles.emptyTitle}>{t("dashboard.emptyStreakTitle")}</Text>
+              <PrimaryButton label={t("dashboard.startSession")} onPress={openSetup} />
             </View>
           ) : null
         }
@@ -858,7 +902,7 @@ export default function DashboardScreen() {
                 <View>
                   <View style={styles.modalHandle} />
                   <View style={styles.modalHeaderRow}>
-                    <Text style={styles.modalTitle}>New Session</Text>
+                    <Text style={styles.modalTitle}>{t("dashboard.newSessionTitle")}</Text>
                     <Pressable
                       hitSlop={12}
                       onPress={() => {
@@ -874,8 +918,8 @@ export default function DashboardScreen() {
                   </View>
                   <CrashBoundary
                     scope="session_setup_modal"
-                    fallbackTitle="Session setup failed"
-                    fallbackMessage="The setup form hit an error. You can retry or open the full setup screen."
+                    fallbackTitle={t("crashBoundary.sessionSetupTitle")}
+                    fallbackMessage={t("crashBoundary.sessionSetupMessage")}
                     onRecover={() => {
                       closeSetupModal(() => {
                         router.push("/session/setup");
@@ -894,7 +938,7 @@ export default function DashboardScreen() {
                       onStarted={(created) => {
                         const session = tryParseSessionDto(created);
                         if (!session) {
-                          setError("Could not read the new session. Pull down to refresh.");
+                          setError(t("dashboard.couldNotReadSession"));
                           closeSetupModal(() => {
                             void loadSessions();
                           });

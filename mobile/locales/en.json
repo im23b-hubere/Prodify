@@ -1,0 +1,647 @@
+{
+  "brand": "Prodify",
+  "auth": {
+    "stack": {
+      "login": "Login",
+      "register": "Register"
+    },
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Track sessions, stay focused, get better every day.",
+      "email": "Email",
+      "password": "Password",
+      "placeholderEmail": "you@example.com",
+      "placeholderPassword": "Your password",
+      "signIn": "Sign in",
+      "signInFailed": "Sign in failed",
+      "noAccount": "No account yet? Register"
+    },
+    "register": {
+      "title": "Let's get started",
+      "subtitle": "Create your Prodify account and start your first streak.",
+      "email": "Email",
+      "username": "Username",
+      "password": "Password",
+      "placeholderEmail": "you@example.com",
+      "placeholderUsername": "Your name",
+      "placeholderPassword": "At least 8 characters",
+      "createAccount": "Create account",
+      "registerFailed": "Registration failed",
+      "hasAccount": "Already have an account? Sign in"
+    }
+  },
+  "tabs": {
+    "dashboard": "Dashboard",
+    "stats": "Stats",
+    "friends": "Friends",
+    "profile": "Profile",
+    "sessionTrash": "Session trash"
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "continue": "Continue",
+    "footerPrivacy": "Privacy policy",
+    "slide1": {
+      "title": "Welcome to Prodify",
+      "body": "Time your studio work with clarity — session types, mood, tags, and streak-aware focus."
+    },
+    "slide2": {
+      "title": "Build your streak",
+      "body": "Daily momentum beats motivation spikes. We will guard your chain with smart reminders."
+    },
+    "slide3": {
+      "title": "Beat your friends",
+      "body": "Leaderboards and activity keep you accountable — produce like it is a sport."
+    },
+    "goal": {
+      "title": "Weekly session goal",
+      "body": "Pick a target you can defend. You can change this anytime."
+    },
+    "notifications": {
+      "title": "Stay in the loop",
+      "body": "Enable notifications for streak protection — we will ping you before the day slips away.",
+      "enable": "Enable notifications",
+      "notNow": "Not now"
+    }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "ok": "OK",
+    "weekdaysFull": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ]
+  },
+  "legal": {
+    "linksPrivacy": "Privacy",
+    "linksTerms": "Terms of use",
+    "sectionTitle": "Legal",
+    "deleteAccount": {
+      "sectionTitle": "Account and data",
+      "description": "You can permanently delete your account. We will remove associated data from our servers unless we are legally required to retain it.",
+      "button": "Delete account",
+      "confirmTitle": "Delete account?",
+      "confirmMessage": "This cannot be undone. Your sessions, streaks, and friendships will be removed.",
+      "confirmDelete": "Delete permanently",
+      "errorTitle": "Deletion failed",
+      "errorFallback": "Please try again later or contact support."
+    },
+    "privacy": {
+      "screenTitle": "Privacy policy",
+      "updated": "Last updated: April 2026",
+      "intro": "This notice explains how Prodify processes personal data. It is not legal advice.",
+      "blocks": [
+        {
+          "heading": "1. Controller",
+          "body": "The operator of the Prodify services is responsible for processing (see App Store listing or support email). Which environment you use also depends on the API URL configured in the app."
+        },
+        {
+          "heading": "2. Data we process",
+          "body": "We process account data (email, username), technical data required to run the app, and content you create such as studio sessions (times, types, optional notes/mood/tags), streak and friendship data, and push tokens if you enable notifications."
+        },
+        {
+          "heading": "3. Purposes and legal bases",
+          "body": "Processing is necessary to perform the contract (GDPR Art. 6(1)(b)), to protect security and prevent abuse (legitimate interests, Art. 6(1)(f)), and — where you consented — for push messages (Art. 6(1)(a))."
+        },
+        {
+          "heading": "4. Retention",
+          "body": "We store data while your account exists. After deletion, we remove associated personal data unless a legal retention obligation applies."
+        },
+        {
+          "heading": "5. Your rights",
+          "body": "You have the right to access, rectification, erasure, restriction, portability, and objection where processing relies on legitimate interests. You may withdraw consent at any time with future effect. You may lodge a complaint with a supervisory authority."
+        },
+        {
+          "heading": "6. Contact",
+          "body": "To exercise your rights or ask questions, use the support address shown in the App Store or in the app."
+        }
+      ]
+    },
+    "terms": {
+      "screenTitle": "Terms of use",
+      "updated": "Last updated: April 2026",
+      "intro": "By using Prodify you agree to these terms. Please read them carefully.",
+      "blocks": [
+        {
+          "heading": "1. Service",
+          "body": "Prodify helps you track and analyse studio sessions, streaks, and social features among friends. Features and availability may evolve."
+        },
+        {
+          "heading": "2. Account",
+          "body": "You are responsible for keeping your password secure. Content you submit must not infringe third-party rights or violate applicable law."
+        },
+        {
+          "heading": "3. Availability",
+          "body": "We strive for high availability but cannot guarantee uninterrupted access — for example during maintenance or force majeure."
+        },
+        {
+          "heading": "4. Liability",
+          "body": "To the extent permitted by law, we are liable for intent and gross negligence. For slight negligence we are liable only for breaches of essential contractual duties and limited to typical, foreseeable damage."
+        },
+        {
+          "heading": "5. Changes",
+          "body": "We may update these terms. We will notify you of material changes in the app or otherwise as appropriate. Continued use after notice may constitute acceptance where permitted by law."
+        }
+      ]
+    }
+  },
+  "profile": {
+    "loadingHint": "Loading your stats…",
+    "tryAgain": "Try again",
+    "totalSessions": "Total sessions",
+    "currentStreak": "Current streak",
+    "bestStreak": "Best streak",
+    "bestStreakDays": "{{days}} days",
+    "totalHours": "Total hours",
+    "milestonesTitle": "Milestones",
+    "milestoneSub": "Longest streak recorded: {{days}} days",
+    "milestonesUnavailable": "Milestones unavailable.",
+    "pushSectionTitle": "Server push (Expo + FCM)",
+    "pushHint": "Backend: EXPO_ACCESS_TOKEN for Expo tokens; optional Firebase service account (JSON or path) for Android FCM tokens. Templates mirror real in-app copy.",
+    "pingTemplateTest": "Test",
+    "pingTemplateSession": "Session",
+    "pingTemplateStreak": "Streak",
+    "pingTestTitle": "Prodify",
+    "pingTestBody": "Test push from server",
+    "pingSending": "Sending…",
+    "pingSend": "Send push",
+    "pingResultTitle": "Push",
+    "pingDelivered": "Delivered: {{ok}} / {{attempted}}",
+    "settingsTitle": "Settings & legal",
+    "signOut": "Sign out",
+    "defaultDisplayName": "Prodify user",
+    "loadingEmail": "loading…",
+    "defaultInitials": "P",
+    "errorLoadProfile": "Could not load profile data."
+  },
+  "sessionTypes": {
+    "beatMaking": "Beat Making",
+    "mixing": "Mixing",
+    "soundDesign": "Sound Design",
+    "defaultName": "Session"
+  },
+  "crashBoundary": {
+    "sessionSetupTitle": "Session setup failed",
+    "sessionSetupMessage": "The setup form hit an error. You can retry or open the full setup screen.",
+    "sessionSetupScreenMessage": "Please go back and open setup again."
+  },
+  "friendsScreen": {
+    "title": "Friends",
+    "addFriendA11y": "Add friend",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "loadError": "Could not load friends.",
+    "incomingTitle": "Incoming requests",
+    "incomingHint": "wants to be friends",
+    "accept": "Accept",
+    "decline": "Decline",
+    "modeWeek": "This week",
+    "modeAll": "All time",
+    "soloLeader": "You're solo on the leaderboard — add friends to compare stats.",
+    "youPill": "You",
+    "metaWeek": "{{sessions}} sessions this week · {{days}} day streak",
+    "metaAll": "{{sessions}} sessions total · {{days}} day streak",
+    "activityTitle": "Activity feed",
+    "feedEmpty": "No recent sessions among friends yet.",
+    "feedLine": "{{user}} finished {{type}} · {{duration}} · {{ago}}",
+    "modalTitle": "Add friend",
+    "modalHint": "Enter their Prodify username. They will need to accept your request.",
+    "placeholderUsername": "Username",
+    "sendRequest": "Send request",
+    "sendingRequest": "Sending…",
+    "modalCancel": "Cancel",
+    "alertUsername": "Username",
+    "alertUsernameInvalid": "Enter a valid username.",
+    "requestSentTitle": "Request sent",
+    "requestSentBody": "Friend request sent to {{name}}.",
+    "couldNotSend": "Could not send",
+    "errorGeneric": "Error",
+    "acceptFailed": "Accept failed.",
+    "declineFailed": "Decline failed.",
+    "unknownTime": "unknown time",
+    "durationUnderOne": "<1 min",
+    "durationMin": "{{m}} min",
+    "durationHours": "{{h}}h {{m}}m"
+  },
+  "sessionActive": {
+    "longSessionTitle": "Long session",
+    "longSessionBody": "You've been going for over 8 hours. Still working?",
+    "invalidSession": "Invalid session",
+    "invalidData": "Invalid session data from server.",
+    "loadFailed": "Failed to load",
+    "loadingSession": "Loading session…",
+    "minimizeHint": "Swipe down to dashboard",
+    "inProgress": "Session in progress",
+    "insightDefault": "Stay in flow — every minute counts.",
+    "insightPastBest": "You're past your previous best ({{prev}}). Keep going!",
+    "insightLongest": "Your longest session so far: {{duration}}",
+    "sessionType": "Session type",
+    "mood": "Mood: {{emoji}}",
+    "notes": "Notes",
+    "notesPlaceholder": "What are you working on?",
+    "saving": "Saving…",
+    "save": "Save",
+    "pause": "Pause",
+    "resume": "Resume",
+    "stopSession": "Stop session",
+    "pauseFailed": "Pause failed",
+    "resumeFailed": "Resume failed",
+    "saveNotesFailed": "Could not save notes",
+    "updateFailed": "Update failed",
+    "stopFailed": "Stop failed"
+  },
+  "sessionComplete": {
+    "title": "Session complete",
+    "loadingSession": "Loading your session…",
+    "errorTitle": "Something went wrong",
+    "unknownError": "Unknown error",
+    "tryAgain": "Try again",
+    "backToDashboard": "Back to dashboard",
+    "notSignedIn": "Not signed in.",
+    "missingSession": "Missing session.",
+    "invalidSession": "Invalid session.",
+    "invalidData": "Invalid session data from server.",
+    "stillInProgress": "This session is still in progress.",
+    "loadError": "Could not load session.",
+    "streakLine_one": "🔥 {{count}} day streak!",
+    "streakLine_other": "🔥 {{count}} days streak!",
+    "autoReturn": "Returning to dashboard in {{seconds}}s…",
+    "viewDetails": "View session details",
+    "startAnother": "Start another session"
+  },
+  "sessionDetail": {
+    "loading": "Loading session...",
+    "invalidId": "Invalid session id",
+    "invalidData": "Invalid session data from server.",
+    "loadFailed": "Failed to load session",
+    "refreshFailed": "Failed to refresh",
+    "saveFailed": "Failed to save",
+    "invalidResponse": "Invalid response from server.",
+    "deleteFailed": "Delete failed",
+    "deleteTitle": "Delete session?",
+    "deleteBody": "This moves the session to trash.",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "inProgress": "In progress",
+    "back": "Back",
+    "start": "Start",
+    "end": "End",
+    "mood": "Mood",
+    "pauses": "Pauses",
+    "pauseMin": "{{m}} min",
+    "sessionType": "Session type",
+    "notes": "Notes",
+    "notesPlaceholder": "Add context for this session",
+    "tags": "Tags",
+    "saveChanges": "Save changes",
+    "deleteSession": "Delete session",
+    "mood1": "Low",
+    "mood2": "Okay",
+    "mood3": "Good",
+    "mood4": "Great",
+    "mood5": "On fire"
+  },
+  "sessionTrash": {
+    "title": "Session trash",
+    "subtitle": "Restore sessions you deleted accidentally.",
+    "empty": "Trash is empty.",
+    "restore": "Restore",
+    "restoring": "…",
+    "loadFailed": "Failed to load trash",
+    "refreshFailed": "Failed to refresh",
+    "restoreFailed": "Failed to restore"
+  },
+  "notificationsUi": {
+    "back": "‹ Back",
+    "title": "Notifications",
+    "filterAll": "All",
+    "catStreak": "Streak",
+    "catAchievement": "Achievements",
+    "catSocial": "Social",
+    "catTips": "Tips",
+    "delete": "Delete",
+    "emptyTitle": "All caught up!",
+    "emptySub": "Streak alerts and wins will land here.",
+    "preferences": "Preferences",
+    "streakReminders": "Streak reminders",
+    "achievements": "Achievements",
+    "quietHours": "Quiet hours (23:00–07:00)",
+    "timeNow": "Just now",
+    "timeMin": "{{m}}m ago",
+    "timeHour": "{{h}}h ago",
+    "timeDay": "{{d}}d ago"
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "night": "Hey there"
+    },
+    "defaultUserName": "Producer",
+    "weekdayShort": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+    "heyUser": "Hey, {{name}}",
+    "notificationsA11y": "Notifications",
+    "streakFallbackTagline": "Connect to unlock Streak Freeze and sync milestones.",
+    "naturalCountingStart": "Just getting started…",
+    "naturalCountingMins_one": "{{mins}} minute and counting…",
+    "naturalCountingMins_other": "{{mins}} minutes and counting…",
+    "swipeFocusHint": "Swipe up for focus mode",
+    "stopping": "Stopping…",
+    "stopSession": "STOP SESSION",
+    "recentSessions": "Recent sessions",
+    "statsLink": "Stats",
+    "trashLink": "Trash",
+    "updatedAgo": "Updated {{mins}}m ago",
+    "retry": "Retry",
+    "emptyStreakTitle": "Start your first session to begin your streak!",
+    "startSession": "Start session",
+    "newSessionTitle": "New Session",
+    "milestoneNotifTitle": "Milestone reached",
+    "loadSessionsFailed": "Failed to load sessions.",
+    "loadFailed": "Failed to load",
+    "deleteFailed": "Delete failed",
+    "stopFailed": "Stop failed",
+    "couldNotReadSession": "Could not read the new session. Pull down to refresh.",
+    "freezeSuccessTitle": "Streak Freeze",
+    "freezeSuccessBody": "You're safe for today. Your streak is protected.",
+    "freezeErrorTitle": "Couldn't activate freeze",
+    "freezeTryAgain": "Try again.",
+    "endSessionTitle": "End session?",
+    "endSessionWorked": "You worked for {{duration}}.",
+    "keepGoing": "Keep going",
+    "endSessionConfirm": "End session",
+    "sessionMinutes": "{{n}} min",
+    "deleteSwipe": "Delete"
+  },
+  "stats": {
+    "title": "Your stats",
+    "filter7d": "7D",
+    "filter30d": "30D",
+    "filterAll": "All",
+    "totalHours": "Total hours",
+    "vsPrior": "{{sign}}{{hours}}h vs prior period",
+    "sessions": "Sessions",
+    "currentStreak": "Current streak",
+    "bestStreakSub": "Best: {{days}} days",
+    "weeklyPresence": "Weekly presence {{have}}/{{goal}} days",
+    "weeklyCrushed": "Goal crushed — keep the momentum.",
+    "weeklyMoreDays_one": "{{n}} more day to hit 7/7.",
+    "weeklyMoreDays_other": "{{n}} more days to hit 7/7.",
+    "heatmapTitle": "Activity heatmap (90 days)",
+    "recordsTitle": "Personal records",
+    "recordsEmpty": "Complete sessions to unlock records.",
+    "perDayTitle": "Sessions per day",
+    "typeMixTitle": "Session type mix",
+    "typeMixEmpty": "No stats yet. Complete a session to see your insights.",
+    "recentTitle": "Recent sessions",
+    "recentEmpty": "No sessions in this range.",
+    "invalidResponse": "Invalid stats response from server.",
+    "loadFailed": "Failed to load stats",
+    "sessionFallback": "Session"
+  },
+  "streakHero": {
+    "dayStreak": "DAY STREAK",
+    "nextMilestone_one": "Next: {{title}} · {{days}} day to go",
+    "nextMilestone_other": "Next: {{title}} · {{days}} days to go",
+    "topTier": "You're at the top milestone tier — legendary.",
+    "longest": "Longest streak: {{days}} days",
+    "historyA11y": "View streak history",
+    "historyLink": "Streak history",
+    "riskBanner": "⚠️ Log a session today to keep the chain alive.",
+    "freezeActivating": "Activating…",
+    "freezeAvailable": "{{n}} Streak Freeze available (Premium)",
+    "freezeNone": "No freezes left this month",
+    "freezeHint": "Resets next month — or complete a session today."
+  },
+  "friendsWidget": {
+    "title": "Friends",
+    "viewAll": "View all",
+    "thisWeek": "This week",
+    "recent": "Recent",
+    "sessionsMeta": "{{sessions}} sessions · {{streak}} streak",
+    "loading": "Loading friends…",
+    "emptyTitle": "Friends activity",
+    "emptySub": "Add friends to see sessions and a weekly leaderboard.",
+    "findFriends": "Find friends",
+    "agoNow": "just now",
+    "agoMinutes": "{{mins}}m ago",
+    "agoHours": "{{hours}}h ago",
+    "agoDays": "{{days}}d ago"
+  },
+  "motivation": {
+    "perfectFocus": "Perfect focus! You're in the zone.",
+    "producerMode": "That's producer mode — keep this energy.",
+    "excellentSession": "Excellent session! You're building something special.",
+    "everySessionCounts": "Every session counts — tomorrow you'll crush it.",
+    "progressOverPerf": "Progress over perfection. You showed up.",
+    "twoHoursPlus": "2+ hours — that's dedication.",
+    "fullHour": "Full hour — that's how you build.",
+    "polishMakesPerfect": "Polish makes perfect.",
+    "soundDesignMoves": "Sound design moves the whole track.",
+    "anotherBeat": "Another beat in the bag.",
+    "thirdToday": "Third session today — you're on fire.",
+    "secondToday": "Session #2 today — building momentum.",
+    "morningClear": "Morning session — clear mind, big moves.",
+    "eveningEnergy": "Evening energy — time to create.",
+    "nightOwl": "Night owl mode — your studio, your rules.",
+    "startStreak": "Start your streak today — day 1 begins now.",
+    "streakHigh": "{{days}} days — don't break the chain.",
+    "streakMid": "{{days}} days strong — keep building.",
+    "friendsActive": "{{count}} friends on the board recently — join the wave.",
+    "leaderWeek": "{{name}} is leading this week — match that energy.",
+    "lastSessionStrong": "Last session was strong — run it back.",
+    "noSessionsWeek": "No sessions this week yet — change that today.",
+    "weekPace": "{{count}} sessions this week — on pace.",
+    "eveningQuestion": "Evening session? Some of your best ideas show up now.",
+    "todayUnstoppable": "{{count}} sessions today — unstoppable.",
+    "fallback": "Let's create something amazing."
+  },
+  "todayProgress": {
+    "title": "Today",
+    "sessions": "Sessions",
+    "minutes": "Minutes",
+    "weekGoal": "{{current}} / {{goal}} sessions this week",
+    "weekOnly": "{{count}} sessions this week"
+  },
+  "sessionStarter": {
+    "title": "START SESSION",
+    "subtitle": "Quick setup — type, mood & notes",
+    "customize": "Customize session"
+  },
+  "motivationCard": {
+    "sessionsToday_one": "{{count}} session today — keep going",
+    "sessionsToday_other": "{{count}} sessions today — keep going"
+  },
+  "streakHistory": {
+    "title": "Streak history",
+    "backA11y": "Back",
+    "loading": "Loading runs…",
+    "loadError": "Could not load streak history.",
+    "retry": "Try again",
+    "emptyTitle": "No streak runs yet",
+    "emptySub": "Complete sessions on consecutive days to build your first chain.",
+    "dayUnit_one": "day",
+    "dayUnit_other": "days"
+  },
+  "friendProfile": {
+    "invalidProfile": "Invalid profile.",
+    "loadError": "Could not load profile.",
+    "couldNotLoadTitle": "Couldn't load profile",
+    "back": "Back",
+    "backArrow": "← Back",
+    "lockedTitle": "Friend profile",
+    "lockedPending": "When they accept your request, you'll see full stats here.",
+    "lockedNone": "Add this producer as a friend to see their streak, heatmap, and sessions.",
+    "friendsTab": "Friends",
+    "overview": "Overview",
+    "totalTime": "Total time: {{hours}}h",
+    "sessionsLine": "Sessions: {{count}}",
+    "bestDay": "Best day: {{date}}",
+    "achievementsTitle": "Achievements",
+    "noneUnlocked": "None unlocked yet.",
+    "recentSessions": "Recent sessions",
+    "noSessionsYet": "No completed sessions yet.",
+    "achievements": {
+      "first_session": "First session",
+      "sessions_10": "10 sessions",
+      "sessions_50": "50 sessions",
+      "streak_7": "Week streak",
+      "marathon_2h": "Marathon producer",
+      "night_owl": "Night owl"
+    }
+  },
+  "weeklyRecap": {
+    "title": "Weekly recap",
+    "invalidStats": "Invalid stats response.",
+    "loadFailed": "Failed to load",
+    "sessionsHours": "Sessions: {{sessions}} · {{hours}} hours",
+    "streakBest": "Streak: {{current}} days (best {{best}})",
+    "vsPrior": "vs last week: {{sign}}{{hours}}h",
+    "quote": "Small sessions, stacked daily, become a catalog.",
+    "loading": "Loading your week…",
+    "setGoals": "Set goals for next week",
+    "close": "Close"
+  },
+  "sessionInsights": {
+    "impact": "Session impact",
+    "focusScore": "Focus score",
+    "betterThanPercent": "Better than {{pct}}% of your sessions",
+    "tipsTitle": "Tips for next session",
+    "timeBreakdown": "Time breakdown",
+    "active": "Active: {{duration}}",
+    "paused": "Paused: {{duration}}",
+    "effectiveRate": "Effective rate: {{pct}}%",
+    "productivity": "Productivity insights",
+    "similarSessions": "Similar sessions",
+    "audio": "Audio",
+    "addAudioSnippet": "Add audio snippet",
+    "comingSoon": "Coming soon",
+    "share": "Share",
+    "storyPng": "Story image (PNG)",
+    "shareMinimal": "{{type}} · {{duration}} · Prodify",
+    "shareBold": "🔥 {{type}}\n⏱ {{duration}}\n— Prodify",
+    "shareGradient": "✨ Session recap\n{{type}}\n{{duration}}\nFocus {{focus}}%\nProdify",
+    "shareTextMinimal": "Text · Minimal",
+    "shareTextBold": "Text · Bold",
+    "shareTextLong": "Text · Long",
+    "copyStats": "Copy stats as text",
+    "focusHeadline": "{{score}}% Focus — {{tier}}!",
+    "focusTier": {
+      "excellent": "Excellent",
+      "strong": "Strong",
+      "solid": "Solid",
+      "room_to_improve": "Room to improve"
+    },
+    "api": {
+      "impact_streak_fuel": "This session fuels your {{days}}-day streak.",
+      "impact_weekly_goal_cleared": "Weekly goal cleared ({{count}}/{{target}} sessions).",
+      "impact_week_progress": "Week progress: {{count}}/{{target}} sessions.",
+      "impact_default_momentum": "Another rep in the studio — momentum compounds.",
+      "prod_peak_pattern": "You're most productive on {{weekday}} around {{hourRange}} (UTC).",
+      "prod_minimal_pause": "Minimal pause time — deep work mode.",
+      "prod_long_breaks": "You took breaks — recovery fuels the next push."
+    }
+  },
+  "focusScore": {
+    "messages": {
+      "perfect": "Perfect focus! Legendary!",
+      "excellent": "Excellent focus!",
+      "great": "Great focus!",
+      "good": "Good focus!",
+      "decent": "Decent focus",
+      "roomForImprovement": "Room for improvement"
+    },
+    "tips": {
+      "minimizePauses": "Try to minimize pauses for better flow.",
+      "longerSessions": "Longer sessions often lead to deeper work.",
+      "addNotes": "Add notes to track your progress better.",
+      "lowEnergy": "Low energy? Try a quick break before the next session."
+    },
+    "benchmark": {
+      "above": "{{diff}} points above your average",
+      "onAverage": "Right on your average",
+      "below": "{{diff}} points below average — you got this next time"
+    }
+  },
+  "streakComparison": {
+    "title": "Streak comparison",
+    "you": "You",
+    "them": "Them",
+    "vs": "VS",
+    "aheadThem_one": "They're {{count}} day ahead — time to catch up.",
+    "aheadThem_other": "They're {{count}} days ahead — time to catch up.",
+    "tied": "You're tied — keep pushing together.",
+    "aheadYou_one": "You're {{count}} day ahead — don't slow down.",
+    "aheadYou_other": "You're {{count}} days ahead — don't slow down."
+  },
+  "profileHeatmap": {
+    "title": "Activity (90 days)",
+    "a11y": "{{date}}: {{seconds}} seconds"
+  },
+  "profileHeader": {
+    "sessions": "Sessions",
+    "streak": "Streak",
+    "friends": "Friends",
+    "addFriend": "Add friend",
+    "requestPending": "Request pending",
+    "friendsBadge": "Friends",
+    "you": "You"
+  },
+  "motivationApi": {
+    "legend": "That's how legends are made! 🔥",
+    "brick": "Another brick in your empire! 🏗️",
+    "special": "You're building something special! ✨",
+    "grind": "The grind doesn't lie! 💪",
+    "consistency": "Consistency beats talent! 🎯",
+    "compound": "Studio time is compound interest. 📈",
+    "showed_up": "You showed up — that is the whole game. 🎹",
+    "mastery": "One more session closer to mastery. 🏆",
+    "stacking": "Keep stacking wins. 🔁",
+    "focus": "Focus looks good on you. ✨"
+  },
+  "statsInsights": {
+    "api": {
+      "stats_insights_best_hour": "Best hour: {{hourRange}} (UTC) for total focus time.",
+      "stats_insights_lean_dow": "You lean toward {{weekday}}s for volume."
+    }
+  },
+  "errors": {
+    "validation": {
+      "email": "Please enter a valid email address.",
+      "passwordShort": "Password is too short (at least 8 characters).",
+      "usernameShort": "Username is too short (at least 2 characters)."
+    },
+    "requestTimeout": "Request timed out. Check your connection and try again.",
+    "network": "Network error. Check your connection and try again.",
+    "unexpectedResponse": "Unexpected server response. Please try again.",
+    "signInFailed": "Sign in failed",
+    "registerFailed": "Registration failed"
+  }
+}

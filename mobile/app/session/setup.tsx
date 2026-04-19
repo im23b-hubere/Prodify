@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -8,13 +9,14 @@ import { colors } from "../../constants/theme";
 
 export default function SessionSetupScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <CrashBoundary
         scope="session_setup_screen"
-        fallbackTitle="Session setup failed"
-        fallbackMessage="Please go back and open setup again."
+        fallbackTitle={t("crashBoundary.sessionSetupTitle")}
+        fallbackMessage={t("crashBoundary.sessionSetupScreenMessage")}
         onRecover={() => router.back()}
       >
         <SessionSetupForm

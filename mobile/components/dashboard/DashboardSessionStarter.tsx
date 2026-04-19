@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -15,6 +16,7 @@ type Props = {
 export const DashboardSessionStarter = memo(function DashboardSessionStarter({
   onQuickStart,
 }: Props) {
+  const { t } = useTranslation();
   const router = useRouter();
   return (
     <View style={styles.starterContainer}>
@@ -27,8 +29,8 @@ export const DashboardSessionStarter = memo(function DashboardSessionStarter({
       >
         <LinearGradient colors={["#ff6a3d", colors.primary]} style={styles.quickStart}>
           <Text style={styles.quickEmoji}>▶</Text>
-          <Text style={styles.quickTitle}>START SESSION</Text>
-          <Text style={styles.quickSub}>Quick setup — type, mood & notes</Text>
+          <Text style={styles.quickTitle}>{t("sessionStarter.title")}</Text>
+          <Text style={styles.quickSub}>{t("sessionStarter.subtitle")}</Text>
         </LinearGradient>
       </Pressable>
       <Pressable
@@ -38,7 +40,7 @@ export const DashboardSessionStarter = memo(function DashboardSessionStarter({
         }}
         style={({ pressed }) => [styles.customBtn, pressed && { opacity: 0.85 }]}
       >
-        <Text style={styles.customTxt}>Customize session</Text>
+        <Text style={styles.customTxt}>{t("sessionStarter.customize")}</Text>
       </Pressable>
     </View>
   );

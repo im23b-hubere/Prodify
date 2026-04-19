@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -29,6 +30,7 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { parseSessionList, sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../lib/sessionTime";
 import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
@@ -50,6 +52,7 @@ const MOOD_EMOJI: Record<number, string> = {
 
 export default function SessionActiveScreen() {
   useKeepAwake();
+  const { t } = useTranslation();
   const { token } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string | string[]; source?: string | string[] }>();
@@ -75,14 +78,14 @@ export default function SessionActiveScreen() {
   const load = useCallback(async () => {
     if (!token || !id) return;
     if (!Number.isFinite(Number(id))) {
-      setError("Invalid session");
+      setError(t("sessionActive.invalidSession"));
       return;
     }
     try {
       const raw = await apiJson<unknown>(`/sessions/item/${id}`, { token });
       const data = tryParseSessionDto(raw);
       if (!data) {
-        setError("Invalid session data from server.");
+        setError(t("sessionActive.invalidData"));
         setSession(null);
         return;
       }
@@ -94,10 +97,10 @@ export default function SessionActiveScreen() {
       setDraftNotes(data.notes ?? "");
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      setError(e instanceof Error ? e.message : t("sessionActive.loadFailed"));
       setSession(null);
     }
-  }, [id, token, router]);
+  }, [id, token, router, t]);
 
   useEffect(() => {
     void load();
@@ -126,8 +129,8 @@ export default function SessionActiveScreen() {
   useEffect(() => {
     if (elapsed < 8 * 3600 || longSessionWarned.current) return;
     longSessionWarned.current = true;
-    Alert.alert("Long session", "You've been going for over 8 hours. Still working?");
-  }, [elapsed]);
+    Alert.alert(t("sessionActive.longSessionTitle"), t("sessionActive.longSessionBody"));
+  }, [elapsed, t]);
 
   useEffect(() => {
     pulse.value = withRepeat(
@@ -168,13 +171,13 @@ export default function SessionActiveScreen() {
       });
       const s = tryParseSessionDto(raw);
       if (s) setSession(s);
-      else setError("Invalid response from server.");
+      else setError(t("sessionDetail.invalidResponse"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Pause failed");
+      setError(e instanceof Error ? e.message : t("sessionActive.pauseFailed"));
     } finally {
       setBusy(false);
     }
-  }, [session, token]);
+  }, [session, token, t]);
 
   const resume = useCallback(async () => {
     if (!token || !session) return;
@@ -187,13 +190,13 @@ export default function SessionActiveScreen() {
       });
       const s = tryParseSessionDto(raw);
       if (s) setSession(s);
-      else setError("Invalid response from server.");
+      else setError(t("sessionDetail.invalidResponse"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Resume failed");
+      setError(e instanceof Error ? e.message : t("sessionActive.resumeFailed"));
     } finally {
       setBusy(false);
     }
-  }, [session, token]);
+  }, [session, token, t]);
 
   const saveNotes = useCallback(async () => {
     if (!token || !session) return;
@@ -208,14 +211,14 @@ export default function SessionActiveScreen() {
       });
       const updated = tryParseSessionDto(raw);
       if (updated) setSession(updated);
-      else setError("Invalid response from server.");
+      else setError(t("sessionDetail.invalidResponse"));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save notes");
+      setError(e instanceof Error ? e.message : t("sessionActive.saveNotesFailed"));
     } finally {
       setSavingNotes(false);
     }
-  }, [draftNotes, session, token]);
+  }, [draftNotes, session, token, t]);
 
   const setSessionType = useCallback(
     async (next: SessionType) => {
@@ -230,23 +233,26 @@ export default function SessionActiveScreen() {
         });
         const updated = tryParseSessionDto(raw);
         if (updated) setSession(updated);
-        else setError("Invalid response from server.");
+        else setError(t("sessionDetail.invalidResponse"));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Update failed");
+        setError(e instanceof Error ? e.message : t("sessionActive.updateFailed"));
       } finally {
         setBusy(false);
       }
     },
-    [session, token],
+    [session, token, t],
   );
 
   const confirmStop = useCallback(() => {
     if (!session || stopSessionInFlight.current) return;
     const sid = session.id;
-    Alert.alert("End session?", `You worked for ${formatDurationWords(elapsed)}.`, [
-      { text: "Keep going", style: "cancel" },
+    Alert.alert(
+      t("dashboard.endSessionTitle"),
+      t("dashboard.endSessionWorked", { duration: formatDurationWords(elapsed) }),
+      [
+      { text: t("dashboard.keepGoing"), style: "cancel" },
       {
-        text: "End session",
+        text: t("dashboard.endSessionConfirm"),
         style: "destructive",
         onPress: async () => {
           if (!token || stopSessionInFlight.current) return;
@@ -266,7 +272,7 @@ export default function SessionActiveScreen() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
               () => undefined,
             );
-            setError(e instanceof Error ? e.message : "Stop failed");
+            setError(e instanceof Error ? e.message : t("sessionActive.stopFailed"));
             void load();
           } finally {
             stopSessionInFlight.current = false;
@@ -275,22 +281,22 @@ export default function SessionActiveScreen() {
         },
       },
     ]);
-  }, [elapsed, load, router, session, token]);
+  }, [elapsed, load, router, session, token, t]);
 
   const insightLine = useMemo(() => {
     if (longestCompletedSeconds == null) {
-      return "Stay in flow — every minute counts.";
+      return t("sessionActive.insightDefault");
     }
     if (elapsed > longestCompletedSeconds) {
-      return `You're past your previous best (${formatDurationWords(longestCompletedSeconds)}). Keep going!`;
+      return t("sessionActive.insightPastBest", { prev: formatDurationWords(longestCompletedSeconds) });
     }
-    return `Your longest session so far: ${formatDurationWords(longestCompletedSeconds)}`;
-  }, [elapsed, longestCompletedSeconds]);
+    return t("sessionActive.insightLongest", { duration: formatDurationWords(longestCompletedSeconds) });
+  }, [elapsed, longestCompletedSeconds, t]);
 
   if (!session) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.muted}>{error ?? "Loading session…"}</Text>
+        <Text style={styles.muted}>{error ?? t("sessionActive.loadingSession")}</Text>
       </SafeAreaView>
     );
   }
@@ -309,15 +315,15 @@ export default function SessionActiveScreen() {
           <GestureDetector gesture={swipeDownGesture}>
             <View style={styles.minimizeStrip}>
               <View style={styles.grabber} />
-              <Text style={styles.minimizeHint}>Swipe down to dashboard</Text>
+              <Text style={styles.minimizeHint}>{t("sessionActive.minimizeHint")}</Text>
             </View>
           </GestureDetector>
         ) : null}
         <View style={styles.header}>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{session.session_type}</Text>
+            <Text style={styles.badgeText}>{sessionTypeLabel(session.session_type, t)}</Text>
           </View>
-          <Text style={styles.warn}>Session in progress</Text>
+          <Text style={styles.warn}>{t("sessionActive.inProgress")}</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -331,19 +337,19 @@ export default function SessionActiveScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.editLabel}>Session type</Text>
+            <Text style={styles.editLabel}>{t("sessionActive.sessionType")}</Text>
             <View style={styles.typeRow}>
-              {SESSION_TYPES.map((t) => {
-                const active = session.session_type === t;
+              {SESSION_TYPES.map((stype) => {
+                const active = session.session_type === stype;
                 return (
                   <Pressable
-                    key={t}
-                    onPress={() => setSessionType(t)}
+                    key={stype}
+                    onPress={() => setSessionType(stype)}
                     disabled={busy}
                     style={[styles.typeChip, active && styles.typeChipActive]}
                   >
                     <Text style={[styles.typeChipTxt, active && styles.typeChipTxtActive]}>
-                      {t}
+                      {sessionTypeLabel(stype, t)}
                     </Text>
                   </Pressable>
                 );
@@ -351,13 +357,15 @@ export default function SessionActiveScreen() {
             </View>
 
             {session.mood_level ? (
-              <Text style={styles.row}>Mood: {MOOD_EMOJI[session.mood_level] ?? "—"}</Text>
+              <Text style={styles.row}>
+                {t("sessionActive.mood", { emoji: MOOD_EMOJI[session.mood_level] ?? "—" })}
+              </Text>
             ) : null}
 
-            <Text style={styles.editLabel}>Notes</Text>
+            <Text style={styles.editLabel}>{t("sessionActive.notes")}</Text>
             <TextInput
               style={styles.notesInput}
-              placeholder="What are you working on?"
+              placeholder={t("sessionActive.notesPlaceholder")}
               placeholderTextColor={colors.textSecondary}
               multiline
               textAlignVertical="top"
@@ -373,15 +381,17 @@ export default function SessionActiveScreen() {
                 disabled={savingNotes}
                 hitSlop={8}
               >
-                <Text style={styles.saveNotes}>{savingNotes ? "Saving…" : "Save"}</Text>
+                <Text style={styles.saveNotes}>
+                  {savingNotes ? t("sessionActive.saving") : t("sessionActive.save")}
+                </Text>
               </Pressable>
             </View>
 
             {tagList.length > 0 ? (
               <View style={styles.tags}>
-                {tagList.map((t) => (
-                  <View key={t} style={styles.tag}>
-                    <Text style={styles.tagTxt}>{t}</Text>
+                {tagList.map((tag) => (
+                  <View key={tag} style={styles.tag}>
+                    <Text style={styles.tagTxt}>{tag}</Text>
                   </View>
                 ))}
               </View>
@@ -392,16 +402,16 @@ export default function SessionActiveScreen() {
 
           <View style={styles.actions}>
             {isPaused ? (
-              <PrimaryButton label="Resume" onPress={resume} loading={busy} />
+              <PrimaryButton label={t("sessionActive.resume")} onPress={resume} loading={busy} />
             ) : (
               <Pressable style={styles.pauseOutline} onPress={pause} disabled={busy}>
-                <Text style={styles.pauseText}>Pause</Text>
+                <Text style={styles.pauseText}>{t("sessionActive.pause")}</Text>
               </Pressable>
             )}
           </View>
 
           <Pressable style={styles.stopBtn} onPress={confirmStop} disabled={busy}>
-            <Text style={styles.stopTxt}>Stop session</Text>
+            <Text style={styles.stopTxt}>{t("sessionActive.stopSession")}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

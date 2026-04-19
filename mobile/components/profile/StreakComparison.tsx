@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 import { GlassCard } from "../ui/GlassCard";
@@ -11,33 +12,34 @@ type Props = {
 };
 
 export const StreakComparison = memo(function StreakComparison({ yourStreak, theirStreak }: Props) {
+  const { t } = useTranslation();
   const difference = theirStreak - yourStreak;
   const isAhead = difference > 0;
 
   let msg: string;
   if (isAhead) {
-    msg = `They're ${difference} day${difference === 1 ? "" : "s"} ahead — time to catch up.`;
+    msg = t("streakComparison.aheadThem", { count: difference });
   } else if (difference === 0) {
-    msg = "You're tied — keep pushing together.";
+    msg = t("streakComparison.tied");
   } else {
-    msg = `You're ${Math.abs(difference)} day${Math.abs(difference) === 1 ? "" : "s"} ahead — don't slow down.`;
+    msg = t("streakComparison.aheadYou", { count: Math.abs(difference) });
   }
 
   return (
     <GlassCard>
       <View style={styles.inner}>
-        <Text style={styles.title}>Streak comparison</Text>
+        <Text style={styles.title}>{t("streakComparison.title")}</Text>
         <View style={styles.row}>
           <View style={styles.col}>
-            <Text style={styles.lbl}>You</Text>
+            <Text style={styles.lbl}>{t("streakComparison.you")}</Text>
             <Text style={styles.val}>
               {yourStreak}
               <Text> 🔥</Text>
             </Text>
           </View>
-          <Text style={styles.vs}>VS</Text>
+          <Text style={styles.vs}>{t("streakComparison.vs")}</Text>
           <View style={styles.col}>
-            <Text style={styles.lbl}>Them</Text>
+            <Text style={styles.lbl}>{t("streakComparison.them")}</Text>
             <Text style={styles.val}>
               {theirStreak}
               <Text> 🔥</Text>

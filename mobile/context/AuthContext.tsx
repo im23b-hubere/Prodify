@@ -1,8 +1,10 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { REFRESH_TOKEN_KEY } from "../constants/storageKeys";
+import { ONBOARDING_COMPLETE_KEY, REFRESH_TOKEN_KEY } from "../constants/storageKeys";
 import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } from "../lib/client";
+import i18n from "../lib/i18n";
 
 const TOKEN_KEY = "prodify_token";
 
@@ -19,6 +21,8 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Permanently deletes the account on the server and clears local session data. */
+  deleteAccount: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
 
@@ -105,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
     const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
     if (!access || !refresh) {
-      throw new Error("Unexpected server response. Please try again.");
+      throw new Error(i18n.t("errors.unexpectedResponse"));
     }
     await persistTokenPair({ access_token: access, refresh_token: refresh });
   }, [persistTokenPair]);
@@ -118,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
     const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
     if (!access || !refresh) {
-      throw new Error("Unexpected server response. Please try again.");
+      throw new Error(i18n.t("errors.unexpectedResponse"));
     }
     await persistTokenPair({ access_token: access, refresh_token: refresh });
   }, [persistTokenPair]);
@@ -134,6 +138,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    const t = await SecureStore.getItemAsync(TOKEN_KEY).catch(() => null);
+    const trimmed = t?.trim();
+    if (!trimmed) {
+      throw new Error(i18n.t("errors.unexpectedResponse"));
+    }
+    await apiJson("/users/me", { method: "DELETE", token: trimmed });
+    await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
+    await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY).catch(() => undefined);
+    setToken(null);
+    setUser(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       token,
@@ -142,9 +160,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
+      deleteAccount,
       refreshUser,
     }),
-    [token, user, hydrated, signIn, signUp, signOut, refreshUser],
+    [token, user, hydrated, signIn, signUp, signOut, deleteAccount, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,3 +1,4 @@
+import "../lib/i18n";
 /* eslint-disable import/no-duplicates -- gesture-handler needs a side-effect import before named imports */
 import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";

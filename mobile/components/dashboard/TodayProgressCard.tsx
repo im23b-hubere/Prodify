@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
@@ -17,23 +18,24 @@ export const TodayProgressCard = memo(function TodayProgressCard({
   weekSessions,
   weekGoalTarget,
 }: Props) {
+  const { t } = useTranslation();
   const goalLine =
     weekGoalTarget != null && weekGoalTarget > 0
-      ? `${weekSessions} / ${weekGoalTarget} sessions this week`
-      : `${weekSessions} sessions this week`;
+      ? t("todayProgress.weekGoal", { current: weekSessions, goal: weekGoalTarget })
+      : t("todayProgress.weekOnly", { count: weekSessions });
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Today</Text>
+      <Text style={styles.title}>{t("todayProgress.title")}</Text>
       <View style={styles.row}>
         <View style={styles.cell}>
           <Text style={styles.big}>{todaySessions}</Text>
-          <Text style={styles.lbl}>Sessions</Text>
+          <Text style={styles.lbl}>{t("todayProgress.sessions")}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.cell}>
           <Text style={styles.big}>{todayMinutes}</Text>
-          <Text style={styles.lbl}>Minutes</Text>
+          <Text style={styles.lbl}>{t("todayProgress.minutes")}</Text>
         </View>
       </View>
       <Text style={styles.week}>{goalLine}</Text>

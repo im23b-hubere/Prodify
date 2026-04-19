@@ -1,6 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -32,7 +33,8 @@ function formatHours(totalSeconds: number): string {
 }
 
 export default function ProfilScreen() {
-  const { user, signOut, token } = useAuth();
+  const { t } = useTranslation();
+  const { user, signOut, deleteAccount, token } = useAuth();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -56,14 +58,14 @@ export default function ProfilScreen() {
       setStats(tryParseSessionStatsDto(rawS));
       setMilestones(m);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load profile data.");
+      setError(e instanceof Error ? e.message : t("profile.errorLoadProfile"));
       setStats(null);
       setMilestones(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -79,6 +81,32 @@ export default function ProfilScreen() {
     router.replace("/(auth)/login");
   }
 
+  function confirmDeleteAccount() {
+    Alert.alert(t("legal.deleteAccount.confirmTitle"), t("legal.deleteAccount.confirmMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("legal.deleteAccount.confirmDelete"),
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            try {
+              await deleteAccount();
+              router.replace("/(auth)/login");
+            } catch (e) {
+              const msg =
+                e instanceof ApiError
+                  ? e.message
+                  : e instanceof Error
+                    ? e.message
+                    : t("legal.deleteAccount.errorFallback");
+              Alert.alert(t("legal.deleteAccount.errorTitle"), msg);
+            }
+          })();
+        },
+      },
+    ]);
+  }
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     load().catch(() => undefined);
@@ -90,7 +118,7 @@ export default function ProfilScreen() {
     try {
       const body =
         pingTemplate === "test"
-          ? { template: "test" as const, title: "Prodify", body: "Test-Push vom Server" }
+          ? { template: "test" as const, title: t("profile.pingTestTitle"), body: t("profile.pingTestBody") }
           : pingTemplate === "session_demo"
             ? { template: "session_demo" as const }
             : { template: "streak_demo" as const, streak_days: 12 };
@@ -103,16 +131,16 @@ export default function ProfilScreen() {
         },
       );
       Alert.alert(
-        "Push",
-        `Zugestellt: ${r.delivered_ok} / ${r.attempted}${r.message ? `\n${r.message}` : ""}`,
+        t("profile.pingResultTitle"),
+        `${t("profile.pingDelivered", { ok: r.delivered_ok, attempted: r.attempted })}${r.message ? `\n${r.message}` : ""}`,
       );
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : e instanceof Error ? e.message : String(e);
-      Alert.alert("Push", msg);
+      Alert.alert(t("profile.pingResultTitle"), msg);
     } finally {
       setPushBusy(false);
     }
-  }, [pingTemplate, token]);
+  }, [pingTemplate, token, t]);
 
   const summary = stats?.summary;
 
@@ -131,17 +159,17 @@ export default function ProfilScreen() {
         <View style={styles.profileHero}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {user?.username?.slice(0, 2).toUpperCase() ?? "BT"}
+              {user?.username?.slice(0, 2).toUpperCase() ?? t("profile.defaultInitials")}
             </Text>
           </View>
-          <Text style={styles.username}>{user?.username ?? "Prodify User"}</Text>
-          <Text style={styles.email}>{user?.email ?? "loading..."}</Text>
+          <Text style={styles.username}>{user?.username ?? t("profile.defaultDisplayName")}</Text>
+          <Text style={styles.email}>{user?.email ?? t("profile.loadingEmail")}</Text>
         </View>
 
         {loading && !refreshing ? (
           <View style={styles.loadingBlock}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingHint}>Loading your stats…</Text>
+            <Text style={styles.loadingHint}>{t("profile.loadingHint")}</Text>
           </View>
         ) : null}
 
@@ -149,24 +177,27 @@ export default function ProfilScreen() {
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retry} onPress={() => load().catch(() => undefined)}>
-              <Text style={styles.retryText}>Try again</Text>
+              <Text style={styles.retryText}>{t("profile.tryAgain")}</Text>
             </Pressable>
           </View>
         ) : null}
 
         {!loading && summary ? (
           <View style={styles.statsGrid}>
-            <StatCard label="Total Sessions" value={summary.total_sessions} />
-            <StatCard label="Current streak" value={`🔥 ${summary.current_streak_days}`} />
-            <StatCard label="Best streak" value={`${summary.best_streak_days} days`} />
-            <StatCard label="Total hours" value={formatHours(summary.total_seconds)} />
+            <StatCard label={t("profile.totalSessions")} value={summary.total_sessions} />
+            <StatCard label={t("profile.currentStreak")} value={`🔥 ${summary.current_streak_days}`} />
+            <StatCard
+              label={t("profile.bestStreak")}
+              value={t("profile.bestStreakDays", { days: summary.best_streak_days })}
+            />
+            <StatCard label={t("profile.totalHours")} value={formatHours(summary.total_seconds)} />
           </View>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Milestones</Text>
+        <Text style={styles.sectionTitle}>{t("profile.milestonesTitle")}</Text>
         {milestones ? (
           <Text style={styles.milestoneSub}>
-            Longest streak recorded: {milestones.longest_streak_days} days
+            {t("profile.milestoneSub", { days: milestones.longest_streak_days })}
           </Text>
         ) : null}
 
@@ -183,20 +214,17 @@ export default function ProfilScreen() {
         ) : null}
 
         {!loading && !milestones && !error ? (
-          <Text style={styles.muted}>Milestones unavailable.</Text>
+          <Text style={styles.muted}>{t("profile.milestonesUnavailable")}</Text>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Server-Push (Expo + FCM)</Text>
-        <Text style={styles.pushHint}>
-          Backend: EXPO_ACCESS_TOKEN für Expo-Tokens; optional Firebase Service Account (JSON oder
-          Pfad) für Android-FCM-Tokens. Templates simulieren echte In-App-Texte.
-        </Text>
+        <Text style={styles.sectionTitle}>{t("profile.pushSectionTitle")}</Text>
+        <Text style={styles.pushHint}>{t("profile.pushHint")}</Text>
         <View style={styles.pingChips}>
           {(
             [
-              { id: "test" as const, label: "Test" },
-              { id: "session_demo" as const, label: "Session" },
-              { id: "streak_demo" as const, label: "Streak" },
+              { id: "test" as const, labelKey: "profile.pingTemplateTest" as const },
+              { id: "session_demo" as const, labelKey: "profile.pingTemplateSession" as const },
+              { id: "streak_demo" as const, labelKey: "profile.pingTemplateStreak" as const },
             ] as const
           ).map((p) => (
             <Pressable
@@ -208,27 +236,61 @@ export default function ProfilScreen() {
               }}
             >
               <Text style={[styles.pingChipTxt, pingTemplate === p.id && styles.pingChipTxtOn]}>
-                {p.label}
+                {t(p.labelKey)}
               </Text>
             </Pressable>
           ))}
         </View>
         <PrimaryButton
-          label={pushBusy ? "Sende…" : "Push senden"}
+          label={pushBusy ? t("profile.pingSending") : t("profile.pingSend")}
           onPress={pingPush}
           loading={pushBusy}
         />
 
-        <View style={styles.settingsWrap}>
-          <PrimaryButton label="Settings" onPress={() => {}} />
+        <Text style={styles.sectionTitle}>{t("profile.settingsTitle")}</Text>
+        <View style={styles.settingsCard}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("legal.linksPrivacy")}
+            style={({ pressed }) => [styles.legalRow, pressed && styles.pressed]}
+            onPress={() => router.push("/legal/privacy" as never)}
+          >
+            <Text style={styles.legalRowText}>{t("legal.linksPrivacy")}</Text>
+            <Text style={styles.legalRowChevron}>›</Text>
+          </Pressable>
+          <View style={styles.legalDivider} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("legal.linksTerms")}
+            style={({ pressed }) => [styles.legalRow, pressed && styles.pressed]}
+            onPress={() => router.push("/legal/terms" as never)}
+          >
+            <Text style={styles.legalRowText}>{t("legal.linksTerms")}</Text>
+            <Text style={styles.legalRowChevron}>›</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.deleteSection}>
+          <Text style={styles.deleteSectionTitle}>{t("legal.deleteAccount.sectionTitle")}</Text>
+          <Text style={styles.deleteDesc}>{t("legal.deleteAccount.description")}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("legal.deleteAccount.button")}
+            style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
+            onPress={confirmDeleteAccount}
+          >
+            <Text style={styles.deleteBtnText}>{t("legal.deleteAccount.button")}</Text>
+          </Pressable>
         </View>
 
         <View style={styles.signoutWrap}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("profile.signOut")}
             style={({ pressed }) => [styles.outlineBtn, pressed && styles.pressed]}
             onPress={logout}
           >
-            <Text style={styles.outlineBtnText}>Sign out</Text>
+            <Text style={styles.outlineBtnText}>{t("profile.signOut")}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -327,11 +389,66 @@ const styles = StyleSheet.create({
   badgesRow: {
     gap: spacing.sm,
   },
-  settingsWrap: {
-    marginTop: spacing.lg,
+  settingsCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
+    marginBottom: spacing.lg,
+  },
+  legalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  legalRowText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.body,
+  },
+  legalRowChevron: {
+    color: colors.textSecondary,
+    fontSize: 22,
+    fontWeight: "300",
+  },
+  legalDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginLeft: spacing.md,
+  },
+  deleteSection: {
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  deleteSectionTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.subheadline,
+  },
+  deleteDesc: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    lineHeight: 20,
+  },
+  deleteBtn: {
+    marginTop: spacing.xs,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,80,80,0.45)",
+    backgroundColor: "rgba(255,80,80,0.08)",
+  },
+  deleteBtnText: {
+    color: "#ff9a9a",
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
   },
   signoutWrap: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   outlineBtn: {
     borderRadius: radii.md,

@@ -1,6 +1,8 @@
 import * as Haptics from "expo-haptics";
 import { type Href, useRouter } from "expo-router";
-import { memo } from "react";
+import { memo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { GlassCard } from "../ui/GlassCard";
@@ -22,17 +24,17 @@ function rankColor(rank: number) {
   return colors.secondary;
 }
 
-function formatAgo(iso: string): string {
+function formatAgo(iso: string, t: TFunction): string {
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return "";
   const diff = Math.max(0, Date.now() - d.getTime());
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("friendsWidget.agoNow");
+  if (mins < 60) return t("friendsWidget.agoMinutes", { mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 48) return `${hours}h ago`;
+  if (hours < 48) return t("friendsWidget.agoHours", { hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t("friendsWidget.agoDays", { days });
 }
 
 export const FriendsActivityWidget = memo(function FriendsActivityWidget({
@@ -41,7 +43,9 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
   leaderboard,
   loading,
 }: Props) {
+  const { t } = useTranslation();
   const router = useRouter();
+  const ago = useCallback((iso: string) => formatAgo(iso, t), [t]);
 
   const topOthers = leaderboard.filter((e) => e.user_id !== currentUserId).slice(0, 3);
   const feed = activity.slice(0, 5);
@@ -50,8 +54,8 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
     return (
       <GlassCard>
         <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Friends activity</Text>
-          <Text style={styles.emptySub}>Add friends to see sessions and a weekly leaderboard.</Text>
+          <Text style={styles.emptyTitle}>{t("friendsWidget.emptyTitle")}</Text>
+          <Text style={styles.emptySub}>{t("friendsWidget.emptySub")}</Text>
           <Pressable
             style={styles.emptyBtn}
             onPress={() => {
@@ -59,7 +63,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
               router.push("/(tabs)/friends");
             }}
           >
-            <Text style={styles.emptyBtnTxt}>Find friends</Text>
+            <Text style={styles.emptyBtnTxt}>{t("friendsWidget.findFriends")}</Text>
           </Pressable>
         </View>
       </GlassCard>
@@ -69,20 +73,20 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
   return (
     <View style={styles.wrap}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Friends</Text>
+        <Text style={styles.title}>{t("friendsWidget.title")}</Text>
         <Pressable
           onPress={() => {
             Haptics.selectionAsync().catch(() => undefined);
             router.push("/(tabs)/friends");
           }}
         >
-          <Text style={styles.viewAll}>View all</Text>
+          <Text style={styles.viewAll}>{t("friendsWidget.viewAll")}</Text>
         </Pressable>
       </View>
 
       {topOthers.length > 0 ? (
         <View style={styles.leaderBlock}>
-          <Text style={styles.subtle}>This week</Text>
+          <Text style={styles.subtle}>{t("friendsWidget.thisWeek")}</Text>
           {topOthers.map((e) => (
             <Pressable
               key={e.user_id}
@@ -98,7 +102,10 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
               <View style={{ flex: 1 }}>
                 <Text style={styles.name}>{e.username}</Text>
                 <Text style={styles.meta}>
-                  {e.sessions_in_period} sessions · {e.current_streak_days} streak
+                  {t("friendsWidget.sessionsMeta", {
+                    sessions: e.sessions_in_period,
+                    streak: e.current_streak_days,
+                  })}
                 </Text>
               </View>
             </Pressable>
@@ -108,7 +115,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
 
       {feed.length > 0 ? (
         <View style={styles.feed}>
-          <Text style={styles.subtle}>Recent</Text>
+          <Text style={styles.subtle}>{t("friendsWidget.recent")}</Text>
           {feed.map((a) => (
             <Pressable
               key={`${a.session_id}-${a.completed_at}`}
@@ -122,13 +129,13 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
                 {a.username}
               </Text>
               <Text style={styles.feedMeta} numberOfLines={1}>
-                {a.session_type} · {formatAgo(a.completed_at)}
+                {a.session_type} · {ago(a.completed_at)}
               </Text>
             </Pressable>
           ))}
         </View>
       ) : loading ? (
-        <Text style={styles.loading}>Loading friends…</Text>
+        <Text style={styles.loading}>{t("friendsWidget.loading")}</Text>
       ) : null}
     </View>
   );

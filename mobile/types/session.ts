@@ -38,4 +38,8 @@ export type SessionStatsDto = {
   }>;
   recent_sessions: SessionDto[];
   productivity_hint: string | null;
+  productivity_hint_item?: {
+    key: string;
+    params: Record<string, string | number>;
+  } | null;
 };

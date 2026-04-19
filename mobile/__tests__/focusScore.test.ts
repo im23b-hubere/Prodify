@@ -1,3 +1,4 @@
+import i18n from "../lib/i18n";
 import { calculateFocusScore, getFocusScoreMessage } from "../lib/focusScore";
 
 describe("calculateFocusScore", () => {
@@ -28,6 +29,6 @@ describe("calculateFocusScore", () => {
 
 describe("getFocusScoreMessage", () => {
   test("returns encouragement for low scores", () => {
-    expect(getFocusScoreMessage(40)).toBe("Room for improvement");
+    expect(getFocusScoreMessage(40)).toBe(i18n.t("focusScore.messages.roomForImprovement"));
   });
 });

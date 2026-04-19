@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronRight, Shield } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -25,6 +26,7 @@ export function StreakHeroSection({
   onUseFreeze,
   onOpenHistory,
 }: StreakHeroSectionProps) {
+  const { t } = useTranslation();
   const target = overview?.current_streak ?? 0;
   const displayStreak = useAnimatedStreakCount(target, 900);
 
@@ -42,11 +44,15 @@ export function StreakHeroSection({
   const labels = overview.last_7_day_labels ?? [];
 
   const nextLine =
-    overview.next_milestone_at != null && overview.days_to_next_milestone != null
-      ? `Next: ${overview.next_milestone_title} · ${overview.days_to_next_milestone} day${
-          overview.days_to_next_milestone === 1 ? "" : "s"
-        } to go`
-      : "You're at the top milestone tier — legendary.";
+    overview.next_milestone_at != null &&
+    overview.days_to_next_milestone != null &&
+    overview.next_milestone_title != null
+      ? t("streakHero.nextMilestone", {
+          count: overview.days_to_next_milestone,
+          title: overview.next_milestone_title,
+          days: overview.days_to_next_milestone,
+        })
+      : t("streakHero.topTier");
 
   return (
     <Animated.View entering={FadeInDown.duration(420)}>
@@ -54,7 +60,7 @@ export function StreakHeroSection({
         <View style={styles.topRow}>
           <Text style={styles.flameEmoji}>🔥</Text>
           <Text style={styles.bigStreak}>{displayStreak}</Text>
-          <Text style={styles.dayWord}>DAY STREAK</Text>
+          <Text style={styles.dayWord}>{t("streakHero.dayStreak")}</Text>
         </View>
         <Text style={styles.tagline}>{overview.tagline}</Text>
 
@@ -71,26 +77,28 @@ export function StreakHeroSection({
         ) : null}
 
         <Text style={styles.milestoneHint}>{nextLine}</Text>
-        <Text style={styles.longest}>Longest streak: {overview.longest_streak} days</Text>
+        <Text style={styles.longest}>
+          {t("streakHero.longest", { days: overview.longest_streak })}
+        </Text>
 
         {onOpenHistory ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="View streak history"
+            accessibilityLabel={t("streakHero.historyA11y")}
             style={({ pressed }) => [styles.historyLink, pressed && { opacity: 0.85 }]}
             onPress={() => {
               Haptics.selectionAsync().catch(() => undefined);
               onOpenHistory();
             }}
           >
-            <Text style={styles.historyLinkText}>Streak history</Text>
+            <Text style={styles.historyLinkText}>{t("streakHero.historyLink")}</Text>
             <ChevronRight color={colors.secondary} size={18} />
           </Pressable>
         ) : null}
 
         {overview.streak_at_risk ? (
           <View style={styles.riskBanner}>
-            <Text style={styles.riskTxt}>⚠️ Log a session today to keep the chain alive.</Text>
+            <Text style={styles.riskTxt}>{t("streakHero.riskBanner")}</Text>
           </View>
         ) : null}
 
@@ -118,14 +126,14 @@ export function StreakHeroSection({
           />
           <Text style={styles.freezeLabel}>
             {freezeBusy
-              ? "Activating…"
+              ? t("streakHero.freezeActivating")
               : overview.freezes_remaining > 0
-                ? `${overview.freezes_remaining} Streak Freeze available (Premium)`
-                : "No freezes left this month"}
+                ? t("streakHero.freezeAvailable", { n: overview.freezes_remaining })
+                : t("streakHero.freezeNone")}
           </Text>
         </Pressable>
         {!overview.can_use_freeze && overview.freezes_remaining < 1 ? (
-          <Text style={styles.freezeHint}>Resets next month — or complete a session today.</Text>
+          <Text style={styles.freezeHint}>{t("streakHero.freezeHint")}</Text>
         ) : null}
       </LinearGradient>
     </Animated.View>

@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Mic, Share2 } from "lucide-react-native";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
@@ -13,6 +14,12 @@ import {
   getFocusScoreTips,
   type FocusScoreData,
 } from "../../lib/focusScore";
+import {
+  buildFocusHeadline,
+  deriveFocusTier,
+  translateInsightItem,
+} from "../../lib/sessionInsightsI18n";
+import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import type { SessionDto } from "../../types/session";
@@ -34,6 +41,7 @@ function focusRing(score: number) {
 }
 
 export function SessionInsightSections({ session, insights, producerName }: Props) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [shareImageOpen, setShareImageOpen] = useState(false);
   const ring = useMemo(() => focusRing(insights.focus_score), [insights.focus_score]);
@@ -49,28 +57,59 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
     };
   }, [session, insights.paused_seconds]);
 
-  const focusTips = useMemo(() => getFocusScoreTips(focusInput), [focusInput]);
+  const focusTips = useMemo(() => getFocusScoreTips(focusInput, t), [focusInput, t]);
   const benchmark = useMemo(
-    () => getFocusBenchmark(insights.focus_score, insights.focus_user_average ?? null),
-    [insights.focus_score, insights.focus_user_average],
+    () => getFocusBenchmark(insights.focus_score, insights.focus_user_average ?? null, t),
+    [insights.focus_score, insights.focus_user_average, t],
   );
 
-  const shareMinimal = useMemo(() => {
-    const dur = session.duration_seconds ?? 0;
-    return `${session.session_type} · ${formatDurationWords(dur)} · Prodify`;
-  }, [session]);
+  const typeLabel = sessionTypeLabel(String(session.session_type), t);
+  const durWords = formatDurationWords(session.duration_seconds ?? 0);
+
+  const shareMinimal = useMemo(
+    () => t("sessionInsights.shareMinimal", { type: typeLabel, duration: durWords }),
+    [t, typeLabel, durWords],
+  );
 
   const shareBold = useMemo(
     () =>
-      `🔥 ${session.session_type.toUpperCase()}\n⏱ ${formatDurationWords(session.duration_seconds ?? 0)}\n— Prodify`,
-    [session],
+      t("sessionInsights.shareBold", {
+        type: typeLabel.toUpperCase(),
+        duration: durWords,
+      }),
+    [t, typeLabel, durWords],
   );
 
   const shareGradient = useMemo(
     () =>
-      `✨ Session recap\n${session.session_type}\n${formatDurationWords(session.duration_seconds ?? 0)}\nFocus ${insights.focus_score}%\nProdify`,
-    [session, insights.focus_score],
+      t("sessionInsights.shareGradient", {
+        type: typeLabel,
+        duration: durWords,
+        focus: insights.focus_score,
+      }),
+    [t, typeLabel, durWords, insights.focus_score],
   );
+
+  const focusSubText = useMemo(() => {
+    const tier = insights.focus_tier ?? deriveFocusTier(insights.focus_score);
+    return buildFocusHeadline(insights.focus_score, tier, t);
+  }, [insights.focus_score, insights.focus_tier, t]);
+
+  const impactLines = useMemo(() => {
+    const items = insights.impact_items;
+    if (items && items.length > 0) {
+      return items.map((it) => translateInsightItem(it, t));
+    }
+    return insights.impact_lines;
+  }, [insights.impact_items, insights.impact_lines, t]);
+
+  const productivityLines = useMemo(() => {
+    const items = insights.productivity_items;
+    if (items && items.length > 0) {
+      return items.map((it) => translateInsightItem(it, t));
+    }
+    return insights.productivity_insights;
+  }, [insights.productivity_items, insights.productivity_insights, t]);
 
   const onShare = async (body: string) => {
     await Share.share({ message: body });
@@ -89,16 +128,16 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
         colors={["rgba(255,61,0,0.15)", "rgba(162,89,255,0.12)"]}
         style={styles.impactCard}
       >
-        <Text style={styles.sectionLabel}>Session impact</Text>
-        {insights.impact_lines.map((line) => (
-          <Text key={line} style={styles.impactLine}>
+        <Text style={styles.sectionLabel}>{t("sessionInsights.impact")}</Text>
+        {impactLines.map((line, idx) => (
+          <Text key={`${idx}-${line}`} style={styles.impactLine}>
             {line}
           </Text>
         ))}
       </LinearGradient>
 
       <View style={styles.focusCard}>
-        <Text style={styles.sectionLabel}>Focus score</Text>
+        <Text style={styles.sectionLabel}>{t("sessionInsights.focusScore")}</Text>
         <View style={styles.focusRow}>
           <Svg
             width={ring.size}
@@ -126,16 +165,16 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
           </Svg>
           <View style={styles.focusTextCol}>
             <Text style={styles.focusBig}>{insights.focus_score}%</Text>
-            <Text style={styles.focusSub}>{insights.focus_label}</Text>
+            <Text style={styles.focusSub}>{focusSubText}</Text>
             {insights.focus_percentile != null ? (
               <Text style={styles.focusBench}>
-                Better than {insights.focus_percentile}% of your sessions
+                {t("sessionInsights.betterThanPercent", { pct: insights.focus_percentile })}
               </Text>
             ) : null}
             {benchmark ? <Text style={styles.focusBench}>{benchmark}</Text> : null}
             {focusTips.length > 0 ? (
               <View style={styles.tipsBlock}>
-                <Text style={styles.tipsTitle}>Tips for next session</Text>
+                <Text style={styles.tipsTitle}>{t("sessionInsights.tipsTitle")}</Text>
                 {focusTips.map((tip) => (
                   <Text key={tip} style={styles.tipLine}>
                     • {tip}
@@ -148,11 +187,17 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionLabel}>Time breakdown</Text>
-        <Text style={styles.rowLine}>Active: {formatDurationWords(insights.active_seconds)}</Text>
-        <Text style={styles.rowLine}>Paused: {formatDurationWords(insights.paused_seconds)}</Text>
+        <Text style={styles.sectionLabel}>{t("sessionInsights.timeBreakdown")}</Text>
         <Text style={styles.rowLine}>
-          Effective rate: {insights.effective_rate_percent.toFixed(0)}%
+          {t("sessionInsights.active", { duration: formatDurationWords(insights.active_seconds) })}
+        </Text>
+        <Text style={styles.rowLine}>
+          {t("sessionInsights.paused", { duration: formatDurationWords(insights.paused_seconds) })}
+        </Text>
+        <Text style={styles.rowLine}>
+          {t("sessionInsights.effectiveRate", {
+            pct: insights.effective_rate_percent.toFixed(0),
+          })}
         </Text>
         <View style={styles.timeline}>
           {insights.timeline.map((seg, i) => (
@@ -168,12 +213,12 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
         </View>
       </View>
 
-      {insights.productivity_insights.length > 0 ? (
+      {productivityLines.length > 0 ? (
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Productivity insights</Text>
-          {insights.productivity_insights.map((t) => (
-            <Text key={t} style={styles.insightTxt}>
-              {t}
+          <Text style={styles.sectionLabel}>{t("sessionInsights.productivity")}</Text>
+          {productivityLines.map((line, idx) => (
+            <Text key={`${idx}-${line}`} style={styles.insightTxt}>
+              {line}
             </Text>
           ))}
         </View>
@@ -181,7 +226,7 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
 
       {insights.related_sessions.length > 0 ? (
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Similar sessions</Text>
+          <Text style={styles.sectionLabel}>{t("sessionInsights.similarSessions")}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -193,7 +238,7 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
                 style={styles.relCard}
                 onPress={() => router.push(`/session/${s.id}`)}
               >
-                <Text style={styles.relType}>{s.session_type}</Text>
+                <Text style={styles.relType}>{sessionTypeLabel(String(s.session_type), t)}</Text>
                 <Text style={styles.relDur}>{formatDurationWords(s.duration_seconds ?? 0)}</Text>
               </Pressable>
             ))}
@@ -202,36 +247,36 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
       ) : null}
 
       <View style={styles.card}>
-        <Text style={styles.sectionLabel}>Audio</Text>
+        <Text style={styles.sectionLabel}>{t("sessionInsights.audio")}</Text>
         <Pressable style={styles.audioBtn} disabled>
           <Mic color={colors.textSecondary} size={20} />
-          <Text style={styles.audioTxt}>Add audio snippet</Text>
+          <Text style={styles.audioTxt}>{t("sessionInsights.addAudioSnippet")}</Text>
           <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonTxt}>Coming soon</Text>
+            <Text style={styles.comingSoonTxt}>{t("sessionInsights.comingSoon")}</Text>
           </View>
         </Pressable>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionLabel}>Share</Text>
+        <Text style={styles.sectionLabel}>{t("sessionInsights.share")}</Text>
         <Pressable style={styles.storyBtn} onPress={() => setShareImageOpen(true)}>
           <Share2 size={18} color={colors.textPrimary} />
-          <Text style={styles.storyBtnTxt}>Story-Bild (PNG)</Text>
+          <Text style={styles.storyBtnTxt}>{t("sessionInsights.storyPng")}</Text>
         </Pressable>
         <View style={styles.shareRow}>
           <Pressable style={styles.shareChip} onPress={() => onShare(shareMinimal)}>
             <Share2 size={16} color={colors.textPrimary} />
-            <Text style={styles.shareChipTxt}>Text · Minimal</Text>
+            <Text style={styles.shareChipTxt}>{t("sessionInsights.shareTextMinimal")}</Text>
           </Pressable>
           <Pressable style={styles.shareChip} onPress={() => onShare(shareBold)}>
-            <Text style={styles.shareChipTxt}>Text · Bold</Text>
+            <Text style={styles.shareChipTxt}>{t("sessionInsights.shareTextBold")}</Text>
           </Pressable>
           <Pressable style={styles.shareChip} onPress={() => onShare(shareGradient)}>
-            <Text style={styles.shareChipTxt}>Text · Lang</Text>
+            <Text style={styles.shareChipTxt}>{t("sessionInsights.shareTextLong")}</Text>
           </Pressable>
         </View>
         <Pressable style={styles.copyBtn} onPress={() => onShare(shareMinimal)}>
-          <Text style={styles.copyBtnTxt}>Copy stats as text</Text>
+          <Text style={styles.copyBtnTxt}>{t("sessionInsights.copyStats")}</Text>
         </Pressable>
       </View>
     </View>

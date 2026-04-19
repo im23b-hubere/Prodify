@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ChevronLeft } from "lucide-react-native";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Pressable,
@@ -35,6 +36,7 @@ function formatRange(startIso: string, endIso: string): string {
 }
 
 export default function StreakHistoryScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { token } = useAuth();
   const [runs, setRuns] = useState<StreakRunDto[]>([]);
@@ -53,13 +55,13 @@ export default function StreakHistoryScreen() {
       const data = await apiJson<StreakRunDto[]>("/streak/history", { token });
       setRuns(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load streak history.");
+      setError(e instanceof Error ? e.message : t("streakHistory.loadError"));
       setRuns([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,7 +79,7 @@ export default function StreakHistoryScreen() {
       <View style={styles.topBar}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("streakHistory.backA11y")}
           hitSlop={12}
           style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
           onPress={() => {
@@ -87,7 +89,7 @@ export default function StreakHistoryScreen() {
         >
           <ChevronLeft color={colors.textPrimary} size={26} />
         </Pressable>
-        <Text style={styles.title}>Streak history</Text>
+        <Text style={styles.title}>{t("streakHistory.title")}</Text>
         <View style={styles.backSpacer} />
       </View>
 
@@ -104,7 +106,7 @@ export default function StreakHistoryScreen() {
         {loading && !refreshing ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.muted}>Loading runs…</Text>
+            <Text style={styles.muted}>{t("streakHistory.loading")}</Text>
           </View>
         ) : null}
 
@@ -112,7 +114,7 @@ export default function StreakHistoryScreen() {
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retry} onPress={() => load().catch(() => undefined)}>
-              <Text style={styles.retryText}>Try again</Text>
+              <Text style={styles.retryText}>{t("streakHistory.retry")}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -120,10 +122,8 @@ export default function StreakHistoryScreen() {
         {!loading && !error && runs.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>📅</Text>
-            <Text style={styles.emptyTitle}>No streak runs yet</Text>
-            <Text style={styles.emptySub}>
-              Complete sessions on consecutive days to build your first chain.
-            </Text>
+            <Text style={styles.emptyTitle}>{t("streakHistory.emptyTitle")}</Text>
+            <Text style={styles.emptySub}>{t("streakHistory.emptySub")}</Text>
           </View>
         ) : null}
 
@@ -135,7 +135,9 @@ export default function StreakHistoryScreen() {
             <View style={styles.card}>
               <View style={styles.cardTop}>
                 <Text style={styles.days}>{run.length_days}</Text>
-                <Text style={styles.daysLabel}>day{run.length_days === 1 ? "" : "s"}</Text>
+                <Text style={styles.daysLabel}>
+                  {t("streakHistory.dayUnit", { count: run.length_days })}
+                </Text>
               </View>
               <Text style={styles.range}>{formatRange(run.start_date, run.end_date)}</Text>
             </View>

@@ -1,3 +1,5 @@
+import i18n from "./i18n";
+
 export type TimeOfDay = "morning" | "afternoon" | "evening" | "night";
 
 export type FriendMotivationStats = {
@@ -39,97 +41,92 @@ function isEvening(date = new Date()): boolean {
 }
 
 export function getTimeBasedGreeting(date = new Date()): string {
-  const t = getTimeOfDay(date);
-  if (t === "morning") return "Good morning";
-  if (t === "afternoon") return "Good afternoon";
-  if (t === "evening") return "Good evening";
-  return "Hey there";
+  return i18n.t(`dashboard.greeting.${getTimeOfDay(date)}`);
 }
 
 /** Weighted motivational line for dashboard, completion, or reminders. */
 export function generateMotivationMessage(context: MotivationContext): string {
   const messages: string[] = [];
   const s = context.session;
+  const m = (key: string, opts?: Record<string, unknown>) => i18n.t(key, opts ?? {});
 
   if (s) {
     const durMin = (s.duration_seconds ?? 0) / 60;
     const focus = s.focus_score;
 
     if (focus != null && focus >= 95) {
-      messages.push("Perfect focus! You're in the zone.");
-      messages.push("That's producer mode — keep this energy.");
+      messages.push(m("motivation.perfectFocus"));
+      messages.push(m("motivation.producerMode"));
     } else if (focus != null && focus >= 85) {
-      messages.push("Excellent session! You're building something special.");
+      messages.push(m("motivation.excellentSession"));
     } else if (focus != null && focus < 60) {
-      messages.push("Every session counts — tomorrow you'll crush it.");
-      messages.push("Progress over perfection. You showed up.");
+      messages.push(m("motivation.everySessionCounts"));
+      messages.push(m("motivation.progressOverPerf"));
     }
 
     if (durMin >= 120) {
-      messages.push("2+ hours — that's dedication.");
+      messages.push(m("motivation.twoHoursPlus"));
     } else if (durMin >= 60) {
-      messages.push("Full hour — that's how you build.");
+      messages.push(m("motivation.fullHour"));
     }
 
     if (s.session_type.toLowerCase().includes("mix")) {
-      messages.push("Polish makes perfect.");
+      messages.push(m("motivation.polishMakesPerfect"));
     } else if (s.session_type.toLowerCase().includes("sound")) {
-      messages.push("Sound design moves the whole track.");
+      messages.push(m("motivation.soundDesignMoves"));
     } else {
-      messages.push("Another beat in the bag.");
+      messages.push(m("motivation.anotherBeat"));
     }
 
     if (context.todayCount >= 3) {
-      messages.push("Third session today — you're on fire.");
+      messages.push(m("motivation.thirdToday"));
     } else if (context.todayCount >= 2) {
-      messages.push("Session #2 today — building momentum.");
+      messages.push(m("motivation.secondToday"));
     }
   } else {
     if (context.timeOfDay === "morning") {
-      messages.push("Morning session — clear mind, big moves.");
+      messages.push(m("motivation.morningClear"));
     } else if (context.timeOfDay === "evening") {
-      messages.push("Evening energy — time to create.");
+      messages.push(m("motivation.eveningEnergy"));
     } else if (context.timeOfDay === "night") {
-      messages.push("Night owl mode — your studio, your rules.");
+      messages.push(m("motivation.nightOwl"));
     }
 
     if (context.streak === 0) {
-      messages.push("Start your streak today — day 1 begins now.");
+      messages.push(m("motivation.startStreak"));
     } else if (context.streak >= 7) {
-      messages.push(`${context.streak} days — don't break the chain.`);
+      messages.push(m("motivation.streakHigh", { days: context.streak }));
     } else if (context.streak >= 3) {
-      messages.push(`${context.streak} days strong — keep building.`);
+      messages.push(m("motivation.streakMid", { days: context.streak }));
     }
 
     if (context.friends.activeNow > 0) {
-      messages.push(`${context.friends.activeNow} friends on the board recently — join the wave.`);
+      messages.push(m("motivation.friendsActive", { count: context.friends.activeNow }));
     }
     if (context.friends.topThisWeek && context.friends.topThisWeek.userId > 0) {
-      messages.push(
-        `${context.friends.topThisWeek.name} is leading this week — match that energy.`,
-      );
+      messages.push(m("motivation.leaderWeek", { name: context.friends.topThisWeek.name }));
     }
 
     if (context.lastSessionFocus != null && context.lastSessionFocus >= 90) {
-      messages.push("Last session was strong — run it back.");
+      messages.push(m("motivation.lastSessionStrong"));
     }
 
     const dow = new Date().getDay();
     if (context.weekCount === 0 && dow >= 3 && dow <= 6) {
-      messages.push("No sessions this week yet — change that today.");
+      messages.push(m("motivation.noSessionsWeek"));
     } else if (context.weekCount >= 5) {
-      messages.push(`${context.weekCount} sessions this week — on pace.`);
+      messages.push(m("motivation.weekPace", { count: context.weekCount }));
     }
 
     if (context.todayCount === 0 && isEvening()) {
-      messages.push("Evening session? Some of your best ideas show up now.");
+      messages.push(m("motivation.eveningQuestion"));
     } else if (context.todayCount >= 2) {
-      messages.push(`${context.todayCount} sessions today — unstoppable.`);
+      messages.push(m("motivation.todayUnstoppable", { count: context.todayCount }));
     }
   }
 
   if (messages.length === 0) {
-    messages.push("Let's create something amazing.");
+    messages.push(m("motivation.fallback"));
   }
 
   return pick(messages);
