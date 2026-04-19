@@ -59,8 +59,11 @@ export function calculateFocusScore(data: FocusScoreData): number {
 
   if (mood >= 4) score += 2;
 
-  const tod = typeof data.time_of_day === "number" && Number.isFinite(data.time_of_day) ? data.time_of_day : null;
-  if (tod != null && (tod >= 1 && tod <= 5)) {
+  const tod =
+    typeof data.time_of_day === "number" && Number.isFinite(data.time_of_day)
+      ? data.time_of_day
+      : null;
+  if (tod != null && tod >= 1 && tod <= 5) {
     // Slight fatigue penalty for deep-night sessions.
     score -= 2;
   }

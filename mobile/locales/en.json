@@ -68,15 +68,7 @@
   "common": {
     "cancel": "Cancel",
     "ok": "OK",
-    "weekdaysFull": [
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-      "Sunday"
-    ]
+    "weekdaysFull": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   },
   "legal": {
     "linksPrivacy": "Privacy",

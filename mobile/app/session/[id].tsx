@@ -25,7 +25,12 @@ import { sessionMoodLabel, sessionTypeLabel } from "../../lib/sessionI18n";
 import { sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { formatDurationWords, parseSessionDate } from "../../lib/sessionTime";
 import type { SessionDetailInsightsDto } from "../../types/insights";
-import { DEFAULT_SESSION_TYPE, SESSION_TYPE_IDS, type SessionDto, type SessionType } from "../../types/session";
+import {
+  DEFAULT_SESSION_TYPE,
+  SESSION_TYPE_IDS,
+  type SessionDto,
+  type SessionType,
+} from "../../types/session";
 
 export default function SessionDetailScreen() {
   const { t } = useTranslation();
@@ -75,9 +80,7 @@ export default function SessionDetailScreen() {
   }, [id, token, t]);
 
   useEffect(() => {
-    load().catch((e) =>
-      setError(e instanceof Error ? e.message : t("sessionDetail.loadFailed")),
-    );
+    load().catch((e) => setError(e instanceof Error ? e.message : t("sessionDetail.loadFailed")));
   }, [load, t]);
 
   const onRefresh = useCallback(async () => {
@@ -158,7 +161,8 @@ export default function SessionDetailScreen() {
       ? formatDurationWords(session.duration_seconds)
       : t("sessionDetail.inProgress");
   const tagList = sessionTagsList(session.tags);
-  const pauseCountRaw = insights?.timeline?.filter((segment) => segment.kind === "paused").length ?? 0;
+  const pauseCountRaw =
+    insights?.timeline?.filter((segment) => segment.kind === "paused").length ?? 0;
   const pauseCount = session.paused_duration_seconds ? Math.max(1, pauseCountRaw) : 0;
 
   return (

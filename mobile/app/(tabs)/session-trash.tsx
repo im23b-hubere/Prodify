@@ -39,7 +39,9 @@ export default function SessionTrashScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load().catch((e) => setError(e instanceof Error ? e.message : t("sessionTrash.refreshFailed")));
+    await load().catch((e) =>
+      setError(e instanceof Error ? e.message : t("sessionTrash.refreshFailed")),
+    );
     setRefreshing(false);
   }, [load, t]);
 
@@ -84,7 +86,9 @@ export default function SessionTrashScreen() {
           sessions.map((session) => (
             <View key={session.id} style={styles.row}>
               <View style={styles.rowCopy}>
-                <Text style={styles.rowTitle}>{sessionTypeLabel(String(session.session_type), t)}</Text>
+                <Text style={styles.rowTitle}>
+                  {sessionTypeLabel(String(session.session_type), t)}
+                </Text>
                 <Text style={styles.rowMeta}>{formatDate(session.started_at)}</Text>
               </View>
               <Pressable

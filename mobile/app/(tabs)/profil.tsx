@@ -122,7 +122,11 @@ export default function ProfilScreen() {
     try {
       const body =
         pingTemplate === "test"
-          ? { template: "test" as const, title: t("profile.pingTestTitle"), body: t("profile.pingTestBody") }
+          ? {
+              template: "test" as const,
+              title: t("profile.pingTestTitle"),
+              body: t("profile.pingTestBody"),
+            }
           : pingTemplate === "session_demo"
             ? { template: "session_demo" as const }
             : { template: "streak_demo" as const, streak_days: 12 };
@@ -255,7 +259,10 @@ export default function ProfilScreen() {
         {!loading && summary ? (
           <View style={styles.statsGrid}>
             <StatCard label={t("profile.totalSessions")} value={summary.total_sessions} />
-            <StatCard label={t("profile.currentStreak")} value={`🔥 ${summary.current_streak_days}`} />
+            <StatCard
+              label={t("profile.currentStreak")}
+              value={`🔥 ${summary.current_streak_days}`}
+            />
             <StatCard
               label={t("profile.bestStreak")}
               value={t("profile.bestStreakDays", { days: summary.best_streak_days })}

@@ -190,7 +190,9 @@ export default function DashboardScreen() {
   const [socialLoading, setSocialLoading] = useState(false);
   const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
   const [weekSessionsCount, setWeekSessionsCount] = useState(0);
-  const [serverMotivationDto, setServerMotivationDto] = useState<MotivationalMessageDto | null>(null);
+  const [serverMotivationDto, setServerMotivationDto] = useState<MotivationalMessageDto | null>(
+    null,
+  );
   const userScopedStreakKey = user?.id
     ? userScopedLastKnownStreakKey(user.id)
     : LAST_KNOWN_STREAK_KEY;
@@ -419,7 +421,10 @@ export default function DashboardScreen() {
 
   const weekDayLetters = useMemo(() => {
     const letters = t("dashboard.weekdayShort", { returnObjects: true }) as string[];
-    const safe = Array.isArray(letters) && letters.length === 7 ? letters : ["M", "T", "W", "T", "F", "S", "S"];
+    const safe =
+      Array.isArray(letters) && letters.length === 7
+        ? letters
+        : ["M", "T", "W", "T", "F", "S", "S"];
     const out: string[] = [];
     for (let i = 6; i >= 0; i -= 1) {
       const d = new Date();
@@ -586,45 +591,46 @@ export default function DashboardScreen() {
       t("dashboard.endSessionTitle"),
       t("dashboard.endSessionWorked", { duration: formatDurationWords(elapsed) }),
       [
-      { text: t("dashboard.keepGoing"), style: "cancel" },
-      {
-        text: t("dashboard.endSessionConfirm"),
-        style: "destructive",
-        onPress: async () => {
-          if (stopSessionInFlight.current) return;
-          stopSessionInFlight.current = true;
-          setStopBusy(true);
-          try {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-              () => undefined,
-            );
-            debugLog("session", "stop_attempt", { sessionId: sessionToStop.id });
-            await apiJson<SessionDto>("/sessions/stop", {
-              token,
-              method: "POST",
-              body: { session_id: sessionToStop.id },
-            });
-            debugLog("session", "stop_success", { sessionId: sessionToStop.id });
-            setActive(null);
-            router.replace({
-              pathname: "/session/complete",
-              params: { id: String(sessionToStop.id) },
-            });
-          } catch (e) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
-              () => undefined,
-            );
-            const msg = e instanceof Error ? e.message : t("dashboard.stopFailed");
-            debugLog("session", "stop_failure", { sessionId: sessionToStop.id, message: msg });
-            setError(msg);
-            await loadSessions().catch(() => undefined);
-          } finally {
-            stopSessionInFlight.current = false;
-            setStopBusy(false);
-          }
+        { text: t("dashboard.keepGoing"), style: "cancel" },
+        {
+          text: t("dashboard.endSessionConfirm"),
+          style: "destructive",
+          onPress: async () => {
+            if (stopSessionInFlight.current) return;
+            stopSessionInFlight.current = true;
+            setStopBusy(true);
+            try {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+                () => undefined,
+              );
+              debugLog("session", "stop_attempt", { sessionId: sessionToStop.id });
+              await apiJson<SessionDto>("/sessions/stop", {
+                token,
+                method: "POST",
+                body: { session_id: sessionToStop.id },
+              });
+              debugLog("session", "stop_success", { sessionId: sessionToStop.id });
+              setActive(null);
+              router.replace({
+                pathname: "/session/complete",
+                params: { id: String(sessionToStop.id) },
+              });
+            } catch (e) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+                () => undefined,
+              );
+              const msg = e instanceof Error ? e.message : t("dashboard.stopFailed");
+              debugLog("session", "stop_failure", { sessionId: sessionToStop.id, message: msg });
+              setError(msg);
+              await loadSessions().catch(() => undefined);
+            } finally {
+              stopSessionInFlight.current = false;
+              setStopBusy(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   }, [active, token, router, loadSessions, t]);
 
   const dismissSession = useCallback(
@@ -727,8 +733,8 @@ export default function DashboardScreen() {
           <View style={styles.headerContent}>
             <View style={styles.topBar}>
               <Text style={styles.username}>
-              {t("dashboard.heyUser", { name: user?.username ?? t("dashboard.defaultUserName") })}
-            </Text>
+                {t("dashboard.heyUser", { name: user?.username ?? t("dashboard.defaultUserName") })}
+              </Text>
               <Pressable
                 style={styles.iconButton}
                 onPress={() => {
@@ -765,49 +771,49 @@ export default function DashboardScreen() {
 
             {active ? (
               <View style={styles.activeSessionBlock}>
-                  <View style={styles.badgeRow}>
-                    <View style={styles.typeBadge}>
-                      <Text style={styles.typeBadgeText}>
-                        {sessionTypeLabel(String(active.session_type || "beat_making"), t)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.timerRingWrap}>
-                    <Animated.View style={[styles.pulseRingOuter, ringAnimatedStyle]} />
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={t("dashboard.focusModeA11y")}
-                      onPress={openFullscreenActive}
-                      style={styles.timerPressable}
-                    >
-                      <LinearGradient colors={["#2a1410", "#1a1a1a"]} style={styles.timerInner}>
-                        <Text style={styles.heroTimer}>{formatTimer(activeSeconds)}</Text>
-                        <Text style={styles.elapsedNatural}>
-                          {formatNaturalCounting(activeSeconds, t)}
-                        </Text>
-                        {preview ? (
-                          <Text style={styles.notesPreview} numberOfLines={2}>
-                            {preview}
-                          </Text>
-                        ) : null}
-                        <View style={styles.swipeHint}>
-                          <Text style={styles.swipeHintText}>{t("dashboard.swipeFocusHint")}</Text>
-                        </View>
-                      </LinearGradient>
-                    </Pressable>
-                  </View>
-
-                  <Pressable
-                    style={({ pressed }) => [styles.stopSessionBtn, pressed && styles.pressedStop]}
-                    onPress={confirmStop}
-                    disabled={stopBusy}
-                  >
-                    <Text style={styles.stopSessionLabel}>
-                      {stopBusy ? t("dashboard.stopping") : t("dashboard.stopSession")}
+                <View style={styles.badgeRow}>
+                  <View style={styles.typeBadge}>
+                    <Text style={styles.typeBadgeText}>
+                      {sessionTypeLabel(String(active.session_type || "beat_making"), t)}
                     </Text>
+                  </View>
+                </View>
+
+                <View style={styles.timerRingWrap}>
+                  <Animated.View style={[styles.pulseRingOuter, ringAnimatedStyle]} />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("dashboard.focusModeA11y")}
+                    onPress={openFullscreenActive}
+                    style={styles.timerPressable}
+                  >
+                    <LinearGradient colors={["#2a1410", "#1a1a1a"]} style={styles.timerInner}>
+                      <Text style={styles.heroTimer}>{formatTimer(activeSeconds)}</Text>
+                      <Text style={styles.elapsedNatural}>
+                        {formatNaturalCounting(activeSeconds, t)}
+                      </Text>
+                      {preview ? (
+                        <Text style={styles.notesPreview} numberOfLines={2}>
+                          {preview}
+                        </Text>
+                      ) : null}
+                      <View style={styles.swipeHint}>
+                        <Text style={styles.swipeHintText}>{t("dashboard.swipeFocusHint")}</Text>
+                      </View>
+                    </LinearGradient>
                   </Pressable>
                 </View>
+
+                <Pressable
+                  style={({ pressed }) => [styles.stopSessionBtn, pressed && styles.pressedStop]}
+                  onPress={confirmStop}
+                  disabled={stopBusy}
+                >
+                  <Text style={styles.stopSessionLabel}>
+                    {stopBusy ? t("dashboard.stopping") : t("dashboard.stopSession")}
+                  </Text>
+                </Pressable>
+              </View>
             ) : (
               <DashboardSessionStarter onQuickStart={openSetup} />
             )}
@@ -848,7 +854,9 @@ export default function DashboardScreen() {
                     setError(null);
                     setLoading(true);
                     Promise.all([loadSessions(), loadStreakOverview(), loadSocial()])
-                      .catch((e) => setError(e instanceof Error ? e.message : t("dashboard.loadFailed")))
+                      .catch((e) =>
+                        setError(e instanceof Error ? e.message : t("dashboard.loadFailed")),
+                      )
                       .finally(() => setLoading(false));
                   }}
                 />

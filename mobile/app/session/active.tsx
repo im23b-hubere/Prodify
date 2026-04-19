@@ -250,37 +250,38 @@ export default function SessionActiveScreen() {
       t("dashboard.endSessionTitle"),
       t("dashboard.endSessionWorked", { duration: formatDurationWords(elapsed) }),
       [
-      { text: t("dashboard.keepGoing"), style: "cancel" },
-      {
-        text: t("dashboard.endSessionConfirm"),
-        style: "destructive",
-        onPress: async () => {
-          if (!token || stopSessionInFlight.current) return;
-          stopSessionInFlight.current = true;
-          setBusy(true);
-          try {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-              () => undefined,
-            );
-            await apiJson<SessionDto>("/sessions/stop", {
-              token,
-              method: "POST",
-              body: { session_id: sid },
-            });
-            router.replace({ pathname: "/session/complete", params: { id: String(sid) } });
-          } catch (e) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
-              () => undefined,
-            );
-            setError(e instanceof Error ? e.message : t("sessionActive.stopFailed"));
-            void load();
-          } finally {
-            stopSessionInFlight.current = false;
-            setBusy(false);
-          }
+        { text: t("dashboard.keepGoing"), style: "cancel" },
+        {
+          text: t("dashboard.endSessionConfirm"),
+          style: "destructive",
+          onPress: async () => {
+            if (!token || stopSessionInFlight.current) return;
+            stopSessionInFlight.current = true;
+            setBusy(true);
+            try {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+                () => undefined,
+              );
+              await apiJson<SessionDto>("/sessions/stop", {
+                token,
+                method: "POST",
+                body: { session_id: sid },
+              });
+              router.replace({ pathname: "/session/complete", params: { id: String(sid) } });
+            } catch (e) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+                () => undefined,
+              );
+              setError(e instanceof Error ? e.message : t("sessionActive.stopFailed"));
+              void load();
+            } finally {
+              stopSessionInFlight.current = false;
+              setBusy(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   }, [elapsed, load, router, session, token, t]);
 
   const insightLine = useMemo(() => {
@@ -288,9 +289,13 @@ export default function SessionActiveScreen() {
       return t("sessionActive.insightDefault");
     }
     if (elapsed > longestCompletedSeconds) {
-      return t("sessionActive.insightPastBest", { prev: formatDurationWords(longestCompletedSeconds) });
+      return t("sessionActive.insightPastBest", {
+        prev: formatDurationWords(longestCompletedSeconds),
+      });
     }
-    return t("sessionActive.insightLongest", { duration: formatDurationWords(longestCompletedSeconds) });
+    return t("sessionActive.insightLongest", {
+      duration: formatDurationWords(longestCompletedSeconds),
+    });
   }, [elapsed, longestCompletedSeconds, t]);
 
   if (!session) {

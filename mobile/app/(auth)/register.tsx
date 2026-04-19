@@ -88,7 +88,11 @@ export default function RegisterScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <PrimaryButton label={t("auth.register.createAccount")} onPress={onSubmit} loading={loading} />
+          <PrimaryButton
+            label={t("auth.register.createAccount")}
+            onPress={onSubmit}
+            loading={loading}
+          />
         </View>
 
         <Link href="/(auth)/login" asChild>

@@ -142,7 +142,10 @@ export default function FriendsScreen() {
       setAddName("");
       setAddOpen(false);
       await load();
-      Alert.alert(t("friendsScreen.requestSentTitle"), t("friendsScreen.requestSentBody", { name: u }));
+      Alert.alert(
+        t("friendsScreen.requestSentTitle"),
+        t("friendsScreen.requestSentBody", { name: u }),
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("friendsScreen.couldNotSend");
       Alert.alert(t("friendsScreen.couldNotSend"), msg);
@@ -159,7 +162,10 @@ export default function FriendsScreen() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await load();
     } catch (e) {
-      Alert.alert(t("friendsScreen.errorGeneric"), e instanceof Error ? e.message : t("friendsScreen.acceptFailed"));
+      Alert.alert(
+        t("friendsScreen.errorGeneric"),
+        e instanceof Error ? e.message : t("friendsScreen.acceptFailed"),
+      );
     } finally {
       setActionBusy(null);
     }
@@ -172,7 +178,10 @@ export default function FriendsScreen() {
       await apiJson(`/friends/${id}`, { token, method: "DELETE" });
       await load();
     } catch (e) {
-      Alert.alert(t("friendsScreen.errorGeneric"), e instanceof Error ? e.message : t("friendsScreen.declineFailed"));
+      Alert.alert(
+        t("friendsScreen.errorGeneric"),
+        e instanceof Error ? e.message : t("friendsScreen.declineFailed"),
+      );
     } finally {
       setActionBusy(null);
     }

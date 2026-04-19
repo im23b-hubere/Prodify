@@ -234,13 +234,13 @@ export default function StatsScreen() {
     const firstWeekday = (monthDate.getDay() + 6) % 7; // Monday=0
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    const entries: Array<{
+    const entries: {
       key: string;
       dayNum: number | null;
       seconds: number;
       intensity: number;
       inMonth: boolean;
-    }> = [];
+    }[] = [];
 
     for (let i = 0; i < firstWeekday; i += 1) {
       entries.push({ key: `blank-${i}`, dayNum: null, seconds: 0, intensity: 0, inMonth: false });
@@ -444,7 +444,12 @@ export default function StatsScreen() {
                 style={[styles.modeChip, calendarMode === "week" && styles.modeChipActive]}
                 onPress={() => setCalendarMode("week")}
               >
-                <Text style={[styles.modeChipText, calendarMode === "week" && styles.modeChipTextActive]}>
+                <Text
+                  style={[
+                    styles.modeChipText,
+                    calendarMode === "week" && styles.modeChipTextActive,
+                  ]}
+                >
                   {t("stats.calendarWeek")}
                 </Text>
               </Pressable>
@@ -452,7 +457,12 @@ export default function StatsScreen() {
                 style={[styles.modeChip, calendarMode === "month" && styles.modeChipActive]}
                 onPress={() => setCalendarMode("month")}
               >
-                <Text style={[styles.modeChipText, calendarMode === "month" && styles.modeChipTextActive]}>
+                <Text
+                  style={[
+                    styles.modeChipText,
+                    calendarMode === "month" && styles.modeChipTextActive,
+                  ]}
+                >
                   {t("stats.calendarMonth")}
                 </Text>
               </Pressable>
@@ -488,7 +498,8 @@ export default function StatsScreen() {
               <Text
                 style={[
                   styles.navBtnText,
-                  (calendarMode === "week" ? weekOffset === 0 : monthOffset === 0) && styles.navBtnTextDisabled,
+                  (calendarMode === "week" ? weekOffset === 0 : monthOffset === 0) &&
+                    styles.navBtnTextDisabled,
                 ]}
               >
                 {t("stats.calendarNext")}
@@ -667,7 +678,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   modeChipActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.16)" },
-  modeChipText: { color: colors.textSecondary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
+  modeChipText: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+  },
   modeChipTextActive: { color: colors.textPrimary },
   calendarNavRow: {
     flexDirection: "row",
@@ -699,7 +714,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   weekDayCell: { width: "13.5%", alignItems: "center", gap: 4 },
-  weekDayLabel: { color: colors.textSecondary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
+  weekDayLabel: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+  },
   weekDayDot: {
     width: 12,
     height: 12,
@@ -738,7 +757,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(162,89,255,0.2)",
     borderColor: "rgba(162,89,255,0.5)",
   },
-  monthCellText: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
+  monthCellText: {
+    color: colors.textPrimary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+  },
   monthCellTextMuted: { color: colors.textSecondary },
   cardTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
   heatmapGrid: {

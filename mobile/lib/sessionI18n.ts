@@ -8,7 +8,7 @@ const MOOD_KEYS = ["mood1", "mood2", "mood3", "mood4", "mood5"] as const;
 /** Legacy display strings stored before slug-based session types. */
 const LEGACY_TO_ID: Record<string, SessionType> = {
   "Beat Making": "beat_making",
-  "Mixing": "mixing",
+  Mixing: "mixing",
   "Sound Design": "sound_design",
 };
 

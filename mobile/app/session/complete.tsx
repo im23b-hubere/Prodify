@@ -100,7 +100,7 @@ export default function SessionCompleteScreen() {
     }
     const timer = setTimeout(() => setSecondsLeft((x) => x - 1), 1000);
     return () => clearTimeout(timer);
-  }, [loadState, router, secondsLeft]);
+  }, [autoReturnEnabled, loadState, router, secondsLeft]);
 
   const dur = session?.duration_seconds ?? 0;
   const autoReturnProgress = useMemo(() => {
@@ -165,9 +165,13 @@ export default function SessionCompleteScreen() {
         {completionMessage ? <Text style={styles.motivation}>{completionMessage}</Text> : null}
         {autoReturnEnabled ? (
           <View style={styles.autoWrap}>
-            <Text style={styles.auto}>{t("sessionComplete.autoReturn", { seconds: secondsLeft })}</Text>
+            <Text style={styles.auto}>
+              {t("sessionComplete.autoReturn", { seconds: secondsLeft })}
+            </Text>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${Math.round(autoReturnProgress * 100)}%` }]} />
+              <View
+                style={[styles.progressFill, { width: `${Math.round(autoReturnProgress * 100)}%` }]}
+              />
             </View>
             <Pressable
               style={styles.stayBtn}

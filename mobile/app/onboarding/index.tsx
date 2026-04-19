@@ -149,7 +149,11 @@ export default function OnboardingScreen() {
         <Text style={styles.heroTitle}>{t("onboarding.notifications.title")}</Text>
         <Text style={styles.heroBody}>{t("onboarding.notifications.body")}</Text>
       </View>
-      <PrimaryButton label={t("onboarding.notifications.enable")} onPress={requestNotif} loading={busy} />
+      <PrimaryButton
+        label={t("onboarding.notifications.enable")}
+        onPress={requestNotif}
+        loading={busy}
+      />
       <Pressable style={styles.secondaryBtn} onPress={finish} disabled={busy}>
         <Text style={styles.secondaryTxt}>{t("onboarding.notifications.notNow")}</Text>
       </Pressable>

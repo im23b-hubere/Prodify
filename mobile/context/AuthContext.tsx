@@ -58,10 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setAuthRefreshBridge(
-      () => SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
-      persistTokenPair,
-    );
+    setAuthRefreshBridge(() => SecureStore.getItemAsync(REFRESH_TOKEN_KEY), persistTokenPair);
     return () => setAuthRefreshBridge(null, null);
   }, [persistTokenPair]);
 
@@ -102,31 +99,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser().catch(() => setUser(null));
   }, [hydrated, token, refreshUser]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const data = await apiJson<Partial<TokenPair>>("/auth/login", {
-      method: "POST",
-      body: { email, password },
-    });
-    const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
-    const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
-    if (!access || !refresh) {
-      throw new Error(i18n.t("errors.unexpectedResponse"));
-    }
-    await persistTokenPair({ access_token: access, refresh_token: refresh });
-  }, [persistTokenPair]);
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const data = await apiJson<Partial<TokenPair>>("/auth/login", {
+        method: "POST",
+        body: { email, password },
+      });
+      const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
+      const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
+      if (!access || !refresh) {
+        throw new Error(i18n.t("errors.unexpectedResponse"));
+      }
+      await persistTokenPair({ access_token: access, refresh_token: refresh });
+    },
+    [persistTokenPair],
+  );
 
-  const signUp = useCallback(async (email: string, username: string, password: string) => {
-    const data = await apiJson<Partial<TokenPair>>("/auth/register", {
-      method: "POST",
-      body: { email, username, password },
-    });
-    const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
-    const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
-    if (!access || !refresh) {
-      throw new Error(i18n.t("errors.unexpectedResponse"));
-    }
-    await persistTokenPair({ access_token: access, refresh_token: refresh });
-  }, [persistTokenPair]);
+  const signUp = useCallback(
+    async (email: string, username: string, password: string) => {
+      const data = await apiJson<Partial<TokenPair>>("/auth/register", {
+        method: "POST",
+        body: { email, username, password },
+      });
+      const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
+      const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
+      if (!access || !refresh) {
+        throw new Error(i18n.t("errors.unexpectedResponse"));
+      }
+      await persistTokenPair({ access_token: access, refresh_token: refresh });
+    },
+    [persistTokenPair],
+  );
 
   const signOut = useCallback(async () => {
     const t = await SecureStore.getItemAsync(TOKEN_KEY).catch(() => null);
