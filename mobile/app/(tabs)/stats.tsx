@@ -40,6 +40,9 @@ type PersonalRecord = {
 };
 
 const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
+const CALENDAR_DAY_MS = 24 * 60 * 60 * 1000;
+
+type CalendarMode = "week" | "month";
 
 function formatDuration(seconds: number) {
   const s = Number.isFinite(seconds) && seconds >= 0 ? seconds : 0;
@@ -107,6 +110,9 @@ export default function StatsScreen() {
   const [heatmapDays, setHeatmapDays] = useState<HeatmapDay[]>([]);
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(0);
   const loadSeq = useRef(0);
   const mounted = useRef(true);
 
@@ -193,6 +199,78 @@ export default function StatsScreen() {
       delta,
     };
   }, [stats]);
+
+  const heatmapByDate = useMemo(() => {
+    const map = new Map<string, HeatmapDay>();
+    for (const day of heatmapDays) map.set(day.date, day);
+    return map;
+  }, [heatmapDays]);
+
+  const weekCalendarDays = useMemo(() => {
+    const today = new Date();
+    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() - weekOffset * 7);
+    const start = new Date(end.getTime() - 6 * CALENDAR_DAY_MS);
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(start.getTime() + i * CALENDAR_DAY_MS);
+      const key = date.toISOString().slice(0, 10);
+      const data = heatmapByDate.get(key);
+      return {
+        key,
+        date,
+        dayName: date.toLocaleDateString(undefined, { weekday: "short" }),
+        dayNum: date.getDate(),
+        seconds: data?.seconds ?? 0,
+        intensity: data?.intensity ?? 0,
+      };
+    });
+  }, [heatmapByDate, weekOffset]);
+
+  const monthCalendarDays = useMemo(() => {
+    const base = new Date();
+    const monthDate = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const monthLabel = monthDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const firstWeekday = (monthDate.getDay() + 6) % 7; // Monday=0
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const entries: Array<{
+      key: string;
+      dayNum: number | null;
+      seconds: number;
+      intensity: number;
+      inMonth: boolean;
+    }> = [];
+
+    for (let i = 0; i < firstWeekday; i += 1) {
+      entries.push({ key: `blank-${i}`, dayNum: null, seconds: 0, intensity: 0, inMonth: false });
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const d = new Date(year, month, day);
+      const key = d.toISOString().slice(0, 10);
+      const info = heatmapByDate.get(key);
+      entries.push({
+        key,
+        dayNum: day,
+        seconds: info?.seconds ?? 0,
+        intensity: info?.intensity ?? 0,
+        inMonth: true,
+      });
+    }
+
+    while (entries.length % 7 !== 0) {
+      entries.push({
+        key: `tail-${entries.length}`,
+        dayNum: null,
+        seconds: 0,
+        intensity: 0,
+        inMonth: false,
+      });
+    }
+
+    return { monthLabel, entries };
+  }, [heatmapByDate, monthOffset]);
 
   const chartData = useMemo((): BarPoint[] => {
     const points = stats?.trend ?? [];
@@ -359,6 +437,103 @@ export default function StatsScreen() {
         </View>
 
         <View style={styles.chartCard}>
+          <View style={styles.calendarHeader}>
+            <Text style={styles.cardTitle}>{t("stats.activityCalendarTitle")}</Text>
+            <View style={styles.calendarModeRow}>
+              <Pressable
+                style={[styles.modeChip, calendarMode === "week" && styles.modeChipActive]}
+                onPress={() => setCalendarMode("week")}
+              >
+                <Text style={[styles.modeChipText, calendarMode === "week" && styles.modeChipTextActive]}>
+                  {t("stats.calendarWeek")}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modeChip, calendarMode === "month" && styles.modeChipActive]}
+                onPress={() => setCalendarMode("month")}
+              >
+                <Text style={[styles.modeChipText, calendarMode === "month" && styles.modeChipTextActive]}>
+                  {t("stats.calendarMonth")}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.calendarNavRow}>
+            <Pressable
+              style={styles.navBtn}
+              onPress={() => {
+                if (calendarMode === "week") setWeekOffset((prev) => prev + 1);
+                else setMonthOffset((prev) => prev - 1);
+              }}
+            >
+              <Text style={styles.navBtnText}>{t("stats.calendarPrev")}</Text>
+            </Pressable>
+            <Text style={styles.calendarRangeLabel}>
+              {calendarMode === "week"
+                ? t("stats.calendarWeekRange", {
+                    start: weekCalendarDays[0]?.date.toLocaleDateString(),
+                    end: weekCalendarDays[6]?.date.toLocaleDateString(),
+                  })
+                : monthCalendarDays.monthLabel}
+            </Text>
+            <Pressable
+              style={styles.navBtn}
+              disabled={calendarMode === "week" ? weekOffset === 0 : monthOffset === 0}
+              onPress={() => {
+                if (calendarMode === "week") setWeekOffset((prev) => Math.max(0, prev - 1));
+                else setMonthOffset((prev) => Math.min(0, prev + 1));
+              }}
+            >
+              <Text
+                style={[
+                  styles.navBtnText,
+                  (calendarMode === "week" ? weekOffset === 0 : monthOffset === 0) && styles.navBtnTextDisabled,
+                ]}
+              >
+                {t("stats.calendarNext")}
+              </Text>
+            </Pressable>
+          </View>
+
+          {calendarMode === "week" ? (
+            <View style={styles.weekGrid}>
+              {weekCalendarDays.map((day) => (
+                <View key={day.key} style={styles.weekDayCell}>
+                  <Text style={styles.weekDayLabel}>{day.dayName.slice(0, 1)}</Text>
+                  <View
+                    style={[
+                      styles.weekDayDot,
+                      day.intensity > 0 && styles.weekDayDotActive,
+                      day.intensity > 2 && styles.weekDayDotStrong,
+                    ]}
+                  />
+                  <Text style={styles.weekDayNum}>{day.dayNum}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.monthGrid}>
+              {monthCalendarDays.entries.map((entry) => (
+                <View
+                  key={entry.key}
+                  style={[
+                    styles.monthCell,
+                    !entry.inMonth && styles.monthCellMuted,
+                    entry.intensity > 0 && styles.monthCellActive,
+                    entry.intensity > 2 && styles.monthCellStrong,
+                  ]}
+                >
+                  <Text style={[styles.monthCellText, !entry.inMonth && styles.monthCellTextMuted]}>
+                    {entry.dayNum ?? ""}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
           {records.length === 0 ? (
             <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
@@ -475,6 +650,96 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.md,
   },
+  calendarHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  calendarModeRow: { flexDirection: "row", gap: spacing.xs },
+  modeChip: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    backgroundColor: colors.background,
+  },
+  modeChipActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.16)" },
+  modeChipText: { color: colors.textSecondary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
+  modeChipTextActive: { color: colors.textPrimary },
+  calendarNavRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  navBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  navBtnText: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyBold },
+  navBtnTextDisabled: { color: colors.textSecondary },
+  calendarRangeLabel: {
+    flex: 1,
+    textAlign: "center",
+    color: colors.textSecondary,
+    ...typography.caption,
+  },
+  weekGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: spacing.xs,
+  },
+  weekDayCell: { width: "13.5%", alignItems: "center", gap: 4 },
+  weekDayLabel: { color: colors.textSecondary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
+  weekDayDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "transparent",
+  },
+  weekDayDotActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  weekDayDotStrong: { backgroundColor: colors.secondary, borderColor: colors.secondary },
+  weekDayNum: { color: colors.textSecondary, fontSize: 11 },
+  monthGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: spacing.xs,
+  },
+  monthCell: {
+    width: "13.4%",
+    aspectRatio: 1,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background,
+  },
+  monthCellMuted: {
+    opacity: 0.35,
+  },
+  monthCellActive: {
+    backgroundColor: "rgba(255,61,0,0.14)",
+    borderColor: "rgba(255,61,0,0.35)",
+  },
+  monthCellStrong: {
+    backgroundColor: "rgba(162,89,255,0.2)",
+    borderColor: "rgba(162,89,255,0.5)",
+  },
+  monthCellText: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
+  monthCellTextMuted: { color: colors.textSecondary },
   cardTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
   heatmapGrid: {
     flexDirection: "row",
