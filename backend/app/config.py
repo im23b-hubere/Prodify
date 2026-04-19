@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7
-    database_url: str = "sqlite:///./beattrack.db"
+    database_url: str = "sqlite:///./prodify.db"
     cors_origins: list[str] = ["http://localhost:8081", "http://127.0.0.1:8081", "http://localhost:19006"]
     # Optional: Expo push (https://expo.dev/accounts/[account]/settings/access-tokens)
     expo_access_token: str | None = None

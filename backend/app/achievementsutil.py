@@ -8,7 +8,7 @@ from app.streakutil import compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 
 ACHIEVEMENT_DEFINITIONS: list[tuple[str, str, str, str]] = [
-    ("first_session", "First session", "You started your BeatTrack journey.", "🎹"),
+    ("first_session", "First session", "You started your Prodify journey.", "🎹"),
     ("sessions_10", "10 sessions", "Ten focused sessions in the books.", "🔥"),
     ("sessions_50", "50 sessions", "Fifty sessions — consistency wins.", "💪"),
     ("streak_7", "Week streak", "Seven days in a row.", "⚡"),

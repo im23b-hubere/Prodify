@@ -23,7 +23,7 @@ export function SessionShareStoryCard({ template, sessionType, durationLabel, fo
   if (template === "minimal") {
     return (
       <View style={[styles.frame, styles.minimalBg]}>
-        <Text style={styles.brandSmall}>BEATTRACK</Text>
+        <Text style={styles.brandSmall}>PRODIFY</Text>
         <Text style={styles.minimalType}>{sessionType}</Text>
         <Text style={styles.minimalDur}>{durationLabel}</Text>
         <Text style={styles.minimalFocus}>Focus {focusScore}%</Text>
@@ -47,7 +47,7 @@ export function SessionShareStoryCard({ template, sessionType, durationLabel, fo
           <Text style={styles.boldType}>{sessionType.toUpperCase()}</Text>
           <Text style={styles.boldDur}>{durationLabel}</Text>
           <Text style={styles.boldFocus}>FOCUS {focusScore}%</Text>
-          <Text style={styles.brandBold}>BEATTRACK</Text>
+          <Text style={styles.brandBold}>PRODIFY</Text>
         </View>
       </View>
     );
@@ -62,7 +62,7 @@ export function SessionShareStoryCard({ template, sessionType, durationLabel, fo
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.gradGlass}>
-        <Text style={styles.gradBrand}>BeatTrack</Text>
+        <Text style={styles.gradBrand}>Prodify</Text>
         <Text style={styles.gradType}>{sessionType}</Text>
         <Text style={styles.gradDur}>{durationLabel}</Text>
         <View style={styles.gradPill}>

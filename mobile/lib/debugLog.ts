@@ -1,7 +1,7 @@
 /**
  * Dev-only structured logging. Never pass tokens, passwords, or refresh strings.
  */
-const PREFIX = "[BeatTrack]";
+const PREFIX = "[Prodify]";
 
 export type DebugMeta = Record<string, string | number | boolean | null | undefined>;
 

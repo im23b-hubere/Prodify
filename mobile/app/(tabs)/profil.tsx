@@ -79,7 +79,7 @@ export default function ProfilScreen() {
     try {
       const body =
         pingTemplate === "test"
-          ? { template: "test" as const, title: "BeatTrack", body: "Test-Push vom Server" }
+          ? { template: "test" as const, title: "Prodify", body: "Test-Push vom Server" }
           : pingTemplate === "session_demo"
             ? { template: "session_demo" as const }
             : { template: "streak_demo" as const, streak_days: 12 };
@@ -112,7 +112,7 @@ export default function ProfilScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{user?.username?.slice(0, 2).toUpperCase() ?? "BT"}</Text>
           </View>
-          <Text style={styles.username}>{user?.username ?? "BeatTrack User"}</Text>
+          <Text style={styles.username}>{user?.username ?? "Prodify User"}</Text>
           <Text style={styles.email}>{user?.email ?? "loading..."}</Text>
         </View>
 

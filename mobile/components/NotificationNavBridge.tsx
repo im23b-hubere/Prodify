@@ -10,8 +10,8 @@ function parsePathFromNotificationData(data: Record<string, unknown> | undefined
     return data.path;
   }
   const url = data.url;
-  if (typeof url === "string" && url.startsWith("beattrack://")) {
-    const rest = url.slice("beattrack://".length);
+  if (typeof url === "string" && url.startsWith("prodify://")) {
+    const rest = url.slice("prodify://".length);
     if (rest.startsWith("/")) return rest;
     if (rest.length > 0) return `/${rest}`;
   }

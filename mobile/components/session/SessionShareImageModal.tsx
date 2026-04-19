@@ -48,7 +48,7 @@ export function SessionShareImageModal({ visible, onClose, session, insights, pr
         await Sharing.shareAsync(uri, {
           mimeType: "image/png",
           UTI: "public.png",
-          dialogTitle: "BeatTrack Session",
+          dialogTitle: "Prodify Session",
         });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       } else {

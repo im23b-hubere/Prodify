@@ -298,7 +298,7 @@ export default function FriendsScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setAddOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Add friend</Text>
-            <Text style={styles.modalHint}>Enter their BeatTrack username. They will need to accept your request.</Text>
+            <Text style={styles.modalHint}>Enter their Prodify username. They will need to accept your request.</Text>
             <TextInput
               value={addName}
               onChangeText={setAddName}

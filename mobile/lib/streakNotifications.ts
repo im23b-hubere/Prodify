@@ -58,7 +58,7 @@ function streakSlots(streakCount: number) {
       h: 23,
       m: 30,
       title: "30 minutes left",
-      body: `⏰ 30 minutes until your ${n}-day streak resets. Open BeatTrack.`,
+      body: `⏰ 30 minutes until your ${n}-day streak resets. Open Prodify.`,
     },
   ];
 }

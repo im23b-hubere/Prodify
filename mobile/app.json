@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "BeatTrack",
-    "slug": "beattrack",
+    "name": "Prodify",
+    "slug": "prodify",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "beattrack",
+    "scheme": "prodify",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.beattrack.mobile"
+      "bundleIdentifier": "app.prodify.mobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +24,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "app.beattrack.mobile"
+      "package": "app.prodify.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png",

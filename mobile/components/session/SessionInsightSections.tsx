@@ -52,18 +52,18 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
 
   const shareMinimal = useMemo(() => {
     const dur = session.duration_seconds ?? 0;
-    return `${session.session_type} · ${formatDurationWords(dur)} · BeatTrack`;
+    return `${session.session_type} · ${formatDurationWords(dur)} · Prodify`;
   }, [session]);
 
   const shareBold = useMemo(
     () =>
-      `🔥 ${session.session_type.toUpperCase()}\n⏱ ${formatDurationWords(session.duration_seconds ?? 0)}\n— BeatTrack`,
+      `🔥 ${session.session_type.toUpperCase()}\n⏱ ${formatDurationWords(session.duration_seconds ?? 0)}\n— Prodify`,
     [session]
   );
 
   const shareGradient = useMemo(
     () =>
-      `✨ Session recap\n${session.session_type}\n${formatDurationWords(session.duration_seconds ?? 0)}\nFocus ${insights.focus_score}%\nBeatTrack`,
+      `✨ Session recap\n${session.session_type}\n${formatDurationWords(session.duration_seconds ?? 0)}\nFocus ${insights.focus_score}%\nProdify`,
     [session, insights.focus_score]
   );
 

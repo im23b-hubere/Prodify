@@ -3,7 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 import { ApiError, apiJson, setApiUnauthorizedHandler } from "../lib/client";
 
-const TOKEN_KEY = "beattrack_token";
+const TOKEN_KEY = "prodify_token";
 
 type UserMe = {
   id: number;

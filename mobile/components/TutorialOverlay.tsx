@@ -7,7 +7,7 @@ import { PrimaryButton } from "./ui/PrimaryButton";
 import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 
-const KEY = "beattrack_tutorial_v1";
+const KEY = "prodify_tutorial_v1";
 
 export function TutorialOverlay() {
   const [visible, setVisible] = useState(false);

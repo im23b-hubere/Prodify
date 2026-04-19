@@ -44,7 +44,7 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.badge}>BeatTrack</Text>
+          <Text style={styles.badge}>Prodify</Text>
           <Text style={styles.title}>Welcome back</Text>
           <Text style={styles.subtitle}>Track sessions, stay focused, get better every day.</Text>
         </View>

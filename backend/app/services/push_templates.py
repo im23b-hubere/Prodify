@@ -28,7 +28,7 @@ def streak_reminder(streak_days: int, hours_left: int | None = None) -> tuple[st
 
 
 def admin_ping_default() -> tuple[str, str]:
-    return "BeatTrack", "Test-Push vom Server"
+    return "Prodify", "Test-Push vom Server"
 
 
 def session_demo() -> tuple[str, str]:
@@ -46,7 +46,7 @@ def streak_reminder_slot(slot_kind: str, streak_days: int) -> tuple[str, str]:
     elif slot_kind == "streak_utc_23":
         body = f"🔥 Letzte Chance heute (UTC) — deine {streak_days}-Tage-Serie braucht eine Session."
     elif slot_kind == "streak_utc_2330":
-        body = f"⏰ Nur noch ~30 Min. (UTC) für deine {streak_days}-Tage-Serie. Öffne BeatTrack!"
+        body = f"⏰ Nur noch ~30 Min. (UTC) für deine {streak_days}-Tage-Serie. Öffne Prodify!"
     else:
         body = streak_reminder(streak_days, hours_left=1)[1]
     return title, body
