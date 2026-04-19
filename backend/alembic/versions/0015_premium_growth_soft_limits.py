@@ -22,21 +22,23 @@ def upgrade() -> None:
     op.add_column("users", sa.Column("bonus_rescues", sa.Integer(), nullable=False, server_default="0"))
     op.add_column("users", sa.Column("bonus_challenge_slots", sa.Integer(), nullable=False, server_default="0"))
 
-    op.add_column("social_commitments", sa.Column("commitment_key", sa.String(length=32), nullable=False, server_default="sessions"))
-    op.add_column("social_commitments", sa.Column("period_days", sa.Integer(), nullable=False, server_default="7"))
-    op.drop_constraint("uq_social_commitment_user_week", "social_commitments", type_="unique")
-    op.create_unique_constraint(
-        "uq_social_commitment_user_week_key",
-        "social_commitments",
-        ["user_id", "week_start", "commitment_key"],
-    )
+    # SQLite cannot DROP/ADD unique constraints with plain ALTER; batch mode rebuilds the table.
+    with op.batch_alter_table("social_commitments", schema=None) as batch_op:
+        batch_op.add_column(sa.Column("commitment_key", sa.String(length=32), nullable=False, server_default="sessions"))
+        batch_op.add_column(sa.Column("period_days", sa.Integer(), nullable=False, server_default="7"))
+        batch_op.drop_constraint("uq_social_commitment_user_week", type_="unique")
+        batch_op.create_unique_constraint(
+            "uq_social_commitment_user_week_key",
+            ["user_id", "week_start", "commitment_key"],
+        )
 
 
 def downgrade() -> None:
-    op.drop_constraint("uq_social_commitment_user_week_key", "social_commitments", type_="unique")
-    op.create_unique_constraint("uq_social_commitment_user_week", "social_commitments", ["user_id", "week_start"])
-    op.drop_column("social_commitments", "period_days")
-    op.drop_column("social_commitments", "commitment_key")
+    with op.batch_alter_table("social_commitments", schema=None) as batch_op:
+        batch_op.drop_constraint("uq_social_commitment_user_week_key", type_="unique")
+        batch_op.create_unique_constraint("uq_social_commitment_user_week", ["user_id", "week_start"])
+        batch_op.drop_column("period_days")
+        batch_op.drop_column("commitment_key")
     op.drop_column("users", "bonus_challenge_slots")
     op.drop_column("users", "bonus_rescues")
     op.drop_column("users", "premium_until")
