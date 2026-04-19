@@ -1,6 +1,23 @@
 from tests.test_friends import _register
 
 
+def test_upload_profile_picture_updates_me(client):
+    token = _register(client, "pic-me@example.com", "picuser")
+    uploaded = client.post(
+        "/users/me/profile-picture",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("avatar.png", b"\x89PNG\r\n\x1a\nfakepngcontent", "image/png")},
+    )
+    assert uploaded.status_code == 200
+    body = uploaded.json()
+    assert body["profile_picture_url"]
+    assert "/uploads/profile_pictures/" in body["profile_picture_url"]
+
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["profile_picture_url"]
+
+
 def test_delete_me_removes_account(client):
     token = _register(client, "delete-me@example.com", "deleteme")
     me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})

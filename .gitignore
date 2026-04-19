@@ -6,6 +6,7 @@ backend/.venv/
 backend/.pytest_cache/
 backend/.env
 backend/*.db
+backend/uploads/
 
 # Node / Expo (paths from repo root — use / only)
 mobile/node_modules/

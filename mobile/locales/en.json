@@ -178,7 +178,13 @@
     "defaultDisplayName": "Prodify user",
     "loadingEmail": "loading…",
     "defaultInitials": "P",
-    "errorLoadProfile": "Could not load profile data."
+    "errorLoadProfile": "Could not load profile data.",
+    "changePicture": "Change profile picture",
+    "pictureUploading": "Uploading picture…",
+    "picturePermissionTitle": "Photos access needed",
+    "picturePermissionMessage": "Please allow photo library access to choose a profile picture.",
+    "pictureUploadFailedTitle": "Upload failed",
+    "pictureUploadFailed": "Could not upload profile picture."
   },
   "sessionTypes": {
     "beatMaking": "Beat Making",

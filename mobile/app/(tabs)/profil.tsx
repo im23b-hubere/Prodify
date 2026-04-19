@@ -1,10 +1,12 @@
 import { useFocusEffect } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import { BadgeIcon } from "../../components/ui/BadgeIcon";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { StatCard } from "../../components/ui/StatCard";
+import { API_BASE_URL } from "../../constants/api";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -41,6 +44,7 @@ export default function ProfilScreen() {
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
   const [milestones, setMilestones] = useState<StreakMilestonesDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pictureBusy, setPictureBusy] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pingTemplate, setPingTemplate] = useState<"test" | "session_demo" | "streak_demo">("test");
 
@@ -143,6 +147,59 @@ export default function ProfilScreen() {
   }, [pingTemplate, token, t]);
 
   const summary = stats?.summary;
+  const avatarUri = user?.profile_picture_url?.trim()
+    ? user.profile_picture_url.startsWith("http")
+      ? user.profile_picture_url
+      : `${API_BASE_URL}${user.profile_picture_url}`
+    : null;
+
+  const pickProfilePicture = useCallback(async () => {
+    if (!token || pictureBusy) return;
+    try {
+      setPictureBusy(true);
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(t("profile.picturePermissionTitle"), t("profile.picturePermissionMessage"));
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      const asset = result.assets[0];
+      const ext = asset.uri.toLowerCase().endsWith(".png") ? "png" : "jpg";
+      const formData = new FormData();
+      formData.append("file", {
+        uri: asset.uri,
+        name: `profile.${ext}`,
+        type: ext === "png" ? "image/png" : "image/jpeg",
+      } as unknown as Blob);
+
+      const res = await fetch(`${API_BASE_URL}/users/me/profile-picture`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || t("profile.pictureUploadFailed"));
+      }
+      await load();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } catch (e) {
+      Alert.alert(
+        t("profile.pictureUploadFailedTitle"),
+        e instanceof Error ? e.message : t("profile.pictureUploadFailed"),
+      );
+    } finally {
+      setPictureBusy(false);
+    }
+  }, [load, pictureBusy, t, token]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -157,11 +214,24 @@ export default function ProfilScreen() {
         }
       >
         <View style={styles.profileHero}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.username?.slice(0, 2).toUpperCase() ?? t("profile.defaultInitials")}
+          <Pressable
+            style={({ pressed }) => [styles.avatarPressable, pressed && styles.pressed]}
+            onPress={() => pickProfilePicture()}
+            disabled={pictureBusy}
+          >
+            <View style={styles.avatar}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {user?.username?.slice(0, 2).toUpperCase() ?? t("profile.defaultInitials")}
+                </Text>
+              )}
+            </View>
+            <Text style={styles.avatarHint}>
+              {pictureBusy ? t("profile.pictureUploading") : t("profile.changePicture")}
             </Text>
-          </View>
+          </Pressable>
           <Text style={styles.username}>{user?.username ?? t("profile.defaultDisplayName")}</Text>
           <Text style={styles.email}>{user?.email ?? t("profile.loadingEmail")}</Text>
         </View>
@@ -306,6 +376,10 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: spacing.xxl },
   profileHero: { alignItems: "center", marginBottom: spacing.lg },
+  avatarPressable: {
+    alignItems: "center",
+    gap: spacing.xs,
+  },
   avatar: {
     width: 92,
     height: 92,
@@ -315,12 +389,21 @@ const styles = StyleSheet.create({
     borderColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
   avatarText: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     ...typography.subheadline,
+  },
+  avatarHint: {
+    color: colors.textSecondary,
+    ...typography.caption,
   },
   username: {
     color: colors.textPrimary,

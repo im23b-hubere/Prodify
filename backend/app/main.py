@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import inspect
@@ -77,6 +79,12 @@ def validate_schema() -> None:
     if "channel" not in push_cols:
         raise RuntimeError("Database schema is missing column 'channel' on 'push_tokens'. Run Alembic migrations.")
 
+    user_cols = {column["name"] for column in inspector.get_columns("users")}
+    if "profile_picture_url" not in user_cols:
+        raise RuntimeError(
+            "Database schema is missing column 'profile_picture_url' on 'users'. Run Alembic migrations."
+        )
+
     # In production with a server DB, refuse to start if migrations were never applied (no revision tracking).
     if settings.environment == "production" and not is_sqlite_database_url(settings.database_url):
         if "alembic_version" not in table_names:
@@ -103,6 +111,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+UPLOADS_DIR = Path(__file__).resolve().parents[1] / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 app.include_router(auth.router)
 app.include_router(sessions.router)

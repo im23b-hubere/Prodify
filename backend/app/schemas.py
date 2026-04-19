@@ -24,6 +24,7 @@ class UserPublic(BaseModel):
     id: int
     email: EmailStr
     username: str
+    profile_picture_url: str | None = None
     created_at: datetime
 
 
@@ -403,6 +404,7 @@ class UserPublicSessionItem(BaseModel):
 class UserFriendProfilePublic(BaseModel):
     id: int
     username: str
+    profile_picture_url: str | None = None
     total_sessions: int
     current_streak: int
     longest_streak: int

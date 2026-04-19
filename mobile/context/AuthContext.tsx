@@ -12,6 +12,7 @@ type UserMe = {
   id: number;
   email: string;
   username: string;
+  profile_picture_url?: string | null;
 };
 
 type AuthContextValue = {

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import mimetypes
+import secrets
+from pathlib import Path
 from collections import Counter, defaultdict
 from datetime import datetime, time, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -18,11 +21,15 @@ from app.schemas import (
     HeatmapDayPublic,
     UserFriendProfilePublic,
     UserFriendStatsPublic,
+    UserPublic,
     UserPublicSessionItem,
 )
 from app.timeutil import as_utc_aware
 
 router = APIRouter(prefix="/users", tags=["users"])
+PROFILE_UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "profile_pictures"
+PROFILE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
@@ -108,6 +115,61 @@ def _require_friend_profile(db: Session, current: User, target_id: int) -> User:
     return target
 
 
+def _safe_image_extension(file: UploadFile) -> str:
+    content_type = (file.content_type or "").lower().strip()
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only image uploads are allowed")
+    guessed = mimetypes.guess_extension(content_type) or ""
+    if guessed in {".jpg", ".jpeg", ".png", ".webp"}:
+        return guessed
+    original = Path(file.filename or "").suffix.lower()
+    if original in {".jpg", ".jpeg", ".png", ".webp"}:
+        return original
+    return ".jpg"
+
+
+@router.post("/me/profile-picture", response_model=UserPublic)
+async def upload_profile_picture(
+    request: Request,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    file: UploadFile = File(...),
+):
+    ext = _safe_image_extension(file)
+    content = await file.read()
+    if len(content) == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded image is empty")
+    if len(content) > MAX_PROFILE_IMAGE_BYTES:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Image exceeds 5MB limit")
+
+    filename = f"{current.id}-{secrets.token_hex(8)}{ext}"
+    target = PROFILE_UPLOAD_DIR / filename
+    target.write_bytes(content)
+
+    old_url = current.profile_picture_url
+    current.profile_picture_url = f"/uploads/profile_pictures/{filename}"
+    db.add(current)
+    db.commit()
+    db.refresh(current)
+
+    if old_url and old_url.startswith("/uploads/profile_pictures/"):
+        old_name = old_url.split("/uploads/profile_pictures/", 1)[1]
+        old_path = PROFILE_UPLOAD_DIR / old_name
+        if old_path.exists():
+            old_path.unlink(missing_ok=True)
+
+    # Return absolute URL to avoid client-side URL joining bugs.
+    base = str(request.base_url).rstrip("/")
+    absolute_url = f"{base}{current.profile_picture_url}" if current.profile_picture_url else None
+    return UserPublic(
+        id=current.id,
+        email=current.email,
+        username=current.username,
+        profile_picture_url=absolute_url,
+        created_at=current.created_at,
+    )
+
+
 @router.get("/{user_id}/profile", response_model=UserFriendProfilePublic)
 def get_user_profile(
     user_id: int,
@@ -132,6 +194,7 @@ def get_user_profile(
     return UserFriendProfilePublic(
         id=user.id,
         username=user.username,
+        profile_picture_url=user.profile_picture_url,
         total_sessions=total_sessions,
         current_streak=cur,
         longest_streak=longest,
