@@ -11,6 +11,20 @@ export function setApiUnauthorizedHandler(handler: (() => void | Promise<void>) 
   unauthorizedHandler = handler;
 }
 
+type TokenPair = { access_token: string; refresh_token: string };
+
+let getRefreshTokenFromStore: (() => Promise<string | null>) | null = null;
+let applyTokenPair: ((pair: TokenPair) => Promise<void>) | null = null;
+
+/** Wired from AuthProvider so apiJson can renew access tokens after expiry. */
+export function setAuthRefreshBridge(
+  getRt: (() => Promise<string | null>) | null,
+  apply: ((pair: TokenPair) => Promise<void>) | null,
+): void {
+  getRefreshTokenFromStore = getRt;
+  applyTokenPair = apply;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly payload: unknown;
@@ -29,6 +43,8 @@ export type ApiOptions = {
   body?: unknown;
   timeoutMs?: number;
   retries?: number;
+  /** Internal: do not attempt refresh (avoids recursion). */
+  _skipRefresh?: boolean;
 };
 
 /** FastAPI/Pydantic validation errors use `detail` as an array of `{ loc, msg, ... }`. */
@@ -46,8 +62,7 @@ function formatApiErrorDetail(detail: unknown): string {
     }
     const msg = String((item as { msg: unknown }).msg);
     const loc = (item as { loc?: unknown }).loc;
-    const field =
-      Array.isArray(loc) && loc.length > 0 ? String(loc[loc.length - 1]) : null;
+    const field = Array.isArray(loc) && loc.length > 0 ? String(loc[loc.length - 1]) : null;
 
     lines.push(humanizeValidationMessage(msg, field));
   }
@@ -69,6 +84,32 @@ function humanizeValidationMessage(msg: string, field: string | null): string {
     return msg;
   }
   return msg;
+}
+
+async function tryRefreshAccessToken(): Promise<TokenPair | null> {
+  if (!getRefreshTokenFromStore || !applyTokenPair) return null;
+  const rt = await getRefreshTokenFromStore();
+  if (!rt?.trim()) return null;
+  try {
+    const data = await apiJson<TokenPair>("/auth/refresh", {
+      method: "POST",
+      body: { refresh_token: rt.trim() },
+      _skipRefresh: true,
+    });
+    if (typeof data.access_token === "string" && typeof data.refresh_token === "string") {
+      await applyTokenPair({
+        access_token: data.access_token.trim(),
+        refresh_token: data.refresh_token.trim(),
+      });
+      return {
+        access_token: data.access_token.trim(),
+        refresh_token: data.refresh_token.trim(),
+      };
+    }
+  } catch {
+    /* handled below */
+  }
+  return null;
 }
 
 export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
@@ -132,6 +173,21 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
     } else if (typeof data === "string" && data) {
       msg = data;
     }
+
+    if (
+      res.status === 401 &&
+      authToken &&
+      !opts._skipRefresh &&
+      path !== "/auth/refresh" &&
+      path !== "/auth/login" &&
+      path !== "/auth/register"
+    ) {
+      const pair = await tryRefreshAccessToken();
+      if (pair) {
+        return apiJson<T>(path, { ...opts, token: pair.access_token, _skipRefresh: true });
+      }
+    }
+
     if (res.status === 401 && authToken && unauthorizedHandler) {
       void Promise.resolve(unauthorizedHandler()).catch(() => undefined);
     }

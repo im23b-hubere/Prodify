@@ -8,7 +8,13 @@ export type HeatmapDay = { date: string; seconds: number; intensity: number };
 
 type Props = { days: HeatmapDay[] };
 
-const INTENSITY = ["#2a2a2a", "rgba(255,106,61,0.25)", "rgba(255,106,61,0.45)", "rgba(255,106,61,0.7)", "#ff6a3d"];
+const INTENSITY = [
+  "#2a2a2a",
+  "rgba(255,106,61,0.25)",
+  "rgba(255,106,61,0.45)",
+  "rgba(255,106,61,0.7)",
+  "#ff6a3d",
+];
 
 export const ActivityHeatmapCard = memo(function ActivityHeatmapCard({ days }: Props) {
   return (

@@ -10,7 +10,12 @@ import { colors, radii, spacing, typography } from "../../constants/theme";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import type { SessionDto } from "../../types/session";
-import { SessionShareStoryCard, STORY_CAPTURE_HEIGHT, STORY_CAPTURE_WIDTH, type ShareTemplateId } from "./SessionShareStoryCard";
+import {
+  SessionShareStoryCard,
+  STORY_CAPTURE_HEIGHT,
+  STORY_CAPTURE_WIDTH,
+  type ShareTemplateId,
+} from "./SessionShareStoryCard";
 
 type Props = {
   visible: boolean;
@@ -28,7 +33,13 @@ const TEMPLATES: { id: ShareTemplateId; label: string }[] = [
 
 const PREVIEW_SCALE = 0.68;
 
-export function SessionShareImageModal({ visible, onClose, session, insights, producerName }: Props) {
+export function SessionShareImageModal({
+  visible,
+  onClose,
+  session,
+  insights,
+  producerName,
+}: Props) {
   const shotRef = useRef<ViewShot | null>(null);
   const [template, setTemplate] = useState<ShareTemplateId>("gradient");
   const [busy, setBusy] = useState(false);
@@ -80,7 +91,9 @@ export function SessionShareImageModal({ visible, onClose, session, insights, pr
                   setTemplate(t.id);
                 }}
               >
-                <Text style={[styles.chipTxt, template === t.id && styles.chipTxtOn]}>{t.label}</Text>
+                <Text style={[styles.chipTxt, template === t.id && styles.chipTxtOn]}>
+                  {t.label}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -113,14 +126,22 @@ export function SessionShareImageModal({ visible, onClose, session, insights, pr
             </View>
           </View>
 
-          <PrimaryButton label={busy ? "Export…" : "PNG erstellen & teilen"} onPress={captureAndShare} loading={busy} />
+          <PrimaryButton
+            label={busy ? "Export…" : "PNG erstellen & teilen"}
+            onPress={captureAndShare}
+            loading={busy}
+          />
 
           <Pressable style={styles.closeGhost} onPress={onClose} disabled={busy}>
             <Text style={styles.closeGhostTxt}>Schließen</Text>
           </Pressable>
 
           <View style={styles.hiddenShot} collapsable={false} pointerEvents="none">
-            <ViewShot ref={shotRef} options={{ format: "png", quality: 1 }} style={styles.shotInner}>
+            <ViewShot
+              ref={shotRef}
+              options={{ format: "png", quality: 1 }}
+              style={styles.shotInner}
+            >
               <SessionShareStoryCard
                 template={template}
                 sessionType={String(session.session_type)}
@@ -153,7 +174,12 @@ const styles = StyleSheet.create({
     maxHeight: "88%",
   },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
-  sub: { color: colors.textSecondary, ...typography.caption, marginTop: spacing.sm, marginBottom: spacing.md },
+  sub: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
   chips: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
   chip: {
     paddingHorizontal: spacing.md,

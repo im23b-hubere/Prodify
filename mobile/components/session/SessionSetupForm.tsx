@@ -144,10 +144,7 @@ function TypeCard({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
         onSelect();
       }}
-      style={({ pressed }) => [
-        styles.typeCardPressable,
-        pressed && styles.typeCardPressed,
-      ]}
+      style={({ pressed }) => [styles.typeCardPressable, pressed && styles.typeCardPressed]}
     >
       <View style={[styles.typeCardOuter, active && { borderColor: visual.activeBorder }]}>
         {active ? (
@@ -186,7 +183,12 @@ export type SessionSetupFormProps = {
   hideTitleRow?: boolean;
 };
 
-export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequestClose, hideTitleRow }: SessionSetupFormProps) {
+export function SessionSetupForm({
+  onStarted,
+  onActiveSessionConflict,
+  onRequestClose,
+  hideTitleRow,
+}: SessionSetupFormProps) {
   const { token, hydrated } = useAuth();
   const mounted = useRef(true);
   const startRequestInFlight = useRef(false);
@@ -222,7 +224,7 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
       setTags((prev) => [...prev, t]);
       setTagInput("");
     },
-    [tags]
+    [tags],
   );
 
   const onSubmit = useCallback(async () => {
@@ -249,7 +251,11 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
     if (mounted.current) setBusy(true);
     console.log("Step 2: Set submitting to true");
     if (mounted.current) setError(null);
-    debugLog("session", "start_attempt", { hasNotes: Boolean(notes.trim()), moodLevel: mood ?? null, tagCount: tags.length });
+    debugLog("session", "start_attempt", {
+      hasNotes: Boolean(notes.trim()),
+      moodLevel: mood ?? null,
+      tagCount: tags.length,
+    });
     try {
       console.log("Step 3: Calling startSession API...");
       const sessionData = {
@@ -303,7 +309,10 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       const msg = e instanceof Error ? e.message : "Could not start session";
-      debugLog("session", "start_failure", { status: e instanceof ApiError ? e.status : 0, message: msg });
+      debugLog("session", "start_failure", {
+        status: e instanceof ApiError ? e.status : 0,
+        message: msg,
+      });
       if (e instanceof ApiError && e.status === 409) {
         const payload = e.payload as { detail?: unknown; session_id?: unknown } | null;
         const detailObj =
@@ -312,17 +321,21 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
             : null;
         const rawSessionId = payload?.session_id ?? detailObj?.session_id;
         const existingSessionId =
-          typeof rawSessionId === "number" && Number.isFinite(rawSessionId) && rawSessionId > 0 ? rawSessionId : null;
+          typeof rawSessionId === "number" && Number.isFinite(rawSessionId) && rawSessionId > 0
+            ? rawSessionId
+            : null;
 
         if (existingSessionId) {
           try {
-            const activeRaw = await apiJson<unknown>(`/sessions/item/${existingSessionId}`, { token: token.trim() });
+            const activeRaw = await apiJson<unknown>(`/sessions/item/${existingSessionId}`, {
+              token: token.trim(),
+            });
             const existing = tryParseSessionDto(activeRaw);
             if (existing) {
               Alert.alert(
                 "Session already active",
                 "You already have an active session. We'll continue with it.",
-                [{ text: "Continue" }]
+                [{ text: "Continue" }],
               );
               onStarted(existing);
               onActiveSessionConflict?.(existingSessionId);
@@ -383,7 +396,12 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
         <Text style={styles.sectionLabel}>Session type</Text>
         <View style={styles.typeColumn}>
           {SESSION_TYPES.map((type) => (
-            <TypeCard key={type} type={type} active={selectedType === type} onSelect={() => setSelectedType(type)} />
+            <TypeCard
+              key={type}
+              type={type}
+              active={selectedType === type}
+              onSelect={() => setSelectedType(type)}
+            />
           ))}
         </View>
 
@@ -420,7 +438,11 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
         <Text style={styles.sectionLabel}>Tags (optional)</Text>
         <View style={styles.tagWrap}>
           {tags.map((t) => (
-            <Pressable key={t} style={styles.tagChip} onPress={() => setTags((prev) => prev.filter((x) => x !== t))}>
+            <Pressable
+              key={t}
+              style={styles.tagChip}
+              onPress={() => setTags((prev) => prev.filter((x) => x !== t))}
+            >
               <Text style={styles.tagText}>{t}</Text>
             </Pressable>
           ))}
@@ -463,7 +485,12 @@ export function SessionSetupForm({ onStarted, onActiveSessionConflict, onRequest
       </ScrollView>
 
       <View style={styles.footer}>
-        <PrimaryButton label="START SESSION" onPress={onSubmit} loading={busy} disabled={!hydrated || !canStart} />
+        <PrimaryButton
+          label="START SESSION"
+          onPress={onSubmit}
+          loading={busy}
+          disabled={!hydrated || !canStart}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -618,7 +645,11 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   typeLabel: { color: "#fff", fontFamily: fontFamily.heading, ...typography.subheadline },
-  typeLabelMuted: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.subheadline },
+  typeLabelMuted: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
+  },
   notes: {
     minHeight: 100,
     borderRadius: radii.md,
@@ -630,7 +661,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     ...typography.body,
   },
-  counter: { alignSelf: "flex-end", color: colors.textSecondary, ...typography.caption, marginTop: 4 },
+  counter: {
+    alignSelf: "flex-end",
+    color: colors.textSecondary,
+    ...typography.caption,
+    marginTop: 4,
+  },
   moodRow: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   moodBtn: {
     width: 52,
@@ -654,7 +690,12 @@ const styles = StyleSheet.create({
     borderColor: colors.secondary,
   },
   tagText: { color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, ...typography.caption },
-  tagInputRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
+  tagInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   tagField: {
     flex: 1,
     borderRadius: radii.md,
@@ -691,7 +732,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  suggestedText: { color: colors.textSecondary, fontFamily: fontFamily.body, ...typography.caption },
+  suggestedText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+  },
   error: { color: colors.danger, marginTop: spacing.md, ...typography.caption },
   footer: {
     padding: spacing.md,

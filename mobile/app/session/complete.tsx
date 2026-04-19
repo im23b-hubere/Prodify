@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { PENDING_SESSION_SETUP_KEY } from "../../constants/sessionUi";
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { tryParseSessionDto } from "../../lib/sessionDto";
@@ -151,9 +151,7 @@ export default function SessionCompleteScreen() {
         <Text style={styles.title}>Session complete</Text>
         <Text style={styles.bigDur}>{formatDurationWords(dur)}</Text>
         {streak !== null && streak > 0 ? (
-          <Text style={styles.streak}>
-            🔥 {streak} day streak!
-          </Text>
+          <Text style={styles.streak}>🔥 {streak} day streak!</Text>
         ) : null}
         {completionMessage ? <Text style={styles.motivation}>{completionMessage}</Text> : null}
         <Text style={styles.auto}>Returning to dashboard in {secondsLeft}s…</Text>
@@ -185,16 +183,32 @@ export default function SessionCompleteScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: spacing.md, padding: spacing.lg },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: spacing.md,
+    padding: spacing.lg,
+  },
   hero: { alignItems: "center", marginTop: spacing.xl, gap: spacing.sm },
   check: {
     fontSize: 48,
     color: colors.success,
     fontFamily: fontFamily.heading,
   },
-  title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline, textAlign: "center" },
+  title: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.headline,
+    textAlign: "center",
+  },
   muted: { color: colors.textSecondary, ...typography.body, textAlign: "center" },
-  bigDur: { color: colors.primary, fontFamily: fontFamily.heading, fontSize: 36, marginTop: spacing.sm },
+  bigDur: {
+    color: colors.primary,
+    fontFamily: fontFamily.heading,
+    fontSize: 36,
+    marginTop: spacing.sm,
+  },
   streak: { color: colors.textSecondary, ...typography.subheadline, marginTop: spacing.sm },
   motivation: {
     color: colors.textPrimary,
@@ -207,5 +221,9 @@ const styles = StyleSheet.create({
   auto: { color: colors.textSecondary, ...typography.caption, marginTop: spacing.md },
   actions: { marginTop: spacing.xl, gap: spacing.md },
   textBtn: { alignItems: "center", padding: spacing.md },
-  textBtnLabel: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  textBtnLabel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
 });

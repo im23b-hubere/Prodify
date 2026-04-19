@@ -11,7 +11,12 @@ type StatCardProps = {
   subPositive?: boolean;
 };
 
-export const StatCard = memo(function StatCard({ label, value, sublabel, subPositive = true }: StatCardProps) {
+export const StatCard = memo(function StatCard({
+  label,
+  value,
+  sublabel,
+  subPositive = true,
+}: StatCardProps) {
   return (
     <View style={styles.card}>
       <Text style={styles.value}>{value}</Text>

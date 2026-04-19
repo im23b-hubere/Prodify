@@ -186,7 +186,11 @@ const styles = StyleSheet.create({
   feedMeta: { color: colors.textSecondary, ...typography.caption },
   loading: { color: colors.textSecondary, ...typography.caption },
   empty: { gap: spacing.sm },
-  emptyTitle: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.subheadline },
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
+  },
   emptySub: { color: colors.textSecondary, ...typography.body },
   emptyBtn: {
     alignSelf: "flex-start",

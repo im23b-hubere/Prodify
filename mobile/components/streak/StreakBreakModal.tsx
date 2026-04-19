@@ -86,7 +86,9 @@ export function StreakBreakModal({ visible, brokenStreak, onStartFresh }: Streak
           <Text style={styles.title}>Your {brokenStreak}-day streak ended</Text>
           <Text style={styles.sub}>Every producer has setbacks. Start again today.</Text>
           <View style={styles.achievement}>
-            <Text style={styles.achievementTxt}>You still achieved {brokenStreak} days. That counts.</Text>
+            <Text style={styles.achievementTxt}>
+              You still achieved {brokenStreak} days. That counts.
+            </Text>
           </View>
           <PrimaryButton label="Start fresh" onPress={handleClose} />
         </LinearGradient>

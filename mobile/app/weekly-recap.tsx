@@ -49,7 +49,9 @@ export default function WeeklyRecapScreen() {
               Sessions: {s.total_sessions} ·{" "}
               {((Number.isFinite(s.total_seconds) ? s.total_seconds : 0) / 3600).toFixed(1)} hours
             </Text>
-            <Text style={styles.line}>Streak: {s.current_streak_days} days (best {s.best_streak_days})</Text>
+            <Text style={styles.line}>
+              Streak: {s.current_streak_days} days (best {s.best_streak_days})
+            </Text>
             {s.hours_delta_vs_prior_period != null ? (
               <Text style={styles.line}>
                 vs last week: {s.hours_delta_vs_prior_period >= 0 ? "+" : ""}
@@ -95,7 +97,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   line: { color: colors.textPrimary, ...typography.body },
-  quote: { color: colors.textSecondary, fontStyle: "italic", marginTop: spacing.md, ...typography.caption },
+  quote: {
+    color: colors.textSecondary,
+    fontStyle: "italic",
+    marginTop: spacing.md,
+    ...typography.caption,
+  },
   err: { color: colors.danger, ...typography.caption },
   muted: { color: colors.textSecondary, ...typography.body },
   back: { alignItems: "center", padding: spacing.md },

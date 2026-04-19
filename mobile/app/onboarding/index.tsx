@@ -25,8 +25,8 @@ export default function OnboardingScreen() {
   const slides = useMemo(
     () => [
       {
-        title: "Track every session",
-        body: "Time your studio work with clarity — type, mood, tags, and streak-aware focus.",
+        title: "Welcome to Prodify",
+        body: "Time your studio work with clarity — session types, mood, tags, and streak-aware focus.",
       },
       {
         title: "Build your streak",
@@ -37,7 +37,7 @@ export default function OnboardingScreen() {
         body: "Leaderboards and activity keep you accountable — produce like it is a sport.",
       },
     ],
-    []
+    [],
   );
 
   const finish = useCallback(async () => {
@@ -113,7 +113,9 @@ export default function OnboardingScreen() {
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.heroTitle}>Weekly session goal</Text>
-          <Text style={styles.heroBody}>Pick a target you can defend. You can change this anytime.</Text>
+          <Text style={styles.heroBody}>
+            Pick a target you can defend. You can change this anytime.
+          </Text>
           <View style={styles.goalRow}>
             {GOALS.map((g) => (
               <Pressable
@@ -151,12 +153,22 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background, padding: spacing.lg, justifyContent: "space-between" },
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+    justifyContent: "space-between",
+  },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   skip: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   dots: { color: colors.textSecondary, ...typography.caption },
   slide: { flex: 1, justifyContent: "center", gap: spacing.md },
-  heroTitle: { color: colors.textPrimary, fontFamily: fontFamily.heading, fontSize: 32, lineHeight: 38 },
+  heroTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 32,
+    lineHeight: 38,
+  },
   heroBody: { color: colors.textSecondary, ...typography.body, lineHeight: 22 },
   scroll: { gap: spacing.lg, paddingBottom: spacing.xxl },
   goalRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
@@ -172,5 +184,9 @@ const styles = StyleSheet.create({
   goalTxt: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold },
   goalTxtOn: { color: colors.textPrimary },
   secondaryBtn: { alignItems: "center", paddingVertical: spacing.md },
-  secondaryTxt: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  secondaryTxt: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
 });

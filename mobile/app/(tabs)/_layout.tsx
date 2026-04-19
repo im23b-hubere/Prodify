@@ -68,28 +68,36 @@ export default function TabsLayout() {
         name="dashboard"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color, focused }) => <TabIcon color={color} focused={focused} icon="dashboard" />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused} icon="dashboard" />
+          ),
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: "Stats",
-          tabBarIcon: ({ color, focused }) => <TabIcon color={color} focused={focused} icon="stats" />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused} icon="stats" />
+          ),
         }}
       />
       <Tabs.Screen
         name="friends"
         options={{
           title: "Friends",
-          tabBarIcon: ({ color, focused }) => <TabIcon color={color} focused={focused} icon="friends" />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused} icon="friends" />
+          ),
         }}
       />
       <Tabs.Screen
         name="profil"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, focused }) => <TabIcon color={color} focused={focused} icon="profil" />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused} icon="profil" />
+          ),
         }}
       />
       <Tabs.Screen

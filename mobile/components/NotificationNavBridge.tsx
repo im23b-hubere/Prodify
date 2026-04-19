@@ -26,11 +26,16 @@ export function NotificationNavBridge() {
   const router = useRouter();
 
   useEffect(() => {
-    const navigateFromResponse = (response: Notifications.NotificationResponse | null | undefined) => {
+    const navigateFromResponse = (
+      response: Notifications.NotificationResponse | null | undefined,
+    ) => {
       if (!response) return;
       if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
       const raw = response.notification.request.content.data;
-      const data = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : undefined;
+      const data =
+        raw && typeof raw === "object" && !Array.isArray(raw)
+          ? (raw as Record<string, unknown>)
+          : undefined;
       const path = parsePathFromNotificationData(data);
       if (!path) return;
       try {
@@ -42,7 +47,9 @@ export function NotificationNavBridge() {
       }
     };
 
-    void Notifications.getLastNotificationResponseAsync().then((last) => navigateFromResponse(last));
+    void Notifications.getLastNotificationResponseAsync().then((last) =>
+      navigateFromResponse(last),
+    );
 
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       navigateFromResponse(response);

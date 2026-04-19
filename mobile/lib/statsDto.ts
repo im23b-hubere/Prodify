@@ -39,7 +39,8 @@ export function tryParseSessionStatsDto(value: unknown): SessionStatsDto | null 
     avg_session_seconds,
     current_streak_days: Math.floor(finiteNonNeg(summaryObj.current_streak_days, 0)),
     hours_delta_vs_prior_period:
-      summaryObj.hours_delta_vs_prior_period === null || summaryObj.hours_delta_vs_prior_period === undefined
+      summaryObj.hours_delta_vs_prior_period === null ||
+      summaryObj.hours_delta_vs_prior_period === undefined
         ? null
         : finiteNumber(summaryObj.hours_delta_vs_prior_period, 0),
   };
@@ -100,7 +101,9 @@ export function tryParseSessionStatsDto(value: unknown): SessionStatsDto | null 
   };
 }
 
-export function tryParseHeatmapDays(value: unknown): { date: string; seconds: number; intensity: number }[] {
+export function tryParseHeatmapDays(
+  value: unknown,
+): { date: string; seconds: number; intensity: number }[] {
   if (!value || typeof value !== "object") return [];
   const v = value as Record<string, unknown>;
   const days = v.days;
@@ -118,7 +121,13 @@ export function tryParseHeatmapDays(value: unknown): { date: string; seconds: nu
   return out;
 }
 
-export type PersonalRecordRow = { key: string; label: string; value: string; context: string | null; occurred_at: string | null };
+export type PersonalRecordRow = {
+  key: string;
+  label: string;
+  value: string;
+  context: string | null;
+  occurred_at: string | null;
+};
 
 export function tryParsePersonalRecords(value: unknown): PersonalRecordRow[] {
   if (!value || typeof value !== "object") return [];

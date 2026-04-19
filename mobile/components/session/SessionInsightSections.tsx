@@ -7,7 +7,12 @@ import Svg, { Circle } from "react-native-svg";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
-import { getFocusBenchmark, getFocusColor, getFocusScoreTips, type FocusScoreData } from "../../lib/focusScore";
+import {
+  getFocusBenchmark,
+  getFocusColor,
+  getFocusScoreTips,
+  type FocusScoreData,
+} from "../../lib/focusScore";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import type { SessionDto } from "../../types/session";
@@ -47,7 +52,7 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
   const focusTips = useMemo(() => getFocusScoreTips(focusInput), [focusInput]);
   const benchmark = useMemo(
     () => getFocusBenchmark(insights.focus_score, insights.focus_user_average ?? null),
-    [insights.focus_score, insights.focus_user_average]
+    [insights.focus_score, insights.focus_user_average],
   );
 
   const shareMinimal = useMemo(() => {
@@ -58,13 +63,13 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
   const shareBold = useMemo(
     () =>
       `🔥 ${session.session_type.toUpperCase()}\n⏱ ${formatDurationWords(session.duration_seconds ?? 0)}\n— Prodify`,
-    [session]
+    [session],
   );
 
   const shareGradient = useMemo(
     () =>
       `✨ Session recap\n${session.session_type}\n${formatDurationWords(session.duration_seconds ?? 0)}\nFocus ${insights.focus_score}%\nProdify`,
-    [session, insights.focus_score]
+    [session, insights.focus_score],
   );
 
   const onShare = async (body: string) => {
@@ -80,7 +85,10 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
         insights={insights}
         producerName={producerName}
       />
-      <LinearGradient colors={["rgba(255,61,0,0.15)", "rgba(162,89,255,0.12)"]} style={styles.impactCard}>
+      <LinearGradient
+        colors={["rgba(255,61,0,0.15)", "rgba(162,89,255,0.12)"]}
+        style={styles.impactCard}
+      >
         <Text style={styles.sectionLabel}>Session impact</Text>
         {insights.impact_lines.map((line) => (
           <Text key={line} style={styles.impactLine}>
@@ -120,7 +128,9 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
             <Text style={styles.focusBig}>{insights.focus_score}%</Text>
             <Text style={styles.focusSub}>{insights.focus_label}</Text>
             {insights.focus_percentile != null ? (
-              <Text style={styles.focusBench}>Better than {insights.focus_percentile}% of your sessions</Text>
+              <Text style={styles.focusBench}>
+                Better than {insights.focus_percentile}% of your sessions
+              </Text>
             ) : null}
             {benchmark ? <Text style={styles.focusBench}>{benchmark}</Text> : null}
             {focusTips.length > 0 ? (
@@ -139,13 +149,11 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
 
       <View style={styles.card}>
         <Text style={styles.sectionLabel}>Time breakdown</Text>
+        <Text style={styles.rowLine}>Active: {formatDurationWords(insights.active_seconds)}</Text>
+        <Text style={styles.rowLine}>Paused: {formatDurationWords(insights.paused_seconds)}</Text>
         <Text style={styles.rowLine}>
-          Active: {formatDurationWords(insights.active_seconds)}
+          Effective rate: {insights.effective_rate_percent.toFixed(0)}%
         </Text>
-        <Text style={styles.rowLine}>
-          Paused: {formatDurationWords(insights.paused_seconds)}
-        </Text>
-        <Text style={styles.rowLine}>Effective rate: {insights.effective_rate_percent.toFixed(0)}%</Text>
         <View style={styles.timeline}>
           {insights.timeline.map((seg, i) => (
             <View
@@ -174,7 +182,11 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
       {insights.related_sessions.length > 0 ? (
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Similar sessions</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.relRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.relRow}
+          >
             {insights.related_sessions.map((s) => (
               <Pressable
                 key={s.id}
@@ -255,7 +267,11 @@ const styles = StyleSheet.create({
   focusSub: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
   focusBench: { color: colors.textSecondary, ...typography.caption },
   tipsBlock: { marginTop: spacing.sm, gap: 4 },
-  tipsTitle: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  tipsTitle: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   tipLine: { color: colors.textSecondary, ...typography.caption },
   card: {
     borderRadius: radii.lg,
@@ -265,7 +281,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   rowLine: { color: colors.textPrimary, ...typography.body, marginBottom: 4 },
-  timeline: { flexDirection: "row", height: 12, borderRadius: 6, overflow: "hidden", marginTop: spacing.sm },
+  timeline: {
+    flexDirection: "row",
+    height: 12,
+    borderRadius: 6,
+    overflow: "hidden",
+    marginTop: spacing.sm,
+  },
   timelineSeg: { height: "100%" },
   timelineActive: { backgroundColor: colors.primary },
   timelinePaused: { backgroundColor: "rgba(255,255,255,0.2)" },
@@ -320,7 +342,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.background,
   },
-  shareChipTxt: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  shareChipTxt: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   copyBtn: { marginTop: spacing.sm, alignItems: "center", paddingVertical: spacing.sm },
   copyBtnTxt: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.body },
 });

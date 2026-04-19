@@ -22,7 +22,11 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
-import type { FriendActivityDto, FriendIncomingDto, FriendLeaderboardDto } from "../../types/friends";
+import type {
+  FriendActivityDto,
+  FriendIncomingDto,
+  FriendLeaderboardDto,
+} from "../../types/friends";
 
 function rankColor(rank: number) {
   if (rank === 1) return "#fbbf24";
@@ -173,7 +177,16 @@ export default function FriendsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
         <View style={styles.topBar}>
           <Text style={styles.title}>Friends</Text>
           <Pressable
@@ -216,14 +229,22 @@ export default function FriendsScreen() {
                 </View>
                 <View style={styles.incomingActions}>
                   <Pressable
-                    style={({ pressed }) => [styles.smallBtn, styles.acceptBtn, pressed && { opacity: 0.9 }]}
+                    style={({ pressed }) => [
+                      styles.smallBtn,
+                      styles.acceptBtn,
+                      pressed && { opacity: 0.9 },
+                    ]}
                     disabled={actionBusy === req.id}
                     onPress={() => acceptRequest(req.id)}
                   >
                     <Text style={styles.smallBtnText}>Accept</Text>
                   </Pressable>
                   <Pressable
-                    style={({ pressed }) => [styles.smallBtn, styles.declineBtn, pressed && { opacity: 0.9 }]}
+                    style={({ pressed }) => [
+                      styles.smallBtn,
+                      styles.declineBtn,
+                      pressed && { opacity: 0.9 },
+                    ]}
                     disabled={actionBusy === req.id}
                     onPress={() => declineRequest(req.id)}
                   >
@@ -237,18 +258,29 @@ export default function FriendsScreen() {
 
         <View style={styles.toggleRow}>
           {(["This Week", "All Time"] as const).map((item) => (
-            <Pressable key={item} style={[styles.toggleChip, mode === item && styles.toggleChipActive]} onPress={() => setMode(item)}>
-              <Text style={[styles.toggleText, mode === item && styles.toggleTextActive]}>{item}</Text>
+            <Pressable
+              key={item}
+              style={[styles.toggleChip, mode === item && styles.toggleChipActive]}
+              onPress={() => setMode(item)}
+            >
+              <Text style={[styles.toggleText, mode === item && styles.toggleTextActive]}>
+                {item}
+              </Text>
             </Pressable>
           ))}
         </View>
 
         <View style={styles.block}>
           {!loading && entries.length === 1 && user?.id === entries[0]?.user_id ? (
-            <Text style={styles.emptyLeader}>You're solo on the leaderboard — add friends to compare stats.</Text>
+            <Text style={styles.emptyLeader}>
+              {"You're solo on the leaderboard — add friends to compare stats."}
+            </Text>
           ) : null}
           {entries.map((entry, idx) => (
-            <Animated.View key={`${entry.user_id}-${entry.rank}`} entering={FadeInDown.delay(idx * 35).duration(320)}>
+            <Animated.View
+              key={`${entry.user_id}-${entry.rank}`}
+              entering={FadeInDown.delay(idx * 35).duration(320)}
+            >
               <View style={[styles.leaderItem, idx > 0 && styles.leaderDivider]}>
                 <View style={[styles.rankBadge, { backgroundColor: rankColor(entry.rank) }]}>
                   <Text style={styles.rankText}>#{entry.rank}</Text>
@@ -282,7 +314,10 @@ export default function FriendsScreen() {
             <Text style={styles.feedEmpty}>No recent sessions among friends yet.</Text>
           ) : null}
           {activity.map((item, idx) => (
-            <View key={item.session_id} style={[styles.feedRow, idx !== activity.length - 1 && styles.feedDivider]}>
+            <View
+              key={item.session_id}
+              style={[styles.feedRow, idx !== activity.length - 1 && styles.feedDivider]}
+            >
               <View style={styles.feedDot} />
               <Text style={styles.feedText}>
                 <Text style={styles.feedName}>{item.username}</Text>
@@ -294,11 +329,18 @@ export default function FriendsScreen() {
         </View>
       </ScrollView>
 
-      <Modal visible={addOpen} animationType="slide" transparent onRequestClose={() => setAddOpen(false)}>
+      <Modal
+        visible={addOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setAddOpen(false)}
+      >
         <Pressable style={styles.modalBackdrop} onPress={() => setAddOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Add friend</Text>
-            <Text style={styles.modalHint}>Enter their Prodify username. They will need to accept your request.</Text>
+            <Text style={styles.modalHint}>
+              Enter their Prodify username. They will need to accept your request.
+            </Text>
             <TextInput
               value={addName}
               onChangeText={setAddName}
@@ -308,7 +350,11 @@ export default function FriendsScreen() {
               autoCorrect={false}
               style={styles.input}
             />
-            <PrimaryButton label={addBusy ? "Sending…" : "Send request"} onPress={() => sendRequest()} disabled={addBusy} />
+            <PrimaryButton
+              label={addBusy ? "Sending…" : "Send request"}
+              onPress={() => sendRequest()}
+              disabled={addBusy}
+            />
             <Pressable style={styles.modalCancel} onPress={() => setAddOpen(false)}>
               <Text style={styles.modalCancelText}>Cancel</Text>
             </Pressable>
@@ -322,7 +368,12 @@ export default function FriendsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: spacing.xxl },
-  loadingRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.md },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
   muted: { color: colors.textSecondary, ...typography.caption },
   errorBox: {
     padding: spacing.md,
@@ -334,7 +385,12 @@ const styles = StyleSheet.create({
   },
   errorText: { color: "#ff9a9a", ...typography.caption, marginBottom: spacing.xs },
   retryText: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.md },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
   iconButton: {
     width: 38,
@@ -347,7 +403,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   incomingBlock: { marginBottom: spacing.md, gap: spacing.sm },
-  incomingTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption, marginBottom: spacing.xs },
+  incomingTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+    marginBottom: spacing.xs,
+  },
   incomingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -371,8 +432,16 @@ const styles = StyleSheet.create({
   },
   acceptBtn: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.15)" },
   declineBtn: { borderColor: colors.border, backgroundColor: "transparent" },
-  smallBtnText: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  smallBtnTextDim: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  smallBtnText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  smallBtnTextDim: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   toggleRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
   toggleChip: {
     flex: 1,
@@ -384,7 +453,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   toggleChipActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.2)" },
-  toggleText: { color: colors.textSecondary, fontFamily: fontFamily.bodyMedium, ...typography.caption },
+  toggleText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+  },
   toggleTextActive: { color: colors.textPrimary },
   block: {
     borderRadius: radii.md,
@@ -394,12 +467,35 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
-  emptyLeader: { color: colors.textSecondary, ...typography.caption, textAlign: "center", paddingVertical: spacing.md },
+  emptyLeader: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    textAlign: "center",
+    paddingVertical: spacing.md,
+  },
   leaderItem: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  leaderDivider: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: "#202020" },
-  rankBadge: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  leaderDivider: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "#202020",
+  },
+  rankBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   rankText: { color: colors.background, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#2b2140", justifyContent: "center", alignItems: "center" },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#2b2140",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   avatarLabel: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold },
   userCopy: { flex: 1 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
@@ -414,12 +510,28 @@ const styles = StyleSheet.create({
   },
   youPillText: { color: colors.secondary, fontFamily: fontFamily.bodyBold, fontSize: 10 },
   userMeta: { color: colors.textSecondary, fontFamily: fontFamily.body, ...typography.caption },
-  sectionTitle: { marginTop: spacing.lg, marginBottom: spacing.sm, color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.subheadline },
+  sectionTitle: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.subheadline,
+  },
   feedEmpty: { color: colors.textSecondary, ...typography.caption },
-  feedRow: { flexDirection: "row", gap: spacing.sm, alignItems: "flex-start", paddingVertical: spacing.xs },
+  feedRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "flex-start",
+    paddingVertical: spacing.xs,
+  },
   feedDivider: { borderBottomWidth: 1, borderBottomColor: "#202020", paddingBottom: spacing.sm },
   feedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginTop: 6 },
-  feedText: { flex: 1, color: colors.textSecondary, fontFamily: fontFamily.body, ...typography.caption },
+  feedText: {
+    flex: 1,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+  },
   feedName: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold },
   modalBackdrop: {
     flex: 1,
@@ -435,7 +547,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: spacing.md,
   },
-  modalTitle: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.subheadline },
+  modalTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
+  },
   modalHint: { color: colors.textSecondary, ...typography.caption },
   input: {
     borderRadius: radii.md,
@@ -446,5 +562,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
   },
   modalCancel: { alignItems: "center", paddingVertical: spacing.sm },
-  modalCancelText: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  modalCancelText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
 });

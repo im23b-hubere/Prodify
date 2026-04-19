@@ -3,6 +3,8 @@ fastapi==0.115.6
 # For extra performance on Linux/Mac: pip install "uvicorn[standard]==0.32.1"
 uvicorn==0.32.1
 sqlalchemy==2.0.36
+# PostgreSQL driver — required when DATABASE_URL uses postgresql+psycopg:// (optional for SQLite-only dev).
+psycopg[binary]==3.2.3
 python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
 python-multipart==0.0.17
@@ -11,5 +13,7 @@ email-validator==2.2.0
 alembic==1.14.1
 pytest==8.3.5
 httpx==0.28.1
+slowapi==0.1.9
+sentry-sdk[fastapi]==2.20.0
 google-auth==2.36.0
 requests==2.32.3

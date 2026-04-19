@@ -18,7 +18,13 @@ type StreakHeroSectionProps = {
   onOpenHistory?: () => void;
 };
 
-export function StreakHeroSection({ overview, loading, freezeBusy, onUseFreeze, onOpenHistory }: StreakHeroSectionProps) {
+export function StreakHeroSection({
+  overview,
+  loading,
+  freezeBusy,
+  onUseFreeze,
+  onOpenHistory,
+}: StreakHeroSectionProps) {
   const target = overview?.current_streak ?? 0;
   const displayStreak = useAnimatedStreakCount(target, 900);
 
@@ -96,7 +102,9 @@ export function StreakHeroSection({ overview, loading, freezeBusy, onUseFreeze, 
           ]}
           onPress={() => {
             if (!overview.can_use_freeze || freezeBusy) {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+                () => undefined,
+              );
               return;
             }
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
@@ -104,7 +112,10 @@ export function StreakHeroSection({ overview, loading, freezeBusy, onUseFreeze, 
           }}
           disabled={!overview.can_use_freeze || freezeBusy}
         >
-          <Shield color={overview.can_use_freeze ? colors.secondary : colors.textSecondary} size={20} />
+          <Shield
+            color={overview.can_use_freeze ? colors.secondary : colors.textSecondary}
+            size={20}
+          />
           <Text style={styles.freezeLabel}>
             {freezeBusy
               ? "Activating…"

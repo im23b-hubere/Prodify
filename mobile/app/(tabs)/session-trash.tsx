@@ -50,14 +50,20 @@ export default function SessionTrashScreen() {
         setBusyId(null);
       }
     },
-    [load, token]
+    [load, token],
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
         <Text style={styles.title}>Session Trash</Text>
         <Text style={styles.subtitle}>Restore sessions you deleted accidentally.</Text>
@@ -76,7 +82,11 @@ export default function SessionTrashScreen() {
                 <Text style={styles.rowMeta}>{formatDate(session.started_at)}</Text>
               </View>
               <Pressable
-                style={({ pressed }) => [styles.restoreBtn, pressed && styles.pressed, busyId === session.id && styles.disabled]}
+                style={({ pressed }) => [
+                  styles.restoreBtn,
+                  pressed && styles.pressed,
+                  busyId === session.id && styles.disabled,
+                ]}
                 onPress={() => restore(session.id).catch(() => undefined)}
                 disabled={busyId === session.id}
               >
@@ -94,7 +104,12 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
-  subtitle: { color: colors.textSecondary, fontFamily: fontFamily.body, ...typography.caption, marginBottom: spacing.sm },
+  subtitle: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+    marginBottom: spacing.sm,
+  },
   error: { color: colors.danger, fontFamily: fontFamily.body, ...typography.caption },
   emptyCard: {
     borderRadius: radii.md,

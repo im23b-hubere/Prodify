@@ -45,9 +45,11 @@ export default function RegisterScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.badge}>New account</Text>
-          <Text style={styles.title}>Let's get started</Text>
-          <Text style={styles.subtitle}>Set up your profile and start your first streak.</Text>
+          <Text style={styles.badge}>Prodify</Text>
+          <Text style={styles.title}>{"Let's get started"}</Text>
+          <Text style={styles.subtitle}>
+            Create your Prodify account and start your first streak.
+          </Text>
         </View>
 
         <View style={styles.card}>

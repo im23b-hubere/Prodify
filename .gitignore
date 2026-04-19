@@ -1,18 +1,24 @@
 # Python
 backend/.venv/
-backend/__pycache__/
 **/__pycache__/
 *.py[cod]
+.pytest_cache/
+backend/.pytest_cache/
 backend/.env
 backend/*.db
 
-# Node / Expo
+# Node / Expo (paths from repo root — use / only)
 mobile/node_modules/
 mobile/.expo/
 mobile/dist/
+mobile/web-build/
 mobile/.env
 mobile/.env.*
+!mobile/.env.example
 *.log
+
+# Root: package.json is metadata-only; avoid committing an empty lockfile from accidental `npm install` here
+/package-lock.json
 
 # OS / IDE
 .DS_Store

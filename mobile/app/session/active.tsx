@@ -130,7 +130,10 @@ export default function SessionActiveScreen() {
   }, [elapsed]);
 
   useEffect(() => {
-    pulse.value = withRepeat(withSequence(withTiming(1.04, { duration: 500 }), withTiming(1, { duration: 500 })), -1);
+    pulse.value = withRepeat(
+      withSequence(withTiming(1.04, { duration: 500 }), withTiming(1, { duration: 500 })),
+      -1,
+    );
   }, [pulse]);
 
   const fromDashboard = source === "dashboard";
@@ -151,7 +154,7 @@ export default function SessionActiveScreen() {
             runOnJS(minimizeToDashboard)();
           }
         }),
-    [fromDashboard, minimizeToDashboard]
+    [fromDashboard, minimizeToDashboard],
   );
 
   const pause = useCallback(async () => {
@@ -159,7 +162,10 @@ export default function SessionActiveScreen() {
     setBusy(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-      const raw = await apiJson<unknown>(`/sessions/item/${session.id}/pause`, { token, method: "POST" });
+      const raw = await apiJson<unknown>(`/sessions/item/${session.id}/pause`, {
+        token,
+        method: "POST",
+      });
       const s = tryParseSessionDto(raw);
       if (s) setSession(s);
       else setError("Invalid response from server.");
@@ -175,7 +181,10 @@ export default function SessionActiveScreen() {
     setBusy(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-      const raw = await apiJson<unknown>(`/sessions/item/${session.id}/resume`, { token, method: "POST" });
+      const raw = await apiJson<unknown>(`/sessions/item/${session.id}/resume`, {
+        token,
+        method: "POST",
+      });
       const s = tryParseSessionDto(raw);
       if (s) setSession(s);
       else setError("Invalid response from server.");
@@ -228,7 +237,7 @@ export default function SessionActiveScreen() {
         setBusy(false);
       }
     },
-    [session, token]
+    [session, token],
   );
 
   const confirmStop = useCallback(() => {
@@ -244,7 +253,9 @@ export default function SessionActiveScreen() {
           stopSessionInFlight.current = true;
           setBusy(true);
           try {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+              () => undefined,
+            );
             await apiJson<SessionDto>("/sessions/stop", {
               token,
               method: "POST",
@@ -252,7 +263,9 @@ export default function SessionActiveScreen() {
             });
             router.replace({ pathname: "/session/complete", params: { id: String(sid) } });
           } catch (e) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+              () => undefined,
+            );
             setError(e instanceof Error ? e.message : "Stop failed");
             void load();
           } finally {
@@ -308,84 +321,88 @@ export default function SessionActiveScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Animated.View style={[styles.timerWrap, pulseStyle]}>
-          <Text style={styles.timer}>{formatClock(elapsed)}</Text>
-          <Text style={styles.subTimer}>{formatDurationWords(elapsed)}</Text>
-        </Animated.View>
+          <Animated.View style={[styles.timerWrap, pulseStyle]}>
+            <Text style={styles.timer}>{formatClock(elapsed)}</Text>
+            <Text style={styles.subTimer}>{formatDurationWords(elapsed)}</Text>
+          </Animated.View>
 
-        <View style={styles.insightCard}>
-          <Text style={styles.insightText}>{insightLine}</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.editLabel}>Session type</Text>
-          <View style={styles.typeRow}>
-            {SESSION_TYPES.map((t) => {
-              const active = session.session_type === t;
-              return (
-                <Pressable
-                  key={t}
-                  onPress={() => setSessionType(t)}
-                  disabled={busy}
-                  style={[styles.typeChip, active && styles.typeChipActive]}
-                >
-                  <Text style={[styles.typeChipTxt, active && styles.typeChipTxtActive]}>{t}</Text>
-                </Pressable>
-              );
-            })}
+          <View style={styles.insightCard}>
+            <Text style={styles.insightText}>{insightLine}</Text>
           </View>
 
-          {session.mood_level ? (
-            <Text style={styles.row}>
-              Mood: {MOOD_EMOJI[session.mood_level] ?? "—"}
-            </Text>
-          ) : null}
-
-          <Text style={styles.editLabel}>Notes</Text>
-          <TextInput
-            style={styles.notesInput}
-            placeholder="What are you working on?"
-            placeholderTextColor={colors.textSecondary}
-            multiline
-            textAlignVertical="top"
-            maxLength={200}
-            value={draftNotes}
-            onChangeText={setDraftNotes}
-            onBlur={() => saveNotes().catch(() => undefined)}
-          />
-          <View style={styles.notesFooter}>
-            <Text style={styles.counter}>{draftNotes.length}/200</Text>
-            <Pressable onPress={() => saveNotes().catch(() => undefined)} disabled={savingNotes} hitSlop={8}>
-              <Text style={styles.saveNotes}>{savingNotes ? "Saving…" : "Save"}</Text>
-            </Pressable>
-          </View>
-
-          {tagList.length > 0 ? (
-            <View style={styles.tags}>
-              {tagList.map((t) => (
-                <View key={t} style={styles.tag}>
-                  <Text style={styles.tagTxt}>{t}</Text>
-                </View>
-              ))}
+          <View style={styles.card}>
+            <Text style={styles.editLabel}>Session type</Text>
+            <View style={styles.typeRow}>
+              {SESSION_TYPES.map((t) => {
+                const active = session.session_type === t;
+                return (
+                  <Pressable
+                    key={t}
+                    onPress={() => setSessionType(t)}
+                    disabled={busy}
+                    style={[styles.typeChip, active && styles.typeChipActive]}
+                  >
+                    <Text style={[styles.typeChipTxt, active && styles.typeChipTxtActive]}>
+                      {t}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
-          ) : null}
-        </View>
 
-        {error ? <Text style={styles.err}>{error}</Text> : null}
+            {session.mood_level ? (
+              <Text style={styles.row}>Mood: {MOOD_EMOJI[session.mood_level] ?? "—"}</Text>
+            ) : null}
 
-        <View style={styles.actions}>
-          {isPaused ? (
-            <PrimaryButton label="Resume" onPress={resume} loading={busy} />
-          ) : (
-            <Pressable style={styles.pauseOutline} onPress={pause} disabled={busy}>
-              <Text style={styles.pauseText}>Pause</Text>
-            </Pressable>
-          )}
-        </View>
+            <Text style={styles.editLabel}>Notes</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="What are you working on?"
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              textAlignVertical="top"
+              maxLength={200}
+              value={draftNotes}
+              onChangeText={setDraftNotes}
+              onBlur={() => saveNotes().catch(() => undefined)}
+            />
+            <View style={styles.notesFooter}>
+              <Text style={styles.counter}>{draftNotes.length}/200</Text>
+              <Pressable
+                onPress={() => saveNotes().catch(() => undefined)}
+                disabled={savingNotes}
+                hitSlop={8}
+              >
+                <Text style={styles.saveNotes}>{savingNotes ? "Saving…" : "Save"}</Text>
+              </Pressable>
+            </View>
 
-        <Pressable style={styles.stopBtn} onPress={confirmStop} disabled={busy}>
-          <Text style={styles.stopTxt}>Stop session</Text>
-        </Pressable>
+            {tagList.length > 0 ? (
+              <View style={styles.tags}>
+                {tagList.map((t) => (
+                  <View key={t} style={styles.tag}>
+                    <Text style={styles.tagTxt}>{t}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          {error ? <Text style={styles.err}>{error}</Text> : null}
+
+          <View style={styles.actions}>
+            {isPaused ? (
+              <PrimaryButton label="Resume" onPress={resume} loading={busy} />
+            ) : (
+              <Pressable style={styles.pauseOutline} onPress={pause} disabled={busy}>
+                <Text style={styles.pauseText}>Pause</Text>
+              </Pressable>
+            )}
+          </View>
+
+          <Pressable style={styles.stopBtn} onPress={confirmStop} disabled={busy}>
+            <Text style={styles.stopTxt}>Stop session</Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -475,7 +492,11 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: "rgba(255,61,0,0.15)",
   },
-  typeChipTxt: { color: colors.textSecondary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
+  typeChipTxt: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+  },
   typeChipTxtActive: { color: colors.textPrimary },
   notesInput: {
     minHeight: 88,

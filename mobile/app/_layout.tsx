@@ -1,19 +1,28 @@
+/* eslint-disable import/no-duplicates -- gesture-handler needs a side-effect import before named imports */
 import "react-native-gesture-handler";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+/* eslint-enable import/no-duplicates */
 import "react-native-reanimated";
 
-import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold, useFonts as useDmSansFonts } from "@expo-google-fonts/dm-sans";
+import {
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_700Bold,
+  useFonts as useDmSansFonts,
+} from "@expo-google-fonts/dm-sans";
 import { Syne_700Bold, useFonts as useSyneFonts } from "@expo-google-fonts/syne";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
 import { AuthProvider } from "../context/AuthContext";
 import { colors } from "../constants/theme";
+import { initSentry } from "../lib/sentry";
 import { configureNotificationHandler } from "../lib/streakNotifications";
 
+initSentry();
 configureNotificationHandler();
 
 export default function RootLayout() {
@@ -31,7 +40,12 @@ export default function RootLayout() {
         <AuthProvider>
           <NotificationNavBridge />
           <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -105,7 +105,9 @@ export function generateMotivationMessage(context: MotivationContext): string {
       messages.push(`${context.friends.activeNow} friends on the board recently — join the wave.`);
     }
     if (context.friends.topThisWeek && context.friends.topThisWeek.userId > 0) {
-      messages.push(`${context.friends.topThisWeek.name} is leading this week — match that energy.`);
+      messages.push(
+        `${context.friends.topThisWeek.name} is leading this week — match that energy.`,
+      );
     }
 
     if (context.lastSessionFocus != null && context.lastSessionFocus >= 90) {

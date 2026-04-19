@@ -2,40 +2,31 @@ import { type Href, useFocusEffect, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Bell, Flame, Lightbulb, Trophy, Users } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Switch, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fontFamily } from "../constants/fonts";
 import { debugNav } from "../lib/debugLog";
 import { colors, radii, spacing, typography } from "../constants/theme";
-import type { InboxItem, NotificationCategory } from "../lib/notificationInbox";
 import {
   loadInbox,
   loadSettings,
   markAllRead,
   removeItem,
   saveSettings,
+  type InboxItem,
+  type NotificationCategory,
   type NotificationSettings,
 } from "../lib/notificationInbox";
 
-const CAT_META: Record<
-  NotificationCategory,
-  { label: string; icon: typeof Flame; emoji: string }
-> = {
-  streak: { label: "Streak", icon: Flame, emoji: "🔥" },
-  achievement: { label: "Achievements", icon: Trophy, emoji: "🏆" },
-  social: { label: "Social", icon: Users, emoji: "👥" },
-  tips: { label: "Tips", icon: Lightbulb, emoji: "💡" },
-};
+const CAT_META: Record<NotificationCategory, { label: string; icon: typeof Flame; emoji: string }> =
+  {
+    streak: { label: "Streak", icon: Flame, emoji: "🔥" },
+    achievement: { label: "Achievements", icon: Trophy, emoji: "🏆" },
+    social: { label: "Social", icon: Users, emoji: "👥" },
+    tips: { label: "Tips", icon: Lightbulb, emoji: "💡" },
+  };
 
 function safeCategory(cat: string): NotificationCategory {
   if (cat === "streak" || cat === "achievement" || cat === "social" || cat === "tips") {
@@ -71,7 +62,7 @@ export default function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       load().catch(() => undefined);
-    }, [load])
+    }, [load]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -100,13 +91,15 @@ export default function NotificationsScreen() {
         style={styles.deleteBtn}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-          removeItem(id).then(() => load()).catch(() => undefined);
+          removeItem(id)
+            .then(() => load())
+            .catch(() => undefined);
         }}
       >
         <Text style={styles.deleteTxt}>Delete</Text>
       </Pressable>
     ),
-    [load]
+    [load],
   );
 
   const renderItem = useCallback(
@@ -131,7 +124,9 @@ export default function NotificationsScreen() {
                   {item.actionLabel && item.actionRoute ? (
                     <Pressable
                       onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
+                          () => undefined,
+                        );
                         try {
                           router.push(item.actionRoute as Href);
                         } catch (e) {
@@ -151,7 +146,7 @@ export default function NotificationsScreen() {
         </Swipeable>
       );
     },
-    [renderRight, router]
+    [renderRight, router],
   );
 
   return (
@@ -195,7 +190,13 @@ export default function NotificationsScreen() {
         data={filtered}
         keyExtractor={(i) => i.id}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Bell color={colors.textSecondary} size={40} style={{ marginBottom: spacing.sm }} />
@@ -233,7 +234,9 @@ export default function NotificationsScreen() {
               value={settings.quietStartHour === 23 && settings.quietEndHour === 7}
               onValueChange={(v) =>
                 updateSetting(
-                  v ? { quietStartHour: 23, quietEndHour: 7 } : { quietStartHour: 0, quietEndHour: 0 }
+                  v
+                    ? { quietStartHour: 23, quietEndHour: 7 }
+                    : { quietStartHour: 0, quietEndHour: 0 },
                 )
               }
               trackColor={{ false: "#333", true: "rgba(255,255,255,0.2)" }}
@@ -277,7 +280,11 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: "rgba(255,61,0,0.12)",
   },
-  filterTxt: { color: colors.textSecondary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
+  filterTxt: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+  },
   filterTxtOn: { color: colors.textPrimary },
   list: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
   card: {
@@ -320,8 +327,17 @@ const styles = StyleSheet.create({
   },
   deleteTxt: { color: "#fff", fontFamily: fontFamily.bodyBold },
   empty: { alignItems: "center", paddingVertical: spacing.xxl },
-  emptyTitle: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.subheadline },
-  emptySub: { color: colors.textSecondary, ...typography.caption, marginTop: spacing.xs, textAlign: "center" },
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
+  },
+  emptySub: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    marginTop: spacing.xs,
+    textAlign: "center",
+  },
   settings: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -329,7 +345,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     backgroundColor: colors.background,
   },
-  settingsTitle: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  settingsTitle: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   rowLabel: { color: colors.textPrimary, ...typography.body },
 });

@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { NOTIFICATION_INBOX_KEY, NOTIFICATION_SETTINGS_KEY, NOTIFICATION_UNREAD_KEY } from "../constants/storageKeys";
+import {
+  NOTIFICATION_INBOX_KEY,
+  NOTIFICATION_SETTINGS_KEY,
+  NOTIFICATION_UNREAD_KEY,
+} from "../constants/storageKeys";
 
 export type NotificationCategory = "streak" | "achievement" | "social" | "tips";
 
@@ -77,7 +81,9 @@ export async function setUnreadCount(n: number): Promise<void> {
   await AsyncStorage.setItem(NOTIFICATION_UNREAD_KEY, String(Math.max(0, n)));
 }
 
-export async function prependNotification(item: Omit<InboxItem, "id" | "createdAt" | "read"> & { id?: string }): Promise<void> {
+export async function prependNotification(
+  item: Omit<InboxItem, "id" | "createdAt" | "read"> & { id?: string },
+): Promise<void> {
   const inbox = await loadInbox();
   const next: InboxItem = {
     id: item.id ?? `n-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

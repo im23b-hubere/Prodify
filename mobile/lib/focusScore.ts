@@ -70,7 +70,10 @@ export function getFocusColor(score: number): string {
   return "#a3a3a3";
 }
 
-export function getFocusBenchmark(score: number, userAverage: number | null | undefined): string | null {
+export function getFocusBenchmark(
+  score: number,
+  userAverage: number | null | undefined,
+): string | null {
   if (userAverage == null || !Number.isFinite(userAverage)) return null;
   const diff = Math.round(score - userAverage);
   if (diff > 10) return `${diff} points above your average`;

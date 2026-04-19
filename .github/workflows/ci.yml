@@ -1,4 +1,4 @@
-name: CI
+name: Prodify CI
 
 on:
   push:
@@ -20,6 +20,8 @@ jobs:
       SECRET_KEY: ci-secret-key-at-least-32-characters-long
       DATABASE_URL: sqlite:///./ci.db
       CORS_ORIGINS: '["http://localhost:8081"]'
+      RATE_LIMIT_AUTH_LOGIN: "1000/minute"
+      RATE_LIMIT_AUTH_REGISTER: "1000/minute"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,5 +68,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Prettier check
+        run: npm run format:check
+
       - name: Typecheck
         run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test -- --ci --coverage=false

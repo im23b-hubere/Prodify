@@ -2,7 +2,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StatCard } from "../../components/ui/StatCard";
@@ -12,11 +20,21 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
 import { formatSessionListDate, weekdayLetterFromIsoDay } from "../../lib/sessionTime";
-import { tryParseHeatmapDays, tryParsePersonalRecords, tryParseSessionStatsDto } from "../../lib/statsDto";
+import {
+  tryParseHeatmapDays,
+  tryParsePersonalRecords,
+  tryParseSessionStatsDto,
+} from "../../lib/statsDto";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
-type PersonalRecord = { key: string; label: string; value: string; context: string | null; occurred_at: string | null };
+type PersonalRecord = {
+  key: string;
+  label: string;
+  value: string;
+  context: string | null;
+  occurred_at: string | null;
+};
 
 const FILTERS = [
   { key: "7d" as const, label: "7D", period: "week" as const },
@@ -93,7 +111,8 @@ export default function StatsScreen() {
     };
   }, []);
 
-  const periodParam = filter.period === "week" ? "week" : filter.period === "month" ? "month" : "all";
+  const periodParam =
+    filter.period === "week" ? "week" : filter.period === "month" ? "month" : "all";
 
   const loadStats = useCallback(async () => {
     if (!token) return;
@@ -186,7 +205,7 @@ export default function StatsScreen() {
         sessions: item.sessions,
         color: BREAKDOWN_COLORS[idx % BREAKDOWN_COLORS.length],
       })),
-    [stats]
+    [stats],
   );
 
   const recent = stats?.recent_sessions ?? [];
@@ -220,7 +239,7 @@ export default function StatsScreen() {
         </Pressable>
       );
     },
-    [router]
+    [router],
   );
 
   return (
@@ -228,7 +247,13 @@ export default function StatsScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         nestedScrollEnabled
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
         <View style={styles.headerRow}>
           <Text style={styles.title}>Your stats</Text>
@@ -242,7 +267,9 @@ export default function StatsScreen() {
                   setFilterIdx(i);
                 }}
               >
-                <Text style={[styles.filterLabel, filterIdx === i && styles.filterLabelActive]}>{f.label}</Text>
+                <Text style={[styles.filterLabel, filterIdx === i && styles.filterLabelActive]}>
+                  {f.label}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -297,7 +324,11 @@ export default function StatsScreen() {
                   {
                     opacity: 0.25 + d.intensity * 0.18,
                     backgroundColor:
-                      d.intensity === 0 ? "#1e1e1e" : d.intensity < 3 ? colors.primary : colors.secondary,
+                      d.intensity === 0
+                        ? "#1e1e1e"
+                        : d.intensity < 3
+                          ? colors.primary
+                          : colors.secondary,
                   },
                 ]}
               />
@@ -339,7 +370,12 @@ export default function StatsScreen() {
                     <Text style={styles.breakdownLabel}>{item.label}</Text>
                   </View>
                   <View style={styles.breakdownTrack}>
-                    <View style={[styles.breakdownFill, { width: `${item.value}%`, backgroundColor: item.color }]} />
+                    <View
+                      style={[
+                        styles.breakdownFill,
+                        { width: `${item.value}%`, backgroundColor: item.color },
+                      ]}
+                    />
                   </View>
                   <Text style={styles.breakdownValue}>
                     {item.sessions} · {item.value}%
@@ -349,7 +385,9 @@ export default function StatsScreen() {
             </View>
           ) : (
             <View style={styles.emptyWrap}>
-              <Text style={styles.emptyText}>No stats yet. Complete a session to see your insights.</Text>
+              <Text style={styles.emptyText}>
+                No stats yet. Complete a session to see your insights.
+              </Text>
             </View>
           )}
         </View>
@@ -365,7 +403,9 @@ export default function StatsScreen() {
           <Text style={styles.emptyText}>No sessions in this range.</Text>
         ) : (
           recent.map((item) => (
-            <View key={typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}>
+            <View
+              key={typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}
+            >
               {renderRecent({ item })}
             </View>
           ))
@@ -390,7 +430,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   filterChipActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.2)" },
-  filterLabel: { color: colors.textSecondary, fontFamily: fontFamily.bodyMedium, ...typography.caption },
+  filterLabel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+  },
   filterLabelActive: { color: colors.textPrimary },
   cardRow: { gap: spacing.sm, paddingBottom: spacing.md },
   goalCard: {
@@ -430,7 +474,12 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   recordLabel: { color: colors.textSecondary, ...typography.caption },
-  recordVal: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.subheadline, marginTop: 4 },
+  recordVal: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
+    marginTop: 4,
+  },
   recordCtx: { color: colors.textSecondary, ...typography.caption, marginTop: 4 },
   chartInner: { marginTop: spacing.sm },
   barScrollContent: {
@@ -557,7 +606,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     marginBottom: spacing.sm,
   },
-  recentType: { flex: 1, color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  recentType: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
   recentMid: { alignItems: "flex-end", marginRight: spacing.sm },
   recentDur: { color: colors.textPrimary, ...typography.caption },
   recentDate: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },

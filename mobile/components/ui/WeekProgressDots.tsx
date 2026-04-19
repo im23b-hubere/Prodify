@@ -1,6 +1,11 @@
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from "react-native-reanimated";
 
 import { colors, spacing } from "../../constants/theme";
 
@@ -13,13 +18,7 @@ type WeekProgressDotsProps = {
   dayKinds?: WeekDotKind[];
 };
 
-function ProgressDot({
-  kind,
-  delay,
-}: {
-  kind: WeekDotKind;
-  delay: number;
-}) {
+function ProgressDot({ kind, delay }: { kind: WeekDotKind; delay: number }) {
   const scale = useSharedValue(0.6);
   const opacity = useSharedValue(0.3);
 
@@ -42,9 +41,16 @@ function ProgressDot({
 }
 
 export function WeekProgressDots({ activeDays, dayKinds }: WeekProgressDotsProps) {
-  const kinds: WeekDotKind[] =
-    dayKinds ??
-    (activeDays?.map((filled) => (filled ? "session" : "none")) ?? ["none", "none", "none", "none", "none", "none", "none"]);
+  const kinds: WeekDotKind[] = dayKinds ??
+    activeDays?.map((filled) => (filled ? "session" : "none")) ?? [
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+    ];
 
   return (
     <View style={styles.row}>

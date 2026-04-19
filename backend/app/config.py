@@ -1,4 +1,6 @@
-from pydantic import field_validator
+from typing import Literal
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,9 +9,22 @@ class Settings(BaseSettings):
 
     secret_key: str
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60 * 24 * 7
+    # Short-lived access JWT; mobile uses refresh tokens for renewal.
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 14
+    # SQLite for local/dev; for production under load use PostgreSQL (see .env.example).
     database_url: str = "sqlite:///./prodify.db"
+    # Pool settings apply when DATABASE_URL is not SQLite (e.g. postgresql+psycopg://...).
+    database_pool_size: int = 5
+    database_max_overflow: int = 10
+    database_pool_pre_ping: bool = True
+    database_pool_recycle_seconds: int = 1800
+    # Browser origins for CORS; in production use explicit https origins (no "*").
     cors_origins: list[str] = ["http://localhost:8081", "http://127.0.0.1:8081", "http://localhost:19006"]
+
+    environment: Literal["development", "production"] = "development"
+    rate_limit_auth_login: str = "10/minute"
+    rate_limit_auth_register: str = "5/minute"
     # Optional: Expo push (https://expo.dev/accounts/[account]/settings/access-tokens)
     expo_access_token: str | None = None
     # Optional: FCM HTTP v1 — JSON string of Firebase service account, or filesystem path
@@ -17,6 +32,10 @@ class Settings(BaseSettings):
     firebase_service_account_path: str | None = None
     # Optional: protect POST /jobs/* (cron / GitHub Actions); CLI job ignores this
     internal_job_key: str | None = None
+    # Emit application logs as JSON lines to stdout (good for containers / log drains).
+    log_json: bool = False
+    # Optional: https://sentry.io — API errors, 5xx, slow transactions (when traces_sample_rate > 0).
+    sentry_dsn: str | None = None
 
     @field_validator("secret_key")
     @classmethod
@@ -28,5 +47,28 @@ class Settings(BaseSettings):
             raise ValueError("SECRET_KEY uses an insecure placeholder value.")
         return normalized
 
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def strip_cors_origins(cls, value: object) -> object:
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return value
+
+    @model_validator(mode="after")
+    def cors_must_be_explicit_in_production(self):
+        if self.environment != "production":
+            return self
+        if not self.cors_origins:
+            raise ValueError("CORS_ORIGINS must be non-empty when ENVIRONMENT=production.")
+        for origin in self.cors_origins:
+            if origin == "*" or origin.strip() == "*":
+                raise ValueError("Wildcard CORS origin '*' is not allowed when ENVIRONMENT=production.")
+        return self
+
 
 settings = Settings()
+
+
+def is_sqlite_database_url(database_url: str) -> bool:
+    """True for file- or memory-based SQLite (single-writer; fine for dev / small installs)."""
+    return database_url.strip().lower().startswith("sqlite")

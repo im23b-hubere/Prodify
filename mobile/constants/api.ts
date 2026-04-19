@@ -43,4 +43,11 @@ function getApiUrl(): string {
   return loopbackApiUrl;
 }
 
+/** EAS profile / env (development | preview | production). Used for tags and Sentry. */
+export function getAppEnvironment(): string {
+  const raw = process.env.EXPO_PUBLIC_APP_ENV?.trim();
+  if (raw) return raw;
+  return __DEV__ ? "development" : "production";
+}
+
 export const API_BASE_URL = getApiUrl();

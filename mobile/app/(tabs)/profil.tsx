@@ -1,7 +1,16 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 
@@ -63,7 +72,9 @@ export default function ProfilScreen() {
   );
 
   async function logout() {
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => undefined,
+    );
     await signOut();
     router.replace("/(auth)/login");
   }
@@ -89,11 +100,11 @@ export default function ProfilScreen() {
           token,
           method: "POST",
           body,
-        }
+        },
       );
       Alert.alert(
         "Push",
-        `Zugestellt: ${r.delivered_ok} / ${r.attempted}${r.message ? `\n${r.message}` : ""}`
+        `Zugestellt: ${r.delivered_ok} / ${r.attempted}${r.message ? `\n${r.message}` : ""}`,
       );
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : e instanceof Error ? e.message : String(e);
@@ -107,10 +118,21 @@ export default function ProfilScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
         <View style={styles.profileHero}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.username?.slice(0, 2).toUpperCase() ?? "BT"}</Text>
+            <Text style={styles.avatarText}>
+              {user?.username?.slice(0, 2).toUpperCase() ?? "BT"}
+            </Text>
           </View>
           <Text style={styles.username}>{user?.username ?? "Prodify User"}</Text>
           <Text style={styles.email}>{user?.email ?? "loading..."}</Text>
@@ -143,11 +165,17 @@ export default function ProfilScreen() {
 
         <Text style={styles.sectionTitle}>Milestones</Text>
         {milestones ? (
-          <Text style={styles.milestoneSub}>Longest streak recorded: {milestones.longest_streak_days} days</Text>
+          <Text style={styles.milestoneSub}>
+            Longest streak recorded: {milestones.longest_streak_days} days
+          </Text>
         ) : null}
 
         {!loading && milestones ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.badgesRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.badgesRow}
+          >
             {milestones.milestones.map((item) => (
               <BadgeIcon key={item.days} label={item.title} unlocked={item.unlocked} />
             ))}
@@ -160,8 +188,8 @@ export default function ProfilScreen() {
 
         <Text style={styles.sectionTitle}>Server-Push (Expo + FCM)</Text>
         <Text style={styles.pushHint}>
-          Backend: EXPO_ACCESS_TOKEN für Expo-Tokens; optional Firebase Service Account (JSON oder Pfad) für
-          Android-FCM-Tokens. Templates simulieren echte In-App-Texte.
+          Backend: EXPO_ACCESS_TOKEN für Expo-Tokens; optional Firebase Service Account (JSON oder
+          Pfad) für Android-FCM-Tokens. Templates simulieren echte In-App-Texte.
         </Text>
         <View style={styles.pingChips}>
           {(
@@ -179,18 +207,27 @@ export default function ProfilScreen() {
                 setPingTemplate(p.id);
               }}
             >
-              <Text style={[styles.pingChipTxt, pingTemplate === p.id && styles.pingChipTxtOn]}>{p.label}</Text>
+              <Text style={[styles.pingChipTxt, pingTemplate === p.id && styles.pingChipTxtOn]}>
+                {p.label}
+              </Text>
             </Pressable>
           ))}
         </View>
-        <PrimaryButton label={pushBusy ? "Sende…" : "Push senden"} onPress={pingPush} loading={pushBusy} />
+        <PrimaryButton
+          label={pushBusy ? "Sende…" : "Push senden"}
+          onPress={pingPush}
+          loading={pushBusy}
+        />
 
         <View style={styles.settingsWrap}>
           <PrimaryButton label="Settings" onPress={() => {}} />
         </View>
 
         <View style={styles.signoutWrap}>
-          <Pressable style={({ pressed }) => [styles.outlineBtn, pressed && styles.pressed]} onPress={logout}>
+          <Pressable
+            style={({ pressed }) => [styles.outlineBtn, pressed && styles.pressed]}
+            onPress={logout}
+          >
             <Text style={styles.outlineBtnText}>Sign out</Text>
           </Pressable>
         </View>
@@ -280,7 +317,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   pingChipOn: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.12)" },
-  pingChipTxt: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  pingChipTxt: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   pingChipTxtOn: { color: colors.textPrimary },
   muted: { color: colors.textSecondary, ...typography.caption, marginBottom: spacing.sm },
   badgesRow: {

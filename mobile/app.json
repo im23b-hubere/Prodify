@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Prodify",
+    "description": "Prodify — studio sessions, streaks, and focus.",
     "slug": "prodify",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -34,7 +35,8 @@
       "expo-router",
       "expo-secure-store",
       "expo-font",
-      "expo-notifications"
+      "expo-notifications",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true

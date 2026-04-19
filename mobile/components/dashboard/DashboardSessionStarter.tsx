@@ -12,7 +12,9 @@ type Props = {
 };
 
 /** Large invite to start when no session is running (active UI stays on the dashboard for gestures). */
-export const DashboardSessionStarter = memo(function DashboardSessionStarter({ onQuickStart }: Props) {
+export const DashboardSessionStarter = memo(function DashboardSessionStarter({
+  onQuickStart,
+}: Props) {
   const router = useRouter();
   return (
     <View style={styles.starterContainer}>

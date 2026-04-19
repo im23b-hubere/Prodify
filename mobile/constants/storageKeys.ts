@@ -1,3 +1,6 @@
+/** SecureStore: OAuth-style refresh token for renewing short-lived access JWTs. */
+export const REFRESH_TOKEN_KEY = "prodify_refresh_token_v1";
+
 /** Last streak value we showed — used to detect a broken streak on next load. */
 export const LAST_KNOWN_STREAK_KEY = "prodify_last_known_streak_v1";
 /** Highest milestone tier (days) we already celebrated with a toast. */

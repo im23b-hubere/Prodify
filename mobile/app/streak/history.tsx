@@ -3,7 +3,15 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ChevronLeft } from "lucide-react-native";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -85,7 +93,13 @@ export default function StreakHistoryScreen() {
 
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
         {loading && !refreshing ? (
           <View style={styles.center}>
@@ -107,12 +121,17 @@ export default function StreakHistoryScreen() {
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>📅</Text>
             <Text style={styles.emptyTitle}>No streak runs yet</Text>
-            <Text style={styles.emptySub}>Complete sessions on consecutive days to build your first chain.</Text>
+            <Text style={styles.emptySub}>
+              Complete sessions on consecutive days to build your first chain.
+            </Text>
           </View>
         ) : null}
 
         {runs.map((run, i) => (
-          <Animated.View key={`${run.start_date}-${run.end_date}-${i}`} entering={FadeInDown.delay(i * 40).duration(360)}>
+          <Animated.View
+            key={`${run.start_date}-${run.end_date}-${i}`}
+            entering={FadeInDown.delay(i * 40).duration(360)}
+          >
             <View style={styles.card}>
               <View style={styles.cardTop}>
                 <Text style={styles.days}>{run.length_days}</Text>
@@ -183,7 +202,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadows.card,
   },
-  cardTop: { flexDirection: "row", alignItems: "baseline", gap: spacing.xs, marginBottom: spacing.xs },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
   days: {
     fontSize: 36,
     lineHeight: 40,

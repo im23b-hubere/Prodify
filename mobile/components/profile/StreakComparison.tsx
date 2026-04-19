@@ -62,6 +62,10 @@ const styles = StyleSheet.create({
   col: { flex: 1, alignItems: "center", gap: 4 },
   lbl: { color: colors.textSecondary, ...typography.caption },
   val: { color: colors.textPrimary, fontFamily: fontFamily.heading, fontSize: 28 },
-  vs: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, paddingHorizontal: spacing.sm },
+  vs: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    paddingHorizontal: spacing.sm,
+  },
   msg: { color: colors.textSecondary, ...typography.body, textAlign: "center" },
 });

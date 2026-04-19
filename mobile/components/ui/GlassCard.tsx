@@ -11,7 +11,10 @@ type GlassCardProps = {
 
 export const GlassCard = memo(function GlassCard({ children }: GlassCardProps) {
   return (
-    <LinearGradient colors={["rgba(255,61,0,0.45)", "rgba(162,89,255,0.25)"]} style={styles.gradientBorder}>
+    <LinearGradient
+      colors={["rgba(255,61,0,0.45)", "rgba(162,89,255,0.25)"]}
+      style={styles.gradientBorder}
+    >
       <BlurView intensity={14} tint="dark" style={styles.inner}>
         <View style={styles.content}>{children}</View>
       </BlurView>

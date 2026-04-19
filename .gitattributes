@@ -1,0 +1,3 @@
+# Normalize text files across Windows/macOS/Linux (avoids CRLF/LF churn and duplicate-path noise in reviews).
+* text=auto
+*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,py,sh,bash} text eol=lf

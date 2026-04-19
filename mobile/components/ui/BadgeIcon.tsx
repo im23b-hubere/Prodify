@@ -11,8 +11,12 @@ type BadgeIconProps = {
 export function BadgeIcon({ label, unlocked }: BadgeIconProps) {
   return (
     <View style={[styles.badge, unlocked ? styles.badgeUnlocked : styles.badgeLocked]}>
-      <Text style={[styles.icon, unlocked ? styles.iconUnlocked : styles.iconLocked]}>{unlocked ? "★" : "☆"}</Text>
-      <Text style={[styles.label, unlocked ? styles.labelUnlocked : styles.labelLocked]}>{label}</Text>
+      <Text style={[styles.icon, unlocked ? styles.iconUnlocked : styles.iconLocked]}>
+        {unlocked ? "★" : "☆"}
+      </Text>
+      <Text style={[styles.label, unlocked ? styles.labelUnlocked : styles.labelLocked]}>
+        {label}
+      </Text>
     </View>
   );
 }

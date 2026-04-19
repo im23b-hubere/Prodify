@@ -35,7 +35,7 @@ async function cancelStreakRiskScheduled() {
   await Promise.all(
     scheduled
       .filter((r) => (r.content.data as { kind?: string } | undefined)?.kind === DATA_KIND)
-      .map((r) => Notifications.cancelScheduledNotificationAsync(r.identifier))
+      .map((r) => Notifications.cancelScheduledNotificationAsync(r.identifier)),
   );
 }
 

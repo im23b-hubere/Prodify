@@ -1,7 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { ApiError, apiJson, setApiUnauthorizedHandler } from "../lib/client";
+import { REFRESH_TOKEN_KEY } from "../constants/storageKeys";
+import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } from "../lib/client";
 
 const TOKEN_KEY = "prodify_token";
 
@@ -23,10 +24,18 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+type TokenPair = { access_token: string; refresh_token: string };
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserMe | null>(null);
   const [hydrated, setHydrated] = useState(false);
+
+  const persistTokenPair = useCallback(async (pair: TokenPair) => {
+    await SecureStore.setItemAsync(TOKEN_KEY, pair.access_token);
+    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, pair.refresh_token);
+    setToken(pair.access_token);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,8 +53,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    setAuthRefreshBridge(
+      () => SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
+      persistTokenPair,
+    );
+    return () => setAuthRefreshBridge(null, null);
+  }, [persistTokenPair]);
+
+  useEffect(() => {
     setApiUnauthorizedHandler(async () => {
       await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
+      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
       setToken(null);
       setUser(null);
     });
@@ -64,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       if (e instanceof ApiError && e.status === 401) {
         await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
+        await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
         setToken(null);
       }
     }
@@ -79,33 +98,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [hydrated, token, refreshUser]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const data = await apiJson<{ access_token?: string }>("/auth/login", {
+    const data = await apiJson<Partial<TokenPair>>("/auth/login", {
       method: "POST",
       body: { email, password },
     });
     const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
-    if (!access) {
+    const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
+    if (!access || !refresh) {
       throw new Error("Unexpected server response. Please try again.");
     }
-    await SecureStore.setItemAsync(TOKEN_KEY, access);
-    setToken(access);
-  }, []);
+    await persistTokenPair({ access_token: access, refresh_token: refresh });
+  }, [persistTokenPair]);
 
   const signUp = useCallback(async (email: string, username: string, password: string) => {
-    const data = await apiJson<{ access_token?: string }>("/auth/register", {
+    const data = await apiJson<Partial<TokenPair>>("/auth/register", {
       method: "POST",
       body: { email, username, password },
     });
     const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
-    if (!access) {
+    const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
+    if (!access || !refresh) {
       throw new Error("Unexpected server response. Please try again.");
     }
-    await SecureStore.setItemAsync(TOKEN_KEY, access);
-    setToken(access);
-  }, []);
+    await persistTokenPair({ access_token: access, refresh_token: refresh });
+  }, [persistTokenPair]);
 
   const signOut = useCallback(async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    const t = await SecureStore.getItemAsync(TOKEN_KEY).catch(() => null);
+    if (t?.trim()) {
+      await apiJson("/auth/logout", { method: "POST", token: t.trim() }).catch(() => undefined);
+    }
+    await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
     setToken(null);
     setUser(null);
   }, []);
@@ -120,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       refreshUser,
     }),
-    [token, user, hydrated, signIn, signUp, signOut, refreshUser]
+    [token, user, hydrated, signIn, signUp, signOut, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,10 +2,16 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import inspect
 
-from app.config import settings
+from app.config import is_sqlite_database_url, settings
 from app.database import engine
+from app.observability import init_observability
+from app.rate_limit import limiter
+
+init_observability()
 from app.routers import (
     achievements as achievements_router,
     auth,
@@ -30,6 +36,7 @@ def validate_schema() -> None:
         "streaks",
         "friendships",
         "push_tokens",
+        "refresh_tokens",
         "user_goals",
         "user_achievements",
         "streak_reminder_dispatch_log",
@@ -70,6 +77,14 @@ def validate_schema() -> None:
     if "channel" not in push_cols:
         raise RuntimeError("Database schema is missing column 'channel' on 'push_tokens'. Run Alembic migrations.")
 
+    # In production with a server DB, refuse to start if migrations were never applied (no revision tracking).
+    if settings.environment == "production" and not is_sqlite_database_url(settings.database_url):
+        if "alembic_version" not in table_names:
+            raise RuntimeError(
+                "Production database has no alembic_version table. Apply migrations before starting the API: "
+                "alembic upgrade head"
+            )
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -78,6 +93,8 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Prodify API", version="0.1.0", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -102,4 +119,4 @@ app.include_router(jobs_router.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "environment": settings.environment}

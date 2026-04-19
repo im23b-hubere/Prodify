@@ -1,11 +1,26 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-from app.config import settings
+from app.config import is_sqlite_database_url, settings
 
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
 
-engine = create_engine(settings.database_url, connect_args=connect_args)
+def _create_engine():
+    url = settings.database_url
+    if is_sqlite_database_url(url):
+        # Single-file SQLite: one writer at a time; check_same_thread allows FastAPI threadpool.
+        return create_engine(url, connect_args={"check_same_thread": False})
+
+    # PostgreSQL and other servers: pooled connections for concurrent requests and workers.
+    return create_engine(
+        url,
+        pool_size=settings.database_pool_size,
+        max_overflow=settings.database_max_overflow,
+        pool_pre_ping=settings.database_pool_pre_ping,
+        pool_recycle=settings.database_pool_recycle_seconds,
+    )
+
+
+engine = _create_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

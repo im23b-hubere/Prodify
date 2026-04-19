@@ -22,9 +22,18 @@ export function PrimaryButton({ label, onPress, disabled, loading, icon }: Prima
         Haptics.selectionAsync().catch(() => undefined);
         onPress();
       }}
-      style={({ pressed }) => [styles.wrap, pressed && styles.pressed, (disabled || loading) && styles.disabled]}
+      style={({ pressed }) => [
+        styles.wrap,
+        pressed && styles.pressed,
+        (disabled || loading) && styles.disabled,
+      ]}
     >
-      <LinearGradient colors={["#ff5a1f", colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
+      <LinearGradient
+        colors={["#ff5a1f", colors.primary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      >
         {loading ? <ActivityIndicator color={colors.textPrimary} /> : icon}
         {!loading ? <Text style={styles.label}>{label}</Text> : null}
       </LinearGradient>

@@ -17,7 +17,13 @@ type Props = {
   producerName?: string;
 };
 
-export function SessionShareStoryCard({ template, sessionType, durationLabel, focusScore, producerName }: Props) {
+export function SessionShareStoryCard({
+  template,
+  sessionType,
+  durationLabel,
+  focusScore,
+  producerName,
+}: Props) {
   const who = producerName?.trim() || "Producer";
 
   if (template === "minimal") {
@@ -122,12 +128,31 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-  boldStripeTxt: { color: "#0a0a0a", fontFamily: fontFamily.heading, letterSpacing: 6, fontSize: 12 },
+  boldStripeTxt: {
+    color: "#0a0a0a",
+    fontFamily: fontFamily.heading,
+    letterSpacing: 6,
+    fontSize: 12,
+  },
   boldBody: { flex: 1, padding: spacing.lg, justifyContent: "center", gap: spacing.sm },
-  boldType: { color: colors.textPrimary, fontFamily: fontFamily.heading, fontSize: 32, lineHeight: 36 },
+  boldType: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 32,
+    lineHeight: 36,
+  },
   boldDur: { color: colors.primary, fontFamily: fontFamily.heading, fontSize: 26 },
-  boldFocus: { color: "rgba(255,255,255,0.75)", fontFamily: fontFamily.bodyBold, ...typography.subheadline },
-  brandBold: { marginTop: spacing.xl, color: "rgba(255,255,255,0.4)", fontFamily: fontFamily.bodyBold, letterSpacing: 2 },
+  boldFocus: {
+    color: "rgba(255,255,255,0.75)",
+    fontFamily: fontFamily.bodyBold,
+    ...typography.subheadline,
+  },
+  brandBold: {
+    marginTop: spacing.xl,
+    color: "rgba(255,255,255,0.4)",
+    fontFamily: fontFamily.bodyBold,
+    letterSpacing: 2,
+  },
   gradGlass: {
     flex: 1,
     margin: spacing.md,
@@ -139,7 +164,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.sm,
   },
-  gradBrand: { color: "rgba(255,255,255,0.85)", fontFamily: fontFamily.heading, fontSize: 22, letterSpacing: 1 },
+  gradBrand: {
+    color: "rgba(255,255,255,0.85)",
+    fontFamily: fontFamily.heading,
+    fontSize: 22,
+    letterSpacing: 1,
+  },
   gradType: { color: "#fff", fontFamily: fontFamily.heading, fontSize: 34, lineHeight: 38 },
   gradDur: { color: "rgba(255,255,255,0.95)", fontFamily: fontFamily.heading, fontSize: 26 },
   gradPill: {

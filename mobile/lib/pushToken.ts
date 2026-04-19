@@ -8,10 +8,10 @@ import { apiJson } from "./client";
 export async function registerPushTokenWithBackend(authToken: string): Promise<void> {
   try {
     const projectId =
-      (Constants.expoConfig as { extra?: { eas?: { projectId?: string } } } | undefined)?.extra?.eas?.projectId ??
-      (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId;
+      (Constants.expoConfig as { extra?: { eas?: { projectId?: string } } } | undefined)?.extra?.eas
+        ?.projectId ?? (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId;
     const expoToken = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId: String(projectId) } : undefined
+      projectId ? { projectId: String(projectId) } : undefined,
     );
     const expoStr = expoToken.data;
     if (expoStr) {

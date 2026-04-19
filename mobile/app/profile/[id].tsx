@@ -1,14 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActivityHeatmapCard } from "../../components/profile/ActivityHeatmapCard";
@@ -134,7 +127,7 @@ export default function FriendProfileScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.centered}>
-          <Text style={styles.errTitle}>Couldn't load profile</Text>
+          <Text style={styles.errTitle}>{"Couldn't load profile"}</Text>
           <Text style={styles.errSub}>{error}</Text>
           <PrimaryButton label="Back" onPress={() => router.back()} />
         </View>
@@ -237,7 +230,13 @@ const styles = StyleSheet.create({
   topRow: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   back: { color: colors.secondary, fontFamily: fontFamily.bodyBold, ...typography.body },
   scroll: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.lg, gap: spacing.md },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
   errTitle: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
   errSub: { color: colors.textSecondary, ...typography.body, textAlign: "center" },
   locked: {
@@ -248,7 +247,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: spacing.md,
   },
-  lockedTitle: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
+  lockedTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.headline,
+  },
   lockedSub: { color: colors.textSecondary, ...typography.body },
   block: { marginBottom: spacing.sm },
   statsCard: {

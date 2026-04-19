@@ -11,7 +11,10 @@ type SessionTypeChipProps = {
 
 export function SessionTypeChip({ label, active, onPress }: SessionTypeChipProps) {
   return (
-    <Pressable style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
+      onPress={onPress}
+    >
       <Text style={[styles.label, active && styles.labelActive]}>{label}</Text>
     </Pressable>
   );

@@ -1,7 +1,16 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionInsightSections } from "../../components/session/SessionInsightSections";
@@ -11,9 +20,8 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
-import { tryParseSessionDto } from "../../lib/sessionDto";
+import { sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { formatDurationWords, parseSessionDate } from "../../lib/sessionTime";
-import { sessionTagsList } from "../../lib/sessionDto";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
 
@@ -59,7 +67,9 @@ export default function SessionDetailScreen() {
     setNote(data.notes ?? "");
     if (data.stopped_at != null && data.duration_seconds != null) {
       try {
-        const ins = await apiJson<SessionDetailInsightsDto>(`/sessions/item/${id}/insights`, { token });
+        const ins = await apiJson<SessionDetailInsightsDto>(`/sessions/item/${id}/insights`, {
+          token,
+        });
         setInsights(ins);
       } catch {
         setInsights(null);
@@ -117,7 +127,9 @@ export default function SessionDetailScreen() {
         onPress: async () => {
           try {
             await apiJson(`/sessions/item/${id}`, { token, method: "DELETE" });
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+              () => undefined,
+            );
             router.replace("/(tabs)/dashboard");
           } catch (e) {
             setError(e instanceof Error ? e.message : "Delete failed");
@@ -143,14 +155,22 @@ export default function SessionDetailScreen() {
   const end = session.stopped_at ? parseSessionDate(session.stopped_at) : null;
   const endOk = end ? Number.isFinite(end.getTime()) : false;
   const durationLabel =
-    session.duration_seconds != null ? formatDurationWords(session.duration_seconds) : "In progress";
+    session.duration_seconds != null
+      ? formatDurationWords(session.duration_seconds)
+      : "In progress";
   const tagList = sessionTagsList(session.tags);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
         <Pressable onPress={() => router.back()} style={styles.backRow}>
           <Text style={styles.backChevron}>‹</Text>
@@ -164,25 +184,35 @@ export default function SessionDetailScreen() {
             {startOk
               ? `${start.toLocaleString("en-US", { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
               : "—"}
-            {endOk && end ? ` – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : ""}
+            {endOk && end
+              ? ` – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+              : ""}
           </Text>
         </View>
 
         {insights ? (
-          <SessionInsightSections session={session} insights={insights} producerName={user?.username} />
+          <SessionInsightSections
+            session={session}
+            insights={insights}
+            producerName={user?.username}
+          />
         ) : null}
 
         <View style={styles.grid}>
           <View style={styles.gridCell}>
             <Text style={styles.gridLabel}>Start</Text>
             <Text style={styles.gridVal}>
-              {startOk ? start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—"}
+              {startOk
+                ? start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+                : "—"}
             </Text>
           </View>
           <View style={styles.gridCell}>
             <Text style={styles.gridLabel}>End</Text>
             <Text style={styles.gridVal}>
-              {endOk && end ? end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—"}
+              {endOk && end
+                ? end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+                : "—"}
             </Text>
           </View>
           <View style={styles.gridCell}>
@@ -194,7 +224,9 @@ export default function SessionDetailScreen() {
           <View style={styles.gridCell}>
             <Text style={styles.gridLabel}>Pauses</Text>
             <Text style={styles.gridVal}>
-              {session.paused_duration_seconds ? `${Math.round((session.paused_duration_seconds || 0) / 60)} min` : "—"}
+              {session.paused_duration_seconds
+                ? `${Math.round((session.paused_duration_seconds || 0) / 60)} min`
+                : "—"}
             </Text>
           </View>
         </View>
@@ -203,7 +235,12 @@ export default function SessionDetailScreen() {
           <Text style={styles.sectionTitle}>Session type</Text>
           <View style={styles.chips}>
             {SESSION_TYPES.map((type) => (
-              <SessionTypeChip key={type} label={type} active={selectedType === type} onPress={() => setSelectedType(type)} />
+              <SessionTypeChip
+                key={type}
+                label={type}
+                active={selectedType === type}
+                onPress={() => setSelectedType(type)}
+              />
             ))}
           </View>
         </View>
@@ -275,7 +312,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   gridLabel: { color: colors.textSecondary, ...typography.caption },
-  gridVal: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, marginTop: 4, ...typography.body },
+  gridVal: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    marginTop: 4,
+    ...typography.body,
+  },
   section: {
     borderRadius: radii.md,
     borderWidth: 1,
