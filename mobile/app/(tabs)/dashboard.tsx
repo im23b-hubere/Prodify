@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
-import { Bell, ChevronUp, Flame } from "lucide-react-native";
+import { Bell, Flame } from "lucide-react-native";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,12 +17,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-  Swipeable,
-} from "react-native-gesture-handler";
+import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import Animated, {
   FadeInUp,
@@ -63,6 +58,7 @@ import {
   translateMotivationalMessage,
   type MotivationalMessageDto,
 } from "../../lib/motivationApi";
+import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { parseSessionList, tryParseSessionDto } from "../../lib/sessionDto";
 import {
   generateMotivationMessage,
@@ -409,19 +405,6 @@ export default function DashboardScreen() {
     });
   }, [active, router]);
 
-  const swipeUpGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetY(-16)
-        .failOffsetX([-24, 24])
-        .onEnd((e) => {
-          if (e.translationY < -40) {
-            runOnJS(openFullscreenActive)();
-          }
-        }),
-    [openFullscreenActive],
-  );
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -683,7 +666,7 @@ export default function DashboardScreen() {
             }}
           >
             <Text style={styles.sessionType}>
-              {item.session_type || t("sessionTypes.beatMaking")}
+              {sessionTypeLabel(String(item.session_type || "beat_making"), t)}
             </Text>
             <Text style={styles.sessionMeta}>
               {t("dashboard.sessionMinutes", { n: Math.round((item.duration_seconds ?? 0) / 60) })}
@@ -781,33 +764,38 @@ export default function DashboardScreen() {
             />
 
             {active ? (
-              <GestureDetector gesture={swipeUpGesture}>
-                <View style={styles.activeSessionBlock}>
+              <View style={styles.activeSessionBlock}>
                   <View style={styles.badgeRow}>
                     <View style={styles.typeBadge}>
                       <Text style={styles.typeBadgeText}>
-                        {active.session_type || t("sessionTypes.defaultName")}
+                        {sessionTypeLabel(String(active.session_type || "beat_making"), t)}
                       </Text>
                     </View>
                   </View>
 
                   <View style={styles.timerRingWrap}>
                     <Animated.View style={[styles.pulseRingOuter, ringAnimatedStyle]} />
-                    <LinearGradient colors={["#2a1410", "#1a1a1a"]} style={styles.timerInner}>
-                      <Text style={styles.heroTimer}>{formatTimer(activeSeconds)}</Text>
-                      <Text style={styles.elapsedNatural}>
-                        {formatNaturalCounting(activeSeconds, t)}
-                      </Text>
-                      {preview ? (
-                        <Text style={styles.notesPreview} numberOfLines={2}>
-                          {preview}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t("dashboard.focusModeA11y")}
+                      onPress={openFullscreenActive}
+                      style={styles.timerPressable}
+                    >
+                      <LinearGradient colors={["#2a1410", "#1a1a1a"]} style={styles.timerInner}>
+                        <Text style={styles.heroTimer}>{formatTimer(activeSeconds)}</Text>
+                        <Text style={styles.elapsedNatural}>
+                          {formatNaturalCounting(activeSeconds, t)}
                         </Text>
-                      ) : null}
-                      <View style={styles.swipeHint}>
-                        <ChevronUp color={colors.textSecondary} size={16} />
-                        <Text style={styles.swipeHintText}>{t("dashboard.swipeFocusHint")}</Text>
-                      </View>
-                    </LinearGradient>
+                        {preview ? (
+                          <Text style={styles.notesPreview} numberOfLines={2}>
+                            {preview}
+                          </Text>
+                        ) : null}
+                        <View style={styles.swipeHint}>
+                          <Text style={styles.swipeHintText}>{t("dashboard.swipeFocusHint")}</Text>
+                        </View>
+                      </LinearGradient>
+                    </Pressable>
                   </View>
 
                   <Pressable
@@ -820,7 +808,6 @@ export default function DashboardScreen() {
                     </Text>
                   </Pressable>
                 </View>
-              </GestureDetector>
             ) : (
               <DashboardSessionStarter onQuickStart={openSetup} />
             )}
@@ -1063,6 +1050,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  timerPressable: {
+    width: 260,
+    height: 260,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   pulseRingOuter: {
     position: "absolute",
     width: 268,
@@ -1108,15 +1101,15 @@ const styles = StyleSheet.create({
   },
   swipeHint: {
     marginTop: spacing.md,
-    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    opacity: 0.85,
+    paddingHorizontal: spacing.sm,
+    opacity: 0.9,
   },
   swipeHintText: {
     color: colors.textSecondary,
     ...typography.caption,
     fontSize: 12,
+    textAlign: "center",
   },
   stopSessionBtn: {
     borderRadius: radii.lg,

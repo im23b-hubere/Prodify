@@ -183,7 +183,14 @@
   "sessionTypes": {
     "beatMaking": "Beat Making",
     "mixing": "Mixing",
+    "mastering": "Mastering",
+    "mixAndMaster": "Mix & Master",
     "soundDesign": "Sound Design",
+    "recording": "Recording",
+    "songwriting": "Songwriting",
+    "arrangement": "Arrangement",
+    "vocalProduction": "Vocal Production",
+    "learning": "Learning / Practice",
     "defaultName": "Session"
   },
   "crashBoundary": {
@@ -228,6 +235,13 @@
     "durationUnderOne": "<1 min",
     "durationMin": "{{m}} min",
     "durationHours": "{{h}}h {{m}}m"
+  },
+  "sessionSetup": {
+    "notesSection": "Session notes (optional)",
+    "moodSection": "How are you feeling?",
+    "tagsSection": "Tags (optional)",
+    "tagPlaceholder": "Add tag",
+    "startCta": "START SESSION"
   },
   "sessionActive": {
     "longSessionTitle": "Long session",
@@ -352,7 +366,8 @@
     "naturalCountingStart": "Just getting started…",
     "naturalCountingMins_one": "{{mins}} minute and counting…",
     "naturalCountingMins_other": "{{mins}} minutes and counting…",
-    "swipeFocusHint": "Swipe up for focus mode",
+    "swipeFocusHint": "Tap the timer for focus mode",
+    "focusModeA11y": "Open focus mode",
     "stopping": "Stopping…",
     "stopSession": "STOP SESSION",
     "recentSessions": "Recent sessions",

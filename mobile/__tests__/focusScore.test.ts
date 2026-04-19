@@ -7,7 +7,7 @@ describe("calculateFocusScore", () => {
       calculateFocusScore({
         duration_minutes: 0,
         paused_duration_minutes: 0,
-        session_type: "Beat Making",
+        session_type: "beat_making",
         notes_length: 0,
         mood_level: 3,
       }),
@@ -18,7 +18,7 @@ describe("calculateFocusScore", () => {
     const score = calculateFocusScore({
       duration_minutes: 90,
       paused_duration_minutes: 0,
-      session_type: "Beat Making",
+      session_type: "beat_making",
       notes_length: 80,
       mood_level: 5,
     });

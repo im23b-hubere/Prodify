@@ -21,6 +21,7 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
 import { formatSessionListDate, weekdayLetterFromIsoDay } from "../../lib/sessionTime";
+import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
 import {
   tryParseHeatmapDays,
@@ -206,12 +207,12 @@ export default function StatsScreen() {
   const breakdownData = useMemo(
     () =>
       (stats?.breakdown ?? []).map((item, idx) => ({
-        label: item.session_type,
+        label: sessionTypeLabel(String(item.session_type), t),
         value: Math.max(0, Math.round(item.percent)),
         sessions: item.sessions,
         color: BREAKDOWN_COLORS[idx % BREAKDOWN_COLORS.length],
       })),
-    [stats],
+    [stats, t],
   );
 
   const recent = stats?.recent_sessions ?? [];
@@ -243,7 +244,9 @@ export default function StatsScreen() {
           }}
           disabled={!canOpen}
         >
-          <Text style={styles.recentType}>{item.session_type ?? t("stats.sessionFallback")}</Text>
+          <Text style={styles.recentType}>
+            {sessionTypeLabel(String(item.session_type ?? "beat_making"), t)}
+          </Text>
           <View style={styles.recentMid}>
             <Text style={styles.recentDur}>{formatDuration(item.duration_seconds ?? 0)}</Text>
             <Text style={styles.recentDate}>{formatSessionListDate(item.started_at)}</Text>

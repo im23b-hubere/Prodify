@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 /**
- * User-visible copy lives in locales/de.json and locales/en.json (react-i18next).
+ * User-visible copy lives in locales/en.json (react-i18next).
  *
  * Override with EXPO_PUBLIC_API_URL when needed.
  *

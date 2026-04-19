@@ -70,9 +70,15 @@ export function generateMotivationMessage(context: MotivationContext): string {
       messages.push(m("motivation.fullHour"));
     }
 
-    if (s.session_type.toLowerCase().includes("mix")) {
+    const st = s.session_type.toLowerCase();
+    if (
+      st.includes("mix") ||
+      st === "mastering" ||
+      st === "recording" ||
+      st === "vocal_production"
+    ) {
       messages.push(m("motivation.polishMakesPerfect"));
-    } else if (s.session_type.toLowerCase().includes("sound")) {
+    } else if (st.includes("sound") || st === "sound_design") {
       messages.push(m("motivation.soundDesignMoves"));
     } else {
       messages.push(m("motivation.anotherBeat"));

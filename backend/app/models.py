@@ -17,9 +17,16 @@ class FriendshipStatus(str, enum.Enum):
 
 
 class SessionType(str, enum.Enum):
-    beat_making = "Beat Making"
-    mixing = "Mixing"
-    sound_design = "Sound Design"
+    beat_making = "beat_making"
+    mixing = "mixing"
+    mastering = "mastering"
+    mix_and_master = "mix_and_master"
+    sound_design = "sound_design"
+    recording = "recording"
+    songwriting = "songwriting"
+    arrangement = "arrangement"
+    vocal_production = "vocal_production"
+    learning = "learning"
 
 
 class User(Base):

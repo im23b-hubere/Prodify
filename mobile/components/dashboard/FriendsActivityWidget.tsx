@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { GlassCard } from "../ui/GlassCard";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { sessionTypeLabel } from "../../lib/sessionI18n";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../types/friends";
 
 type Props = {
@@ -129,7 +130,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
                 {a.username}
               </Text>
               <Text style={styles.feedMeta} numberOfLines={1}>
-                {a.session_type} · {ago(a.completed_at)}
+                {sessionTypeLabel(a.session_type, t)} · {ago(a.completed_at)}
               </Text>
             </Pressable>
           ))}

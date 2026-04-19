@@ -1,8 +1,20 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { Drum, SlidersHorizontal, Waves } from "lucide-react-native";
-import type { LucideIcon } from "lucide-react-native";
+import {
+  BookOpen,
+  Disc,
+  Drum,
+  Layers,
+  Mic,
+  Mic2,
+  Music2,
+  PenLine,
+  SlidersHorizontal,
+  Waves,
+  type LucideIcon,
+} from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,14 +26,17 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { PrimaryButton } from "../ui/PrimaryButton";
+
+import { SESSION_TYPE_IDS, SESSION_TYPES, type SessionType } from "../../constants/sessionTypes";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError, apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
+import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { tryParseSessionDto } from "../../lib/sessionDto";
-import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
+import type { SessionDto } from "../../types/session";
+import { PrimaryButton } from "../ui/PrimaryButton";
 
 const MOODS = [
   { level: 1 as const, emoji: "😴" },
@@ -33,38 +48,27 @@ const MOODS = [
 
 const SUGGESTED_TAGS = ["trap", "drill", "techno", "house", "experimental"];
 
-const TYPE_VISUAL: Record<
+type PatternKind = "beat" | "mix" | "sound";
+
+const UI_BY_TYPE: Record<
   SessionType,
-  {
-    label: string;
-    Icon: LucideIcon;
-    gradient: readonly [string, string, ...string[]];
-    inactiveIcon: string;
-    activeBorder: string;
-  }
+  { Icon: LucideIcon; gradient: readonly [string, string, string]; pattern: PatternKind }
 > = {
-  "Beat Making": {
-    label: "Beat Making",
-    Icon: Drum,
-    gradient: ["#c41e3a", "#ff6a3d", "#ff914d"],
-    inactiveIcon: "rgba(255,106,61,0.55)",
-    activeBorder: "#ff6a3d",
-  },
-  Mixing: {
-    label: "Mixing",
-    Icon: SlidersHorizontal,
-    gradient: ["#3d2a6b", "#6b4dc4", "#a259ff"],
-    inactiveIcon: "rgba(162,89,255,0.55)",
-    activeBorder: "#a259ff",
-  },
-  "Sound Design": {
-    label: "Sound Design",
-    Icon: Waves,
-    gradient: ["#0d4f4a", "#1a8a7e", "#00c9b7"],
-    inactiveIcon: "rgba(0,201,183,0.55)",
-    activeBorder: "#00c9b7",
-  },
+  beat_making: { Icon: Drum, gradient: ["#c41e3a", "#ff6a3d", "#ff914d"], pattern: "beat" },
+  mixing: { Icon: SlidersHorizontal, gradient: ["#3d2a6b", "#6b4dc4", "#a259ff"], pattern: "mix" },
+  mastering: { Icon: Disc, gradient: ["#003d26", "#00aa6c", "#00ff88"], pattern: "mix" },
+  mix_and_master: { Icon: Layers, gradient: ["#553300", "#cc7700", "#ffaa00"], pattern: "mix" },
+  sound_design: { Icon: Waves, gradient: ["#0d4f4a", "#1a8a7e", "#00c9b7"], pattern: "sound" },
+  recording: { Icon: Mic, gradient: ["#1a3a66", "#2a60cc", "#4488ff"], pattern: "mix" },
+  songwriting: { Icon: PenLine, gradient: ["#662244", "#cc5599", "#ff88dd"], pattern: "beat" },
+  arrangement: { Icon: Music2, gradient: ["#226655", "#55ccaa", "#88ffcc"], pattern: "beat" },
+  vocal_production: { Icon: Mic2, gradient: ["#665522", "#cc9933", "#ffcc44"], pattern: "mix" },
+  learning: { Icon: BookOpen, gradient: ["#442266", "#9966dd", "#cc88ff"], pattern: "beat" },
 };
+
+function colorForType(type: SessionType): string {
+  return SESSION_TYPES.find((s) => s.id === type)?.color ?? colors.primary;
+}
 
 function PatternBeatMaking() {
   const heights = [12, 22, 16, 28, 14, 24, 18, 26, 15, 20];
@@ -110,13 +114,13 @@ function PatternSoundDesign() {
   );
 }
 
-function TypePattern({ type }: { type: SessionType }) {
-  switch (type) {
-    case "Beat Making":
+function TypePattern({ kind }: { kind: PatternKind }) {
+  switch (kind) {
+    case "beat":
       return <PatternBeatMaking />;
-    case "Mixing":
+    case "mix":
       return <PatternMixing />;
-    case "Sound Design":
+    case "sound":
       return <PatternSoundDesign />;
     default:
       return null;
@@ -125,46 +129,50 @@ function TypePattern({ type }: { type: SessionType }) {
 
 function TypeCard({
   type,
+  label,
   active,
   onSelect,
 }: {
   type: SessionType;
+  label: string;
   active: boolean;
   onSelect: () => void;
 }) {
-  const visual = TYPE_VISUAL[type];
+  const visual = UI_BY_TYPE[type];
   const Icon = visual.Icon;
+  const accent = colorForType(type);
+  const inactiveIcon = `${accent}8c`;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      accessibilityLabel={visual.label}
+      accessibilityLabel={label}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
         onSelect();
       }}
       style={({ pressed }) => [styles.typeCardPressable, pressed && styles.typeCardPressed]}
     >
-      <View style={[styles.typeCardOuter, active && { borderColor: visual.activeBorder }]}>
+      <View style={[styles.typeCardOuter, active && { borderColor: accent }]}>
         {active ? (
           <LinearGradient colors={[...visual.gradient]} style={styles.typeGradientActive}>
             <View style={styles.typePatternLayer} pointerEvents="none">
-              <TypePattern type={type} />
+              <TypePattern kind={visual.pattern} />
             </View>
             <View style={styles.typeRow}>
               <View style={styles.typeIconBadge}>
                 <Icon size={26} color="#ffffff" strokeWidth={2.2} />
               </View>
-              <Text style={styles.typeLabel}>{visual.label}</Text>
+              <Text style={styles.typeLabel}>{label}</Text>
             </View>
           </LinearGradient>
         ) : (
           <View style={styles.typeInner}>
-            <View style={[styles.typeIconBadgeMuted, { borderColor: `${visual.activeBorder}40` }]}>
-              <Icon size={26} color={visual.inactiveIcon} strokeWidth={2.2} />
+            <View style={[styles.typeIconBadgeMuted, { borderColor: `${accent}40` }]}>
+              <Icon size={26} color={inactiveIcon} strokeWidth={2.2} />
             </View>
-            <Text style={styles.typeLabelMuted}>{visual.label}</Text>
+            <Text style={styles.typeLabelMuted}>{label}</Text>
           </View>
         )}
       </View>
@@ -189,6 +197,7 @@ export function SessionSetupForm({
   onRequestClose,
   hideTitleRow,
 }: SessionSetupFormProps) {
+  const { t } = useTranslation();
   const { token, hydrated } = useAuth();
   const mounted = useRef(true);
   const startRequestInFlight = useRef(false);
@@ -217,31 +226,18 @@ export function SessionSetupForm({
 
   const addTag = useCallback(
     (raw: string) => {
-      const t = raw.trim().toLowerCase();
-      if (!t || t.length > 32) return;
+      const tag = raw.trim().toLowerCase();
+      if (!tag || tag.length > 32) return;
       if (tags.length >= 20) return;
-      if (tags.includes(t)) return;
-      setTags((prev) => [...prev, t]);
+      if (tags.includes(tag)) return;
+      setTags((prev) => [...prev, tag]);
       setTagInput("");
     },
     [tags],
   );
 
   const onSubmit = useCallback(async () => {
-    console.log("=== SESSION START DEBUG ===");
-    console.log("Step 1: Button pressed");
-    console.log("Selected type:", selectedType);
-    console.log("Notes:", notes);
-    console.log("Mood:", mood);
-    console.log("Tags:", tags);
     if (!hydrated || !token?.trim() || !selectedType || busy || startRequestInFlight.current) {
-      console.log("ABORT: Preconditions failed", {
-        hydrated,
-        hasToken: Boolean(token?.trim()),
-        selectedType,
-        busy,
-        inFlight: startRequestInFlight.current,
-      });
       if (hydrated && !token?.trim()) {
         setError("Not signed in. Please log in again.");
       }
@@ -249,7 +245,6 @@ export function SessionSetupForm({
     }
     startRequestInFlight.current = true;
     if (mounted.current) setBusy(true);
-    console.log("Step 2: Set submitting to true");
     if (mounted.current) setError(null);
     debugLog("session", "start_attempt", {
       hasNotes: Boolean(notes.trim()),
@@ -257,56 +252,34 @@ export function SessionSetupForm({
       tagCount: tags.length,
     });
     try {
-      console.log("Step 3: Calling startSession API...");
       const sessionData = {
         session_type: selectedType,
         notes: notes.trim() ? notes.trim().slice(0, 200) : undefined,
         mood_level: mood ?? undefined,
         tags: tags.length ? tags : undefined,
       };
-      console.log("Step 4: Session data prepared:", sessionData);
       const raw = await apiJson<unknown>("/sessions/start", {
         token: token.trim(),
         method: "POST",
         body: sessionData,
       });
-      console.log("Step 5: API response received");
-      console.log("Step 6: Response data:", raw);
       if (!raw || typeof raw !== "object") {
         throw new Error(`Invalid response format: ${JSON.stringify(raw)}`);
       }
       const created = tryParseSessionDto(raw);
       if (!created) {
-        console.error("Step 6b: DTO parse failed");
         debugLog("session", "start_invalid_dto", {});
         throw new Error(`Invalid response DTO: ${JSON.stringify(raw)}`);
       }
-      console.log("Step 7: Triggering haptic feedback");
       try {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (hapticsError) {
-        console.warn("Haptics not available:", hapticsError);
+      } catch {
+        /* haptics optional */
       }
-      console.log("Step 8: Calling onStarted callback");
       debugLog("session", "start_success", { sessionId: created.id });
-      if (!mounted.current) {
-        console.warn("Component unmounted before success callback");
-        return;
-      }
+      if (!mounted.current) return;
       await Promise.resolve(onStarted(created));
-      console.log("Step 9: onStarted callback completed");
-      console.log("Step 10: SUCCESS - Session started");
     } catch (e) {
-      console.error("=== CRASH POINT ===");
-      console.error("Error type:", e instanceof Error ? e.constructor.name : typeof e);
-      console.error("Error message:", e instanceof Error ? e.message : String(e));
-      if (e instanceof ApiError) {
-        console.error("Error response:", e.payload);
-        console.error("Error status:", e.status);
-      }
-      if (e instanceof Error) {
-        console.error("Stack trace:", e.stack);
-      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       const msg = e instanceof Error ? e.message : "Could not start session";
       debugLog("session", "start_failure", {
@@ -342,7 +315,7 @@ export function SessionSetupForm({
               return;
             }
           } catch {
-            // fallback below
+            /* fallback below */
           }
           onActiveSessionConflict?.(existingSessionId);
         } else {
@@ -352,13 +325,10 @@ export function SessionSetupForm({
         return;
       }
       if (mounted.current) setError(msg);
-      Alert.alert("Debug Info", msg);
     } finally {
-      console.log("Step 11: Finally block - resetting submitting");
       if (submitCooldownTimeout.current) clearTimeout(submitCooldownTimeout.current);
       submitCooldownTimeout.current = setTimeout(() => {
         startRequestInFlight.current = false;
-        console.log("Step 12: Submitting reset complete");
       }, 800);
       if (mounted.current) setBusy(false);
     }
@@ -374,7 +344,7 @@ export function SessionSetupForm({
     >
       {!hideTitleRow ? (
         <View style={styles.header}>
-          <Text style={styles.title}>New Session</Text>
+          <Text style={styles.title}>{t("dashboard.newSessionTitle")}</Text>
           {onRequestClose ? (
             <Pressable
               hitSlop={12}
@@ -393,22 +363,23 @@ export function SessionSetupForm({
       ) : null}
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.sectionLabel}>Session type</Text>
+        <Text style={styles.sectionLabel}>{t("sessionActive.sessionType")}</Text>
         <View style={styles.typeColumn}>
-          {SESSION_TYPES.map((type) => (
+          {SESSION_TYPE_IDS.map((type) => (
             <TypeCard
               key={type}
               type={type}
+              label={sessionTypeLabel(type, t)}
               active={selectedType === type}
               onSelect={() => setSelectedType(type)}
             />
           ))}
         </View>
 
-        <Text style={styles.sectionLabel}>Session notes (optional)</Text>
+        <Text style={styles.sectionLabel}>{t("sessionSetup.notesSection")}</Text>
         <TextInput
           style={styles.notes}
-          placeholder="What are you working on?"
+          placeholder={t("sessionActive.notesPlaceholder")}
           placeholderTextColor={colors.textSecondary}
           multiline
           textAlignVertical="top"
@@ -419,7 +390,7 @@ export function SessionSetupForm({
         />
         <Text style={styles.counter}>{noteLen}/200</Text>
 
-        <Text style={styles.sectionLabel}>How are you feeling?</Text>
+        <Text style={styles.sectionLabel}>{t("sessionSetup.moodSection")}</Text>
         <View style={styles.moodRow}>
           {MOODS.map((m) => (
             <Pressable
@@ -435,22 +406,22 @@ export function SessionSetupForm({
           ))}
         </View>
 
-        <Text style={styles.sectionLabel}>Tags (optional)</Text>
+        <Text style={styles.sectionLabel}>{t("sessionSetup.tagsSection")}</Text>
         <View style={styles.tagWrap}>
-          {tags.map((t) => (
+          {tags.map((tg) => (
             <Pressable
-              key={t}
+              key={tg}
               style={styles.tagChip}
-              onPress={() => setTags((prev) => prev.filter((x) => x !== t))}
+              onPress={() => setTags((prev) => prev.filter((x) => x !== tg))}
             >
-              <Text style={styles.tagText}>{t}</Text>
+              <Text style={styles.tagText}>{tg}</Text>
             </Pressable>
           ))}
         </View>
         <View style={styles.tagInputRow}>
           <TextInput
             style={styles.tagField}
-            placeholder="Add tag"
+            placeholder={t("sessionSetup.tagPlaceholder")}
             placeholderTextColor={colors.textSecondary}
             value={tagInput}
             onChangeText={setTagInput}
@@ -486,7 +457,7 @@ export function SessionSetupForm({
 
       <View style={styles.footer}>
         <PrimaryButton
-          label="START SESSION"
+          label={t("sessionSetup.startCta")}
           onPress={onSubmit}
           loading={busy}
           disabled={!hydrated || !canStart}
@@ -649,6 +620,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     ...typography.subheadline,
+    flex: 1,
   },
   notes: {
     minHeight: 100,

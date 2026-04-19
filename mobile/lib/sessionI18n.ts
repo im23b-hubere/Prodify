@@ -1,15 +1,51 @@
 import type { TFunction } from "i18next";
 
+import type { SessionType } from "../constants/sessionTypes";
+import { SESSION_TYPE_IDS } from "../constants/sessionTypes";
+
 const MOOD_KEYS = ["mood1", "mood2", "mood3", "mood4", "mood5"] as const;
 
+/** Legacy display strings stored before slug-based session types. */
+const LEGACY_TO_ID: Record<string, SessionType> = {
+  "Beat Making": "beat_making",
+  "Mixing": "mixing",
+  "Sound Design": "sound_design",
+};
+
+function normalizeSessionTypeId(type: string): SessionType | string {
+  const trimmed = type.trim();
+  if (trimmed in LEGACY_TO_ID) {
+    return LEGACY_TO_ID[trimmed];
+  }
+  if ((SESSION_TYPE_IDS as readonly string[]).includes(trimmed)) {
+    return trimmed as SessionType;
+  }
+  return trimmed;
+}
+
 export function sessionTypeLabel(type: string, tr: TFunction): string {
-  switch (type) {
-    case "Beat Making":
+  const id = normalizeSessionTypeId(type);
+  switch (id) {
+    case "beat_making":
       return tr("sessionTypes.beatMaking");
-    case "Mixing":
+    case "mixing":
       return tr("sessionTypes.mixing");
-    case "Sound Design":
+    case "mastering":
+      return tr("sessionTypes.mastering");
+    case "mix_and_master":
+      return tr("sessionTypes.mixAndMaster");
+    case "sound_design":
       return tr("sessionTypes.soundDesign");
+    case "recording":
+      return tr("sessionTypes.recording");
+    case "songwriting":
+      return tr("sessionTypes.songwriting");
+    case "arrangement":
+      return tr("sessionTypes.arrangement");
+    case "vocal_production":
+      return tr("sessionTypes.vocalProduction");
+    case "learning":
+      return tr("sessionTypes.learning");
     default:
       return type;
   }

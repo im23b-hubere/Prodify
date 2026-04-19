@@ -175,7 +175,9 @@ export default function NotificationsScreen() {
         >
           <Text style={styles.back}>{t("notificationsUi.back")}</Text>
         </Pressable>
-        <Text style={styles.title}>{t("notificationsUi.title")}</Text>
+        <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+          {t("notificationsUi.title")}
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -266,11 +268,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
   },
   back: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
-  headerSpacer: { width: 64 },
+  title: {
+    flex: 1,
+    marginHorizontal: spacing.sm,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.headline,
+    textAlign: "center",
+  },
+  headerSpacer: { width: 56 },
   filterRow: {
     flexDirection: "row",
     flexWrap: "wrap",

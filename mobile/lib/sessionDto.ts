@@ -26,7 +26,7 @@ export function tryParseSessionDto(value: unknown): SessionDto | null {
         ? v.duration_seconds
         : null;
   const session_type =
-    typeof v.session_type === "string" && v.session_type.trim() ? v.session_type : "Beat Making";
+    typeof v.session_type === "string" && v.session_type.trim() ? v.session_type : "beat_making";
   const notes =
     v.notes === null || v.notes === undefined ? null : typeof v.notes === "string" ? v.notes : null;
 

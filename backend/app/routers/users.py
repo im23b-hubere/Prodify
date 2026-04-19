@@ -159,7 +159,7 @@ def get_user_stats(
     total_sessions = len(sessions)
     total_minutes = sum(int(s.duration_seconds or 0) for s in sessions) / 60.0
 
-    type_counts: Counter[str] = Counter((s.session_type or "Beat Making") for s in sessions)
+    type_counts: Counter[str] = Counter((s.session_type or "beat_making") for s in sessions)
 
     day_counts: Counter[str] = Counter()
     for s in sessions:

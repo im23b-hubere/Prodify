@@ -33,7 +33,7 @@ import { apiJson } from "../../lib/client";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { parseSessionList, sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../lib/sessionTime";
-import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
+import { SESSION_TYPE_IDS, type SessionDto, type SessionType } from "../../types/session";
 
 function formatClock(totalSeconds: number) {
   const s = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? Math.floor(totalSeconds) : 0;
@@ -339,7 +339,7 @@ export default function SessionActiveScreen() {
           <View style={styles.card}>
             <Text style={styles.editLabel}>{t("sessionActive.sessionType")}</Text>
             <View style={styles.typeRow}>
-              {SESSION_TYPES.map((stype) => {
+              {SESSION_TYPE_IDS.map((stype) => {
                 const active = session.session_type === stype;
                 return (
                   <Pressable

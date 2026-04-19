@@ -25,7 +25,7 @@ import { sessionMoodLabel, sessionTypeLabel } from "../../lib/sessionI18n";
 import { sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { formatDurationWords, parseSessionDate } from "../../lib/sessionTime";
 import type { SessionDetailInsightsDto } from "../../types/insights";
-import { SESSION_TYPES, type SessionDto, type SessionType } from "../../types/session";
+import { DEFAULT_SESSION_TYPE, SESSION_TYPE_IDS, type SessionDto, type SessionType } from "../../types/session";
 
 export default function SessionDetailScreen() {
   const { t } = useTranslation();
@@ -35,7 +35,7 @@ export default function SessionDetailScreen() {
   const id = Array.isArray(raw) ? raw[0] : raw;
 
   const [session, setSession] = useState<SessionDto | null>(null);
-  const [selectedType, setSelectedType] = useState<SessionType>("Beat Making");
+  const [selectedType, setSelectedType] = useState<SessionType>(DEFAULT_SESSION_TYPE);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,7 +58,7 @@ export default function SessionDetailScreen() {
       return;
     }
     setSession(data);
-    setSelectedType((data.session_type as SessionType) || "Beat Making");
+    setSelectedType((data.session_type as SessionType) || DEFAULT_SESSION_TYPE);
     setNote(data.notes ?? "");
     if (data.stopped_at != null && data.duration_seconds != null) {
       try {
@@ -108,7 +108,7 @@ export default function SessionDetailScreen() {
       }
       setSession(updated);
       setNote(updated.notes ?? "");
-      setSelectedType((updated.session_type as SessionType) || "Beat Making");
+      setSelectedType((updated.session_type as SessionType) || DEFAULT_SESSION_TYPE);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("sessionDetail.saveFailed"));
     } finally {
@@ -235,7 +235,7 @@ export default function SessionDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
           <View style={styles.chips}>
-            {SESSION_TYPES.map((type) => (
+            {SESSION_TYPE_IDS.map((type) => (
               <SessionTypeChip
                 key={type}
                 label={sessionTypeLabel(type, t)}

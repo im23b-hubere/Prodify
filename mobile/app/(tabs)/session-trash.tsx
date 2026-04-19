@@ -7,6 +7,7 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { parseSessionList } from "../../lib/sessionDto";
 import type { SessionDto } from "../../types/session";
 
@@ -83,7 +84,7 @@ export default function SessionTrashScreen() {
           sessions.map((session) => (
             <View key={session.id} style={styles.row}>
               <View style={styles.rowCopy}>
-                <Text style={styles.rowTitle}>{session.session_type}</Text>
+                <Text style={styles.rowTitle}>{sessionTypeLabel(String(session.session_type), t)}</Text>
                 <Text style={styles.rowMeta}>{formatDate(session.started_at)}</Text>
               </View>
               <Pressable

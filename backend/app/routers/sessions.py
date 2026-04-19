@@ -76,11 +76,7 @@ def start_session(
     body: SessionStart,
 ):
     try:
-        _log.info("=== SESSION START REQUEST ===")
-        _log.info("User ID: %s", current.id)
-        _log.info("User Email: %s", current.email)
-        _log.info("Request Data: %s", body.model_dump())
-        _log.info("Step 1: Checking for active sessions")
+        _log.debug("session_start_attempt user_id=%s session_type=%s", current.id, body.session_type.value)
         active = db.scalar(
             select(ProductionSession).where(
                 ProductionSession.user_id == current.id,
@@ -89,13 +85,12 @@ def start_session(
             )
         )
         if active is not None:
-            _log.warning("Active session exists: %s", active.id)
+            _log.warning("session_start_conflict user_id=%s existing_session_id=%s", current.id, active.id)
             raise HTTPException(
                 status_code=409,
                 detail={"message": "Active session already exists", "session_id": active.id},
             )
 
-        _log.info("Step 2: No active session - creating new")
         tags_str = json.dumps(body.tags) if body.tags else None
         row = ProductionSession(
             user_id=current.id,
@@ -106,13 +101,9 @@ def start_session(
             tags=tags_str,
             paused_duration_seconds=0,
         )
-        _log.info("Step 3: Adding to database")
         db.add(row)
-        _log.info("Step 4: Committing")
         db.commit()
-        _log.info("Step 5: Refreshing")
         db.refresh(row)
-        _log.info("Step 6: SUCCESS - Session created: %s", row.id)
         _log.info("session_started user_id=%s session_id=%s", current.id, row.id)
         return row
     except IntegrityError as exc:
@@ -630,7 +621,7 @@ def sessions_stats(
         for key, (sessions_count, seconds_count) in sorted(trend_map.items())
     ]
 
-    type_counts = Counter((str(row.session_type) or "Beat Making") for row in completed)
+    type_counts = Counter((str(row.session_type) or "beat_making") for row in completed)
     breakdown = [
         SessionStatsTypeBreakdownItem(
             session_type=session_type,

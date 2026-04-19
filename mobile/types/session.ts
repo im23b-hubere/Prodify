@@ -1,5 +1,12 @@
-export const SESSION_TYPES = ["Beat Making", "Mixing", "Sound Design"] as const;
-export type SessionType = (typeof SESSION_TYPES)[number];
+import {
+  DEFAULT_SESSION_TYPE,
+  SESSION_TYPE_IDS,
+  SESSION_TYPES,
+  type SessionType,
+} from "../constants/sessionTypes";
+
+export type { SessionType };
+export { DEFAULT_SESSION_TYPE, SESSION_TYPE_IDS, SESSION_TYPES };
 
 export type SessionDto = {
   id: number;

@@ -14,7 +14,7 @@ def _auth(client, email: str, username: str) -> dict[str, str]:
 
 def test_sessions_stats_numeric_sanity_after_session(client):
     headers = _auth(client, "statsnum@example.com", "stats-num-user")
-    start = client.post("/sessions/start", headers=headers, json={"session_type": "Beat Making"})
+    start = client.post("/sessions/start", headers=headers, json={"session_type": "beat_making"})
     assert start.status_code == 201
     sid = start.json()["id"]
     stop = client.post("/sessions/stop", headers=headers, json={"session_id": sid})

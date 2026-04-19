@@ -14,11 +14,11 @@ def test_session_lifecycle_and_trash_restore(client):
     started = client.post(
         "/sessions/start",
         headers=headers,
-        json={"session_type": "Mixing", "notes": "initial note"},
+        json={"session_type": "mixing", "notes": "initial note"},
     )
     assert started.status_code == 201
     session_id = started.json()["id"]
-    assert started.json()["session_type"] == "Mixing"
+    assert started.json()["session_type"] == "mixing"
 
     listed = client.get("/sessions/list", headers=headers)
     assert listed.status_code == 200
