@@ -31,15 +31,33 @@ function inferDevApiUrlFromMetroHost(): string | null {
   return `http://${host}:8000`;
 }
 
+function isLoopbackApiUrl(url: string): boolean {
+  try {
+    const u = new URL(url.includes("://") ? url : `http://${url}`);
+    const host = u.hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return /127\.0\.0\.1|localhost/i.test(url);
+  }
+}
+
 function getApiUrl(): string {
   const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
-  if (envUrl) return envUrl;
+  const fromMetro = inferDevApiUrlFromMetroHost();
+
+  if (envUrl) {
+    // .env often uses 127.0.0.1; on a physical phone that targets the device, not your PC.
+    // If Metro exposes a LAN host (Expo Go QR), prefer it in dev when env is loopback.
+    if (__DEV__ && fromMetro && isLoopbackApiUrl(envUrl)) {
+      return fromMetro;
+    }
+    return envUrl;
+  }
 
   if (!__DEV__) {
     throw new Error("EXPO_PUBLIC_API_URL must be set for production builds.");
   }
 
-  const fromMetro = inferDevApiUrlFromMetroHost();
   if (fromMetro) return fromMetro;
 
   return loopbackApiUrl;
