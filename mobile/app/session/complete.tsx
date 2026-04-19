@@ -14,9 +14,11 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { tryParseSessionDto } from "../../lib/sessionDto";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
+import { tryParseCoachDebriefDto } from "../../lib/outcomesDto";
 import { generateMotivationMessage, getTimeOfDay } from "../../lib/motivationEngine";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDto } from "../../types/session";
+import type { CoachDebriefDto } from "../../types/outcomes";
 
 const AUTO_RETURN_SECONDS = 10;
 
@@ -29,6 +31,7 @@ export default function SessionCompleteScreen() {
 
   const [session, setSession] = useState<SessionDto | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
+  const [coach, setCoach] = useState<CoachDebriefDto | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_RETURN_SECONDS);
   const [autoReturnEnabled, setAutoReturnEnabled] = useState(true);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
@@ -71,6 +74,13 @@ export default function SessionCompleteScreen() {
         if (!cancelled.current) setStreak(stats?.summary.current_streak_days ?? null);
       } catch {
         if (!cancelled.current) setStreak(null);
+      }
+      try {
+        const coachRaw = await apiJson<unknown>(`/outcomes/coach/session/${id}`, { token });
+        const parsedCoach = tryParseCoachDebriefDto(coachRaw);
+        if (!cancelled.current) setCoach(parsedCoach);
+      } catch {
+        if (!cancelled.current) setCoach(null);
       }
       setLoadState("ready");
       setSecondsLeft(AUTO_RETURN_SECONDS);
@@ -163,6 +173,26 @@ export default function SessionCompleteScreen() {
           <Text style={styles.streak}>{t("sessionComplete.streakLine", { count: streak })}</Text>
         ) : null}
         {completionMessage ? <Text style={styles.motivation}>{completionMessage}</Text> : null}
+        {coach ? (
+          <View style={styles.coachCard}>
+            <Text style={styles.coachTitle}>AI Coach Debrief</Text>
+            {coach.went_well.slice(0, 2).map((line) => (
+              <Text key={`well-${line}`} style={styles.coachLine}>
+                + {line}
+              </Text>
+            ))}
+            {coach.didnt_go_well.slice(0, 2).map((line) => (
+              <Text key={`risk-${line}`} style={styles.coachLine}>
+                - {line}
+              </Text>
+            ))}
+            {coach.next_steps.slice(0, 2).map((line) => (
+              <Text key={`next-${line}`} style={styles.coachLine}>
+                {"->"} {line}
+              </Text>
+            ))}
+          </View>
+        ) : null}
         {autoReturnEnabled ? (
           <View style={styles.autoWrap}>
             <Text style={styles.auto}>
@@ -249,6 +279,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     lineHeight: 22,
   },
+  coachCard: {
+    marginTop: spacing.md,
+    width: "100%",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  coachTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  coachLine: { color: colors.textSecondary, ...typography.caption },
   auto: { color: colors.textSecondary, ...typography.caption, marginTop: spacing.md },
   autoWrap: {
     marginTop: spacing.md,

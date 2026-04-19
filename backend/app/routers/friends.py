@@ -17,10 +17,12 @@ from app.schemas import (
     FriendIncomingPublic,
     FriendLeaderboardEntryPublic,
     FriendLeaderboardPublic,
+    FriendPostAcceptActionPublic,
     FriendRequestCreate,
     FriendStatusPublic,
     FriendshipPublic,
 )
+from app.services.kpi_tracker import track_event
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
@@ -61,6 +63,17 @@ def _session_count_in_period(db: Session, user_id: int, period_days: int | None)
     return len(db.scalars(q).all())
 
 
+def _session_count_between(db: Session, user_id: int, since, until) -> int:
+    q = select(ProductionSession).where(
+        ProductionSession.user_id == user_id,
+        ProductionSession.deleted_at.is_(None),
+        ProductionSession.duration_seconds.is_not(None),
+        ProductionSession.started_at >= since,
+        ProductionSession.started_at < until,
+    )
+    return len(db.scalars(q).all())
+
+
 def _streak_days(db: Session, user_id: int) -> int:
     row = db.scalar(select(Streak).where(Streak.user_id == user_id))
     if row is None:
@@ -96,6 +109,8 @@ def send_friend_request(
     db.add(row)
     db.commit()
     db.refresh(row)
+    track_event(db, "invite_sent", current.id, {"friend_id": target.id})
+    db.commit()
     return row
 
 
@@ -157,6 +172,12 @@ def accept_friend_request(
     if row is None or row.friend_id != current.id or row.status != FriendshipStatus.pending:
         raise HTTPException(status_code=404, detail="Friend request not found")
     row.status = FriendshipStatus.accepted
+    requester = db.get(User, row.user_id)
+    if requester is not None:
+        requester.bonus_rescues = int(requester.bonus_rescues or 0) + 1
+        requester.bonus_challenge_slots = int(requester.bonus_challenge_slots or 0) + 1
+    current.bonus_rescues = int(current.bonus_rescues or 0) + 1
+    current.bonus_challenge_slots = int(current.bonus_challenge_slots or 0) + 1
     db.commit()
     db.refresh(row)
     return row
@@ -176,6 +197,39 @@ def delete_friendship(
     db.delete(row)
     db.commit()
     return None
+
+
+@router.get("/{friendship_id}/post-accept-actions", response_model=list[FriendPostAcceptActionPublic])
+def post_accept_actions(
+    friendship_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(Friendship, friendship_id)
+    if row is None or row.status != FriendshipStatus.accepted:
+        raise HTTPException(status_code=404, detail="Friendship not found")
+    if row.user_id != current.id and row.friend_id != current.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    return [
+        FriendPostAcceptActionPublic(
+            key="start_challenge",
+            title="Start a shared challenge",
+            cta_label="Create challenge",
+            route_hint="/(tabs)/friends",
+        ),
+        FriendPostAcceptActionPublic(
+            key="set_buddy",
+            title="Become accountability buddies",
+            cta_label="Invite as buddy",
+            route_hint="/(tabs)/friends",
+        ),
+        FriendPostAcceptActionPublic(
+            key="publish_commitment",
+            title="Commit to this week's sessions",
+            cta_label="Set commitment",
+            route_hint="/(tabs)/friends",
+        ),
+    ]
 
 
 @router.get("/leaderboard", response_model=FriendLeaderboardPublic)
@@ -199,19 +253,30 @@ def friends_leaderboard(
     user_rows = db.scalars(select(User).where(User.id.in_(user_ids))).all()
     users = {u.id: u for u in user_rows}
 
-    rows: list[tuple[int, str, int, int]] = []
+    rows: list[tuple[int, str, int, int, bool]] = []
     for uid in user_ids:
         u = users.get(uid)
         if u is None:
             continue
         sc = _session_count_in_period(db, uid, period_days)
         st = _streak_days(db, uid)
-        rows.append((uid, u.username, sc, st))
+        rows.append((uid, u.username, sc, st, bool(int(u.is_premium or 0))))
 
     rows.sort(key=lambda x: (x[2], x[3]), reverse=True)
+    me_rank = None
+    for idx, (uid, _, _, _, _) in enumerate(rows, start=1):
+        if uid == current.id:
+            me_rank = idx
+            break
 
     entries: list[FriendLeaderboardEntryPublic] = []
-    for rank, (uid, name, sc, st) in enumerate(rows, start=1):
+    for rank, (uid, name, sc, st, is_premium) in enumerate(rows, start=1):
+        delta = 0
+        if period_days is not None:
+            until = utcnow() - timedelta(days=period_days)
+            since = until - timedelta(days=period_days)
+            prev_sc = _session_count_between(db, uid, since, until)
+            delta = sc - prev_sc
         entries.append(
             FriendLeaderboardEntryPublic(
                 rank=rank,
@@ -219,6 +284,11 @@ def friends_leaderboard(
                 username=name,
                 current_streak_days=st,
                 sessions_in_period=sc,
+                sessions_delta_vs_prior=delta,
+                trend="up" if delta > 0 else "down" if delta < 0 else "flat",
+                is_chasing_you=bool(me_rank is not None and rank == me_rank - 1 and uid != current.id),
+                is_threatening_you=bool(me_rank is not None and rank == me_rank + 1 and uid != current.id),
+                is_premium=is_premium,
             )
         )
 

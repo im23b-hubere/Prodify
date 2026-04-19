@@ -14,6 +14,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { EmptyState } from "../../components/states/EmptyState";
+import { ErrorState } from "../../components/states/ErrorState";
+import { LoadingState } from "../../components/states/LoadingState";
 import { StatCard } from "../../components/ui/StatCard";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -23,12 +26,14 @@ import { debugLog } from "../../lib/debugLog";
 import { formatSessionListDate, weekdayLetterFromIsoDay } from "../../lib/sessionTime";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
+import { tryParseGoalForecastDto } from "../../lib/outcomesDto";
 import {
   tryParseHeatmapDays,
   tryParsePersonalRecords,
   tryParseSessionStatsDto,
 } from "../../lib/statsDto";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
+import type { GoalForecastDto } from "../../types/outcomes";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 type PersonalRecord = {
@@ -106,10 +111,12 @@ export default function StatsScreen() {
   const [filterIdx, setFilterIdx] = useState(0);
   const filter = filters[filterIdx];
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
   const [heatmapDays, setHeatmapDays] = useState<HeatmapDay[]>([]);
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
@@ -137,6 +144,9 @@ export default function StatsScreen() {
         apiJson<unknown>(`/stats/heatmap`, { token }),
         apiJson<unknown>(`/stats/records`, { token }),
       ]);
+      const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
+        token,
+      }).catch(() => null);
       if (!mounted.current || seq !== loadSeq.current) return;
       const parsed = tryParseSessionStatsDto(rawStats);
       if (!parsed) {
@@ -153,12 +163,16 @@ export default function StatsScreen() {
         setStats(parsed);
         setHeatmapDays(tryParseHeatmapDays(rawHm));
         setRecords(tryParsePersonalRecords(rawRec));
+        setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
       }
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
       const msg = e instanceof Error ? e.message : t("stats.loadFailed");
       debugLog("stats", "stats_fetch_failed", { period: periodParam, message: msg });
       if (mounted.current) setError(msg);
+    } finally {
+      if (!mounted.current || seq !== loadSeq.current) return;
+      setLoading(false);
     }
   }, [periodParam, token, t]);
 
@@ -368,6 +382,18 @@ export default function StatsScreen() {
             ))}
           </View>
         </View>
+        {loading && !refreshing ? <LoadingState message={t("stats.loading")} /> : null}
+        {!loading && error ? (
+          <ErrorState
+            title={t("common.oops")}
+            message={error}
+            retryLabel={t("common.tryAgain")}
+            onRetry={() => loadStats().catch(() => undefined)}
+          />
+        ) : null}
+        {!loading && !error && recent.length === 0 ? (
+          <EmptyState icon="📊" title={t("stats.recentTitle")} message={t("stats.recentEmpty")} />
+        ) : null}
 
         <ScrollView
           horizontal
@@ -410,6 +436,11 @@ export default function StatsScreen() {
                     n: weekGoal.goal - weekGoal.daysWith,
                   })}
             </Text>
+          </View>
+        ) : null}
+        {forecast ? (
+          <View style={styles.goalCard}>
+            <Text style={styles.goalTitle}>{forecast.warning_message}</Text>
           </View>
         ) : null}
 
@@ -561,7 +592,7 @@ export default function StatsScreen() {
 
         <View style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.perDayTitle")}</Text>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {!loading && error ? <Text style={styles.errorText}>{error}</Text> : null}
           <View style={styles.chartInner}>
             <SessionsPerDayChart data={chartData} />
           </View>

@@ -10,6 +10,7 @@ from app.dependencies import get_current_user
 from app.models import ProductionSession, User, UserGoal, utcnow
 from app.schemas import GoalCurrentPublic, GoalSetBody
 from app.timeutil import as_utc_aware
+from app.services.kpi_tracker import track_event
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -39,6 +40,8 @@ def set_weekly_goal(
         row.target_value = body.target_value
     db.commit()
     db.refresh(row)
+    track_event(db, "weekly_goal_set", current.id, {"goal_type": row.goal_type, "target_value": row.target_value})
+    db.commit()
 
     return _goal_snapshot(db, current.id, row)
 

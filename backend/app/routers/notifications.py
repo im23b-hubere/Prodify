@@ -24,6 +24,7 @@ from app.services import push_templates
 
 from app.services.push_links import push_data_dashboard
 from app.services.push_dispatch import send_ping
+from app.services.kpi_tracker import track_event
 
 
 
@@ -143,6 +144,30 @@ def ping_self_push(
 
         raise HTTPException(status_code=503, detail=msg or "All push deliveries failed")
 
+    return PushBulkResultPublic(attempted=attempted, delivered_ok=ok, message=msg)
+
+
+@router.post("/smart-nudge", response_model=PushBulkResultPublic)
+def smart_nudge(
+    body: dict,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    kind = str(body.get("kind") or "inactivity")
+    if kind == "best_time":
+        hour = int(body.get("hour") or 20)
+        title, text = push_templates.best_time_nudge(hour)
+    elif kind == "forecast_risk":
+        rem = int(body.get("remaining_sessions") or 2)
+        days = int(body.get("days_left") or 2)
+        title, text = push_templates.forecast_risk_nudge(rem, days)
+    else:
+        days = int(body.get("days_inactive") or 3)
+        title, text = push_templates.inactivity_nudge(days)
+
+    attempted, ok, msg = send_ping(settings, db, current.id, title, text, data=push_data_dashboard())
+    track_event(db, "smart_notification_sent", current.id, {"kind": kind, "attempted": attempted, "delivered": ok})
+    db.commit()
     return PushBulkResultPublic(attempted=attempted, delivered_ok=ok, message=msg)
 
 

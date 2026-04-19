@@ -16,6 +16,8 @@ type Props = {
   activity: FriendActivityDto[];
   leaderboard: FriendLeaderboardEntryDto[];
   loading: boolean;
+  primaryAction?: { message: string; ctaLabel: string; onPress: () => void; busy?: boolean } | null;
+  secondaryHint?: string | null;
 };
 
 function rankColor(rank: number) {
@@ -43,6 +45,8 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
   activity,
   leaderboard,
   loading,
+  primaryAction = null,
+  secondaryHint = null,
 }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -138,6 +142,26 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
       ) : loading ? (
         <Text style={styles.loading}>{t("friendsWidget.loading")}</Text>
       ) : null}
+
+      {primaryAction ? (
+        <View style={styles.primaryWrap}>
+          <Text style={styles.primaryMsg}>{primaryAction.message}</Text>
+          <Pressable
+            style={styles.primaryBtn}
+            onPress={primaryAction.onPress}
+            disabled={primaryAction.busy}
+          >
+            <Text style={styles.primaryBtnTxt}>
+              {primaryAction.busy ? "..." : primaryAction.ctaLabel}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {secondaryHint ? (
+        <View style={styles.signalsWrap}>
+          <Text style={styles.signalTxt}>{secondaryHint}</Text>
+        </View>
+      ) : null}
     </View>
   );
 });
@@ -193,6 +217,40 @@ const styles = StyleSheet.create({
   feedName: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   feedMeta: { color: colors.textSecondary, ...typography.caption },
   loading: { color: colors.textSecondary, ...typography.caption },
+  signalsWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs },
+  signalPill: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.12)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+  },
+  signalTxt: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyBold },
+  primaryWrap: {
+    marginTop: spacing.xs,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.12)",
+    padding: spacing.sm,
+    gap: spacing.xs,
+  },
+  primaryMsg: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyBold },
+  primaryBtn: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.24)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    alignSelf: "flex-start",
+  },
+  primaryBtnTxt: {
+    color: colors.textPrimary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyBold,
+  },
   empty: { gap: spacing.sm },
   emptyTitle: {
     color: colors.textPrimary,

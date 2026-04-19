@@ -15,7 +15,16 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import Friendship, FriendshipStatus, ProductionSession, Streak, User, UserAchievement, utcnow
+from app.models import (
+    Friendship,
+    FriendshipStatus,
+    ProductionSession,
+    SocialChallengeMember,
+    Streak,
+    User,
+    UserAchievement,
+    utcnow,
+)
 from app.schemas import (
     AchievementUnlockedPublic,
     HeatmapDayPublic,
@@ -128,6 +137,31 @@ def _safe_image_extension(file: UploadFile) -> str:
     return ".jpg"
 
 
+def _identity_tags_for_profile(db: Session, user_id: int) -> list[str]:
+    wk = (utcnow().date() - timedelta(days=utcnow().date().weekday())).isoformat()
+    sessions_week = len(
+        db.scalars(
+            select(ProductionSession).where(
+                ProductionSession.user_id == user_id,
+                ProductionSession.deleted_at.is_(None),
+                ProductionSession.duration_seconds.is_not(None),
+                ProductionSession.started_at >= datetime.combine(
+                    datetime.fromisoformat(wk).date(), time.min, tzinfo=timezone.utc
+                ),
+            )
+        ).all()
+    )
+    tags: list[str] = []
+    if sessions_week >= 4:
+        tags.append("consistent_creator")
+    challenge_rows = db.scalars(select(SocialChallengeMember).where(SocialChallengeMember.user_id == user_id)).all()
+    if challenge_rows:
+        tags.append("competitive")
+    if sessions_week >= 6:
+        tags.append("locked_in")
+    return tags[:2] if tags else ["creator"]
+
+
 @router.post("/me/profile-picture", response_model=UserPublic)
 async def upload_profile_picture(
     request: Request,
@@ -166,6 +200,7 @@ async def upload_profile_picture(
         email=current.email,
         username=current.username,
         profile_picture_url=absolute_url,
+        is_premium=bool(int(current.is_premium or 0)),
         created_at=current.created_at,
     )
 
@@ -199,6 +234,8 @@ def get_user_profile(
         current_streak=cur,
         longest_streak=longest,
         friends_count=_friends_count(db, user_id),
+        is_premium=bool(int(user.is_premium or 0)),
+        identity_tags=_identity_tags_for_profile(db, user_id),
         created_at=user.created_at,
     )
 

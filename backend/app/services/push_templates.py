@@ -68,3 +68,21 @@ def streak_reminder_slot(slot_kind: str, streak_days: int) -> tuple[str, str]:
     else:
         body = streak_reminder(streak_days, hours_left=1)[1]
     return title, body
+
+
+def inactivity_nudge(days_inactive: int) -> tuple[str, str]:
+    title = "Your momentum is waiting"
+    body = f"You've been away {days_inactive} day(s). Open Prodify and ship one focused block today."
+    return title, body
+
+
+def best_time_nudge(hour: int) -> tuple[str, str]:
+    title = "Best-time window is open"
+    body = f"You usually perform best around {hour:02d}:00. Start now and protect your momentum."
+    return title, body
+
+
+def forecast_risk_nudge(remaining_sessions: int, days_left: int) -> tuple[str, str]:
+    title = "Weekly goal at risk"
+    body = f"You're {remaining_sessions} session(s) away with {days_left} day(s) left. Start one now."
+    return title, body

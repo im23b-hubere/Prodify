@@ -2,43 +2,38 @@ import { useFocusEffect } from "@react-navigation/native";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import { Bell, Flame } from "lucide-react-native";
-import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Alert,
-  Dimensions,
-  FlatList,
-  Modal,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
+import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import Animated, {
   FadeInUp,
-  runOnJS,
-  useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
+import { ActiveSessionBlock } from "../../features/dashboard/components/ActiveSessionBlock";
+import { ReturnHookCard } from "../../features/dashboard/components/ReturnHookCard";
+import { DashboardSessionSetupModal } from "../../features/dashboard/components/DashboardSessionSetupModal";
+import { SessionSkeleton } from "../../features/dashboard/components/SessionSkeleton";
+import { useDashboardData } from "../../features/dashboard/hooks/useDashboardData";
+import { useDashboardSessionSetupModal } from "../../features/dashboard/hooks/useDashboardSessionSetupModal";
+import { useDashboardSocialActions } from "../../features/dashboard/hooks/useDashboardSocialActions";
+import { useDashboardSocialNudges } from "../../features/dashboard/hooks/useDashboardSocialNudges";
+import { useDashboardStreakEvents } from "../../features/dashboard/hooks/useDashboardStreakEvents";
+
 import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
 import { DashboardSessionStarter } from "../../components/dashboard/DashboardSessionStarter";
 import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
+import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
 import { TodayProgressCard } from "../../components/dashboard/TodayProgressCard";
-import { SessionSetupForm } from "../../components/session/SessionSetupForm";
 import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
 import { StreakHeroSection } from "../../components/streak/StreakHeroSection";
-import { CrashBoundary } from "../../components/ui/CrashBoundary";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { TutorialOverlay } from "../../components/TutorialOverlay";
 import { PENDING_SESSION_SETUP_KEY } from "../../constants/sessionUi";
@@ -53,146 +48,79 @@ import { colors, radii, shadows, spacing, typography } from "../../constants/the
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
-import {
-  parseMotivationalMessage,
-  translateMotivationalMessage,
-  type MotivationalMessageDto,
-} from "../../lib/motivationApi";
+import { translateMotivationalMessage } from "../../lib/motivationApi";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
-import { parseSessionList, tryParseSessionDto } from "../../lib/sessionDto";
+import { tryParseSessionDto } from "../../lib/sessionDto";
 import {
   generateMotivationMessage,
   getTimeBasedGreeting,
   getTimeOfDay,
 } from "../../lib/motivationEngine";
 import { STREAK_MILESTONES } from "../../lib/streakMilestones";
-import { getUnreadCount, prependNotification } from "../../lib/notificationInbox";
+import { getUnreadCount } from "../../lib/notificationInbox";
 import { registerPushTokenWithBackend } from "../../lib/pushToken";
-import { syncStreakRiskNotifications } from "../../lib/streakNotifications";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../lib/sessionTime";
-import type { FriendActivityDto, FriendLeaderboardDto } from "../../types/friends";
+import {
+  completedSessionsCount,
+  pickPaywallVariant,
+  shouldTriggerPaywall,
+} from "../../lib/paywallRules";
+import {
+  getLast7DaysProgress,
+  getStreak,
+  parseApiDate,
+  toDateKey,
+} from "../../features/dashboard/utils";
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
-
-const SCREEN_HEIGHT = Dimensions.get("window").height;
-
-function parseApiDate(value: string) {
-  const hasTimezone = /([zZ]|[+\-]\d{2}:\d{2})$/.test(value);
-  return new Date(hasTimezone ? value : `${value}Z`);
-}
-
-function formatTimer(totalSeconds: number) {
-  const s = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? Math.floor(totalSeconds) : 0;
-  const min = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-}
-
-function formatNaturalCounting(totalSeconds: number, t: TFunction): string {
-  const s = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? totalSeconds : 0;
-  const mins = Math.floor(s / 60);
-  if (mins < 1) return t("dashboard.naturalCountingStart");
-  return t("dashboard.naturalCountingMins", { count: mins, mins });
-}
-
-function notesPreview(notes: string | null | undefined): string | null {
-  if (!notes?.trim()) return null;
-  const t = notes.trim();
-  if (t.length <= 50) return t;
-  return `${t.slice(0, 50)}…`;
-}
-
-function toDateKey(value: Date) {
-  const y = value.getFullYear();
-  const m = String(value.getMonth() + 1).padStart(2, "0");
-  const d = String(value.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function getStreak(sessions: SessionDto[]) {
-  const dayKeys = Array.from(
-    new Set(
-      sessions
-        .map((session) => {
-          if (!session.started_at?.trim()) return null;
-          const d = parseApiDate(session.started_at);
-          return Number.isFinite(d.getTime()) ? toDateKey(d) : null;
-        })
-        .filter((k): k is string => k !== null),
-    ),
-  ).sort();
-  if (dayKeys.length === 0) return 0;
-  const set = new Set(dayKeys);
-  let streak = 0;
-  const cursor = new Date();
-  if (!set.has(toDateKey(cursor))) {
-    cursor.setDate(cursor.getDate() - 1);
-    if (!set.has(toDateKey(cursor))) return 0;
-  }
-  while (set.has(toDateKey(cursor))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
-}
-
-function getLast7DaysProgress(sessions: SessionDto[]) {
-  const set = new Set(
-    sessions
-      .map((session) => {
-        if (!session.started_at?.trim()) return null;
-        const d = parseApiDate(session.started_at);
-        return Number.isFinite(d.getTime()) ? toDateKey(d) : null;
-      })
-      .filter((k): k is string => k !== null),
-  );
-  const result: boolean[] = [];
-  for (let i = 6; i >= 0; i -= 1) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    result.push(set.has(toDateKey(d)));
-  }
-  return result;
-}
-
-function SessionSkeleton() {
-  return (
-    <View style={styles.skeletonWrap}>
-      <View style={styles.skeletonRow} />
-      <View style={styles.skeletonRow} />
-      <View style={styles.skeletonRowShort} />
-    </View>
-  );
-}
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const router = useRouter();
-  const [sessions, setSessions] = useState<SessionDto[]>([]);
-  const [active, setActive] = useState<SessionDto | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    sessions,
+    setSessions,
+    active,
+    setActive,
+    loading,
+    error,
+    setError,
+    refreshing,
+    setRefreshing,
+    lastUpdated,
+    streakOverview,
+    friendActivity,
+    friendLeaderboard,
+    socialLoading,
+    buddyRisk,
+    checkinStatus,
+    commitmentStatus,
+    socialChallenges,
+    identityState,
+    weeklyGoalTarget,
+    weekSessionsCount,
+    serverMotivationDto,
+    forecast,
+    progression,
+    entitlement,
+    loadSessions,
+    loadStreakOverview,
+    loadSocial,
+    refreshDashboard,
+  } = useDashboardData(token);
   const [nowMs, setNowMs] = useState(Date.now());
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [setupVisible, setSetupVisible] = useState(false);
-  const [setupModalKey, setSetupModalKey] = useState(0);
+  const {
+    setupVisible,
+    setupModalKey,
+    sheetStyle,
+    closeSetupModal,
+    presentSessionSetupModalFresh,
+  } = useDashboardSessionSetupModal();
   const [stopBusy, setStopBusy] = useState(false);
-  const [streakOverview, setStreakOverview] = useState<StreakOverviewDto | null>(null);
   const [freezeBusy, setFreezeBusy] = useState(false);
-  const [breakModalOpen, setBreakModalOpen] = useState(false);
-  const [breakModalStreak, setBreakModalStreak] = useState(0);
-  const [milestoneToast, setMilestoneToast] = useState<string | null>(null);
   const [notifUnread, setNotifUnread] = useState(0);
-  const [friendActivity, setFriendActivity] = useState<FriendActivityDto[]>([]);
-  const [friendLeaderboard, setFriendLeaderboard] = useState<FriendLeaderboardDto | null>(null);
-  const [socialLoading, setSocialLoading] = useState(false);
-  const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
-  const [weekSessionsCount, setWeekSessionsCount] = useState(0);
-  const [serverMotivationDto, setServerMotivationDto] = useState<MotivationalMessageDto | null>(
-    null,
-  );
+  const [socialActionBusy, setSocialActionBusy] = useState<string | null>(null);
   const userScopedStreakKey = user?.id
     ? userScopedLastKnownStreakKey(user.id)
     : LAST_KNOWN_STREAK_KEY;
@@ -200,11 +128,8 @@ export default function DashboardScreen() {
     ? userScopedMilestoneCelebratedKey(user.id)
     : MILESTONE_CELEBRATED_MAX_KEY;
 
-  const loadSessionsSeq = useRef(0);
-  const loadStreakSeq = useRef(0);
   const stopSessionInFlight = useRef(false);
 
-  const sheetTranslateY = useSharedValue(SCREEN_HEIGHT);
   const ringPulse = useSharedValue(1);
 
   const weekProgress = useMemo(() => getLast7DaysProgress(sessions), [sessions]);
@@ -218,123 +143,69 @@ export default function DashboardScreen() {
     return effectiveElapsedSeconds(active, nowMs);
   }, [active, nowMs]);
 
-  const loadSessions = useCallback(async () => {
-    if (!token) return;
-    const seq = ++loadSessionsSeq.current;
-    try {
-      const listRaw = await apiJson<unknown>("/sessions/list", { token });
-      if (seq !== loadSessionsSeq.current) return;
-      const list = parseSessionList(listRaw);
-      setSessions(list);
-      let running = list.find((item) => item.stopped_at === null) ?? null;
-      if (!running) {
-        try {
-          const activeRaw = await apiJson<unknown>("/sessions/active", { token });
-          running = tryParseSessionDto(activeRaw);
-        } catch {
-          running = null;
-        }
-        if (seq !== loadSessionsSeq.current) return;
-      }
-      setActive(running);
-      setLastUpdated(new Date());
-    } catch (e) {
-      if (seq !== loadSessionsSeq.current) return;
-      setError(e instanceof Error ? e.message : t("dashboard.loadSessionsFailed"));
-    }
-  }, [token, t]);
-
-  const loadSocial = useCallback(async () => {
-    if (!token) return;
-    setSocialLoading(true);
-    try {
-      const [lbRaw, actRaw, goalRaw] = await Promise.all([
-        apiJson<unknown>("/friends/leaderboard?period=week", { token }),
-        apiJson<unknown>("/friends/activity?limit=8", { token }),
-        apiJson<unknown>("/goals/current", { token }),
-      ]);
-      const lb =
-        lbRaw && typeof lbRaw === "object" && "entries" in lbRaw
-          ? (lbRaw as FriendLeaderboardDto)
-          : null;
-      setFriendLeaderboard(lb);
-      setFriendActivity(Array.isArray(actRaw) ? (actRaw as FriendActivityDto[]) : []);
-      if (goalRaw && typeof goalRaw === "object") {
-        const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
-        const tv = typeof g.target_value === "number" ? g.target_value : null;
-        const cs = typeof g.current_sessions === "number" ? g.current_sessions : 0;
-        setWeeklyGoalTarget(tv);
-        setWeekSessionsCount(cs);
-      } else {
-        setWeeklyGoalTarget(null);
-        setWeekSessionsCount(0);
-      }
-    } catch {
-      setFriendLeaderboard(null);
-      setFriendActivity([]);
-    } finally {
-      setSocialLoading(false);
-    }
-  }, [token]);
-
-  const loadStreakOverview = useCallback(async () => {
-    if (!token) return;
-    const seq = ++loadStreakSeq.current;
-    try {
-      const data = await apiJson<StreakOverviewDto>("/streak/overview", { token });
-      if (seq !== loadStreakSeq.current) return;
-      setStreakOverview(data);
-      await syncStreakRiskNotifications(data.streak_at_risk, data.current_streak);
-    } catch {
-      if (seq !== loadStreakSeq.current) return;
-      setStreakOverview(null);
-    }
-  }, [token]);
-
-  const loadServerMotivation = useCallback(async () => {
-    if (!token) {
-      setServerMotivationDto(null);
-      return;
-    }
-    try {
-      const raw = await apiJson<unknown>("/motivational-messages/random", { token });
-      const parsed = parseMotivationalMessage(raw);
-      setServerMotivationDto(parsed);
-    } catch {
-      setServerMotivationDto(null);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([loadSessions(), loadStreakOverview(), loadSocial(), loadServerMotivation()])
-      .catch((e) => setError(e instanceof Error ? e.message : t("dashboard.loadFailed")))
-      .finally(() => setLoading(false));
-  }, [loadSessions, loadStreakOverview, loadSocial, loadServerMotivation, t]);
+  const {
+    momentumState,
+    momentumScore,
+    primaryNudge,
+    secondaryNudge,
+    returnHook,
+    advancePrimaryNudge,
+    applyMomentumAction,
+  } = useDashboardSocialNudges({
+    userId: user?.id,
+    friendActivity,
+    buddyRisk,
+    socialChallenges,
+    commitmentStatus,
+    checkinStatus,
+    streakOverviewCurrent: streakOverview?.current_streak,
+    clientStreak,
+    t,
+  });
+  const { socialToast, runPrimaryAction } = useDashboardSocialActions({
+    token,
+    userId: user?.id,
+    buddyRisk,
+    primaryNudge,
+    identityState,
+    router,
+    t,
+    loadSocial,
+    loadSessions,
+    advancePrimaryNudge,
+    applyMomentumAction,
+    setSocialActionBusy,
+  });
+  const refreshUnreadCount = useCallback(() => {
+    getUnreadCount()
+      .then(setNotifUnread)
+      .catch(() => undefined);
+  }, []);
+  const { milestoneToast, breakModalOpen, breakModalStreak, dismissBreakModal } =
+    useDashboardStreakEvents({
+      streakOverview,
+      userScopedMilestoneKey,
+      userScopedStreakKey,
+      t,
+      refreshUnread: refreshUnreadCount,
+    });
 
   useFocusEffect(
     useCallback(() => {
-      loadSessions().catch(() => null);
-      loadStreakOverview().catch(() => null);
-      loadSocial().catch(() => null);
-      loadServerMotivation().catch(() => null);
-      getUnreadCount()
-        .then(setNotifUnread)
-        .catch(() => undefined);
+      refreshDashboard({ force: false, withLoading: false }).catch(() => null);
+      refreshUnreadCount();
       (async () => {
         try {
           const v = await SecureStore.getItemAsync(PENDING_SESSION_SETUP_KEY);
           if (v === "1") {
             await SecureStore.deleteItemAsync(PENDING_SESSION_SETUP_KEY);
-            sheetTranslateY.value = SCREEN_HEIGHT;
-            setSetupModalKey((k) => k + 1);
-            setSetupVisible(true);
+            presentSessionSetupModalFresh();
           }
         } catch {
           /* ignore */
         }
       })();
-    }, [loadSessions, loadStreakOverview, loadSocial, loadServerMotivation, sheetTranslateY]),
+    }, [refreshDashboard, presentSessionSetupModalFresh, refreshUnreadCount]),
   );
 
   useEffect(() => {
@@ -360,34 +231,6 @@ export default function DashboardScreen() {
     );
   }, [active, ringPulse]);
 
-  useEffect(() => {
-    if (!setupVisible) return;
-    sheetTranslateY.value = SCREEN_HEIGHT;
-    sheetTranslateY.value = withSpring(0, { damping: 22, stiffness: 260 });
-  }, [setupVisible, sheetTranslateY]);
-
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetTranslateY.value }],
-  }));
-  const ringAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: ringPulse.value }],
-    opacity: 0.45 + 0.35 * (ringPulse.value - 1),
-  }));
-
-  const closeSetupModal = useCallback(
-    (after?: () => void) => {
-      sheetTranslateY.value = withTiming(SCREEN_HEIGHT * 1.08, { duration: 320 }, (finished) => {
-        if (finished) {
-          runOnJS(() => {
-            setSetupVisible(false);
-            after?.();
-          })();
-        }
-      });
-    },
-    [sheetTranslateY],
-  );
-
   const openSetup = useCallback(() => {
     if (active) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
@@ -410,14 +253,9 @@ export default function DashboardScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    await Promise.all([
-      loadSessions().catch(() => undefined),
-      loadStreakOverview().catch(() => undefined),
-      loadSocial().catch(() => undefined),
-      loadServerMotivation().catch(() => undefined),
-    ]);
+    await refreshDashboard({ force: true, withLoading: false }).catch(() => undefined);
     setRefreshing(false);
-  }, [loadSessions, loadStreakOverview, loadSocial, loadServerMotivation]);
+  }, [refreshDashboard, setRefreshing]);
 
   const weekDayLetters = useMemo(() => {
     const letters = t("dashboard.weekdayShort", { returnObjects: true }) as string[];
@@ -485,6 +323,7 @@ export default function DashboardScreen() {
   ]);
 
   const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
+  const completedCount = useMemo(() => completedSessionsCount(visibleSessions), [visibleSessions]);
 
   const displayOverview = useMemo((): StreakOverviewDto | null => {
     if (streakOverview) return streakOverview;
@@ -528,60 +367,6 @@ export default function DashboardScreen() {
       setFreezeBusy(false);
     }
   }, [token, loadStreakOverview, loadSessions, t]);
-
-  useEffect(() => {
-    if (!streakOverview) return;
-    const cur = streakOverview.current_streak;
-    (async () => {
-      try {
-        const raw = await SecureStore.getItemAsync(userScopedMilestoneKey);
-        const maxSeen = raw ? parseInt(raw, 10) : 0;
-        const newlyPassed = STREAK_MILESTONES.filter((m) => cur >= m.days && m.days > maxSeen);
-        const best = newlyPassed.length ? newlyPassed[newlyPassed.length - 1] : null;
-        if (best) {
-          await SecureStore.setItemAsync(userScopedMilestoneKey, String(best.days));
-          setMilestoneToast(`${best.title} — ${best.reward}`);
-          prependNotification({
-            category: "achievement",
-            title: t("dashboard.milestoneNotifTitle"),
-            body: `${best.title} — ${best.reward}`,
-          }).catch(() => undefined);
-          getUnreadCount()
-            .then(setNotifUnread)
-            .catch(() => undefined);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-            () => undefined,
-          );
-          setTimeout(() => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-              () => undefined,
-            );
-          }, 120);
-          setTimeout(() => setMilestoneToast(null), 4200);
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, [streakOverview, userScopedMilestoneKey, t]);
-
-  useEffect(() => {
-    if (!streakOverview) return;
-    const cur = streakOverview.current_streak;
-    (async () => {
-      try {
-        const raw = await SecureStore.getItemAsync(userScopedStreakKey);
-        const prev = raw ? parseInt(raw, 10) : 0;
-        if (prev > 0 && cur === 0) {
-          setBreakModalStreak(prev);
-          setBreakModalOpen(true);
-        }
-        await SecureStore.setItemAsync(userScopedStreakKey, String(cur));
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, [streakOverview, userScopedStreakKey]);
 
   const confirmStop = useCallback(() => {
     if (!active || !token || stopSessionInFlight.current) return;
@@ -631,7 +416,7 @@ export default function DashboardScreen() {
         },
       ],
     );
-  }, [active, token, router, loadSessions, t]);
+  }, [active, token, router, loadSessions, t, setError, setActive]);
 
   const dismissSession = useCallback(
     async (sessionId: number) => {
@@ -644,7 +429,7 @@ export default function DashboardScreen() {
         setError(e instanceof Error ? e.message : t("dashboard.deleteFailed"));
       }
     },
-    [loadSessions, token, t],
+    [loadSessions, token, t, setError],
   );
 
   const renderRightActions = useCallback(
@@ -690,8 +475,6 @@ export default function DashboardScreen() {
       })
     : null;
 
-  const preview = notesPreview(active?.notes);
-
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <TutorialOverlay />
@@ -707,11 +490,16 @@ export default function DashboardScreen() {
           </LinearGradient>
         </Animated.View>
       ) : null}
+      {socialToast ? (
+        <Animated.View entering={FadeInUp.duration(220)} style={styles.socialToast}>
+          <Text style={styles.socialToastText}>{socialToast}</Text>
+        </Animated.View>
+      ) : null}
       <StreakBreakModal
         visible={breakModalOpen}
         brokenStreak={breakModalStreak}
         onStartFresh={() => {
-          setBreakModalOpen(false);
+          dismissBreakModal();
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
         }}
       />
@@ -769,51 +557,21 @@ export default function DashboardScreen() {
               todaySessionCount={todayStats.count}
             />
 
+            <ReturnHookCard
+              summaryLine={returnHook}
+              momentumState={momentumState}
+              momentumScore={momentumScore}
+            />
+
             {active ? (
-              <View style={styles.activeSessionBlock}>
-                <View style={styles.badgeRow}>
-                  <View style={styles.typeBadge}>
-                    <Text style={styles.typeBadgeText}>
-                      {sessionTypeLabel(String(active.session_type || "beat_making"), t)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.timerRingWrap}>
-                  <Animated.View style={[styles.pulseRingOuter, ringAnimatedStyle]} />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t("dashboard.focusModeA11y")}
-                    onPress={openFullscreenActive}
-                    style={styles.timerPressable}
-                  >
-                    <LinearGradient colors={["#2a1410", "#1a1a1a"]} style={styles.timerInner}>
-                      <Text style={styles.heroTimer}>{formatTimer(activeSeconds)}</Text>
-                      <Text style={styles.elapsedNatural}>
-                        {formatNaturalCounting(activeSeconds, t)}
-                      </Text>
-                      {preview ? (
-                        <Text style={styles.notesPreview} numberOfLines={2}>
-                          {preview}
-                        </Text>
-                      ) : null}
-                      <View style={styles.swipeHint}>
-                        <Text style={styles.swipeHintText}>{t("dashboard.swipeFocusHint")}</Text>
-                      </View>
-                    </LinearGradient>
-                  </Pressable>
-                </View>
-
-                <Pressable
-                  style={({ pressed }) => [styles.stopSessionBtn, pressed && styles.pressedStop]}
-                  onPress={confirmStop}
-                  disabled={stopBusy}
-                >
-                  <Text style={styles.stopSessionLabel}>
-                    {stopBusy ? t("dashboard.stopping") : t("dashboard.stopSession")}
-                  </Text>
-                </Pressable>
-              </View>
+              <ActiveSessionBlock
+                active={active}
+                activeSeconds={activeSeconds}
+                ringPulse={ringPulse}
+                onOpenFullscreen={openFullscreenActive}
+                onConfirmStop={confirmStop}
+                stopBusy={stopBusy}
+              />
             ) : (
               <DashboardSessionStarter onQuickStart={openSetup} />
             )}
@@ -823,6 +581,23 @@ export default function DashboardScreen() {
               activity={friendActivity}
               leaderboard={friendLeaderboard?.entries ?? []}
               loading={socialLoading}
+              primaryAction={
+                primaryNudge
+                  ? {
+                      message: identityState?.line
+                        ? `${primaryNudge.message} ${identityState.line}`
+                        : primaryNudge.message,
+                      ctaLabel: primaryNudge.ctaLabel,
+                      busy:
+                        (primaryNudge.actionKey === "rescue" && socialActionBusy === "rescue") ||
+                        (primaryNudge.actionKey === "checkin" && socialActionBusy === "checkin") ||
+                        (primaryNudge.actionKey === "start_session" &&
+                          socialActionBusy === "commitment"),
+                      onPress: runPrimaryAction,
+                    }
+                  : null
+              }
+              secondaryHint={secondaryNudge ?? identityState?.line ?? null}
             />
 
             <TodayProgressCard
@@ -830,7 +605,9 @@ export default function DashboardScreen() {
               todayMinutes={todayStats.minutes}
               weekSessions={weekSessionsCount}
               weekGoalTarget={weeklyGoalTarget}
+              goalForecast={forecast}
             />
+            <ProgressionBarCard progression={progression} />
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{t("dashboard.recentSessions")}</Text>
@@ -852,15 +629,32 @@ export default function DashboardScreen() {
                   label={t("dashboard.retry")}
                   onPress={() => {
                     setError(null);
-                    setLoading(true);
-                    Promise.all([loadSessions(), loadStreakOverview(), loadSocial()])
-                      .catch((e) =>
-                        setError(e instanceof Error ? e.message : t("dashboard.loadFailed")),
-                      )
-                      .finally(() => setLoading(false));
+                    refreshDashboard({ force: true, withLoading: true }).catch(() => null);
                   }}
                 />
               </View>
+            ) : null}
+            {entitlement?.entitlement !== "premium" &&
+            shouldTriggerPaywall({
+              completedSessionsCount: completedCount,
+              sawFirstWeeklyReview: false,
+              openedFirstInsight: false,
+            }) ? (
+              <PrimaryButton
+                label={t("dashboard.unlockPremiumOutcomes")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/paywall",
+                    params: {
+                      variant: pickPaywallVariant({
+                        completedSessionsCount: completedCount,
+                        sawFirstWeeklyReview: false,
+                        openedFirstInsight: false,
+                      }),
+                    },
+                  })
+                }
+              />
             ) : null}
           </View>
         }
@@ -881,85 +675,45 @@ export default function DashboardScreen() {
         renderItem={renderItem}
       />
 
-      <Modal
+      <DashboardSessionSetupModal
         visible={setupVisible}
-        transparent
-        animationType="none"
-        onRequestClose={() => closeSetupModal()}
-        statusBarTranslucent
-      >
-        {/* Modals are a separate native hierarchy on iOS — gestures need their own root here. */}
-        <GestureHandlerRootView style={styles.modalGestureRoot}>
-          <View style={styles.modalRoot}>
-            <Pressable style={styles.modalBackdrop} onPress={() => closeSetupModal()} />
-            <Animated.View style={[styles.modalSheet, sheetStyle]}>
-              <SafeAreaView style={styles.modalSafe} edges={["bottom"]}>
-                <View>
-                  <View style={styles.modalHandle} />
-                  <View style={styles.modalHeaderRow}>
-                    <Text style={styles.modalTitle}>{t("dashboard.newSessionTitle")}</Text>
-                    <Pressable
-                      hitSlop={12}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
-                          () => undefined,
-                        );
-                        closeSetupModal();
-                      }}
-                      style={styles.modalCloseBtn}
-                    >
-                      <Text style={styles.modalCloseText}>✕</Text>
-                    </Pressable>
-                  </View>
-                  <CrashBoundary
-                    scope="session_setup_modal"
-                    fallbackTitle={t("crashBoundary.sessionSetupTitle")}
-                    fallbackMessage={t("crashBoundary.sessionSetupMessage")}
-                    onRecover={() => {
-                      closeSetupModal(() => {
-                        router.push("/session/setup");
-                      });
-                    }}
-                  >
-                    <SessionSetupForm
-                      key={setupModalKey}
-                      hideTitleRow
-                      onActiveSessionConflict={() => {
-                        closeSetupModal(() => {
-                          void loadSessions();
-                          void loadStreakOverview();
-                        });
-                      }}
-                      onStarted={(created) => {
-                        const session = tryParseSessionDto(created);
-                        if (!session) {
-                          setError(t("dashboard.couldNotReadSession"));
-                          closeSetupModal(() => {
-                            void loadSessions();
-                          });
-                          return;
-                        }
-                        setActive(session);
-                        setSessions((prev) => {
-                          const rest = prev.filter((s) => s.id !== session.id);
-                          return [session, ...rest];
-                        });
-                        setNowMs(Date.now());
-                        closeSetupModal(() => {
-                          void Promise.all([
-                            loadSessions().catch(() => null),
-                            loadStreakOverview().catch(() => null),
-                          ]);
-                        });
-                      }}
-                    />
-                  </CrashBoundary>
-                </View>
-              </SafeAreaView>
-            </Animated.View>
-          </View>
-        </GestureHandlerRootView>
-      </Modal>
+        formKey={setupModalKey}
+        sheetStyle={sheetStyle}
+        closeSetupModal={closeSetupModal}
+        onCrashRecover={() => {
+          closeSetupModal(() => {
+            router.push("/session/setup");
+          });
+        }}
+        onActiveSessionConflict={() => {
+          closeSetupModal(() => {
+            void loadSessions();
+            void loadStreakOverview();
+          });
+        }}
+        onSessionStarted={(created) => {
+          const session = tryParseSessionDto(created);
+          if (!session) {
+            setError(t("dashboard.couldNotReadSession"));
+            closeSetupModal(() => {
+              void loadSessions();
+            });
+            return;
+          }
+          setActive(session);
+          setSessions((prev) => {
+            const rest = prev.filter((s) => s.id !== session.id);
+            return [session, ...rest];
+          });
+          setNowMs(Date.now());
+          closeSetupModal(() => {
+            void Promise.all([
+              loadSessions().catch(() => null),
+              loadStreakOverview().catch(() => null),
+            ]);
+          });
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -975,6 +729,25 @@ const styles = StyleSheet.create({
     left: spacing.md,
     right: spacing.md,
     zIndex: 40,
+  },
+  socialToast: {
+    position: "absolute",
+    top: 62,
+    left: spacing.md,
+    right: spacing.md,
+    zIndex: 40,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(14,14,14,0.96)",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  socialToastText: {
+    color: colors.textPrimary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyBold,
+    textAlign: "center",
   },
   milestoneToastInner: {
     borderRadius: radii.md,
@@ -1028,115 +801,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
     borderWidth: 2,
     borderColor: colors.background,
-  },
-  activeSessionBlock: {
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.md,
-  },
-  badgeRow: {
-    alignItems: "center",
-  },
-  typeBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radii.round,
-    backgroundColor: "rgba(255,61,0,0.18)",
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  typeBadgeText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    letterSpacing: 0.4,
-  },
-  timerRingWrap: {
-    alignSelf: "center",
-    width: 260,
-    height: 260,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  timerPressable: {
-    width: 260,
-    height: 260,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pulseRingOuter: {
-    position: "absolute",
-    width: 268,
-    height: 268,
-    borderRadius: 134,
-    borderWidth: 3,
-    borderColor: "rgba(255,68,68,0.9)",
-    shadowColor: "#ff4444",
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  timerInner: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
-  },
-  heroTimer: {
-    fontSize: 52,
-    lineHeight: 56,
-    fontFamily: fontFamily.heading,
-    color: colors.textPrimary,
-    fontVariant: ["tabular-nums"],
-  },
-  elapsedNatural: {
-    marginTop: spacing.sm,
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.body,
-    textAlign: "center",
-  },
-  notesPreview: {
-    marginTop: spacing.sm,
-    color: colors.textSecondary,
-    ...typography.caption,
-    textAlign: "center",
-  },
-  swipeHint: {
-    marginTop: spacing.md,
-    alignItems: "center",
-    paddingHorizontal: spacing.sm,
-    opacity: 0.9,
-  },
-  swipeHintText: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    fontSize: 12,
-    textAlign: "center",
-  },
-  stopSessionBtn: {
-    borderRadius: radii.lg,
-    backgroundColor: "rgba(255,68,68,0.18)",
-    borderWidth: 2,
-    borderColor: colors.danger,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    ...shadows.button,
-  },
-  pressedStop: {
-    opacity: 0.9,
-    transform: [{ scale: 0.99 }],
-  },
-  stopSessionLabel: {
-    color: colors.danger,
-    fontFamily: fontFamily.heading,
-    fontSize: 18,
-    letterSpacing: 0.8,
   },
   pressedStart: { opacity: 0.92, transform: [{ scale: 0.98 }] },
   startCircle: {
@@ -1250,79 +914,4 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     ...typography.caption,
   },
-  skeletonWrap: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  skeletonRow: {
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#242424",
-  },
-  skeletonRowShort: {
-    height: 16,
-    width: "60%",
-    borderRadius: 8,
-    backgroundColor: "#242424",
-  },
-  modalGestureRoot: {
-    flex: 1,
-  },
-  modalRoot: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.62)",
-  },
-  modalSheet: {
-    maxHeight: SCREEN_HEIGHT * 0.94,
-    backgroundColor: colors.background,
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-  },
-  modalSafe: {
-    flex: 1,
-    maxHeight: SCREEN_HEIGHT * 0.94,
-  },
-  modalHandle: {
-    alignSelf: "center",
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: colors.border,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  modalHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
-  },
-  modalTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.headline,
-  },
-  modalCloseBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalCloseText: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamily.bodyBold },
 });

@@ -12,6 +12,8 @@ type Props = {
   currentStreak: number;
   friendsCount: number;
   status: "self" | "none" | "pending" | "accepted";
+  isPremium?: boolean;
+  identityTags?: string[];
   onAddFriend?: () => void;
 };
 
@@ -28,6 +30,8 @@ export const ProfileHeader = memo(function ProfileHeader({
   currentStreak,
   friendsCount,
   status,
+  isPremium = false,
+  identityTags = [],
   onAddFriend,
 }: Props) {
   const { t } = useTranslation();
@@ -38,7 +42,21 @@ export const ProfileHeader = memo(function ProfileHeader({
         <View style={styles.avatar}>
           <Text style={styles.avatarTxt}>{initials(username)}</Text>
         </View>
-        <Text style={styles.username}>{username}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.username}>{username}</Text>
+          {isPremium ? <Text style={styles.premiumBadge}>PRO</Text> : null}
+        </View>
+        {identityTags.length > 0 ? (
+          <View style={styles.identityRow}>
+            {identityTags.slice(0, 2).map((tag) => (
+              <View key={tag} style={styles.identityTag}>
+                <Text style={styles.identityText}>
+                  {tag.replace("_", " ").replace(/\b\w/g, (m) => m.toUpperCase())}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         <View style={styles.quick}>
           <View style={styles.qItem}>
             <Text style={styles.qVal}>{totalSessions}</Text>
@@ -99,6 +117,37 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     fontSize: 24,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
+  identityRow: { flexDirection: "row", justifyContent: "center", gap: spacing.xs },
+  identityTag: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  identityText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  premiumBadge: {
+    color: "#fcd34d",
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.45)",
+    backgroundColor: "rgba(251,191,36,0.1)",
+    borderRadius: radii.round,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    fontSize: 10,
+    fontFamily: fontFamily.bodyBold,
   },
   quick: { flexDirection: "row", justifyContent: "space-around", marginTop: spacing.sm },
   qItem: { alignItems: "center", gap: 4 },

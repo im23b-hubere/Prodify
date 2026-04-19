@@ -19,6 +19,8 @@ from app.achievementsutil import (
 )
 from app.models import ProductionSession, SessionType, Streak, User, UserGoal, utcnow
 from app.services.push_dispatch import notify_session_complete
+from app.services.kpi_tracker import track_event
+from app.services.progression_service import grant_xp
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 from app.schemas import (
@@ -104,6 +106,8 @@ def start_session(
         db.add(row)
         db.commit()
         db.refresh(row)
+        track_event(db, "session_started", current.id, {"session_id": row.id, "session_type": row.session_type})
+        db.commit()
         _log.info("session_started user_id=%s session_id=%s", current.id, row.id)
         return row
     except IntegrityError as exc:
@@ -127,7 +131,10 @@ def start_session(
         _log.error("Error message: %s", str(exc))
         _log.error("Traceback:", exc_info=True)
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(exc)}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred. Please try again.",
+        )
 
 
 @router.get("/active", response_model=SessionPublic)
@@ -169,6 +176,21 @@ def stop_session(
     row.duration_seconds = max(0, gross - paused)
     row.focus_score = compute_focus_score_for_session(row)
     db.flush()
+    xp_delta = 10 + (5 if int(row.duration_seconds or 0) >= 45 * 60 else 0)
+    grant_xp(
+        db,
+        current.id,
+        xp_delta,
+        source_type="session_complete",
+        source_id=str(row.id),
+        meta={"duration_seconds": int(row.duration_seconds or 0), "focus_score": int(row.focus_score or 0)},
+    )
+    track_event(
+        db,
+        "session_completed",
+        current.id,
+        {"session_id": row.id, "duration_seconds": int(row.duration_seconds or 0), "xp_delta": xp_delta},
+    )
     streak_row = db.scalar(select(Streak).where(Streak.user_id == current.id))
     grant_achievements_after_completed_session(db, current.id, row, streak_row)
     db.commit()

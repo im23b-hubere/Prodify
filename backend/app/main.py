@@ -17,11 +17,16 @@ init_observability()
 from app.routers import (
     achievements as achievements_router,
     auth,
+    billing as billing_router,
+    challenges as challenges_router,
     friends,
     goals as goals_router,
     jobs as jobs_router,
     motivation,
+    outcomes as outcomes_router,
     notifications as notifications_router,
+    progression as progression_router,
+    social as social_router,
     sessions,
     stats as stats_router,
     streak,
@@ -42,6 +47,24 @@ def validate_schema() -> None:
         "user_goals",
         "user_achievements",
         "streak_reminder_dispatch_log",
+        "user_subscriptions",
+        "user_progression",
+        "xp_ledger",
+        "growth_events",
+        "weekly_review_snapshots",
+        "public_goals",
+        "weekly_challenges",
+        "challenge_participants",
+        "weekly_checkins",
+        "buddy_relationships",
+        "checkin_plans",
+        "checkin_logs",
+        "social_comments",
+        "social_reactions",
+        "social_challenges",
+        "social_challenge_members",
+        "social_commitments",
+        "streak_rescues",
     }
     missing_tables = required_tables.difference(table_names)
     if missing_tables:
@@ -80,9 +103,11 @@ def validate_schema() -> None:
         raise RuntimeError("Database schema is missing column 'channel' on 'push_tokens'. Run Alembic migrations.")
 
     user_cols = {column["name"] for column in inspector.get_columns("users")}
-    if "profile_picture_url" not in user_cols:
+    required_user_cols = {"profile_picture_url", "is_premium", "premium_until", "bonus_rescues", "bonus_challenge_slots"}
+    missing_user = required_user_cols.difference(user_cols)
+    if missing_user:
         raise RuntimeError(
-            "Database schema is missing column 'profile_picture_url' on 'users'. Run Alembic migrations."
+            f"Database schema is missing columns on 'users': {', '.join(sorted(missing_user))}. Run Alembic migrations."
         )
 
     # In production with a server DB, refuse to start if migrations were never applied (no revision tracking).
@@ -127,6 +152,11 @@ app.include_router(notifications_router.router)
 app.include_router(goals_router.router)
 app.include_router(achievements_router.router)
 app.include_router(jobs_router.router)
+app.include_router(billing_router.router)
+app.include_router(outcomes_router.router)
+app.include_router(progression_router.router)
+app.include_router(challenges_router.router)
+app.include_router(social_router.router)
 
 
 @app.get("/health")

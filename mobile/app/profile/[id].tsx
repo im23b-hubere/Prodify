@@ -13,9 +13,11 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { fetchBuddyStatus, fetchWeeklyRecap } from "../../lib/social";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { StreakOverviewDto } from "../../types/streak";
+import type { BuddyStatusDto, SocialRecapDto } from "../../types/friends";
 
 const ACHIEVEMENT_EMOJI: Record<string, string> = {
   first_session: "🎹",
@@ -35,6 +37,8 @@ type ProfilePayload = {
   current_streak: number;
   longest_streak: number;
   friends_count: number;
+  is_premium?: boolean;
+  identity_tags?: string[];
   created_at: string;
 };
 
@@ -72,6 +76,8 @@ export default function FriendProfileScreen() {
   const [yourStreak, setYourStreak] = useState(0);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
+  const [buddyStatus, setBuddyStatus] = useState<BuddyStatusDto | null>(null);
+  const [socialRecap, setSocialRecap] = useState<SocialRecapDto | null>(null);
 
   const load = useCallback(async () => {
     if (!token || !Number.isFinite(userId) || userId <= 0) {
@@ -82,12 +88,16 @@ export default function FriendProfileScreen() {
     setLoadState("loading");
     setError(null);
     try {
-      const [st, ov] = await Promise.all([
+      const [st, ov, buddy, recap] = await Promise.all([
         apiJson<{ status: FriendStatus }>(`/friends/status/${userId}`, { token }),
         apiJson<StreakOverviewDto>("/streak/overview", { token }).catch(() => null),
+        fetchBuddyStatus(token).catch(() => null),
+        fetchWeeklyRecap(token).catch(() => null),
       ]);
       setStatus(st.status);
       setYourStreak(ov?.current_streak ?? 0);
+      setBuddyStatus(buddy);
+      setSocialRecap(recap);
 
       if (st.status !== "self" && st.status !== "accepted") {
         setProfile(null);
@@ -176,6 +186,8 @@ export default function FriendProfileScreen() {
               currentStreak={profile.current_streak}
               friendsCount={profile.friends_count}
               status={status === "self" ? "self" : "accepted"}
+              isPremium={Boolean(profile.is_premium)}
+              identityTags={profile.identity_tags ?? []}
             />
 
             {status !== "self" ? (
@@ -196,6 +208,26 @@ export default function FriendProfileScreen() {
                 <Text style={styles.line}>
                   {t("friendProfile.bestDay", { date: stats.best_day })}
                 </Text>
+              ) : null}
+              <Text style={styles.line}>
+                {buddyStatus?.buddy_user_id === profile.id
+                  ? "Your active buddy"
+                  : "Friend in your social network"}
+              </Text>
+            </View>
+
+            <View style={styles.statsCard}>
+              <Text style={styles.cardTitle}>Shared momentum</Text>
+              <Text style={styles.line}>
+                Your creative run: {yourStreak}d vs {stats.current_streak}d
+              </Text>
+              <Text style={styles.line}>
+                {socialRecap
+                  ? `Team sessions this week: ${socialRecap.team_sessions} · WoW ${socialRecap.wow_delta_sessions >= 0 ? "+" : ""}${socialRecap.wow_delta_sessions}`
+                  : "Complete more sessions together to unlock better comparisons."}
+              </Text>
+              {socialRecap?.identity_line ? (
+                <Text style={styles.lineStrong}>{socialRecap.identity_line}</Text>
               ) : null}
             </View>
 
@@ -284,6 +316,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   line: { color: colors.textPrimary, ...typography.body },
+  lineStrong: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
   muted: { color: colors.textSecondary, ...typography.caption },
   ach: { color: colors.textPrimary, ...typography.body },
   sessRow: {

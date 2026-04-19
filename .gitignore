@@ -3,7 +3,12 @@ backend/.venv/
 **/__pycache__/
 *.py[cod]
 .pytest_cache/
-backend/.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.egg-info/
 backend/.env
 backend/*.db
 backend/uploads/
@@ -16,6 +21,7 @@ mobile/web-build/
 mobile/.env
 mobile/.env.*
 !mobile/.env.example
+mobile/.eslintcache
 *.log
 
 # Root: package.json is metadata-only; avoid committing an empty lockfile from accidental `npm install` here

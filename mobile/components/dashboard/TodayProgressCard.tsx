@@ -4,12 +4,14 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import type { GoalForecastDto } from "../../types/outcomes";
 
 type Props = {
   todaySessions: number;
   todayMinutes: number;
   weekSessions: number;
   weekGoalTarget: number | null;
+  goalForecast?: GoalForecastDto | null;
 };
 
 export const TodayProgressCard = memo(function TodayProgressCard({
@@ -17,6 +19,7 @@ export const TodayProgressCard = memo(function TodayProgressCard({
   todayMinutes,
   weekSessions,
   weekGoalTarget,
+  goalForecast,
 }: Props) {
   const { t } = useTranslation();
   const goalLine =
@@ -39,6 +42,20 @@ export const TodayProgressCard = memo(function TodayProgressCard({
         </View>
       </View>
       <Text style={styles.week}>{goalLine}</Text>
+      {goalForecast ? (
+        <Text
+          style={[
+            styles.week,
+            goalForecast.risk_level === "off_track"
+              ? styles.riskHigh
+              : goalForecast.risk_level === "at_risk"
+                ? styles.riskMid
+                : null,
+          ]}
+        >
+          {goalForecast.warning_message}
+        </Text>
+      ) : null}
     </View>
   );
 });
@@ -66,4 +83,6 @@ const styles = StyleSheet.create({
   big: { fontSize: 28, fontFamily: fontFamily.heading, color: colors.textPrimary },
   lbl: { color: colors.textSecondary, ...typography.caption },
   week: { color: colors.textSecondary, ...typography.caption, textAlign: "center" },
+  riskMid: { color: "#eab308" },
+  riskHigh: { color: colors.danger },
 });

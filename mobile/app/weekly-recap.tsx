@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "../components/ui/PrimaryButton";
@@ -11,25 +11,34 @@ import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import { apiJson } from "../lib/client";
 import { tryParseSessionStatsDto } from "../lib/statsDto";
+import { tryParseWeeklyReviewDto } from "../lib/outcomesDto";
 import type { SessionStatsDto } from "../types/session";
+import type { WeeklyReviewDto } from "../types/outcomes";
 
 export default function WeeklyRecapScreen() {
   const { t } = useTranslation();
   const { token } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
+  const [review, setReview] = useState<WeeklyReviewDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
     setError(null);
     try {
-      const raw = await apiJson<unknown>("/sessions/stats?period=week", { token });
-      const parsed = tryParseSessionStatsDto(raw);
-      setStats(parsed);
-      if (!parsed) setError(t("weeklyRecap.invalidStats"));
+      const [rawReview, rawStats] = await Promise.all([
+        apiJson<unknown>("/outcomes/weekly-review/current", { token }).catch(() => null),
+        apiJson<unknown>("/sessions/stats?period=week", { token }),
+      ]);
+      const parsedReview = rawReview ? tryParseWeeklyReviewDto(rawReview) : null;
+      setReview(parsedReview);
+      const parsedStats = tryParseSessionStatsDto(rawStats);
+      setStats(parsedStats);
+      if (!parsedStats) setError(t("weeklyRecap.invalidStats"));
     } catch (e) {
       setStats(null);
+      setReview(null);
       setError(e instanceof Error ? e.message : t("weeklyRecap.loadFailed"));
     }
   }, [token, t]);
@@ -39,6 +48,11 @@ export default function WeeklyRecapScreen() {
   }, [load]);
 
   const s = stats?.summary;
+  const displaySessions = review?.total_sessions ?? s?.total_sessions ?? 0;
+  const displayHours =
+    (Number.isFinite(review?.total_seconds)
+      ? (review?.total_seconds ?? 0)
+      : (s?.total_seconds ?? 0)) / 3600;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -49,8 +63,8 @@ export default function WeeklyRecapScreen() {
           <View style={styles.card}>
             <Text style={styles.line}>
               {t("weeklyRecap.sessionsHours", {
-                sessions: s.total_sessions,
-                hours: ((Number.isFinite(s.total_seconds) ? s.total_seconds : 0) / 3600).toFixed(1),
+                sessions: displaySessions,
+                hours: displayHours.toFixed(1),
               })}
             </Text>
             <Text style={styles.line}>
@@ -67,11 +81,50 @@ export default function WeeklyRecapScreen() {
                 })}
               </Text>
             ) : null}
-            <Text style={styles.quote}>{t("weeklyRecap.quote")}</Text>
+            {review?.insights?.length ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Insights</Text>
+                {review.insights.slice(0, 3).map((item) => (
+                  <Text key={item} style={styles.line}>
+                    - {item}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+            {review?.blockers?.length ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Blockers</Text>
+                {review.blockers.slice(0, 2).map((item) => (
+                  <Text key={item} style={styles.line}>
+                    - {item}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+            {review?.suggestions?.length ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Next Week</Text>
+                {review.suggestions.slice(0, 3).map((item) => (
+                  <Text key={item} style={styles.line}>
+                    - {item}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+            <Text style={styles.quote}>{review?.ai_feedback || t("weeklyRecap.quote")}</Text>
           </View>
         ) : (
           <Text style={styles.muted}>{t("weeklyRecap.loading")}</Text>
         )}
+        <PrimaryButton
+          label="Share weekly review"
+          onPress={() => {
+            const text =
+              review?.ai_feedback ??
+              `I completed ${displaySessions} sessions and ${displayHours.toFixed(1)}h in Prodify this week.`;
+            Share.share({ message: text }).catch(() => undefined);
+          }}
+        />
         <PrimaryButton
           label={t("weeklyRecap.setGoals")}
           onPress={() => {
@@ -110,6 +163,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontStyle: "italic",
     marginTop: spacing.md,
+    ...typography.caption,
+  },
+  section: { marginTop: spacing.sm, gap: spacing.xs },
+  sectionTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
     ...typography.caption,
   },
   err: { color: colors.danger, ...typography.caption },

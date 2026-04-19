@@ -35,7 +35,7 @@ function formatHours(totalSeconds: number): string {
   return Math.round(h).toString();
 }
 
-export default function ProfilScreen() {
+export default function ProfileScreen() {
   const { t } = useTranslation();
   const { user, signOut, deleteAccount, token } = useAuth();
   const router = useRouter();

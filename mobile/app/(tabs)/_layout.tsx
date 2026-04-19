@@ -9,7 +9,7 @@ import { useAuth } from "../../context/AuthContext";
 type TabIconProps = {
   focused: boolean;
   color: string;
-  icon: "dashboard" | "stats" | "friends" | "profil";
+  icon: "dashboard" | "stats" | "friends" | "profile";
 };
 
 function TabIcon({ focused, color, icon }: TabIconProps) {
@@ -17,7 +17,7 @@ function TabIcon({ focused, color, icon }: TabIconProps) {
     dashboard: LayoutGrid,
     stats: BarChart3,
     friends: Users,
-    profil: UserRound,
+    profile: UserRound,
   }[icon];
 
   return (
@@ -94,11 +94,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="profil"
+        name="profile"
         options={{
           title: t("tabs.profile"),
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon color={color} focused={focused} icon="profil" />
+            <TabIcon color={color} focused={focused} icon="profile" />
           ),
         }}
       />

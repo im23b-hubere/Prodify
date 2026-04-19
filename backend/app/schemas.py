@@ -25,6 +25,7 @@ class UserPublic(BaseModel):
     email: EmailStr
     username: str
     profile_picture_url: str | None = None
+    is_premium: bool = False
     created_at: datetime
 
 
@@ -187,6 +188,11 @@ class FriendLeaderboardEntryPublic(BaseModel):
     username: str
     current_streak_days: int
     sessions_in_period: int
+    sessions_delta_vs_prior: int = 0
+    trend: Literal["up", "down", "flat"] = "flat"
+    is_chasing_you: bool = False
+    is_threatening_you: bool = False
+    is_premium: bool = False
 
 
 class FriendLeaderboardPublic(BaseModel):
@@ -393,6 +399,13 @@ class FriendStatusPublic(BaseModel):
     status: Literal["self", "none", "pending", "accepted"]
 
 
+class FriendPostAcceptActionPublic(BaseModel):
+    key: str
+    title: str
+    cta_label: str
+    route_hint: str
+
+
 class UserPublicSessionItem(BaseModel):
     id: int
     session_type: str
@@ -409,6 +422,8 @@ class UserFriendProfilePublic(BaseModel):
     current_streak: int
     longest_streak: int
     friends_count: int
+    is_premium: bool = False
+    identity_tags: list[str] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -421,3 +436,270 @@ class UserFriendStatsPublic(BaseModel):
     best_day: str | None
     heatmap_days: list[HeatmapDayPublic]
     achievements: list[AchievementUnlockedPublic]
+
+
+class EntitlementPublic(BaseModel):
+    provider: str = "revenuecat"
+    entitlement: Literal["free", "premium"] = "free"
+    trial_active: bool = False
+    expires_at: datetime | None = None
+
+
+class BillingSyncBody(BaseModel):
+    app_user_id: str = Field(min_length=1, max_length=255)
+    entitlement: Literal["free", "premium"] = "free"
+    trial_active: bool = False
+    expires_at: datetime | None = None
+
+
+class ProgressionPublic(BaseModel):
+    xp_total: int
+    current_level: int
+    xp_to_next_level: int
+    progress_percent: float
+
+
+class WeeklyReviewPublic(BaseModel):
+    week_start: str
+    week_end: str
+    total_sessions: int
+    total_seconds: int
+    insights: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+    ai_feedback: str
+    share_image_url: str | None = None
+
+
+class GoalForecastPublic(BaseModel):
+    week_start: str
+    target_sessions: int
+    completed_sessions: int
+    remaining_sessions: int
+    days_left: int
+    required_sessions_per_day: float
+    risk_level: Literal["on_track", "at_risk", "off_track"]
+    warning_message: str
+
+
+class CoachDebriefPublic(BaseModel):
+    session_id: int
+    went_well: list[str] = Field(default_factory=list)
+    didnt_go_well: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    tone: str = "motivating_realistic"
+
+
+class KpiSummaryPublic(BaseModel):
+    d1_retention_rate: float
+    d7_retention_rate: float
+    sessions_per_week_per_user: float
+    trial_start_rate: float
+    trial_to_paid_conversion_rate: float
+    invites_sent: int
+    challenge_participation: int
+
+
+class PublicGoalBody(BaseModel):
+    target_sessions: int = Field(ge=1, le=50, default=4)
+    is_public: bool = False
+
+
+class PublicGoalPublic(BaseModel):
+    week_start: str
+    target_sessions: int
+    is_public: bool
+
+
+class WeeklyCheckinBody(BaseModel):
+    did_ship: bool
+    shipped_note: str | None = Field(default=None, max_length=280)
+
+
+class WeeklyCheckinPublic(BaseModel):
+    week_start: str
+    did_ship: bool
+    shipped_note: str | None = None
+
+
+class ChallengeJoinBody(BaseModel):
+    challenge_id: int
+
+
+class ChallengeEntryPublic(BaseModel):
+    user_id: int
+    score: int
+
+
+class ChallengeLeaderboardPublic(BaseModel):
+    challenge_id: int
+    week_start: str
+    entries: list[ChallengeEntryPublic] = Field(default_factory=list)
+
+
+class BuddyInviteBody(BaseModel):
+    friend_user_id: int
+
+
+class BuddyInviteAcceptBody(BaseModel):
+    invite_id: int
+
+
+class BuddyStatusPublic(BaseModel):
+    invite_id: int | None = None
+    status: Literal["none", "pending_outgoing", "pending_incoming", "active"]
+    buddy_user_id: int | None = None
+    buddy_username: str | None = None
+    this_week_sessions: int = 0
+    buddy_week_sessions: int = 0
+
+
+class CheckinPlanBody(BaseModel):
+    target_checkins: int = Field(default=3, ge=1, le=7)
+
+
+class CheckinLogBody(BaseModel):
+    note: str | None = Field(default=None, max_length=280)
+
+
+class CheckinDayStatePublic(BaseModel):
+    day_key: str
+    state: Literal["done", "open", "missed"]
+
+
+class CheckinStatusPublic(BaseModel):
+    week_start: str
+    target_checkins: int
+    done_count: int
+    on_track: bool
+    day_states: list[CheckinDayStatePublic] = Field(default_factory=list)
+
+
+class SocialCommentBody(BaseModel):
+    body: str = Field(min_length=1, max_length=400)
+
+
+class SocialReactionBody(BaseModel):
+    emoji: str = Field(default="👍", min_length=1, max_length=16)
+
+
+class SocialCommentPublic(BaseModel):
+    id: int
+    target_type: str
+    target_id: int
+    author_id: int
+    author_username: str
+    body: str
+    created_at: datetime
+
+
+class SocialReactionPublic(BaseModel):
+    target_type: str
+    target_id: int
+    emoji: str
+    count: int
+    reacted_by_me: bool = False
+
+
+class SocialReactionUserPublic(BaseModel):
+    user_id: int
+    username: str
+    emoji: str
+    created_at: datetime
+
+
+class SocialChallengeCreateBody(BaseModel):
+    challenge_kind: Literal["duel", "team", "group"] = "duel"
+    title: str = Field(min_length=3, max_length=120)
+    target_sessions: int = Field(default=5, ge=1, le=50)
+    duration_days: int = Field(default=7, ge=3, le=30)
+    member_user_ids: list[int] = Field(default_factory=list)
+
+
+class SocialChallengeJoinBody(BaseModel):
+    challenge_id: int
+
+
+class SocialChallengeMemberPublic(BaseModel):
+    user_id: int
+    username: str
+    progress_sessions: int
+    team_label: str | None = None
+
+
+class SocialChallengePublic(BaseModel):
+    id: int
+    challenge_kind: str
+    title: str
+    week_start: str
+    target_sessions: int
+    duration_days: int = 7
+    status: str
+    premium_detail_locked: bool = False
+    upsell_hint: str | None = None
+    members: list[SocialChallengeMemberPublic] = Field(default_factory=list)
+
+
+class CommitmentBody(BaseModel):
+    target_sessions: int = Field(ge=1, le=50)
+    visibility: Literal["friends", "buddy"] = "friends"
+    commitment_key: Literal["sessions", "checkins", "focus_hours"] = "sessions"
+    period_days: int = Field(default=7, ge=7, le=30)
+
+
+class CommitmentPublic(BaseModel):
+    week_start: str
+    commitment_key: str = "sessions"
+    period_days: int = 7
+    target_sessions: int
+    current_sessions: int
+    status: Literal["on_track", "behind", "completed"]
+    visibility: str
+    upsell_hint: str | None = None
+
+
+class StreakRescueBody(BaseModel):
+    rescued_user_id: int
+
+
+class SocialLeaderboardContextEntry(BaseModel):
+    user_id: int
+    username: str
+    rank: int
+    sessions: int
+    movement: int
+    trend: Literal["up", "down", "flat"]
+
+
+class SocialLeaderboardContextPublic(BaseModel):
+    entries: list[SocialLeaderboardContextEntry] = Field(default_factory=list)
+    chasing_user_id: int | None = None
+    threatening_user_id: int | None = None
+
+
+class SocialWeeklyRecapPublic(BaseModel):
+    week_start: str
+    your_sessions: int
+    buddy_sessions: int
+    team_sessions: int
+    wow_delta_sessions: int
+    recap_line: str
+    trend_vs_last_week_percent: float | None = None
+    premium_detail_locked: bool = False
+    upsell_hint: str | None = None
+    identity_line: str | None = None
+
+
+class BuddyRiskPublic(BaseModel):
+    buddy_user_id: int | None = None
+    buddy_username: str | None = None
+    buddy_streak_at_risk: bool = False
+    rescue_available: bool = False
+    rescued_today: bool = False
+
+
+class IdentityStatePublic(BaseModel):
+    primary_tag: str
+    secondary_tag: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    line: str

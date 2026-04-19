@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     log_json: bool = False
     # Optional: https://sentry.io — API errors, 5xx, slow transactions (when traces_sample_rate > 0).
     sentry_dsn: str | None = None
+    # RevenueCat integration (optional in dev).
+    revenuecat_secret_key: str | None = None
+    revenuecat_webhook_auth: str | None = None
+    webhook_secret: str = "change_me_in_production"
+    revenuecat_default_offering: str = "default"
+    premium_entitlement_name: str = "premium"
 
     @field_validator("secret_key")
     @classmethod
@@ -63,6 +69,17 @@ class Settings(BaseSettings):
         for origin in self.cors_origins:
             if origin == "*" or origin.strip() == "*":
                 raise ValueError("Wildcard CORS origin '*' is not allowed when ENVIRONMENT=production.")
+        return self
+
+    @model_validator(mode="after")
+    def validate_webhook_secret(self):
+        normalized = self.webhook_secret.strip()
+        if self.environment != "production":
+            return self
+        if not normalized or normalized == "change_me_in_production":
+            raise ValueError("WEBHOOK_SECRET must be set and cannot use placeholder value in production.")
+        if len(normalized) < 32:
+            raise ValueError("WEBHOOK_SECRET must be at least 32 characters long in production.")
         return self
 
 

@@ -23,6 +23,7 @@ export const typography = {
   headline: { fontSize: 32, lineHeight: 38 },
   subheadline: { fontSize: 20, lineHeight: 26 },
   body: { fontSize: 16, lineHeight: 22 },
+  bodySmall: { fontSize: 13, lineHeight: 18 },
   caption: { fontSize: 14, lineHeight: 20 },
 } as const;
 

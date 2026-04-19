@@ -9,6 +9,9 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { parseSessionList } from "../../lib/sessionDto";
+import { EmptyState } from "../../components/states/EmptyState";
+import { ErrorState } from "../../components/states/ErrorState";
+import { LoadingState } from "../../components/states/LoadingState";
 import type { SessionDto } from "../../types/session";
 
 function formatDate(iso: string) {
@@ -25,12 +28,17 @@ export default function SessionTrashScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!token) return;
     setError(null);
-    const raw = await apiJson<unknown>("/sessions/trash", { token });
-    setSessions(parseSessionList(raw));
+    try {
+      const raw = await apiJson<unknown>("/sessions/trash", { token });
+      setSessions(parseSessionList(raw));
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
   useEffect(() => {
@@ -76,12 +84,22 @@ export default function SessionTrashScreen() {
         <Text style={styles.title}>{t("sessionTrash.title")}</Text>
         <Text style={styles.subtitle}>{t("sessionTrash.subtitle")}</Text>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {loading && !refreshing ? <LoadingState message={t("sessionTrash.loading")} /> : null}
 
-        {sessions.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>{t("sessionTrash.empty")}</Text>
-          </View>
+        {error ? (
+          <ErrorState
+            title={t("common.oops")}
+            message={error}
+            retryLabel={t("common.tryAgain")}
+            onRetry={() => {
+              setLoading(true);
+              load().catch(() => undefined);
+            }}
+          />
+        ) : null}
+
+        {!loading && !error && sessions.length === 0 ? (
+          <EmptyState icon="🗑️" title={t("sessionTrash.title")} message={t("sessionTrash.empty")} />
         ) : (
           sessions.map((session) => (
             <View key={session.id} style={styles.row}>
@@ -122,15 +140,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     marginBottom: spacing.sm,
   },
-  error: { color: colors.danger, fontFamily: fontFamily.body, ...typography.caption },
-  emptyCard: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-  },
-  emptyText: { color: colors.textSecondary, ...typography.caption },
   row: {
     flexDirection: "row",
     alignItems: "center",
