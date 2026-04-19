@@ -18,7 +18,7 @@ import { generateMotivationMessage, getTimeOfDay } from "../../lib/motivationEng
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDto } from "../../types/session";
 
-const AUTO_RETURN_SECONDS = 5;
+const AUTO_RETURN_SECONDS = 10;
 
 export default function SessionCompleteScreen() {
   const { t } = useTranslation();
@@ -30,6 +30,7 @@ export default function SessionCompleteScreen() {
   const [session, setSession] = useState<SessionDto | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_RETURN_SECONDS);
+  const [autoReturnEnabled, setAutoReturnEnabled] = useState(true);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
   const cancelled = useRef(false);
@@ -73,6 +74,7 @@ export default function SessionCompleteScreen() {
       }
       setLoadState("ready");
       setSecondsLeft(AUTO_RETURN_SECONDS);
+      setAutoReturnEnabled(true);
     } catch (e) {
       if (cancelled.current) return;
       setLoadState("error");
@@ -91,7 +93,7 @@ export default function SessionCompleteScreen() {
   }, [load]);
 
   useEffect(() => {
-    if (loadState !== "ready") return;
+    if (loadState !== "ready" || !autoReturnEnabled) return;
     if (secondsLeft <= 0) {
       router.replace("/(tabs)/dashboard");
       return;
@@ -101,6 +103,11 @@ export default function SessionCompleteScreen() {
   }, [loadState, router, secondsLeft]);
 
   const dur = session?.duration_seconds ?? 0;
+  const autoReturnProgress = useMemo(() => {
+    const elapsed = AUTO_RETURN_SECONDS - secondsLeft;
+    const pct = elapsed / AUTO_RETURN_SECONDS;
+    return Math.max(0, Math.min(1, pct));
+  }, [secondsLeft]);
 
   const completionMessage = useMemo(() => {
     if (!session) return null;
@@ -156,7 +163,25 @@ export default function SessionCompleteScreen() {
           <Text style={styles.streak}>{t("sessionComplete.streakLine", { count: streak })}</Text>
         ) : null}
         {completionMessage ? <Text style={styles.motivation}>{completionMessage}</Text> : null}
-        <Text style={styles.auto}>{t("sessionComplete.autoReturn", { seconds: secondsLeft })}</Text>
+        {autoReturnEnabled ? (
+          <View style={styles.autoWrap}>
+            <Text style={styles.auto}>{t("sessionComplete.autoReturn", { seconds: secondsLeft })}</Text>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.round(autoReturnProgress * 100)}%` }]} />
+            </View>
+            <Pressable
+              style={styles.stayBtn}
+              onPress={() => {
+                setAutoReturnEnabled(false);
+                Haptics.selectionAsync().catch(() => undefined);
+              }}
+            >
+              <Text style={styles.stayBtnLabel}>{t("sessionComplete.stayHere")}</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Text style={styles.auto}>{t("sessionComplete.autoReturnCancelled")}</Text>
+        )}
       </View>
 
       <View style={styles.actions}>
@@ -221,6 +246,39 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   auto: { color: colors.textSecondary, ...typography.caption, marginTop: spacing.md },
+  autoWrap: {
+    marginTop: spacing.md,
+    width: "100%",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  progressTrack: {
+    width: "100%",
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: colors.primary,
+  },
+  stayBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  stayBtnLabel: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   actions: { marginTop: spacing.xl, gap: spacing.md },
   textBtn: { alignItems: "center", padding: spacing.md },
   textBtnLabel: {

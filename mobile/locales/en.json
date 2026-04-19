@@ -286,6 +286,8 @@
     "streakLine_one": "🔥 {{count}} day streak!",
     "streakLine_other": "🔥 {{count}} days streak!",
     "autoReturn": "Returning to dashboard in {{seconds}}s…",
+    "stayHere": "Stay here",
+    "autoReturnCancelled": "Auto-return paused.",
     "viewDetails": "View session details",
     "startAnother": "Start another session"
   },
@@ -429,9 +431,9 @@
     "longest": "Longest streak: {{days}} days",
     "historyA11y": "View streak history",
     "historyLink": "Streak history",
-    "riskBanner": "⚠️ Log a session today to keep the chain alive.",
+    "riskBanner": "Keep the streak alive! Start a session today and keep your chain strong.",
     "freezeActivating": "Activating…",
-    "freezeAvailable": "{{n}} Streak Freeze available (Premium)",
+    "freezeAvailable": "{{n}} Streak Freeze available",
     "freezeNone": "No freezes left this month",
     "freezeHint": "Resets next month — or complete a session today."
   },

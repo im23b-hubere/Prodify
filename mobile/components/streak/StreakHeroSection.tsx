@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { WeekProgressDots, type WeekDotKind } from "../ui/WeekProgressDots";
+import type { WeekDotKind } from "../ui/WeekProgressDots";
 import { useAnimatedStreakCount } from "../../hooks/useAnimatedStreakCount";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
@@ -42,6 +42,7 @@ export function StreakHeroSection({
 
   const kinds: WeekDotKind[] = (overview.last_7_day_states ?? []) as WeekDotKind[];
   const labels = overview.last_7_day_labels ?? [];
+  const weekItems = labels.length === 7 ? labels.map((label, index) => ({ label, index })) : [];
 
   const nextLine =
     overview.next_milestone_at != null &&
@@ -64,15 +65,27 @@ export function StreakHeroSection({
         </View>
         <Text style={styles.tagline}>{overview.tagline}</Text>
 
-        <WeekProgressDots dayKinds={kinds.length === 7 ? kinds : undefined} />
-
-        {labels.length === 7 ? (
-          <View style={styles.weekLabels}>
-            {labels.map((L, i) => (
-              <Text key={i} style={styles.wd}>
-                {L}
-              </Text>
-            ))}
+        {kinds.length === 7 && weekItems.length === 7 ? (
+          <View style={styles.weekProgress}>
+            {weekItems.map(({ label, index }) => {
+              const kind = kinds[index] ?? "none";
+              const isToday = index === 6;
+              return (
+                <View key={`${label}-${index}`} style={styles.dayColumn}>
+                  <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
+                    {label.slice(0, 1)}
+                  </Text>
+                  <View
+                    style={[
+                      styles.dayDot,
+                      kind === "session" && styles.dayDotSession,
+                      kind === "freeze" && styles.dayDotFreeze,
+                      isToday && styles.dayDotToday,
+                    ]}
+                  />
+                </View>
+              );
+            })}
           </View>
         ) : null}
 
@@ -191,19 +204,48 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     fontFamily: fontFamily.bodyMedium,
   },
-  weekLabels: {
+  weekProgress: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: spacing.sm,
-    marginTop: spacing.xs,
+    gap: spacing.md,
+    marginTop: spacing.sm,
     marginBottom: spacing.sm,
   },
-  wd: {
-    width: 20,
+  dayColumn: {
+    width: 24,
+    alignItems: "center",
+    gap: 6,
+  },
+  dayLabel: {
     textAlign: "center",
     color: colors.textSecondary,
     fontSize: 11,
     fontFamily: fontFamily.bodyMedium,
+  },
+  dayLabelToday: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+  },
+  dayDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: "transparent",
+  },
+  dayDotSession: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  dayDotFreeze: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+  },
+  dayDotToday: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
   milestoneHint: {
     color: colors.textSecondary,
@@ -240,15 +282,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: radii.md,
-    backgroundColor: "rgba(255,170,0,0.12)",
+    backgroundColor: "rgba(255,139,0,0.16)",
     borderWidth: 1,
-    borderColor: "rgba(255,170,0,0.35)",
+    borderColor: "rgba(255,139,0,0.45)",
   },
   riskTxt: {
-    color: "#ffcc66",
+    color: "#ffd28e",
     ...typography.caption,
     textAlign: "center",
-    fontFamily: fontFamily.bodyMedium,
+    fontFamily: fontFamily.bodyBold,
   },
   freezeBtn: {
     marginTop: spacing.md,

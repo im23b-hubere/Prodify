@@ -90,8 +90,11 @@ def calculate_focus_score(
     paused_duration_minutes: float,
     notes_length: int,
     mood_level: int | None,
+    pause_count: int = 0,
+    background_switches: int = 0,
+    time_of_day: int | None = None,
 ) -> int:
-    """Heuristic focus score 0–100 (pause ratio, duration, notes, mood)."""
+    """Heuristic focus score 0–100 with stronger variance."""
     if duration_minutes <= 0 and paused_duration_minutes <= 0:
         return 0
     score = 100
@@ -99,27 +102,49 @@ def calculate_focus_score(
 
     if paused_duration_minutes > 0 and duration_minutes > 0:
         pause_ratio = paused_duration_minutes / duration_minutes
-        if pause_ratio > 0.3:
-            score -= 40
-        elif pause_ratio > 0.15:
+        if pause_ratio > 0.4:
+            score -= 35
+        elif pause_ratio > 0.25:
             score -= 20
-        else:
+        elif pause_ratio > 0.15:
             score -= 10
+        elif pause_ratio > 0.05:
+            score -= 5
     elif paused_duration_minutes > 0:
-        score -= 10
-
-    if duration_minutes < 15:
-        score -= 15
-    elif duration_minutes > 120:
-        score += 10
-
-    if notes_length > 50:
-        score += 5
-    elif notes_length == 0:
         score -= 5
 
-    if mood >= 4:
+    if pause_count > 5:
+        score -= 15
+    elif pause_count > 3:
+        score -= 8
+    elif pause_count > 1:
+        score -= 3
+
+    if background_switches > 10:
+        score -= 20
+    elif background_switches > 5:
+        score -= 10
+    elif background_switches > 2:
+        score -= 5
+
+    if duration_minutes < 15:
+        score -= 10
+    elif duration_minutes < 30:
+        score -= 5
+    elif duration_minutes >= 90:
         score += 5
+
+    if notes_length > 100:
+        score += 3
+    elif notes_length == 0:
+        score -= 2
+
+    if mood >= 4:
+        score += 2
+
+    if time_of_day is not None and 1 <= time_of_day <= 5:
+        # Slight fatigue penalty for deep-night sessions.
+        score -= 2
 
     return max(0, min(100, int(round(score))))
 
@@ -130,7 +155,17 @@ def compute_focus_score_for_session(row: ProductionSession) -> int:
     dur_m = dur_s / 60.0
     paused_m = paused_s / 60.0
     notes_len = len(row.notes or "")
-    return calculate_focus_score(dur_m, paused_m, notes_len, row.mood_level)
+    pause_count = 1 if paused_s > 0 else 0
+    tod = as_utc_aware(row.started_at).hour if row.started_at is not None else None
+    return calculate_focus_score(
+        dur_m,
+        paused_m,
+        notes_len,
+        row.mood_level,
+        pause_count=pause_count,
+        background_switches=0,
+        time_of_day=tod,
+    )
 
 
 def session_focus_metrics(session: ProductionSession) -> tuple[int, float]:
