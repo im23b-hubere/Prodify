@@ -217,35 +217,39 @@ export default function ProfilScreen() {
           <Text style={styles.muted}>{t("profile.milestonesUnavailable")}</Text>
         ) : null}
 
-        <Text style={styles.sectionTitle}>{t("profile.pushSectionTitle")}</Text>
-        <Text style={styles.pushHint}>{t("profile.pushHint")}</Text>
-        <View style={styles.pingChips}>
-          {(
-            [
-              { id: "test" as const, labelKey: "profile.pingTemplateTest" as const },
-              { id: "session_demo" as const, labelKey: "profile.pingTemplateSession" as const },
-              { id: "streak_demo" as const, labelKey: "profile.pingTemplateStreak" as const },
-            ] as const
-          ).map((p) => (
-            <Pressable
-              key={p.id}
-              style={[styles.pingChip, pingTemplate === p.id && styles.pingChipOn]}
-              onPress={() => {
-                Haptics.selectionAsync().catch(() => undefined);
-                setPingTemplate(p.id);
-              }}
-            >
-              <Text style={[styles.pingChipTxt, pingTemplate === p.id && styles.pingChipTxtOn]}>
-                {t(p.labelKey)}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <PrimaryButton
-          label={pushBusy ? t("profile.pingSending") : t("profile.pingSend")}
-          onPress={pingPush}
-          loading={pushBusy}
-        />
+        {__DEV__ ? (
+          <>
+            <Text style={styles.sectionTitle}>{t("profile.pushSectionTitle")}</Text>
+            <Text style={styles.pushHint}>{t("profile.pushHint")}</Text>
+            <View style={styles.pingChips}>
+              {(
+                [
+                  { id: "test" as const, labelKey: "profile.pingTemplateTest" as const },
+                  { id: "session_demo" as const, labelKey: "profile.pingTemplateSession" as const },
+                  { id: "streak_demo" as const, labelKey: "profile.pingTemplateStreak" as const },
+                ] as const
+              ).map((p) => (
+                <Pressable
+                  key={p.id}
+                  style={[styles.pingChip, pingTemplate === p.id && styles.pingChipOn]}
+                  onPress={() => {
+                    Haptics.selectionAsync().catch(() => undefined);
+                    setPingTemplate(p.id);
+                  }}
+                >
+                  <Text style={[styles.pingChipTxt, pingTemplate === p.id && styles.pingChipTxtOn]}>
+                    {t(p.labelKey)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <PrimaryButton
+              label={pushBusy ? t("profile.pingSending") : t("profile.pingSend")}
+              onPress={pingPush}
+              loading={pushBusy}
+            />
+          </>
+        ) : null}
 
         <Text style={styles.sectionTitle}>{t("profile.settingsTitle")}</Text>
         <View style={styles.settingsCard}>

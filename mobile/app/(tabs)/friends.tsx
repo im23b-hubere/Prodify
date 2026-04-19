@@ -1,5 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -61,6 +62,7 @@ function formatDuration(sec: number, t: TFunction): string {
 export default function FriendsScreen() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
+  const router = useRouter();
   const [mode, setMode] = useState<"week" | "all">("week");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -287,7 +289,13 @@ export default function FriendsScreen() {
               key={`${entry.user_id}-${entry.rank}`}
               entering={FadeInDown.delay(idx * 35).duration(320)}
             >
-              <View style={[styles.leaderItem, idx > 0 && styles.leaderDivider]}>
+              <Pressable
+                style={[styles.leaderItem, idx > 0 && styles.leaderDivider]}
+                onPress={() => {
+                  Haptics.selectionAsync().catch(() => undefined);
+                  router.push(`/profile/${entry.user_id}`);
+                }}
+              >
                 <View style={[styles.rankBadge, { backgroundColor: rankColor(entry.rank) }]}>
                   <Text style={styles.rankText}>#{entry.rank}</Text>
                 </View>
@@ -315,7 +323,7 @@ export default function FriendsScreen() {
                         })}
                   </Text>
                 </View>
-              </View>
+              </Pressable>
             </Animated.View>
           ))}
         </View>
@@ -326,9 +334,13 @@ export default function FriendsScreen() {
             <Text style={styles.feedEmpty}>{t("friendsScreen.feedEmpty")}</Text>
           ) : null}
           {activity.map((item, idx) => (
-            <View
+            <Pressable
               key={item.session_id}
               style={[styles.feedRow, idx !== activity.length - 1 && styles.feedDivider]}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => undefined);
+                router.push(`/profile/${item.user_id}`);
+              }}
             >
               <View style={styles.feedDot} />
               <Text style={styles.feedText}>
@@ -339,7 +351,7 @@ export default function FriendsScreen() {
                   ago: formatAgo(item.completed_at, t),
                 })}
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       </ScrollView>

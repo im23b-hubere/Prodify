@@ -311,6 +311,8 @@
     "mood": "Mood",
     "pauses": "Pauses",
     "pauseMin": "{{m}} min",
+    "pauseSummary_one": "{{count}} pause · {{m}} min",
+    "pauseSummary_other": "{{count}} pauses · {{m}} min",
     "sessionType": "Session type",
     "notes": "Notes",
     "notesPlaceholder": "Add context for this session",

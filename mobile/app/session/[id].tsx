@@ -158,6 +158,8 @@ export default function SessionDetailScreen() {
       ? formatDurationWords(session.duration_seconds)
       : t("sessionDetail.inProgress");
   const tagList = sessionTagsList(session.tags);
+  const pauseCountRaw = insights?.timeline?.filter((segment) => segment.kind === "paused").length ?? 0;
+  const pauseCount = session.paused_duration_seconds ? Math.max(1, pauseCountRaw) : 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -224,7 +226,8 @@ export default function SessionDetailScreen() {
             <Text style={styles.gridLabel}>{t("sessionDetail.pauses")}</Text>
             <Text style={styles.gridVal}>
               {session.paused_duration_seconds
-                ? t("sessionDetail.pauseMin", {
+                ? t("sessionDetail.pauseSummary", {
+                    count: pauseCount,
                     m: Math.round((session.paused_duration_seconds || 0) / 60),
                   })
                 : "—"}
