@@ -148,6 +148,10 @@ Vor PR:
 - Store metadata source of truth: `mobile/store/STORE_METADATA.en-US.md`
 - Screenshot production plan: `mobile/store/SCREENSHOT_PLAN.en-US.md`
 
+## Deployment
+
+- Production deployment runbook: `DEPLOYMENT_CHECKLIST.md`
+
 ## Sentry Setup (Production)
 
 - Backend: `SENTRY_DSN` setzen (Pflicht bei `ENVIRONMENT=production`), optional `SENTRY_TRACES_SAMPLE_RATE` anpassen.
