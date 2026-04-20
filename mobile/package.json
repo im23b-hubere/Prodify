@@ -34,6 +34,7 @@
     "@expo-google-fonts/syne": "^0.4.2",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "^12.0.1",
     "@sentry/react-native": "~7.2.0",
     "expo": "~54.0.33",
     "expo-av": "~16.0.8",

@@ -18,6 +18,7 @@ import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
+import { OfflineBanner } from "../components/OfflineBanner";
 import { XpHud } from "../components/progression/XpHud";
 import { AuthProvider } from "../context/AuthContext";
 import { colors } from "../constants/theme";
@@ -40,6 +41,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
+          <OfflineBanner />
           <NotificationNavBridge />
           <XpHud />
           <StatusBar style="light" />

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../constants/api";
+import NetInfo from "@react-native-community/netinfo";
 import i18n from "./i18n";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -123,6 +124,11 @@ async function tryRefreshAccessToken(): Promise<TokenPair | null> {
 }
 
 export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
+  const connection = await NetInfo.fetch();
+  if (connection.isConnected === false || connection.isInternetReachable === false) {
+    throw new Error(i18n.t("errors.network"));
+  }
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
