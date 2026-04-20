@@ -1,0 +1,36 @@
+appId: com.prodify.app
+---
+- launchApp
+- assertVisible: "Welcome to Prodify"
+
+# Login Flow
+- tapOn: "Login"
+- inputText:
+    id: "email-input"
+    text: "test@prodify.app"
+- inputText:
+    id: "password-input"
+    text: "Test1234!"
+- tapOn: "Login"
+- assertVisible: "Dashboard"
+
+# Session Flow
+- tapOn: "Start Session"
+- tapOn: "Beat Making"
+- tapOn: "Start"
+- assertVisible: "Session Active"
+- waitForAnimationToEnd
+- tapOn: "Stop Session"
+- assertVisible: "Session Complete"
+
+# Navigate to Stats
+- tapOn: "Stats"
+- assertVisible: "Your Stats"
+
+# Navigate to Friends
+- tapOn: "Friends"
+- assertVisible: "Friends"
+
+# Navigate to Profile
+- tapOn: "Profile"
+- assertVisible: "Profile"
