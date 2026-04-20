@@ -25,6 +25,7 @@ from app.routers import (
     friends,
     goals as goals_router,
     jobs as jobs_router,
+    legal as legal_router,
     motivation,
     outcomes as outcomes_router,
     notifications as notifications_router,
@@ -188,6 +189,7 @@ app.include_router(notifications_router.router)
 app.include_router(goals_router.router)
 app.include_router(achievements_router.router)
 app.include_router(jobs_router.router)
+app.include_router(legal_router.router)
 app.include_router(billing_router.router)
 app.include_router(outcomes_router.router)
 app.include_router(progression_router.router)

@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     webhook_secret: str = "change_me_in_production"
     revenuecat_default_offering: str = "default"
     premium_entitlement_name: str = "premium"
+    legal_privacy_url: str = "https://prodify.app/privacy"
+    legal_terms_url: str = "https://prodify.app/terms"
+    legal_effective_date: str = "2026-04-20"
+    legal_version: str = "2026.04"
+    support_email: str = "support@prodify.app"
 
     @field_validator("secret_key")
     @classmethod

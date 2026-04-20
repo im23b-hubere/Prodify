@@ -598,6 +598,20 @@ class KpiDashboardPublic(BaseModel):
     trend: list[KpiTrendPointPublic] = Field(default_factory=list)
 
 
+class LegalDocumentMetaPublic(BaseModel):
+    title: str
+    version: str
+    effective_date: str
+    url: str
+    in_app_path: str
+
+
+class LegalDocumentsPublic(BaseModel):
+    privacy: LegalDocumentMetaPublic
+    terms: LegalDocumentMetaPublic
+    support_email: str
+
+
 class PublicGoalBody(BaseModel):
     target_sessions: int = Field(ge=1, le=50, default=4)
     is_public: bool = False

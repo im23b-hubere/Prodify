@@ -103,6 +103,12 @@ Optional analytics snapshot endpoint (authenticated):
 Invoke-RestMethod http://127.0.0.1:8000/stats/kpi/dashboard -Headers @{ Authorization = "Bearer <token>" }
 ```
 
+Public legal metadata endpoint:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/legal/documents
+```
+
 ### Mobile
 
 ```powershell

@@ -105,6 +105,14 @@ export default function OnboardingScreen() {
         >
           <Text style={styles.legalFooterTxt}>{t("onboarding.footerPrivacy")}</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("legal.linksTerms")}
+          onPress={() => router.push("/legal/terms" as never)}
+          style={styles.legalFooter}
+        >
+          <Text style={styles.legalFooterTxt}>{t("legal.linksTerms")}</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }
@@ -138,6 +146,14 @@ export default function OnboardingScreen() {
           >
             <Text style={styles.legalFooterTxt}>{t("onboarding.footerPrivacy")}</Text>
           </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("legal.linksTerms")}
+            onPress={() => router.push("/legal/terms" as never)}
+            style={styles.legalFooter}
+          >
+            <Text style={styles.legalFooterTxt}>{t("legal.linksTerms")}</Text>
+          </Pressable>
         </ScrollView>
       </SafeAreaView>
     );
@@ -164,6 +180,14 @@ export default function OnboardingScreen() {
         style={styles.legalFooter}
       >
         <Text style={styles.legalFooterTxt}>{t("onboarding.footerPrivacy")}</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("legal.linksTerms")}
+        onPress={() => router.push("/legal/terms" as never)}
+        style={styles.legalFooter}
+      >
+        <Text style={styles.legalFooterTxt}>{t("legal.linksTerms")}</Text>
       </Pressable>
     </SafeAreaView>
   );
