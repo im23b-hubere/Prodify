@@ -12,7 +12,12 @@ from app.dependencies import get_current_user
 from app.models import User, UserSubscription
 from app.schemas import BillingSyncBody, EntitlementPublic
 from app.services.kpi_tracker import track_event
-from app.services.subscription_service import sync_from_webhook_payload, to_entitlement_public, upsert_subscription
+from app.services.subscription_service import (
+    sync_from_webhook_payload,
+    to_entitlement_public,
+    upsert_subscription,
+    verify_billing_sync,
+)
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -41,12 +46,31 @@ def sync_entitlement(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    if settings.environment == "production":
-        raise HTTPException(status_code=403, detail="Client sync not allowed in production")
-    row = upsert_subscription(db, current.id, body)
-    current.is_premium = 1 if body.entitlement == "premium" or body.trial_active else 0
-    current.premium_until = body.expires_at
-    track_event(db, "trial_started" if body.trial_active else "billing_sync", current.id, {"entitlement": body.entitlement})
+    if body.app_user_id != str(current.id):
+        raise HTTPException(status_code=403, detail="app_user_id does not match authenticated user")
+    if settings.environment == "production" and not settings.revenuecat_secret_key:
+        raise HTTPException(status_code=503, detail="Billing verification is not configured")
+
+    try:
+        verified = verify_billing_sync(body)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Could not verify purchase state with billing provider")
+
+    verified_body = BillingSyncBody(
+        app_user_id=verified.app_user_id,
+        entitlement="premium" if verified.entitlement == "premium" else "free",
+        trial_active=verified.trial_active,
+        expires_at=verified.expires_at,
+    )
+    row = upsert_subscription(db, current.id, verified_body)
+    current.is_premium = 1 if verified_body.entitlement == "premium" or verified_body.trial_active else 0
+    current.premium_until = verified_body.expires_at
+    track_event(
+        db,
+        "trial_started" if verified_body.trial_active else "billing_sync",
+        current.id,
+        {"entitlement": verified_body.entitlement, "verified_by": verified.verification_source},
+    )
     db.commit()
     db.refresh(row)
     return to_entitlement_public(row)
