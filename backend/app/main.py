@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 from app.config import is_sqlite_database_url, settings
 from app.database import engine
@@ -197,4 +197,32 @@ app.include_router(social_router.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "environment": settings.environment}
+    ready = database_is_ready()
+    return {
+        "status": "ok" if ready else "degraded",
+        "environment": settings.environment,
+        "version": settings.app_version,
+        "checks": {"database": "ok" if ready else "error"},
+    }
+
+
+@app.get("/health/live")
+def health_live():
+    return {"status": "ok"}
+
+
+@app.get("/health/ready")
+def health_ready():
+    if not database_is_ready():
+        raise HTTPException(status_code=503, detail="Database is not ready")
+    return {"status": "ok", "checks": {"database": "ok"}}
+
+
+def database_is_ready() -> bool:
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        logger.exception("Database readiness check failed")
+        return False
