@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
@@ -11,6 +11,7 @@ from sqlalchemy import inspect
 
 from app.config import is_sqlite_database_url, settings
 from app.database import engine
+from app.errors import APIError, api_error_handler, http_exception_handler
 from app.observability import init_observability
 from app.rate_limit import limiter
 
@@ -153,6 +154,8 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(APIError, api_error_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
 
 app.add_middleware(
     CORSMiddleware,

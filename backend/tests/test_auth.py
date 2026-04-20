@@ -26,7 +26,7 @@ def test_register_rejects_duplicate_email(client):
         json={"email": "dup@example.com", "username": "name-b", "password": "strong-pass-123"},
     )
     assert second.status_code == 400
-    assert second.json()["detail"] == "Email already registered"
+    assert second.json()["error"]["message"] == "Email already registered"
 
 
 def test_refresh_rotates_and_invalidates_old_refresh(client):
@@ -74,4 +74,4 @@ def test_login_rejects_wrong_password(client):
 
     login = client.post("/auth/login", json={"email": "login@example.com", "password": "wrong-pass"})
     assert login.status_code == 401
-    assert login.json()["detail"] == "Incorrect email or password"
+    assert login.json()["error"]["message"] == "Incorrect email or password"

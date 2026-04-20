@@ -29,8 +29,7 @@ def test_session_start_while_active(client):
         headers=headers,
     )
     assert second_start.status_code == 409
-    detail = second_start.json().get("detail", {})
-    assert "already exists" in str(detail).lower()
+    assert "already exists" in second_start.json()["error"]["message"].lower()
 
 
 def test_session_stop_with_invalid_id(client):

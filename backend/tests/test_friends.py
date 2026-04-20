@@ -58,7 +58,7 @@ def test_friend_request_reverse_pending_rejected(client):
         json={"username": "dave"},
     )
     assert second.status_code == 400
-    assert "already sent" in second.json()["detail"].lower()
+    assert "already sent" in second.json()["error"]["message"].lower()
 
 
 def test_delete_pending_cancel(client):
