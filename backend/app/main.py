@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -32,6 +33,29 @@ from app.routers import (
     streak,
     users as users_router,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def validate_runtime_config() -> None:
+    required_values = {
+        "DATABASE_URL": settings.database_url,
+        "SECRET_KEY": settings.secret_key,
+        "WEBHOOK_SECRET": settings.webhook_secret,
+    }
+
+    missing = [name for name, value in required_values.items() if not str(value or "").strip()]
+    if missing:
+        raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
+
+    if settings.environment == "production":
+        normalized_secret = settings.secret_key.strip()
+        if normalized_secret == "change_me_in_production":
+            raise RuntimeError("SECRET_KEY must be changed in production.")
+        if len(normalized_secret) < 32:
+            raise RuntimeError("SECRET_KEY must be at least 32 characters in production.")
+
+    logger.info("Configuration validated for environment=%s", settings.environment)
 
 
 def validate_schema() -> None:
@@ -121,11 +145,12 @@ def validate_schema() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    validate_runtime_config()
     validate_schema()
     yield
 
 
-app = FastAPI(title="Prodify API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

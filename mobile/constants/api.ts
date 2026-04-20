@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { getExpoPublicApiUrl, getExpoPublicAppEnv } from "./env";
 
 /**
  * User-visible copy lives in locales/en.json (react-i18next).
@@ -42,8 +43,17 @@ function isLoopbackApiUrl(url: string): boolean {
 }
 
 function getApiUrl(): string {
-  const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  const envUrl = getExpoPublicApiUrl();
   const fromMetro = inferDevApiUrlFromMetroHost();
+
+  if (!__DEV__) {
+    if (!envUrl) {
+      throw new Error("EXPO_PUBLIC_API_URL must be set for production builds.");
+    }
+    if (/localhost|127\.0\.0\.1|10\.0\.2\.2/i.test(envUrl)) {
+      throw new Error("Production builds cannot use localhost API URLs.");
+    }
+  }
 
   if (envUrl) {
     // .env often uses 127.0.0.1; on a physical phone that targets the device, not your PC.
@@ -54,10 +64,6 @@ function getApiUrl(): string {
     return envUrl;
   }
 
-  if (!__DEV__) {
-    throw new Error("EXPO_PUBLIC_API_URL must be set for production builds.");
-  }
-
   if (fromMetro) return fromMetro;
 
   return loopbackApiUrl;
@@ -65,7 +71,7 @@ function getApiUrl(): string {
 
 /** EAS profile / env (development | preview | production). Used for tags and Sentry. */
 export function getAppEnvironment(): string {
-  const raw = process.env.EXPO_PUBLIC_APP_ENV?.trim();
+  const raw = getExpoPublicAppEnv();
   if (raw) return raw;
   return __DEV__ ? "development" : "production";
 }
