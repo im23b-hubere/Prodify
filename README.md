@@ -151,6 +151,7 @@ Vor PR:
 ## Deployment
 
 - Production deployment runbook: `DEPLOYMENT_CHECKLIST.md`
+- Final release gate status: `FINAL_CHECKLIST.md`
 
 ## Sentry Setup (Production)
 
