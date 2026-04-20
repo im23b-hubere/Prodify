@@ -73,6 +73,14 @@ class SessionStart(BaseModel):
     mood_level: int | None = Field(default=None, ge=1, le=5)
     tags: list[str] | None = None
 
+    @field_validator("notes")
+    @classmethod
+    def sanitize_notes(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = " ".join(value.strip().split())
+        return cleaned or None
+
     @field_validator("tags", mode="before")
     @classmethod
     def normalize_tags(cls, v: object) -> list[str] | None:
@@ -92,7 +100,7 @@ class SessionStart(BaseModel):
 
 
 class SessionStop(BaseModel):
-    session_id: int
+    session_id: int = Field(gt=0)
 
 
 class SessionUpdate(BaseModel):
@@ -100,6 +108,14 @@ class SessionUpdate(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
     mood_level: int | None = Field(default=None, ge=1, le=5)
     tags: list[str] | None = None
+
+    @field_validator("notes")
+    @classmethod
+    def sanitize_notes(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = " ".join(value.strip().split())
+        return cleaned or None
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -192,6 +208,14 @@ class SessionStatsPublic(BaseModel):
 
 class FriendRequestCreate(BaseModel):
     username: str = Field(min_length=2, max_length=64)
+
+    @field_validator("username")
+    @classmethod
+    def normalize_username(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if len(normalized) < 2:
+            raise ValueError("username must contain at least 2 characters")
+        return normalized
 
 
 class FriendIncomingPublic(BaseModel):
@@ -375,6 +399,23 @@ class PushTokenRegister(BaseModel):
     platform: str = Field(default="unknown", max_length=32)
     channel: Literal["expo", "fcm"] = "expo"
 
+    @field_validator("token")
+    @classmethod
+    def sanitize_token(cls, value: str) -> str:
+        cleaned = value.strip()
+        if len(cleaned) < 8:
+            raise ValueError("token must contain at least 8 characters")
+        return cleaned
+
+    @field_validator("platform")
+    @classmethod
+    def normalize_platform(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        allowed = {"ios", "android", "web", "unknown"}
+        if normalized not in allowed:
+            return "unknown"
+        return normalized
+
 
 class PushPingBody(BaseModel):
     """`template` selects canned copy; `test` uses optional title/body overrides."""
@@ -477,6 +518,14 @@ class BillingSyncBody(BaseModel):
     trial_active: bool = False
     expires_at: datetime | None = None
 
+    @field_validator("app_user_id")
+    @classmethod
+    def sanitize_app_user_id(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("app_user_id must not be empty")
+        return cleaned
+
 
 class ProgressionPublic(BaseModel):
     xp_total: int
@@ -549,7 +598,7 @@ class WeeklyCheckinPublic(BaseModel):
 
 
 class ChallengeJoinBody(BaseModel):
-    challenge_id: int
+    challenge_id: int = Field(gt=0)
 
 
 class ChallengeEntryPublic(BaseModel):
@@ -564,11 +613,11 @@ class ChallengeLeaderboardPublic(BaseModel):
 
 
 class BuddyInviteBody(BaseModel):
-    friend_user_id: int
+    friend_user_id: int = Field(gt=0)
 
 
 class BuddyInviteAcceptBody(BaseModel):
-    invite_id: int
+    invite_id: int = Field(gt=0)
 
 
 class BuddyStatusPublic(BaseModel):
@@ -587,6 +636,14 @@ class CheckinPlanBody(BaseModel):
 class CheckinLogBody(BaseModel):
     note: str | None = Field(default=None, max_length=280)
 
+    @field_validator("note")
+    @classmethod
+    def sanitize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = " ".join(value.strip().split())
+        return cleaned or None
+
 
 class CheckinDayStatePublic(BaseModel):
     day_key: str
@@ -604,9 +661,23 @@ class CheckinStatusPublic(BaseModel):
 class SocialCommentBody(BaseModel):
     body: str = Field(min_length=1, max_length=400)
 
+    @field_validator("body")
+    @classmethod
+    def sanitize_body(cls, value: str) -> str:
+        cleaned = " ".join(value.strip().split())
+        if not cleaned:
+            raise ValueError("body must not be empty")
+        return cleaned
+
 
 class SocialReactionBody(BaseModel):
     emoji: str = Field(default="👍", min_length=1, max_length=16)
+
+    @field_validator("emoji")
+    @classmethod
+    def sanitize_emoji(cls, value: str) -> str:
+        cleaned = value.strip()
+        return cleaned or "👍"
 
 
 class SocialCommentPublic(BaseModel):
@@ -644,7 +715,7 @@ class SocialChallengeCreateBody(BaseModel):
 
 
 class SocialChallengeJoinBody(BaseModel):
-    challenge_id: int
+    challenge_id: int = Field(gt=0)
 
 
 class SocialChallengeMemberPublic(BaseModel):
@@ -686,7 +757,7 @@ class CommitmentPublic(BaseModel):
 
 
 class StreakRescueBody(BaseModel):
-    rescued_user_id: int
+    rescued_user_id: int = Field(gt=0)
 
 
 class SocialLeaderboardContextEntry(BaseModel):
