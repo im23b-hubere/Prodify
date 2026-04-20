@@ -49,11 +49,13 @@ def init_sentry() -> None:
     sentry_sdk.init(
         dsn=dsn,
         environment=settings.environment,
+        release=settings.app_version,
+        send_default_pii=False,
         integrations=[
             StarletteIntegration(transaction_style="endpoint"),
             FastApiIntegration(),
         ],
-        traces_sample_rate=0.15 if settings.environment == "production" else 0.0,
+        traces_sample_rate=settings.sentry_traces_sample_rate if settings.environment == "production" else 0.0,
     )
 
 

@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     log_json: bool = False
     # Optional: https://sentry.io — API errors, 5xx, slow transactions (when traces_sample_rate > 0).
     sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = 0.15
     # RevenueCat integration (optional in dev).
     revenuecat_secret_key: str | None = None
     revenuecat_webhook_auth: str | None = None
@@ -84,6 +85,15 @@ class Settings(BaseSettings):
             raise ValueError("WEBHOOK_SECRET must be set and cannot use placeholder value in production.")
         if len(normalized) < 32:
             raise ValueError("WEBHOOK_SECRET must be at least 32 characters long in production.")
+        return self
+
+    @model_validator(mode="after")
+    def validate_sentry_in_production(self):
+        if self.environment != "production":
+            return self
+        dsn = (self.sentry_dsn or "").strip()
+        if not dsn:
+            raise ValueError("SENTRY_DSN must be set when ENVIRONMENT=production.")
         return self
 
 
