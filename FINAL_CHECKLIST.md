@@ -9,17 +9,17 @@ Last validated: 2026-04-20
   - Result: `47 passed`
 - [x] Mobile lint passes
   - Command: `cd mobile && npm run lint`
-- [ ] Mobile format check passes
+- [x] Mobile format check passes
   - Command: `cd mobile && npm run format:check`
-  - Result: failed (Prettier reports style issues in multiple files)
+  - Result: pass (after `npm run format -- --write`)
 - [x] Mobile TypeScript check passes
   - Command: `cd mobile && npx tsc --noEmit`
 - [x] Mobile Jest test suite passes
   - Command: `cd mobile && npm test -- --ci --coverage=false`
   - Result: `6 suites, 17 tests passed`
-- [ ] Maestro smoke test executable in current environment
-  - Command: `cd mobile && maestro test maestro/flows/smoke_test.yaml`
-  - Result: `maestro` command not found in current shell environment
+- [ ] Maestro smoke test completed on connected device/emulator
+  - Command: `cd mobile && %USERPROFILE%/.maestro/bin/maestro.bat test maestro/flows/smoke_test.yaml`
+  - Result: Maestro CLI executes, but run blocked with `Not enough devices connected (0)`
 - [ ] Manual smoke test on physical device completed
   - Result: pending manual execution
 
@@ -41,6 +41,5 @@ Last validated: 2026-04-20
 ## Current Decision
 
 **No-Go until remaining MUST BE GREEN items are resolved**:
-- run Prettier write/fix and re-check formatting
-- ensure Maestro CLI is available in runtime shell and re-run smoke flow
+- start at least one Android/iOS device, then re-run Maestro smoke flow
 - complete and sign off manual device smoke test
