@@ -26,10 +26,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { SESSION_TYPE_IDS, SESSION_TYPES, type SessionType } from "../../constants/sessionTypes";
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
+import { AppCard } from "../ui/AppCard";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError, apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
@@ -181,6 +183,8 @@ function TypeCard({
 }
 
 export type SessionSetupFormProps = {
+  /** Optional preselected type (e.g. from coaching recommendation). */
+  initialSessionType?: SessionType | null;
   /** Called after the session is created successfully (API returned). */
   onStarted: (session: SessionDto) => void;
   /** Server already has an active session — refresh parent state and stay calm. */
@@ -192,6 +196,7 @@ export type SessionSetupFormProps = {
 };
 
 export function SessionSetupForm({
+  initialSessionType = null,
   onStarted,
   onActiveSessionConflict,
   onRequestClose,
@@ -213,16 +218,24 @@ export function SessionSetupForm({
       }
     };
   }, []);
-  const [selectedType, setSelectedType] = useState<SessionType | null>(null);
+  const [selectedType, setSelectedType] = useState<SessionType | null>(initialSessionType);
   const [notes, setNotes] = useState("");
   const [mood, setMood] = useState<number | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showOptional, setShowOptional] = useState(false);
+
+  useEffect(() => {
+    if (initialSessionType) {
+      setSelectedType(initialSessionType);
+    }
+  }, [initialSessionType]);
 
   const noteLen = notes.length;
   const canStart = selectedType !== null;
+  const selectedTypeLabel = selectedType ? sessionTypeLabel(selectedType, t) : null;
 
   const addTag = useCallback(
     (raw: string) => {
@@ -363,6 +376,13 @@ export function SessionSetupForm({
       ) : null}
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <AppCard style={styles.introCard}>
+          <Text style={styles.introTitle}>{t("dashboard.newSessionTitle")}</Text>
+          <Text style={styles.introText}>
+            {selectedTypeLabel ? selectedTypeLabel : t("sessionSetup.startCta")}
+          </Text>
+        </AppCard>
+
         <Text style={styles.sectionLabel}>{t("sessionActive.sessionType")}</Text>
         <View style={styles.typeColumn}>
           {SESSION_TYPE_IDS.map((type) => (
@@ -376,81 +396,110 @@ export function SessionSetupForm({
           ))}
         </View>
 
-        <Text style={styles.sectionLabel}>{t("sessionSetup.notesSection")}</Text>
-        <TextInput
-          style={styles.notes}
-          placeholder={t("sessionActive.notesPlaceholder")}
-          placeholderTextColor={colors.textSecondary}
-          multiline
-          textAlignVertical="top"
-          maxLength={200}
-          autoCapitalize="sentences"
-          value={notes}
-          onChangeText={setNotes}
-        />
-        <Text style={styles.counter}>{noteLen}/200</Text>
+        <Pressable
+          style={({ pressed }) => [styles.optionalToggle, pressed && styles.optionalTogglePressed]}
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => undefined);
+            setShowOptional((prev) => !prev);
+          }}
+        >
+          <Text style={styles.optionalToggleText}>
+            {showOptional ? "Hide optional details" : "Add optional details"}
+          </Text>
+          <Text style={styles.optionalToggleChevron}>{showOptional ? "−" : "+"}</Text>
+        </Pressable>
 
-        <Text style={styles.sectionLabel}>{t("sessionSetup.moodSection")}</Text>
-        <View style={styles.moodRow}>
-          {MOODS.map((m) => (
-            <Pressable
-              key={m.level}
-              style={[styles.moodBtn, mood === m.level && styles.moodBtnActive]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                setMood(m.level);
-              }}
-            >
-              <Text style={styles.moodEmoji}>{m.emoji}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>{t("sessionSetup.tagsSection")}</Text>
-        <View style={styles.tagWrap}>
-          {tags.map((tg) => (
-            <Pressable
-              key={tg}
-              style={styles.tagChip}
-              onPress={() => setTags((prev) => prev.filter((x) => x !== tg))}
-            >
-              <Text style={styles.tagText}>{tg}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <View style={styles.tagInputRow}>
-          <TextInput
-            style={styles.tagField}
-            placeholder={t("sessionSetup.tagPlaceholder")}
-            placeholderTextColor={colors.textSecondary}
-            value={tagInput}
-            onChangeText={setTagInput}
-            onSubmitEditing={() => addTag(tagInput)}
-          />
-          <Pressable
-            style={styles.addTagBtn}
-            onPress={() => {
-              addTag(tagInput);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-            }}
+        {showOptional ? (
+          <Animated.View
+            entering={FadeIn.duration(motion.standard)}
+            exiting={FadeOut.duration(motion.quick)}
           >
-            <Text style={styles.addTagPlus}>+</Text>
-          </Pressable>
-        </View>
-        <View style={styles.suggestedRow}>
-          {suggested.map((s) => (
-            <Pressable
-              key={s}
-              style={styles.suggestedChip}
-              onPress={() => {
-                addTag(s);
-                Haptics.selectionAsync().catch(() => undefined);
-              }}
-            >
-              <Text style={styles.suggestedText}>{s}</Text>
-            </Pressable>
-          ))}
-        </View>
+            <AppCard style={styles.optionalSection}>
+              <Text style={styles.sectionLabel}>{t("sessionSetup.notesSection")}</Text>
+              <TextInput
+                style={styles.notes}
+                placeholder={t("sessionActive.notesPlaceholder")}
+                placeholderTextColor={colors.textSecondary}
+                multiline
+                textAlignVertical="top"
+                maxLength={200}
+                autoCapitalize="sentences"
+                value={notes}
+                onChangeText={setNotes}
+              />
+              <Text style={styles.counter}>{noteLen}/200</Text>
+
+              <Text style={styles.sectionLabel}>{t("sessionSetup.moodSection")}</Text>
+              <View style={styles.moodRow}>
+                {MOODS.map((m) => (
+                  <Pressable
+                    key={m.level}
+                    style={({ pressed }) => [
+                      styles.moodBtn,
+                      mood === m.level && styles.moodBtnActive,
+                      pressed && styles.moodBtnPressed,
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                      setMood(m.level);
+                    }}
+                  >
+                    <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.sectionLabel}>{t("sessionSetup.tagsSection")}</Text>
+              <View style={styles.tagWrap}>
+                {tags.map((tg) => (
+                  <Pressable
+                    key={tg}
+                    style={({ pressed }) => [styles.tagChip, pressed && styles.tagChipPressed]}
+                    onPress={() => setTags((prev) => prev.filter((x) => x !== tg))}
+                  >
+                    <Text style={styles.tagText}>{tg}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.tagInputRow}>
+                <TextInput
+                  style={styles.tagField}
+                  placeholder={t("sessionSetup.tagPlaceholder")}
+                  placeholderTextColor={colors.textSecondary}
+                  value={tagInput}
+                  onChangeText={setTagInput}
+                  onSubmitEditing={() => addTag(tagInput)}
+                />
+                <Pressable
+                  style={({ pressed }) => [styles.addTagBtn, pressed && styles.addTagBtnPressed]}
+                  onPress={() => {
+                    addTag(tagInput);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                  }}
+                >
+                  <Text style={styles.addTagPlus}>+</Text>
+                </Pressable>
+              </View>
+              <View style={styles.suggestedRow}>
+                {suggested.map((s) => (
+                  <Pressable
+                    key={s}
+                    style={({ pressed }) => [
+                      styles.suggestedChip,
+                      pressed && styles.suggestedChipPressed,
+                    ]}
+                    onPress={() => {
+                      addTag(s);
+                      Haptics.selectionAsync().catch(() => undefined);
+                    }}
+                  >
+                    <Text style={styles.suggestedText}>{s}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </AppCard>
+          </Animated.View>
+        ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
@@ -480,7 +529,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.headline,
+    ...typography.screenTitle,
   },
   closeBtn: {
     width: 40,
@@ -493,15 +542,58 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   closeText: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamily.bodyBold },
-  scroll: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl },
+  scroll: { paddingHorizontal: ui.screenPadding, paddingBottom: spacing.xxl },
+  introCard: {
+    marginBottom: spacing.sm,
+  },
+  introTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.cardTitle,
+  },
+  introText: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    fontFamily: fontFamily.body,
+  },
   sectionLabel: {
-    marginTop: spacing.md,
+    marginTop: ui.stackGap,
     marginBottom: spacing.sm,
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
+    ...typography.meta,
   },
   typeColumn: { gap: spacing.sm },
+  optionalToggle: {
+    marginTop: ui.sectionGap,
+    borderRadius: ui.cardRadius,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  optionalTogglePressed: {
+    opacity: motion.pressOpacity,
+    transform: [{ scale: motion.pressScale }],
+  },
+  optionalToggleText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.meta,
+  },
+  optionalToggleChevron: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
+  optionalSection: {
+    marginTop: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
   typeCardPressable: {
     borderRadius: radii.lg,
   },
@@ -510,8 +602,8 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.985 }],
   },
   typeCardOuter: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
+    borderRadius: ui.cardRadius,
+    borderWidth: ui.cardBorderWidth,
     borderColor: colors.border,
     overflow: "hidden",
     backgroundColor: colors.surface,
@@ -619,13 +711,13 @@ const styles = StyleSheet.create({
   typeLabelMuted: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.subheadline,
+    ...typography.cardTitle,
     flex: 1,
   },
   notes: {
     minHeight: 100,
-    borderRadius: radii.md,
-    borderWidth: 1,
+    borderRadius: ui.cardRadius,
+    borderWidth: ui.cardBorderWidth,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     color: colors.textPrimary,
@@ -636,7 +728,7 @@ const styles = StyleSheet.create({
   counter: {
     alignSelf: "flex-end",
     color: colors.textSecondary,
-    ...typography.caption,
+    ...typography.meta,
     marginTop: 4,
   },
   moodRow: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
@@ -651,6 +743,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   moodBtnActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.15)" },
+  moodBtnPressed: { opacity: motion.pressOpacity, transform: [{ scale: motion.pressScaleStrong }] },
   moodEmoji: { fontSize: 26 },
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   tagChip: {
@@ -661,7 +754,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.secondary,
   },
-  tagText: { color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, ...typography.caption },
+  tagChipPressed: { opacity: motion.pressOpacity },
+  tagText: { color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, ...typography.meta },
   tagInputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -670,8 +764,8 @@ const styles = StyleSheet.create({
   },
   tagField: {
     flex: 1,
-    borderRadius: radii.md,
-    borderWidth: 1,
+    borderRadius: ui.cardRadius,
+    borderWidth: ui.cardBorderWidth,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     color: colors.textPrimary,
@@ -682,13 +776,14 @@ const styles = StyleSheet.create({
   addTagBtn: {
     width: 44,
     height: 44,
-    borderRadius: radii.md,
+    borderRadius: ui.cardRadius,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
+  addTagBtnPressed: { opacity: motion.pressOpacity, transform: [{ scale: motion.pressScale }] },
   addTagPlus: { color: colors.primary, fontSize: 22, fontFamily: fontFamily.bodyBold },
   suggestedRow: {
     flexDirection: "row",
@@ -704,12 +799,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  suggestedChipPressed: { opacity: motion.pressOpacity },
   suggestedText: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
-    ...typography.caption,
+    ...typography.meta,
   },
-  error: { color: colors.danger, marginTop: spacing.md, ...typography.caption },
+  error: { color: colors.danger, marginTop: spacing.md, ...typography.meta },
   footer: {
     padding: spacing.md,
     borderTopWidth: 1,

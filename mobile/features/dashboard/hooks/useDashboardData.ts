@@ -131,7 +131,9 @@ export function useDashboardData(token: string | null) {
       setIdentityState(identityRaw);
       const [forecastRaw, progRaw] = await Promise.all([
         apiJson<unknown>("/outcomes/goal-forecast/current", { token }).catch(() => null),
-        apiJson<unknown>("/progression/me", { token }).catch(() => null),
+        apiJson<unknown>("/progression/sync", { token, method: "POST", body: {} }).catch(
+          () => null,
+        ),
       ]);
       setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
       setProgression(progRaw ? tryParseProgressionDto(progRaw) : null);

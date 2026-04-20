@@ -1,33 +1,64 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import * as Haptics from "expo-haptics";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, spacing, typography } from "../../constants/theme";
+import { colors, spacing, typography, ui } from "../../constants/theme";
+import { pressFeedbackStyle } from "./pressFeedback";
 
 type TextButtonProps = {
   label: string;
   onPress: () => void;
   accessibilityLabel?: string;
+  subdued?: boolean;
+  disabled?: boolean;
 };
 
-export function TextButton({ label, onPress, accessibilityLabel }: TextButtonProps) {
+export function TextButton({
+  label,
+  onPress,
+  accessibilityLabel,
+  subdued,
+  disabled,
+}: TextButtonProps) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.button,
+        pressFeedbackStyle(pressed, subdued ? "light" : "default"),
+        disabled && styles.disabled,
+      ]}
+      onPress={() => {
+        Haptics.selectionAsync().catch(() => undefined);
+        onPress();
+      }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: Boolean(disabled) }}
     >
-      <Text style={styles.label}>{label}</Text>
+      <View style={[styles.inner, subdued && styles.innerSubdued]}>
+        <Text style={[styles.label, subdued && styles.labelSubdued]}>{label}</Text>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  button: { alignItems: "center", paddingVertical: spacing.md },
-  pressed: { opacity: 0.85 },
+  button: { alignItems: "center" },
+  inner: {
+    minHeight: ui.buttonHeight,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+  },
+  innerSubdued: {
+    minHeight: 44,
+  },
   label: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.body,
+    ...typography.meta,
   },
+  labelSubdued: { color: colors.textSecondary },
+  disabled: { opacity: 0.45 },
 });

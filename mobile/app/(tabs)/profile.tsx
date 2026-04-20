@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -47,25 +47,42 @@ export default function ProfileScreen() {
   const [pictureBusy, setPictureBusy] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pingTemplate, setPingTemplate] = useState<"test" | "session_demo" | "streak_demo">("test");
+  const loadSeq = useRef(0);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      loadSeq.current += 1;
+    };
+  }, []);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     if (!token) {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
       return;
     }
-    setError(null);
+    if (mounted.current) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const [rawS, m] = await Promise.all([
         apiJson<unknown>("/sessions/stats?period=all", { token }),
         apiJson<StreakMilestonesDto>("/streak/milestones", { token }),
       ]);
+      if (!mounted.current || seq !== loadSeq.current) return;
       setStats(tryParseSessionStatsDto(rawS));
       setMilestones(m);
     } catch (e) {
+      if (!mounted.current || seq !== loadSeq.current) return;
       setError(e instanceof Error ? e.message : t("profile.errorLoadProfile"));
       setStats(null);
       setMilestones(null);
     } finally {
+      if (!mounted.current || seq !== loadSeq.current) return;
       setLoading(false);
       setRefreshing(false);
     }
@@ -168,7 +185,7 @@ export default function ProfileScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,

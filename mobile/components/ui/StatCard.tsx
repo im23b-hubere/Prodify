@@ -2,7 +2,7 @@ import { memo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
+import { colors, spacing, typography, ui } from "../../constants/theme";
 
 type StatCardProps = {
   label: string;
@@ -32,11 +32,11 @@ const styles = StyleSheet.create({
   card: {
     width: 160,
     backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 1,
+    borderRadius: ui.cardRadius,
+    borderWidth: ui.cardBorderWidth,
     borderColor: colors.border,
-    padding: spacing.md,
-    ...shadows.card,
+    padding: ui.cardPadding,
+    gap: spacing.xs,
   },
   value: {
     color: colors.textPrimary,
@@ -44,13 +44,11 @@ const styles = StyleSheet.create({
     ...typography.subheadline,
   },
   label: {
-    marginTop: spacing.xs,
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
     ...typography.caption,
   },
   sub: {
-    marginTop: 4,
     fontFamily: fontFamily.body,
     ...typography.caption,
   },

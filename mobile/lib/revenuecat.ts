@@ -4,17 +4,21 @@ import Purchases, {
   type PurchasesEntitlementInfo,
   type PurchasesOffering,
 } from "react-native-purchases";
+import {
+  getExpoPublicRevenueCatApiKey,
+  getExpoPublicRevenueCatEntitlementId,
+} from "../constants/env";
 
 let configuredForUser: string | null = null;
 
 function getRevenueCatApiKey(): string | null {
-  const key = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY?.trim();
+  const key = getExpoPublicRevenueCatApiKey();
   if (!key) return null;
   return key;
 }
 
 function configuredEntitlementId(): string {
-  const raw = process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID?.trim();
+  const raw = getExpoPublicRevenueCatEntitlementId();
   if (!raw) return "premium";
   return raw;
 }
@@ -51,7 +55,9 @@ export async function getDefaultOffering(): Promise<PurchasesOffering | null> {
   if (Platform.OS === "web") return null;
   if (!getRevenueCatApiKey()) return null;
   const offerings = await Purchases.getOfferings();
-  return offerings.current ?? null;
+  if (offerings.current) return offerings.current;
+  const allOfferings = Object.values(offerings.all ?? {});
+  return allOfferings[0] ?? null;
 }
 
 export function getActiveEntitlement(info: CustomerInfo): PurchasesEntitlementInfo | null {

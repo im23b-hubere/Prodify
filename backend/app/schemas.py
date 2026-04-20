@@ -432,6 +432,14 @@ class PushBulkResultPublic(BaseModel):
     message: str | None = None
 
 
+class SmartNudgeBody(BaseModel):
+    kind: Literal["inactivity", "best_time", "forecast_risk"] = "inactivity"
+    hour: int | None = Field(default=None, ge=0, le=23)
+    remaining_sessions: int | None = Field(default=None, ge=0, le=100)
+    days_left: int | None = Field(default=None, ge=0, le=30)
+    days_inactive: int | None = Field(default=None, ge=1, le=60)
+
+
 class GoalSetBody(BaseModel):
     goal_type: str = Field(default="weekly_sessions", max_length=64)
     target_value: int = Field(ge=1, le=50)
@@ -532,6 +540,13 @@ class ProgressionPublic(BaseModel):
     current_level: int
     xp_to_next_level: int
     progress_percent: float
+
+
+class ProgressionLevelPublic(BaseModel):
+    level: int
+    xp_start: int
+    xp_end_exclusive: int
+    xp_span: int
 
 
 class WeeklyReviewPublic(BaseModel):

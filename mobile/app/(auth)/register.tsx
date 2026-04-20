@@ -13,7 +13,6 @@ import {
 } from "react-native";
 
 import { useAuth } from "../../context/AuthContext";
-import { resolvePostAuthRouteFromStorage, toHref } from "../../lib/postAuthNavigation";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -33,11 +32,8 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await signUp(email.trim(), username.trim(), password);
-      const next = await resolvePostAuthRouteFromStorage({
-        hasToken: true,
-        entryPoint: "register",
-      });
-      router.replace(toHref(next));
+      // New signups should always go through onboarding, even if a stale local flag exists.
+      router.replace("/onboarding");
     } catch (e) {
       setError(e instanceof Error ? e.message : t("auth.register.registerFailed"));
     } finally {

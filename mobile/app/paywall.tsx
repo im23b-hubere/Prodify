@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Constants from "expo-constants";
 import type { PurchasesPackage } from "react-native-purchases";
 import Purchases from "react-native-purchases";
 
@@ -10,6 +11,7 @@ import { ErrorState } from "../components/states/ErrorState";
 import { LoadingState } from "../components/states/LoadingState";
 import { IconButton } from "../components/ui/IconButton";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
+import { getExpoPublicRevenueCatApiKey } from "../constants/env";
 import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
@@ -47,6 +49,7 @@ export default function PaywallScreen() {
   const [error, setError] = useState<string | null>(null);
   const [purchaseEnabled, setPurchaseEnabled] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const isExpoGo = Constants.appOwnership === "expo";
 
   const appUserId = useMemo(() => (user?.id != null ? String(user.id) : null), [user?.id]);
 
@@ -55,6 +58,17 @@ export default function PaywallScreen() {
     async function loadOfferings() {
       try {
         setLoading(true);
+        const hasApiKey = Boolean(getExpoPublicRevenueCatApiKey());
+        if (!hasApiKey) {
+          setPurchaseEnabled(false);
+          setError(t("paywall.errors.missingConfig"));
+          return;
+        }
+        if (isExpoGo) {
+          setPurchaseEnabled(false);
+          setError(t("paywall.errors.expoGoNotSupported"));
+          return;
+        }
         await configureRevenueCat(appUserId ?? undefined);
         const offering = await getDefaultOffering();
         if (cancelled) return;
@@ -79,7 +93,7 @@ export default function PaywallScreen() {
     return () => {
       cancelled = true;
     };
-  }, [appUserId, reloadKey, t]);
+  }, [appUserId, isExpoGo, reloadKey, t]);
 
   async function syncBackendFromCustomerInfo() {
     if (!token || !appUserId) return;
@@ -111,7 +125,10 @@ export default function PaywallScreen() {
           expires_at: activeEntitlementExpiration(res.customerInfo),
         });
       }
-      Alert.alert(t("paywall.alerts.premiumUnlockedTitle"), t("paywall.alerts.premiumUnlockedBody"));
+      Alert.alert(
+        t("paywall.alerts.premiumUnlockedTitle"),
+        t("paywall.alerts.premiumUnlockedBody"),
+      );
       const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
       if (exitRoute) {
         router.replace(exitRoute);
@@ -161,7 +178,11 @@ export default function PaywallScreen() {
       router.replace(exitRoute);
       return;
     }
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(token ? "/(tabs)/dashboard" : "/(auth)/login");
   };
 
   return (
@@ -191,7 +212,9 @@ export default function PaywallScreen() {
         <PrimaryButton
           label={
             yearlyPkg
-              ? t("paywall.cta.startTrialWithPrice", { price: `${yearlyPkg.product.priceString}/year` })
+              ? t("paywall.cta.startTrialWithPrice", {
+                  price: `${yearlyPkg.product.priceString}/year`,
+                })
               : t("paywall.cta.startTrial")
           }
           onPress={() => void purchasePackage(yearlyPkg ?? monthlyPkg)}
@@ -217,10 +240,7 @@ export default function PaywallScreen() {
             {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore")}
           </Text>
         </Pressable>
-        <PrimaryButton
-          label={t("paywall.cta.notNow")}
-          onPress={handleClose}
-        />
+        <PrimaryButton label={t("paywall.cta.notNow")} onPress={handleClose} />
       </View>
     </SafeAreaView>
   );

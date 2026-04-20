@@ -251,6 +251,8 @@
     },
     "errors": {
       "storeUnavailable": "Store currently unavailable. You can continue and try again later.",
+      "missingConfig": "Billing is not configured in this build (missing RevenueCat API key).",
+      "expoGoNotSupported": "In-app purchases are not available in Expo Go. Use a development or production build to view plans.",
       "loadOfferings": "Failed to load offerings.",
       "purchaseFailed": "Purchase failed.",
       "restoreFailed": "Could not restore purchases.",
@@ -493,6 +495,35 @@
     "levelProgressFallback": "Your progression is updating...",
     "coachDebriefTitle": "AI Coach Debrief"
   },
+  "sessionFeedback": {
+    "progressTitle": "Session impact",
+    "progressSecured": "You secured {{pct}}% of your weekly goal",
+    "progressFallback": "Session completed. Momentum secured.",
+    "remainingToGoal_one": "{{count}} more session and you hit your goal",
+    "remainingToGoal_other": "{{count}} more sessions and you hit your goal",
+    "goalReached": "Weekly goal reached. Strong work.",
+    "status": {
+      "backOnTrack": "You're back on track.",
+      "movedAhead": "You moved ahead of your plan.",
+      "onTrack": "You're on track.",
+      "offTrack": "Good push. Keep closing the gap.",
+      "goalComplete": "Goal complete for this week."
+    },
+    "emotion": {
+      "protectedStreak": "Good work. You protected your streak.",
+      "strongSession": "Nice. That was a strong session.",
+      "solidConsistency": "Solid consistency."
+    },
+    "nextActionTitle": "Next action",
+    "nextAction": {
+      "goalHit": "Do another 30 min session tomorrow to stay ahead.",
+      "oneMore": "Plan 1 more {{minutes}} min session this week to hit your goal.",
+      "fewMore": "Plan {{sessions}} focused sessions this week to close your goal.",
+      "keepPace": "Plan another {{minutes}} min session tomorrow to keep your pace."
+    },
+    "planNextSession": "Plan next session",
+    "backToDashboard": "Back to dashboard"
+  },
   "sessionDetail": {
     "loading": "Loading session...",
     "invalidId": "Invalid session id",
@@ -688,6 +719,7 @@
     "sessionFallback": "Session"
   },
   "streakHero": {
+    "kicker": "Streak milestones",
     "dayStreak": "DAY STREAK",
     "nextMilestone_one": "Next: {{title}} · {{days}} day to go",
     "nextMilestone_other": "Next: {{title}} · {{days}} days to go",
@@ -700,6 +732,24 @@
     "freezeAvailable": "{{n}} Streak Freeze available",
     "freezeNone": "No freezes left this month",
     "freezeHint": "Resets next month — or complete a session today."
+  },
+  "progression": {
+    "levelTitle": "XP Level {{level}}",
+    "xpTotal": "{{xp}} XP total",
+    "hint": "XP level is separate from streak milestones.",
+    "toNext": "{{xp}} XP to level {{level}} ({{percent}}%)",
+    "openOverview": "Level overview",
+    "overviewTitle": "Level overview",
+    "overviewSubtitle": "Track XP progress and next level target.",
+    "overviewHint": "Your level increases as you gain XP from completed sessions.",
+    "decayRule": "XP decays after {{graceDays}} inactive days ({{xpPerDay}} XP/day) until you produce again.",
+    "backToStats": "Back to stats",
+    "loading": "Loading progression...",
+    "allLevelsTitle": "All levels",
+    "levelRowLabel": "Level {{level}}",
+    "levelRowRange": "{{start}}-{{end}} XP ({{span}} XP span)",
+    "currentBadge": "You are here",
+    "currentXpLine": "Current XP: {{xp}} (Level {{level}})"
   },
   "friendsWidget": {
     "title": "Friends",
@@ -750,6 +800,42 @@
     "minutes": "Minutes",
     "weekGoal": "{{current}} / {{goal}} sessions this week",
     "weekOnly": "{{count}} sessions this week"
+  },
+  "todayPlan": {
+    "title": "Today's Plan",
+    "cta": "Start suggested session",
+    "status": {
+      "on_track": "On track",
+      "off_track": "Off track",
+      "ahead": "Ahead"
+    },
+    "recommendation": {
+      "offTrackOne": "Do 1 x {{minutes}} min focused session today to get back on track.",
+      "offTrackMany": "Do {{sessions}} short sessions today to close the gap.",
+      "streakRisk": "Do 1 short {{minutes}} min session today to protect your streak.",
+      "onTrack": "Stay on target: finish 1 x {{minutes}} min focused session today.",
+      "ahead": "You're ahead - lock in 1 focused {{minutes}} min session to keep momentum.",
+      "fallback": "Do one focused {{minutes}} min session today."
+    },
+    "preview": "After this: {{pct}}% of weekly goal secured · {{state}}",
+    "previewState": {
+      "backOnTrack": "back on track",
+      "progress": "strong progress"
+    }
+  },
+  "forecast": {
+    "message": {
+      "will_miss": "At this pace, you'll miss your goal by {{missBy}} sessions.",
+      "at_risk": "You're close, but at risk - {{needed}} session today keeps you on track.",
+      "on_track": "You're on track to hit your weekly goal.",
+      "ahead": "You're ahead of your weekly plan."
+    },
+    "todayAction": {
+      "needOneToday": "You need 1 session TODAY to stay on track.",
+      "needManyToday": "You need {{needed}} sessions TODAY to protect your target.",
+      "stayOnTrack": "Today's minimum is covered - keep your rhythm."
+    },
+    "hitByDay": "If you keep this pace, you'll hit your goal by {{day}}."
   },
   "sessionStarter": {
     "title": "START SESSION",
@@ -936,8 +1022,13 @@
     },
     "requestTimeout": "Request timed out. Check your connection and try again.",
     "network": "Network error. Check your connection and try again.",
+    "serviceUnavailable": "Service temporarily unavailable due to app configuration. Please try again later.",
     "unexpectedResponse": "Unexpected server response. Please try again.",
     "signInFailed": "Sign in failed",
     "registerFailed": "Registration failed"
+  },
+  "offlineBanner": {
+    "title": "No internet connection",
+    "body": "Some features may be temporarily unavailable."
   }
 }

@@ -28,10 +28,10 @@ def _week_start_key() -> str:
     return (d - timedelta(days=d.weekday())).isoformat()
 
 
-def _active_challenge(db: Session) -> WeeklyChallenge:
+def _active_challenge(db: Session, *, create_if_missing: bool) -> WeeklyChallenge | None:
     wk = _week_start_key()
     row = db.scalar(select(WeeklyChallenge).where(WeeklyChallenge.week_start == wk, WeeklyChallenge.status == "active"))
-    if row is None:
+    if row is None and create_if_missing:
         row = WeeklyChallenge(week_start=wk, challenge_type="weekly_sessions", status="active", config_json=json.dumps({}))
         db.add(row)
         db.flush()
@@ -101,14 +101,15 @@ def weekly_leaderboard(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    ch = _active_challenge(db)
+    ch = _active_challenge(db, create_if_missing=False)
+    if ch is None:
+        raise HTTPException(status_code=404, detail="No active weekly challenge")
     rows = db.scalars(
         select(ChallengeParticipant)
         .where(ChallengeParticipant.challenge_id == ch.id)
         .order_by(ChallengeParticipant.score.desc())
         .limit(100)
     ).all()
-    db.commit()
     return ChallengeLeaderboardPublic(
         challenge_id=ch.id,
         week_start=ch.week_start,

@@ -3,16 +3,21 @@ import * as Haptics from "expo-haptics";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { TextButton } from "../../components/ui/TextButton";
+import { SecondaryButton } from "../../components/ui/SecondaryButton";
+import { AppCard } from "../../components/ui/AppCard";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { PENDING_SESSION_SETUP_KEY } from "../../constants/sessionUi";
 import { fontFamily } from "../../constants/fonts";
-import { colors, spacing, typography } from "../../constants/theme";
+import { colors, motion, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { buildWeeklyForecast } from "../../lib/forecastEngine";
+import { buildSessionFeedback } from "../../lib/sessionFeedbackEngine";
 import { tryParseSessionDto } from "../../lib/sessionDto";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
 import { tryParseCoachDebriefDto, tryParseProgressionDto } from "../../lib/outcomesDto";
@@ -46,6 +51,8 @@ export default function SessionCompleteScreen() {
   const [streak, setStreak] = useState<number | null>(null);
   const [coach, setCoach] = useState<CoachDebriefDto | null>(null);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
+  const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
+  const [weekSessionsCount, setWeekSessionsCount] = useState<number>(0);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_RETURN_SECONDS);
   const [autoReturnEnabled, setAutoReturnEnabled] = useState(true);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
@@ -97,11 +104,33 @@ export default function SessionCompleteScreen() {
         if (!cancelled.current) setCoach(null);
       }
       try {
-        const progressionRaw = await apiJson<unknown>("/progression/me", { token });
+        const progressionRaw = await apiJson<unknown>("/progression/sync", {
+          token,
+          method: "POST",
+          body: {},
+        });
         const parsed = tryParseProgressionDto(progressionRaw);
         if (!cancelled.current) setProgression(parsed);
       } catch {
         if (!cancelled.current) setProgression(null);
+      }
+      try {
+        const goalRaw = await apiJson<unknown>("/goals/current", { token });
+        if (goalRaw && typeof goalRaw === "object") {
+          const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
+          if (!cancelled.current) {
+            setWeeklyGoalTarget(typeof g.target_value === "number" ? g.target_value : null);
+            setWeekSessionsCount(typeof g.current_sessions === "number" ? g.current_sessions : 0);
+          }
+        } else if (!cancelled.current) {
+          setWeeklyGoalTarget(null);
+          setWeekSessionsCount(0);
+        }
+      } catch {
+        if (!cancelled.current) {
+          setWeeklyGoalTarget(null);
+          setWeekSessionsCount(0);
+        }
       }
       setLoadState("ready");
       setSecondsLeft(AUTO_RETURN_SECONDS);
@@ -156,11 +185,45 @@ export default function SessionCompleteScreen() {
       timeOfDay: getTimeOfDay(),
     });
   }, [session, streak]);
+  const feedback = useMemo(
+    () =>
+      buildSessionFeedback({
+        weeklyGoalTarget,
+        weekSessionsCount,
+        currentStreak: streak ?? 0,
+        sessionDurationSeconds: dur,
+      }),
+    [weeklyGoalTarget, weekSessionsCount, streak, dur],
+  );
+  const paceForecast = useMemo(
+    () =>
+      weeklyGoalTarget != null && weeklyGoalTarget > 0
+        ? buildWeeklyForecast({
+            weeklyGoalTarget,
+            completedThisWeek: weekSessionsCount,
+          })
+        : null,
+    [weeklyGoalTarget, weekSessionsCount],
+  );
+  const weekdayLabels = useMemo(
+    () =>
+      (t("common.weekdaysFull", { returnObjects: true }) as string[]) ?? [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ],
+    [t],
+  );
 
   if (loadState === "loading") {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.centered}>
+          <ActivityIndicator color={colors.primary} />
           <Text style={styles.title}>{t("sessionComplete.title")}</Text>
           <Text style={styles.muted}>{t("sessionComplete.loadingSession")}</Text>
         </View>
@@ -188,16 +251,54 @@ export default function SessionCompleteScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.hero}>
-        <Text style={styles.check}>✓</Text>
-        <Text style={styles.title}>{t("sessionComplete.title")}</Text>
-        <Text style={styles.bigDur}>{formatDurationWords(dur)}</Text>
-        {streak !== null && streak > 0 ? (
-          <Text style={styles.streak}>{t("sessionComplete.streakLine", { count: streak })}</Text>
-        ) : null}
-        {completionMessage ? <Text style={styles.motivation}>{completionMessage}</Text> : null}
-        <View style={styles.xpCard}>
-          <Text style={styles.xpTitle}>{t("sessionComplete.xpEarned", { xp: xpGainEstimate })}</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.hero}>
+          <Text style={styles.check}>✓</Text>
+          <ScreenHeader
+            title={t("sessionComplete.title")}
+            subtitle={t("sessionFeedback.nextActionTitle")}
+            actionLabel={t("sessionFeedback.backToDashboard")}
+            onActionPress={() => router.replace("/(tabs)/dashboard")}
+          />
+          <Text style={styles.bigDur}>{formatDurationWords(dur)}</Text>
+          {streak !== null && streak > 0 ? (
+            <Text style={styles.streak}>{t("sessionComplete.streakLine", { count: streak })}</Text>
+          ) : null}
+          <Text style={styles.motivation}>{t(feedback.emotionalMessageKey)}</Text>
+        </View>
+
+        <AppCard style={styles.feedbackCard}>
+          <Text style={styles.feedbackKicker}>{t("sessionFeedback.progressTitle")}</Text>
+          {feedback.progressPercent !== null ? (
+            <Text style={styles.feedbackBig}>
+              {t("sessionFeedback.progressSecured", { pct: feedback.progressPercent })}
+            </Text>
+          ) : (
+            <Text style={styles.feedbackBig}>{t("sessionFeedback.progressFallback")}</Text>
+          )}
+          <Text style={styles.feedbackStatus}>{t(feedback.statusMessageKey)}</Text>
+          {feedback.remainingSessionsToGoal !== null ? (
+            <Text style={styles.feedbackHint}>
+              {feedback.remainingSessionsToGoal > 0
+                ? t("sessionFeedback.remainingToGoal", {
+                    count: feedback.remainingSessionsToGoal,
+                  })
+                : t("sessionFeedback.goalReached")}
+            </Text>
+          ) : null}
+        </AppCard>
+
+        <AppCard style={styles.nextActionCard}>
+          <Text style={styles.nextActionTitle}>{t("sessionFeedback.nextActionTitle")}</Text>
+          <Text style={styles.nextActionText}>
+            {t(feedback.nextActionKey, feedback.nextActionParams)}
+          </Text>
+        </AppCard>
+
+        <AppCard style={styles.xpCard}>
+          <Text style={styles.xpTitle}>
+            {t("sessionComplete.xpEarned", { xp: xpGainEstimate })}
+          </Text>
           <Text style={styles.xpMeta}>
             {progression
               ? t("sessionComplete.levelProgress", {
@@ -206,9 +307,10 @@ export default function SessionCompleteScreen() {
                 })
               : t("sessionComplete.levelProgressFallback")}
           </Text>
-        </View>
+        </AppCard>
+
         {coach ? (
-          <View style={styles.coachCard}>
+          <AppCard style={styles.coachCard}>
             <Text style={styles.coachTitle}>{t("sessionComplete.coachDebriefTitle")}</Text>
             {coach.went_well.slice(0, 2).map((line) => (
               <Text key={`well-${line}`} style={styles.coachLine}>
@@ -225,8 +327,59 @@ export default function SessionCompleteScreen() {
                 {"->"} {line}
               </Text>
             ))}
-          </View>
+          </AppCard>
         ) : null}
+
+        {paceForecast ? (
+          <AppCard style={styles.supportingCard}>
+            <Text
+              style={[
+                styles.forecastLine,
+                paceForecast.forecastStatus === "will_miss"
+                  ? styles.forecastDanger
+                  : paceForecast.forecastStatus === "at_risk"
+                    ? styles.forecastWarn
+                    : styles.forecastGood,
+              ]}
+            >
+              {t(paceForecast.forecastMessageKey, paceForecast.forecastMessageParams)}
+            </Text>
+            <Text style={styles.forecastHint}>
+              {t(paceForecast.todayActionKey, paceForecast.todayActionParams)}
+            </Text>
+            {paceForecast.projectedHitDayIndex != null &&
+            (paceForecast.forecastStatus === "on_track" ||
+              paceForecast.forecastStatus === "ahead") ? (
+              <Text style={styles.forecastEta}>
+                {t("forecast.hitByDay", {
+                  day:
+                    weekdayLabels[
+                      Math.max(0, Math.min(6, paceForecast.projectedHitDayIndex - 1))
+                    ] ?? weekdayLabels[0],
+                })}
+              </Text>
+            ) : null}
+            <View style={styles.goalProgressTrack}>
+              <View
+                style={[
+                  styles.goalProgressFill,
+                  { width: `${paceForecast.currentProgressPercent}%` },
+                ]}
+              />
+              <View
+                style={[
+                  styles.goalProgressMarker,
+                  { left: `${paceForecast.todayExpectedMarkerPercent}%` },
+                ]}
+              />
+            </View>
+          </AppCard>
+        ) : null}
+
+        {completionMessage ? (
+          <Text style={styles.secondaryMotivation}>{completionMessage}</Text>
+        ) : null}
+
         {autoReturnEnabled ? (
           <View style={styles.autoWrap}>
             <Text style={styles.auto}>
@@ -238,7 +391,7 @@ export default function SessionCompleteScreen() {
               />
             </View>
             <Pressable
-              style={styles.stayBtn}
+              style={({ pressed }) => [styles.stayBtn, pressed && styles.stayBtnPressed]}
               onPress={() => {
                 setAutoReturnEnabled(false);
                 Haptics.selectionAsync().catch(() => undefined);
@@ -250,35 +403,36 @@ export default function SessionCompleteScreen() {
         ) : (
           <Text style={styles.auto}>{t("sessionComplete.autoReturnCancelled")}</Text>
         )}
-      </View>
 
-      <View style={styles.actions}>
-        <PrimaryButton
-          label={t("sessionComplete.viewDetails")}
-          onPress={() => router.replace(`/session/${id}` as never)}
-        />
-        <PrimaryButton
-          label={t("sessionComplete.startAnother")}
-          onPress={async () => {
-            try {
-              await SecureStore.setItemAsync(PENDING_SESSION_SETUP_KEY, "1");
-            } catch {
-              /* still navigate */
-            }
-            router.replace("/(tabs)/dashboard");
-          }}
-        />
-        <TextButton
-          label={t("sessionComplete.backToDashboard")}
-          onPress={() => router.replace("/(tabs)/dashboard")}
-        />
-      </View>
+        <View style={styles.actions}>
+          <PrimaryButton
+            label={t("sessionFeedback.planNextSession")}
+            onPress={async () => {
+              try {
+                await SecureStore.setItemAsync(PENDING_SESSION_SETUP_KEY, "1");
+              } catch {
+                /* still navigate */
+              }
+              router.replace("/(tabs)/dashboard");
+            }}
+          />
+          <SecondaryButton
+            label={t("sessionComplete.viewDetails")}
+            onPress={() => router.replace(`/session/${id}` as never)}
+          />
+          <TextButton
+            label={t("sessionFeedback.backToDashboard")}
+            onPress={() => router.replace("/(tabs)/dashboard")}
+            subdued
+          />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
+  safe: { flex: 1, backgroundColor: colors.background, padding: ui.screenPadding },
   centered: {
     flex: 1,
     justifyContent: "center",
@@ -286,7 +440,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  hero: { alignItems: "center", marginTop: spacing.xl, gap: spacing.sm },
+  scrollContent: { paddingBottom: spacing.xl },
+  hero: { alignItems: "stretch", marginTop: spacing.lg, gap: spacing.xs },
   check: {
     fontSize: 48,
     color: colors.success,
@@ -295,50 +450,134 @@ const styles = StyleSheet.create({
   title: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.headline,
+    ...typography.screenTitle,
     textAlign: "center",
   },
-  muted: { color: colors.textSecondary, ...typography.body, textAlign: "center" },
+  muted: { color: colors.textSecondary, ...typography.meta, textAlign: "center" },
   bigDur: {
     color: colors.primary,
     fontFamily: fontFamily.heading,
     fontSize: 36,
     marginTop: spacing.sm,
   },
-  streak: { color: colors.textSecondary, ...typography.subheadline, marginTop: spacing.sm },
+  streak: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    marginTop: spacing.xs,
+    textAlign: "center",
+  },
+  feedbackCard: {
+    marginTop: spacing.lg,
+    width: "100%",
+    gap: spacing.xs,
+  },
+  feedbackKicker: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    fontFamily: fontFamily.bodyBold,
+  },
+  feedbackBig: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 28,
+  },
+  feedbackStatus: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.bodyStrong,
+  },
+  feedbackHint: { color: colors.textSecondary, ...typography.meta },
+  forecastLine: {
+    marginTop: 2,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
+  forecastHint: { color: colors.textSecondary, ...typography.meta },
+  forecastEta: {
+    color: colors.textPrimary,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyMedium,
+  },
+  forecastDanger: { color: colors.danger },
+  forecastWarn: { color: "#f59e0b" },
+  forecastGood: { color: colors.success },
+  goalProgressTrack: {
+    marginTop: spacing.xs,
+    width: "100%",
+    height: 9,
+    borderRadius: 999,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+    position: "relative",
+  },
+  goalProgressFill: {
+    height: "100%",
+    backgroundColor: colors.primary,
+  },
+  goalProgressMarker: {
+    position: "absolute",
+    top: -2,
+    bottom: -2,
+    width: 2,
+    backgroundColor: "#ffffff",
+    opacity: 0.9,
+  },
   motivation: {
     color: colors.textPrimary,
-    ...typography.body,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.bodyStrong,
     textAlign: "center",
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
     paddingHorizontal: spacing.md,
     lineHeight: 22,
   },
-  coachCard: {
-    marginTop: spacing.md,
+  secondaryMotivation: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    textAlign: "center",
+    paddingHorizontal: spacing.sm,
+    lineHeight: 20,
+    marginTop: spacing.sm,
+  },
+  nextActionCard: {
+    marginTop: spacing.sm,
     width: "100%",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
     gap: spacing.xs,
   },
-  coachTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  coachLine: { color: colors.textSecondary, ...typography.caption },
-  xpCard: {
-    marginTop: spacing.md,
+  nextActionTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
+  nextActionText: {
+    color: colors.textSecondary,
+    ...typography.body,
+    lineHeight: 22,
+  },
+  coachCard: {
+    marginTop: spacing.sm,
     width: "100%",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  coachTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.meta },
+  coachLine: { color: colors.textSecondary, ...typography.meta },
+  xpCard: {
+    marginTop: spacing.sm,
+    width: "100%",
     gap: spacing.xs,
   },
   xpTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  xpMeta: { color: colors.textSecondary, ...typography.caption },
-  auto: { color: colors.textSecondary, ...typography.caption, marginTop: spacing.md },
+  xpMeta: { color: colors.textSecondary, ...typography.meta },
+  auto: { color: colors.textSecondary, ...typography.meta, marginTop: spacing.md },
+  supportingCard: {
+    marginTop: spacing.sm,
+    width: "100%",
+    gap: spacing.xs,
+  },
   autoWrap: {
     marginTop: spacing.md,
     width: "100%",
@@ -367,10 +606,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: "rgba(255,255,255,0.04)",
   },
+  stayBtnPressed: {
+    opacity: motion.pressOpacity,
+    transform: [{ scale: motion.pressScale }],
+  },
   stayBtnLabel: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
+    ...typography.meta,
   },
   actions: { marginTop: spacing.xl, gap: spacing.md },
 });

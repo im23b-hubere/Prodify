@@ -1,11 +1,13 @@
 import NetInfo from "@react-native-community/netinfo";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 import { colors, radii, shadows, spacing, typography } from "../constants/theme";
 import { fontFamily } from "../constants/fonts";
 
 export function OfflineBanner() {
+  const { t } = useTranslation();
   const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
@@ -21,8 +23,8 @@ export function OfflineBanner() {
   return (
     <View style={styles.wrap} pointerEvents="none">
       <View style={styles.banner}>
-        <Text style={styles.title}>No internet connection</Text>
-        <Text style={styles.body}>Some features may be temporarily unavailable.</Text>
+        <Text style={styles.title}>{t("offlineBanner.title")}</Text>
+        <Text style={styles.body}>{t("offlineBanner.body")}</Text>
       </View>
     </View>
   );

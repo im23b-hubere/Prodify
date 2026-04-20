@@ -46,7 +46,9 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      detachInactiveScreens={false}
       screenOptions={{
+        lazy: false,
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.textPrimary,
         headerTitleStyle: { fontFamily: "Syne_700Bold", fontSize: 20 },

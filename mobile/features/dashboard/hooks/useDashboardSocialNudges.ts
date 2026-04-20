@@ -36,6 +36,17 @@ type Params = {
   t: TFunction;
 };
 
+function secureStoreKey(base: string, userId: number): string {
+  const safeUserId = String(userId).replace(/[^A-Za-z0-9._-]/g, "_");
+  return `${base}_${safeUserId}`;
+}
+
+function parseActivityTimestamp(value: string | null | undefined): number {
+  if (!value) return 0;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 export function useDashboardSocialNudges({
   userId,
   friendActivity,
@@ -156,7 +167,7 @@ export function useDashboardSocialNudges({
   const advancePrimaryNudge = useCallback(
     async (category: string) => {
       if (!userId) return;
-      const cooldownKey = `retention:primary_cooldowns:${userId}`;
+      const cooldownKey = secureStoreKey("retention_primary_cooldowns", userId);
       const now = Date.now();
       const COOLDOWN_MS = 3 * 60 * 60 * 1000;
       const cdRaw = await SecureStore.getItemAsync(cooldownKey);
@@ -191,9 +202,9 @@ export function useDashboardSocialNudges({
 
   useEffect(() => {
     if (!userId) return;
-    const key = `retention:last_primary:${userId}`;
-    const cooldownKey = `retention:primary_cooldowns:${userId}`;
-    const visitKey = `retention:last_visit:${userId}`;
+    const key = secureStoreKey("retention_last_primary", userId);
+    const cooldownKey = secureStoreKey("retention_primary_cooldowns", userId);
+    const visitKey = secureStoreKey("retention_last_visit", userId);
     const timer = setTimeout(() => {
       void (async () => {
         try {
@@ -244,7 +255,7 @@ export function useDashboardSocialNudges({
           const lastVisitRaw = await SecureStore.getItemAsync(visitKey);
           const lastVisitMs = lastVisitRaw ? Number.parseInt(lastVisitRaw, 10) : 0;
           const sinceCount = friendActivity.filter(
-            (a) => new Date(a.completed_at).getTime() > lastVisitMs,
+            (a) => parseActivityTimestamp(a.completed_at) > lastVisitMs,
           ).length;
           if (sinceCount > 0) {
             setReturnHook(t("dashboard.returnHookUpdates", { count: sinceCount }));

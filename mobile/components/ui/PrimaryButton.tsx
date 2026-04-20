@@ -4,7 +4,8 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
+import { colors, shadows, spacing, typography, ui } from "../../constants/theme";
+import { pressFeedbackStyle } from "./pressFeedback";
 
 type PrimaryButtonProps = {
   label: string;
@@ -35,7 +36,7 @@ export function PrimaryButton({
       }}
       style={({ pressed }) => [
         styles.wrap,
-        pressed && styles.pressed,
+        pressFeedbackStyle(pressed, "strong"),
         (disabled || loading) && styles.disabled,
       ]}
     >
@@ -54,12 +55,12 @@ export function PrimaryButton({
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: radii.lg,
+    borderRadius: ui.cardRadius,
     ...shadows.button,
   },
   gradient: {
-    minHeight: 56,
-    borderRadius: radii.lg,
+    minHeight: ui.buttonHeight,
+    borderRadius: ui.cardRadius,
     justifyContent: "center",
     alignItems: "center",
     flexDirection: "row",
@@ -69,13 +70,9 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.body,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
+    ...typography.bodyStrong,
   },
   disabled: {
-    opacity: 0.45,
+    opacity: 0.5,
   },
 });

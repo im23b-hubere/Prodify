@@ -20,6 +20,12 @@ type Props = {
   secondaryHint?: string | null;
 };
 
+function parseActivityTimestamp(value: string | null | undefined): number {
+  if (!value) return 0;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 function rankColor(rank: number) {
   if (rank === 1) return "#fbbf24";
   if (rank === 2) return "#d1d5db";
@@ -37,7 +43,13 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
 }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
-  const ago = useCallback((iso: string) => formatTimeAgo(iso, t, "friendsWidget.agoNow"), [t]);
+  const ago = useCallback(
+    (iso: string | null | undefined) =>
+      parseActivityTimestamp(iso) > 0
+        ? formatTimeAgo(iso as string, t, "friendsWidget.agoNow")
+        : t("friendsWidget.agoNow"),
+    [t],
+  );
 
   const topOthers = leaderboard.filter((e) => e.user_id !== currentUserId).slice(0, 3);
   const feed = activity.slice(0, 5);

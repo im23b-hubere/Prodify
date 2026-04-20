@@ -532,6 +532,20 @@ def create_social_challenge(
     if not premium and body.duration_days > 7:
         raise HTTPException(status_code=402, detail="Upgrade to run longer challenges.")
     wk = _week_start_key()
+    requested_member_ids = sorted({uid for uid in body.member_user_ids if uid != current.id})
+    if len(requested_member_ids) > 12:
+        raise HTTPException(status_code=400, detail="Too many challenge participants requested")
+    if requested_member_ids:
+        existing_ids = set(
+            db.scalars(select(User.id).where(User.id.in_(requested_member_ids))).all()
+        )
+        missing = [uid for uid in requested_member_ids if uid not in existing_ids]
+        if missing:
+            raise HTTPException(status_code=404, detail="One or more challenge members do not exist")
+        friend_ids = set(_friend_user_ids(db, current.id))
+        invalid = [uid for uid in requested_member_ids if uid not in friend_ids]
+        if invalid:
+            raise HTTPException(status_code=403, detail="Challenge members must be accepted friends")
     row = SocialChallenge(
         owner_id=current.id,
         challenge_kind=body.challenge_kind,
@@ -543,7 +557,7 @@ def create_social_challenge(
     )
     db.add(row)
     db.flush()
-    participants = [current.id, *[uid for uid in body.member_user_ids if uid != current.id]]
+    participants = [current.id, *requested_member_ids]
     for uid in sorted(set(participants)):
         db.add(SocialChallengeMember(challenge_id=row.id, user_id=uid, progress_sessions=0))
     db.commit()

@@ -1,7 +1,8 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors, spacing, typography, ui } from "../../constants/theme";
+import { AppCard } from "../ui/AppCard";
 
 type LoadingStateProps = {
   message: string;
@@ -9,10 +10,10 @@ type LoadingStateProps = {
 
 export function LoadingState({ message }: LoadingStateProps) {
   return (
-    <View style={styles.container} accessibilityRole="progressbar" accessibilityLabel={message}>
+    <AppCard style={styles.container}>
       <ActivityIndicator size="large" color={colors.primary} />
       <Text style={styles.message}>{message}</Text>
-    </View>
+    </AppCard>
   );
 }
 
@@ -20,18 +21,14 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
     paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
+    paddingHorizontal: ui.cardPadding,
+    gap: ui.compactGap,
   },
   message: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
-    ...typography.caption,
+    ...typography.meta,
     textAlign: "center",
   },
 });

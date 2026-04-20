@@ -43,10 +43,12 @@ export function TutorialOverlay() {
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>{t("tutorialOverlay.title")}</Text>
           <Text style={styles.body}>
-            {t("tutorialOverlay.bodyPrefix")} <Text style={styles.bold}>{t("tutorialOverlay.startSessionCta")}</Text>{" "}
+            {t("tutorialOverlay.bodyPrefix")}{" "}
+            <Text style={styles.bold}>{t("tutorialOverlay.startSessionCta")}</Text>{" "}
             {t("tutorialOverlay.bodyMiddle")}
             {"\n\n"}
-            {t("tutorialOverlay.bodySuffix")} <Text style={styles.bold}>{t("tutorialOverlay.stopSessionCta")}</Text>{" "}
+            {t("tutorialOverlay.bodySuffix")}{" "}
+            <Text style={styles.bold}>{t("tutorialOverlay.stopSessionCta")}</Text>{" "}
             {t("tutorialOverlay.bodyEnd")}
           </Text>
           <PrimaryButton label={t("tutorialOverlay.gotIt")} onPress={dismiss} />

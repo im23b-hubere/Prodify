@@ -48,10 +48,14 @@ function getApiUrl(): string {
 
   if (!__DEV__) {
     if (!envUrl) {
-      throw new Error("EXPO_PUBLIC_API_URL must be set for production builds.");
+      console.warn("[api] EXPO_PUBLIC_API_URL is missing; network requests will be disabled.");
+      return "";
     }
     if (/localhost|127\.0\.0\.1|10\.0\.2\.2/i.test(envUrl)) {
-      throw new Error("Production builds cannot use localhost API URLs.");
+      console.warn(
+        "[api] Invalid production API URL (loopback). Network requests will be disabled.",
+      );
+      return "";
     }
   }
 

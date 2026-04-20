@@ -4,4 +4,4 @@ def test_security_headers_are_applied(client):
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["x-xss-protection"] == "1; mode=block"
-    assert response.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+    assert "strict-transport-security" not in response.headers

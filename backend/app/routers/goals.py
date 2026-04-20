@@ -81,7 +81,4 @@ def current_goal(
     )
     if row is None:
         row = UserGoal(user_id=current.id, goal_type="weekly_sessions", target_value=5, week_start=week_key)
-        db.add(row)
-        db.commit()
-        db.refresh(row)
     return _goal_snapshot(db, current.id, row)

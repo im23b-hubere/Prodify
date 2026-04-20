@@ -49,3 +49,24 @@ def test_register_push_token_respects_feature_flag(client, monkeypatch):
     )
     assert created.status_code == 503
     assert "temporarily disabled" in created.json()["error"]["message"].lower()
+
+
+def test_smart_nudge_validates_payload(client):
+    headers = _auth_headers(client, "smart-nudge@example.com", "smart-nudge-user")
+    invalid = client.post(
+        "/notifications/smart-nudge",
+        headers=headers,
+        json={"kind": "best_time", "hour": "invalid-hour"},
+    )
+    assert invalid.status_code == 422
+
+
+def test_smart_nudge_accepts_typed_payload(client, monkeypatch):
+    headers = _auth_headers(client, "smart-nudge-ok@example.com", "smart-nudge-ok-user")
+    monkeypatch.setattr("app.routers.notifications.send_ping", lambda *_args, **_kwargs: (1, 1, "ok"))
+    ok = client.post(
+        "/notifications/smart-nudge",
+        headers=headers,
+        json={"kind": "forecast_risk", "remaining_sessions": 2, "days_left": 1},
+    )
+    assert ok.status_code == 200

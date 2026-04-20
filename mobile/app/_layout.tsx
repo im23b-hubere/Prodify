@@ -14,7 +14,7 @@ import {
 import { Syne_700Bold, useFonts as useSyneFonts } from "@expo-google-fonts/syne";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
@@ -35,7 +35,22 @@ export default function RootLayout() {
   const fontsLoaded = syneLoaded && dmLoaded;
 
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 14,
+        }}
+      >
+        <Text style={{ color: colors.textPrimary, fontSize: 26, fontFamily: "Syne_700Bold" }}>
+          Prodify
+        </Text>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
   }
 
   return (

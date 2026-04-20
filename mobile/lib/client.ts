@@ -124,6 +124,9 @@ async function tryRefreshAccessToken(): Promise<TokenPair | null> {
 }
 
 export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
+  if (!API_BASE_URL) {
+    throw new Error(i18n.t("errors.serviceUnavailable"));
+  }
   const connection = await NetInfo.fetch();
   if (connection.isConnected === false || connection.isInternetReachable === false) {
     throw new Error(i18n.t("errors.network"));

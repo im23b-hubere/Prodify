@@ -19,10 +19,17 @@ export const spacing = {
   xxl: 48,
 } as const;
 
+export const space = spacing;
+
 export const typography = {
+  screenTitle: { fontSize: 30, lineHeight: 36 },
+  sectionTitle: { fontSize: 22, lineHeight: 28 },
+  cardTitle: { fontSize: 18, lineHeight: 24 },
   headline: { fontSize: 32, lineHeight: 38 },
   subheadline: { fontSize: 20, lineHeight: 26 },
   body: { fontSize: 16, lineHeight: 22 },
+  bodyStrong: { fontSize: 16, lineHeight: 22 },
+  meta: { fontSize: 13, lineHeight: 18 },
   bodySmall: { fontSize: 13, lineHeight: 18 },
   caption: { fontSize: 14, lineHeight: 20 },
 } as const;
@@ -50,4 +57,25 @@ export const radii = {
   lg: 20,
   xl: 24,
   round: 999,
+} as const;
+
+export const ui = {
+  screenPadding: spacing.md,
+  sectionGap: spacing.lg,
+  cardGap: spacing.md,
+  stackGap: spacing.md,
+  compactGap: spacing.sm,
+  cardPadding: spacing.md,
+  cardRadius: radii.md,
+  cardBorderWidth: 1,
+  buttonHeight: 56,
+} as const;
+
+export const motion = {
+  pressScale: 0.985,
+  pressScaleStrong: 0.98,
+  pressOpacity: 0.9,
+  pressOpacityLight: 0.85,
+  quick: 140,
+  standard: 220,
 } as const;

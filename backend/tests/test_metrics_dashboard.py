@@ -1,4 +1,5 @@
 from app.database import SessionLocal
+from app.config import settings
 from app.models import GrowthEvent, PushToken, UserSubscription, utcnow
 
 
@@ -22,6 +23,7 @@ def test_kpi_dashboard_contract(client):
     me = client.get("/auth/me", headers=headers)
     assert me.status_code == 200
     user_id = me.json()["id"]
+    settings.kpi_admin_user_ids = [user_id]
 
     with SessionLocal() as db:
         db.add(GrowthEvent(user_id=user_id, event_name="invite_sent", event_props_json="{}"))
@@ -71,3 +73,10 @@ def test_kpi_dashboard_contract(client):
     assert body["push_tokens_inactive"] >= 1
     assert len(body["trend"]) == 7
     assert isinstance(body["totals"]["trial_to_paid_conversion_rate"], float)
+
+
+def test_kpi_dashboard_forbidden_for_non_admin(client):
+    headers = _auth(client, "metrics-forbidden@example.com", "metrics-forbidden-user")
+    settings.kpi_admin_user_ids = []
+    response = client.get("/stats/kpi/dashboard", headers=headers)
+    assert response.status_code == 403

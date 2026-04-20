@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.config import settings
 from app.models import User
 from app.security import decode_access_token
 
@@ -37,3 +38,15 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
+
+
+def require_kpi_admin(
+    current: Annotated[User, Depends(get_current_user)],
+) -> User:
+    allowed_ids = set(settings.kpi_admin_user_ids)
+    if current.id not in allowed_ids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to access internal KPI metrics.",
+        )
+    return current

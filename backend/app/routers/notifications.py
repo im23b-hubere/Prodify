@@ -18,7 +18,7 @@ from app.dependencies import get_current_user
 
 from app.models import PushToken, User, utcnow
 
-from app.schemas import PushBulkResultPublic, PushPingBody, PushTokenRegister
+from app.schemas import PushBulkResultPublic, PushPingBody, PushTokenRegister, SmartNudgeBody
 
 from app.services import push_templates
 
@@ -159,7 +159,7 @@ def ping_self_push(
 
 @router.post("/smart-nudge", response_model=PushBulkResultPublic)
 def smart_nudge(
-    body: dict,
+    body: SmartNudgeBody,
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -167,16 +167,16 @@ def smart_nudge(
         raise HTTPException(status_code=503, detail="Push notifications are temporarily disabled")
     if not settings.feature_flag_smart_nudges_enabled:
         raise HTTPException(status_code=503, detail="Smart nudges are temporarily disabled")
-    kind = str(body.get("kind") or "inactivity")
+    kind = body.kind
     if kind == "best_time":
-        hour = int(body.get("hour") or 20)
+        hour = body.hour if body.hour is not None else 20
         title, text = push_templates.best_time_nudge(hour)
     elif kind == "forecast_risk":
-        rem = int(body.get("remaining_sessions") or 2)
-        days = int(body.get("days_left") or 2)
+        rem = body.remaining_sessions if body.remaining_sessions is not None else 2
+        days = body.days_left if body.days_left is not None else 2
         title, text = push_templates.forecast_risk_nudge(rem, days)
     else:
-        days = int(body.get("days_inactive") or 3)
+        days = body.days_inactive if body.days_inactive is not None else 3
         title, text = push_templates.inactivity_nudge(days)
 
     attempted, ok, msg = send_ping(settings, db, current.id, title, text, data=push_data_dashboard())

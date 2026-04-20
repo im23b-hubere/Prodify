@@ -1,3 +1,4 @@
+import type { Href } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Alert } from "react-native";
@@ -10,7 +11,7 @@ import type { DashboardPrimaryNudge } from "./useDashboardSocialNudges";
 
 /** Minimal navigation surface used by social actions (Expo Router–compatible). */
 export type DashboardSocialRouter = {
-  push: (href: string) => void;
+  push: (href: Href) => void;
 };
 
 type Params = {

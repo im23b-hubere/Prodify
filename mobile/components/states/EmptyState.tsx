@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors, typography, ui } from "../../constants/theme";
+import { AppCard } from "../ui/AppCard";
 import { PrimaryButton } from "../ui/PrimaryButton";
 
 type EmptyStateProps = {
@@ -14,24 +15,19 @@ type EmptyStateProps = {
 
 export function EmptyState({ icon = "•", title, message, actionLabel, onAction }: EmptyStateProps) {
   return (
-    <View style={styles.container}>
+    <AppCard style={styles.container}>
       <Text style={styles.icon}>{icon}</Text>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       {actionLabel && onAction ? <PrimaryButton label={actionLabel} onPress={onAction} /> : null}
-    </View>
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
     alignItems: "center",
-    gap: spacing.xs,
+    gap: ui.compactGap,
   },
   icon: {
     fontSize: 26,
@@ -39,13 +35,13 @@ const styles = StyleSheet.create({
   title: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.body,
+    ...typography.cardTitle,
     textAlign: "center",
   },
   message: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
-    ...typography.caption,
+    ...typography.meta,
     textAlign: "center",
   },
 });

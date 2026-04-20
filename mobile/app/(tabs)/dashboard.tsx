@@ -30,11 +30,13 @@ import { useDashboardStreakEvents } from "../../features/dashboard/hooks/useDash
 import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
 import { DashboardSessionStarter } from "../../components/dashboard/DashboardSessionStarter";
 import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
+import { TodayPlanCard } from "../../components/dashboard/TodayPlanCard";
 import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
 import { TodayProgressCard } from "../../components/dashboard/TodayProgressCard";
 import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
 import { StreakHeroSection } from "../../components/streak/StreakHeroSection";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { TutorialOverlay } from "../../components/TutorialOverlay";
 import { PENDING_SESSION_SETUP_KEY } from "../../constants/sessionUi";
 import {
@@ -44,7 +46,7 @@ import {
   userScopedMilestoneCelebratedKey,
 } from "../../constants/storageKeys";
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
+import { colors, motion, radii, shadows, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
@@ -56,6 +58,8 @@ import {
   getTimeBasedGreeting,
   getTimeOfDay,
 } from "../../lib/motivationEngine";
+import { buildTodayPlanRecommendation } from "../../lib/todayPlanEngine";
+import { buildWeeklyForecast } from "../../lib/forecastEngine";
 import { STREAK_MILESTONES } from "../../lib/streakMilestones";
 import { getUnreadCount } from "../../lib/notificationInbox";
 import { registerPushTokenWithBackend } from "../../lib/pushToken";
@@ -73,6 +77,12 @@ import {
 } from "../../features/dashboard/utils";
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
+
+function parseActivityTimestamp(value: string | null | undefined): number {
+  if (!value) return 0;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
 
 const ActiveSessionTimerBlock = ({
   active,
@@ -225,7 +235,7 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      refreshDashboard({ force: false, withLoading: false }).catch(() => null);
+      refreshDashboard({ force: true, withLoading: false }).catch(() => null);
       refreshUnreadCount();
       (async () => {
         try {
@@ -316,7 +326,9 @@ export default function DashboardScreen() {
     const cutoff = Date.now() - 90 * 60 * 1000;
     const activeNow = friendActivity.filter(
       (a) =>
-        user?.id != null && a.user_id !== user.id && new Date(a.completed_at).getTime() >= cutoff,
+        user?.id != null &&
+        a.user_id !== user.id &&
+        parseActivityTimestamp(a.completed_at) >= cutoff,
     ).length;
     return generateMotivationMessage({
       streak: streakVal,
@@ -336,9 +348,34 @@ export default function DashboardScreen() {
     todayStats.count,
     weekSessionsCount,
   ]);
-
+  const todayPlan = useMemo(
+    () =>
+      buildTodayPlanRecommendation({
+        weeklyGoalTarget,
+        weekSessionsCount,
+        currentStreak: streakOverview?.current_streak ?? clientStreak,
+        streakAtRisk: streakOverview?.streak_at_risk ?? false,
+        lastSessionAt: visibleSessions[0]?.started_at ?? null,
+        lastSessionType:
+          typeof visibleSessions[0]?.session_type === "string"
+            ? visibleSessions[0].session_type
+            : null,
+      }),
+    [weeklyGoalTarget, weekSessionsCount, streakOverview, clientStreak, visibleSessions],
+  );
   const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
   const completedCount = useMemo(() => completedSessionsCount(visibleSessions), [visibleSessions]);
+  const hasAnyCompletedSessions = completedCount > 0;
+  const paceForecast = useMemo(
+    () =>
+      hasAnyCompletedSessions && weeklyGoalTarget != null && weeklyGoalTarget > 0
+        ? buildWeeklyForecast({
+            weeklyGoalTarget,
+            completedThisWeek: weekSessionsCount,
+          })
+        : null,
+    [hasAnyCompletedSessions, weeklyGoalTarget, weekSessionsCount],
+  );
 
   const displayOverview = useMemo((): StreakOverviewDto | null => {
     if (streakOverview) return streakOverview;
@@ -464,7 +501,7 @@ export default function DashboardScreen() {
       <Animated.View entering={FadeInUp.delay(100 + index * 70).duration(400)}>
         <Swipeable renderRightActions={() => renderRightActions(item.id)}>
           <Pressable
-            style={styles.sessionRow}
+            style={({ pressed }) => [styles.sessionRow, pressed && styles.sessionRowPressed]}
             onPress={() => {
               if (typeof item.id !== "number" || !Number.isFinite(item.id) || item.id <= 0) return;
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -535,20 +572,28 @@ export default function DashboardScreen() {
         ListHeaderComponent={
           <View style={styles.headerContent}>
             <View style={styles.topBar}>
-              <Text style={styles.username}>
-                {t("dashboard.heyUser", { name: user?.username ?? t("dashboard.defaultUserName") })}
-              </Text>
-              <Pressable
-                style={styles.iconButton}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                  router.push("/notifications");
-                }}
-                accessibilityLabel={t("dashboard.notificationsA11y")}
-              >
-                <Bell color={colors.textPrimary} size={20} />
-                {notifUnread > 0 ? <View style={styles.notifBadge} /> : null}
-              </Pressable>
+              <ScreenHeader
+                title={t("dashboard.heyUser", {
+                  name: user?.username ?? t("dashboard.defaultUserName"),
+                })}
+                subtitle={t("dashboard.streakFallbackTagline")}
+                actionNode={
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.iconButton,
+                      pressed && styles.iconButtonPressed,
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                      router.push("/notifications");
+                    }}
+                    accessibilityLabel={t("dashboard.notificationsA11y")}
+                  >
+                    <Bell color={colors.textPrimary} size={20} />
+                    {notifUnread > 0 ? <View style={styles.notifBadge} /> : null}
+                  </Pressable>
+                }
+              />
             </View>
 
             {loading ? <SessionSkeleton /> : null}
@@ -564,6 +609,39 @@ export default function DashboardScreen() {
               }}
             />
 
+            <TodayPlanCard
+              plan={todayPlan}
+              forecast={paceForecast}
+              onStartSuggested={() =>
+                router.push({
+                  pathname: "/session/setup",
+                  params: {
+                    suggestedType: todayPlan.suggestedSessionType,
+                    source: "today_plan",
+                  },
+                })
+              }
+            />
+
+            {active ? (
+              <ActiveSessionTimerBlock
+                active={active}
+                onOpenFullscreen={openFullscreenActive}
+                onConfirmStop={confirmStop}
+                stopBusy={stopBusy}
+              />
+            ) : (
+              <DashboardSessionStarter onQuickStart={openSetup} />
+            )}
+
+            <TodayProgressCard
+              todaySessions={todayStats.count}
+              todayMinutes={todayStats.minutes}
+              weekSessions={weekSessionsCount}
+              weekGoalTarget={weeklyGoalTarget}
+              goalForecast={hasAnyCompletedSessions ? forecast : null}
+            />
+
             <DashboardMotivationCard
               greeting={getTimeBasedGreeting()}
               userName={user?.username ?? t("dashboard.defaultUserName")}
@@ -577,17 +655,6 @@ export default function DashboardScreen() {
               momentumState={momentumState}
               momentumScore={momentumScore}
             />
-
-            {active ? (
-              <ActiveSessionTimerBlock
-                active={active}
-                onOpenFullscreen={openFullscreenActive}
-                onConfirmStop={confirmStop}
-                stopBusy={stopBusy}
-              />
-            ) : (
-              <DashboardSessionStarter onQuickStart={openSetup} />
-            )}
 
             <FriendsActivityWidget
               currentUserId={user?.id ?? 0}
@@ -613,13 +680,6 @@ export default function DashboardScreen() {
               secondaryHint={secondaryNudge ?? identityState?.line ?? null}
             />
 
-            <TodayProgressCard
-              todaySessions={todayStats.count}
-              todayMinutes={todayStats.minutes}
-              weekSessions={weekSessionsCount}
-              weekGoalTarget={weeklyGoalTarget}
-              goalForecast={forecast}
-            />
             {entitlement?.entitlement !== "premium" ? (
               <View style={styles.premiumCtaCard}>
                 <Text style={styles.premiumCtaTitle}>{t("dashboard.premiumUpsellTitle")}</Text>
@@ -630,20 +690,28 @@ export default function DashboardScreen() {
                 />
               </View>
             ) : null}
-            <ProgressionBarCard progression={progression} />
+            <ProgressionBarCard
+              progression={progression}
+              onPress={() => router.push("/progression-overview")}
+            />
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{t("dashboard.recentSessions")}</Text>
               <View style={styles.sectionHeaderRight}>
-                <Pressable onPress={() => router.push("/(tabs)/stats")}>
+                <Pressable
+                  onPress={() => router.push("/(tabs)/stats")}
+                  style={({ pressed }) => pressed && styles.linkPressed}
+                >
                   <Text style={styles.viewAllLink}>{t("dashboard.statsLink")}</Text>
-                </Pressable>
-                <Text style={styles.headerSep}>·</Text>
-                <Pressable onPress={() => router.push("/(tabs)/session-trash")}>
-                  <Text style={styles.trashLink}>{t("dashboard.trashLink")}</Text>
                 </Pressable>
               </View>
             </View>
+            <Pressable
+              style={({ pressed }) => [styles.trashActionRow, pressed && styles.linkPressed]}
+              onPress={() => router.push("/(tabs)/session-trash")}
+            >
+              <Text style={styles.trashLink}>{t("dashboard.trashLink")}</Text>
+            </Pressable>
             {lastUpdatedLabel ? <Text style={styles.updatedHint}>{lastUpdatedLabel}</Text> : null}
             {error ? (
               <View style={styles.errorCard}>
@@ -785,23 +853,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   listContainer: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: ui.screenPadding,
     paddingBottom: spacing.xxl,
     flexGrow: 1,
   },
   headerContent: {
     paddingTop: spacing.sm,
+    gap: ui.stackGap,
   },
   topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     marginBottom: spacing.md,
   },
   username: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.subheadline,
+    ...typography.screenTitle,
   },
   iconButton: {
     width: 40,
@@ -812,6 +878,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
+  },
+  iconButtonPressed: {
+    opacity: motion.pressOpacity,
+    transform: [{ scale: motion.pressScaleStrong }],
   },
   notifBadge: {
     position: "absolute",
@@ -853,42 +923,52 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.subheadline,
+    ...typography.sectionTitle,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: spacing.xs,
-    marginTop: spacing.sm,
+    marginTop: ui.stackGap,
   },
   sectionHeaderRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   viewAllLink: {
     color: colors.secondary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
+    ...typography.meta,
   },
-  headerSep: { color: colors.textSecondary, ...typography.caption },
+  trashActionRow: {
+    marginBottom: spacing.sm,
+  },
+  linkPressed: {
+    opacity: motion.pressOpacityLight,
+  },
   updatedHint: {
     color: colors.textSecondary,
-    ...typography.caption,
-    marginBottom: spacing.sm,
+    ...typography.meta,
+    marginBottom: spacing.md,
   },
   trashLink: {
     color: colors.primary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
+    ...typography.meta,
   },
   sessionRow: {
-    borderRadius: radii.md,
-    borderWidth: 1,
+    borderRadius: ui.cardRadius,
+    borderWidth: ui.cardBorderWidth,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: spacing.md,
+    padding: ui.cardPadding,
     marginBottom: spacing.sm,
     flexDirection: "row",
     justifyContent: "space-between",
     ...shadows.card,
+  },
+  sessionRowPressed: {
+    opacity: motion.pressOpacity,
+    transform: [{ scale: motion.pressScale }],
+    borderColor: "rgba(255,255,255,0.16)",
   },
   sessionType: {
     color: colors.textPrimary,
@@ -898,7 +978,7 @@ const styles = StyleSheet.create({
   sessionMeta: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
-    ...typography.caption,
+    ...typography.meta,
   },
   deleteAction: {
     backgroundColor: colors.danger,
@@ -913,8 +993,8 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
   },
   emptyCard: {
-    borderRadius: radii.md,
-    borderWidth: 1,
+    borderRadius: ui.cardRadius,
+    borderWidth: ui.cardBorderWidth,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     padding: spacing.lg,
@@ -934,16 +1014,16 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.danger,
     fontFamily: fontFamily.bodyMedium,
-    ...typography.caption,
+    ...typography.meta,
   },
   premiumCtaCard: {
-    marginTop: spacing.lg,
-    borderRadius: radii.lg,
-    borderWidth: 1,
+    marginTop: ui.sectionGap,
+    borderRadius: ui.cardRadius,
+    borderWidth: ui.cardBorderWidth,
     borderColor: "rgba(251,191,36,0.45)",
     backgroundColor: "rgba(251,191,36,0.08)",
-    padding: spacing.md,
-    gap: spacing.sm,
+    padding: ui.cardPadding,
+    gap: ui.compactGap,
   },
   premiumCtaTitle: {
     color: "#fcd34d",
@@ -952,7 +1032,7 @@ const styles = StyleSheet.create({
   },
   premiumCtaBody: {
     color: colors.textPrimary,
-    ...typography.caption,
+    ...typography.meta,
     fontFamily: fontFamily.body,
   },
 });

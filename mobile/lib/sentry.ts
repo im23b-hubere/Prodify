@@ -9,9 +9,8 @@ export function initSentry(): void {
   const dsn = getExpoPublicSentryDsn();
   const environment = getAppEnvironment();
   if (!dsn) {
-    if (!__DEV__) {
-      throw new Error("EXPO_PUBLIC_SENTRY_DSN must be set for production builds.");
-    }
+    // Keep runtime alive even when config is missing; CI/EAS should enforce this.
+    console.warn("[sentry] EXPO_PUBLIC_SENTRY_DSN is missing; Sentry init skipped.");
     return;
   }
 

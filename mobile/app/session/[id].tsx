@@ -48,13 +48,7 @@ import {
   type SessionType,
 } from "../../types/session";
 
-function CommentRow({
-  comment,
-  highlighted,
-}: {
-  comment: SocialCommentDto;
-  highlighted: boolean;
-}) {
+function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highlighted: boolean }) {
   const pulse = useSharedValue(highlighted ? 1 : 0);
 
   useEffect(() => {
@@ -78,10 +72,15 @@ function CommentRow({
   return (
     <Animated.View style={[styles.commentItem, animatedStyle]}>
       {comment.author_profile_picture_url ? (
-        <Image source={{ uri: comment.author_profile_picture_url }} style={styles.commentAvatarImage} />
+        <Image
+          source={{ uri: comment.author_profile_picture_url }}
+          style={styles.commentAvatarImage}
+        />
       ) : (
         <View style={styles.commentAvatarFallback}>
-          <Text style={styles.commentAvatarInitials}>{comment.author_username.slice(0, 2).toUpperCase()}</Text>
+          <Text style={styles.commentAvatarInitials}>
+            {comment.author_username.slice(0, 2).toUpperCase()}
+          </Text>
         </View>
       )}
       <View style={styles.commentContent}>
@@ -104,15 +103,14 @@ export default function SessionDetailScreen() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const router = useRouter();
-  const rawParams = useLocalSearchParams<{ id?: string | string[]; ownerName?: string | string[] }>();
+  const rawParams = useLocalSearchParams<{
+    id?: string | string[];
+    ownerName?: string | string[];
+  }>();
   const rawId = rawParams.id;
   const idFromParams =
-    rawId === undefined || rawId === ""
-      ? undefined
-      : Array.isArray(rawId)
-        ? rawId[0]
-        : rawId;
-  const routeSegments = useSegments();
+    rawId === undefined || rawId === "" ? undefined : Array.isArray(rawId) ? rawId[0] : rawId;
+  const routeSegments = useSegments() as string[];
   const idFromPathSegments = (() => {
     const i = routeSegments.indexOf("session");
     if (i < 0 || i + 1 >= routeSegments.length) return undefined;
@@ -333,213 +331,219 @@ export default function SessionDetailScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
       >
-      <ScrollView
-        ref={scrollRef}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }
-      >
-        <Pressable onPress={() => router.back()} style={styles.backRow}>
-          <Text style={styles.backChevron}>‹</Text>
-          <Text style={styles.backText}>{t("sessionDetail.back")}</Text>
-        </Pressable>
+        <ScrollView
+          ref={scrollRef}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          <Pressable onPress={() => router.back()} style={styles.backRow}>
+            <Text style={styles.backChevron}>‹</Text>
+            <Text style={styles.backText}>{t("sessionDetail.back")}</Text>
+          </Pressable>
 
-        <View style={styles.hero}>
-          <Text style={styles.heroType}>{sessionTypeLabel(session.session_type, t)}</Text>
-          <Text style={styles.heroDur}>{durationLabel}</Text>
-          <Text style={styles.heroMeta}>
-            {startOk
-              ? `${start.toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
-              : "—"}
-            {endOk && end
-              ? ` – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
-              : ""}
-          </Text>
-          {!isOwnSession ? (
-            <>
-              <Text style={styles.friendReadOnlyHint}>{t("sessionDetail.friendSessionReadOnly")}</Text>
-              <Pressable
-                accessibilityRole="link"
-                accessibilityLabel={t("sessionDetail.viewProfileA11y", { name: producerDisplayName })}
-                style={({ pressed }) => [styles.producerLink, pressed && { opacity: 0.85 }]}
-                onPress={() => {
-                  Haptics.selectionAsync().catch(() => undefined);
-                  router.push(`/profile/${session.user_id}`);
-                }}
-              >
-                <Text style={styles.producerLinkName}>
-                  {t("sessionDetail.byProducer", { name: producerDisplayName })}
+          <View style={styles.hero}>
+            <Text style={styles.heroType}>{sessionTypeLabel(session.session_type, t)}</Text>
+            <Text style={styles.heroDur}>{durationLabel}</Text>
+            <Text style={styles.heroMeta}>
+              {startOk
+                ? `${start.toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
+                : "—"}
+              {endOk && end
+                ? ` – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
+                : ""}
+            </Text>
+            {!isOwnSession ? (
+              <>
+                <Text style={styles.friendReadOnlyHint}>
+                  {t("sessionDetail.friendSessionReadOnly")}
                 </Text>
-                <Text style={styles.producerLinkCta}>{t("sessionDetail.viewProfile")}</Text>
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel={t("sessionDetail.viewProfileA11y", {
+                    name: producerDisplayName,
+                  })}
+                  style={({ pressed }) => [styles.producerLink, pressed && { opacity: 0.85 }]}
+                  onPress={() => {
+                    Haptics.selectionAsync().catch(() => undefined);
+                    router.push(`/profile/${session.user_id}`);
+                  }}
+                >
+                  <Text style={styles.producerLinkName}>
+                    {t("sessionDetail.byProducer", { name: producerDisplayName })}
+                  </Text>
+                  <Text style={styles.producerLinkCta}>{t("sessionDetail.viewProfile")}</Text>
+                </Pressable>
+              </>
+            ) : null}
+          </View>
+
+          {insights ? (
+            <SessionInsightSections
+              session={session}
+              insights={insights}
+              producerName={isOwnSession ? user?.username : producerDisplayName}
+            />
+          ) : null}
+
+          <View style={styles.grid}>
+            <View style={styles.gridCell}>
+              <Text style={styles.gridLabel}>{t("sessionDetail.start")}</Text>
+              <Text style={styles.gridVal}>
+                {startOk
+                  ? start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+                  : "—"}
+              </Text>
+            </View>
+            <View style={styles.gridCell}>
+              <Text style={styles.gridLabel}>{t("sessionDetail.end")}</Text>
+              <Text style={styles.gridVal}>
+                {endOk && end
+                  ? end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+                  : "—"}
+              </Text>
+            </View>
+            <View style={styles.gridCell}>
+              <Text style={styles.gridLabel}>{t("sessionDetail.mood")}</Text>
+              <Text style={styles.gridVal}>
+                {session.mood_level ? sessionMoodLabel(session.mood_level, t) : "—"}
+              </Text>
+            </View>
+            <View style={styles.gridCell}>
+              <Text style={styles.gridLabel}>{t("sessionDetail.pauses")}</Text>
+              <Text style={styles.gridVal}>
+                {session.paused_duration_seconds
+                  ? t("sessionDetail.pauseSummary", {
+                      count: pauseCount,
+                      m: Math.round((session.paused_duration_seconds || 0) / 60),
+                    })
+                  : "—"}
+              </Text>
+            </View>
+          </View>
+
+          {isOwnSession ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
+              <View style={styles.chips}>
+                {SESSION_TYPE_IDS.map((type) => (
+                  <SessionTypeChip
+                    key={type}
+                    label={sessionTypeLabel(type, t)}
+                    active={selectedType === type}
+                    onPress={() => setSelectedType(type)}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
+              <Text style={styles.readOnlyVal}>{sessionTypeLabel(session.session_type, t)}</Text>
+            </View>
+          )}
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("sessionDetail.notes")}</Text>
+            {isOwnSession ? (
+              <TextInput
+                style={styles.noteInput}
+                value={note}
+                onChangeText={setNote}
+                placeholder={t("sessionDetail.notesPlaceholder")}
+                placeholderTextColor={colors.textSecondary}
+                multiline
+              />
+            ) : note.trim() ? (
+              <Text style={styles.noteReadOnly}>{note}</Text>
+            ) : (
+              <Text style={styles.mutedNote}>{t("sessionDetail.noNotes")}</Text>
+            )}
+          </View>
+
+          {tagList.length > 0 ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t("sessionDetail.tags")}</Text>
+              <View style={styles.tagRow}>
+                {tagList.map((tag) => (
+                  <View key={tag} style={styles.tag}>
+                    <Text style={styles.tagTxt}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("friendsScreen.commentsTitle")}</Text>
+            {commentsLoading ? (
+              <Text style={styles.mutedNote}>{t("friendsScreen.loading")}</Text>
+            ) : comments.length === 0 ? (
+              <Text style={styles.mutedNote}>{t("friendsScreen.beFirstToComment")}</Text>
+            ) : (
+              comments.map((comment) => (
+                <View key={comment.id}>
+                  <CommentRow comment={comment} highlighted={newCommentId === comment.id} />
+                  <View style={styles.commentMetaRow}>
+                    <Text style={styles.commentTime}>{formatCommentAgo(comment.created_at)}</Text>
+                  </View>
+                </View>
+              ))
+            )}
+            <View style={styles.commentComposerRow}>
+              <TextInput
+                value={commentInput}
+                onChangeText={setCommentInput}
+                placeholder={t("friendsScreen.commentPlaceholder")}
+                placeholderTextColor={colors.textSecondary}
+                style={styles.commentInput}
+                multiline
+                maxLength={400}
+                onFocus={() => {
+                  setTimeout(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  }, 120);
+                }}
+              />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.commentSendBtn,
+                  commentSentPulse && styles.commentSendBtnSuccess,
+                  pressed && { opacity: 0.85 },
+                ]}
+                disabled={commentSending}
+                onPress={() => void submitComment()}
+              >
+                {commentSending ? (
+                  <Text style={styles.commentSendText}>
+                    {t("friendsScreen.commentSendingShort")}
+                  </Text>
+                ) : commentSentPulse ? (
+                  <Check size={16} color="#22c55e" strokeWidth={2.4} />
+                ) : (
+                  <Text style={styles.commentSendText}>{t("friendsScreen.commentSend")}</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          {isOwnSession ? (
+            <>
+              <PrimaryButton label={t("sessionDetail.saveChanges")} onPress={save} loading={busy} />
+              <Pressable style={styles.dangerBtn} onPress={confirmDelete}>
+                <Text style={styles.dangerTxt}>{t("sessionDetail.deleteSession")}</Text>
               </Pressable>
             </>
           ) : null}
-        </View>
-
-        {insights ? (
-          <SessionInsightSections
-            session={session}
-            insights={insights}
-            producerName={isOwnSession ? user?.username : producerDisplayName}
-          />
-        ) : null}
-
-        <View style={styles.grid}>
-          <View style={styles.gridCell}>
-            <Text style={styles.gridLabel}>{t("sessionDetail.start")}</Text>
-            <Text style={styles.gridVal}>
-              {startOk
-                ? start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-                : "—"}
-            </Text>
-          </View>
-          <View style={styles.gridCell}>
-            <Text style={styles.gridLabel}>{t("sessionDetail.end")}</Text>
-            <Text style={styles.gridVal}>
-              {endOk && end
-                ? end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-                : "—"}
-            </Text>
-          </View>
-          <View style={styles.gridCell}>
-            <Text style={styles.gridLabel}>{t("sessionDetail.mood")}</Text>
-            <Text style={styles.gridVal}>
-              {session.mood_level ? sessionMoodLabel(session.mood_level, t) : "—"}
-            </Text>
-          </View>
-          <View style={styles.gridCell}>
-            <Text style={styles.gridLabel}>{t("sessionDetail.pauses")}</Text>
-            <Text style={styles.gridVal}>
-              {session.paused_duration_seconds
-                ? t("sessionDetail.pauseSummary", {
-                    count: pauseCount,
-                    m: Math.round((session.paused_duration_seconds || 0) / 60),
-                  })
-                : "—"}
-            </Text>
-          </View>
-        </View>
-
-        {isOwnSession ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
-            <View style={styles.chips}>
-              {SESSION_TYPE_IDS.map((type) => (
-                <SessionTypeChip
-                  key={type}
-                  label={sessionTypeLabel(type, t)}
-                  active={selectedType === type}
-                  onPress={() => setSelectedType(type)}
-                />
-              ))}
-            </View>
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
-            <Text style={styles.readOnlyVal}>{sessionTypeLabel(session.session_type, t)}</Text>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("sessionDetail.notes")}</Text>
-          {isOwnSession ? (
-            <TextInput
-              style={styles.noteInput}
-              value={note}
-              onChangeText={setNote}
-              placeholder={t("sessionDetail.notesPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              multiline
-            />
-          ) : note.trim() ? (
-            <Text style={styles.noteReadOnly}>{note}</Text>
-          ) : (
-            <Text style={styles.mutedNote}>{t("sessionDetail.noNotes")}</Text>
-          )}
-        </View>
-
-        {tagList.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t("sessionDetail.tags")}</Text>
-            <View style={styles.tagRow}>
-              {tagList.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagTxt}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("friendsScreen.commentsTitle")}</Text>
-          {commentsLoading ? (
-            <Text style={styles.mutedNote}>{t("friendsScreen.loading")}</Text>
-          ) : comments.length === 0 ? (
-            <Text style={styles.mutedNote}>{t("friendsScreen.beFirstToComment")}</Text>
-          ) : (
-            comments.map((comment) => (
-              <View key={comment.id}>
-                <CommentRow comment={comment} highlighted={newCommentId === comment.id} />
-                <View style={styles.commentMetaRow}>
-                  <Text style={styles.commentTime}>{formatCommentAgo(comment.created_at)}</Text>
-                </View>
-              </View>
-            ))
-          )}
-          <View style={styles.commentComposerRow}>
-            <TextInput
-              value={commentInput}
-              onChangeText={setCommentInput}
-              placeholder={t("friendsScreen.commentPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.commentInput}
-              multiline
-              maxLength={400}
-              onFocus={() => {
-                setTimeout(() => {
-                  scrollRef.current?.scrollToEnd({ animated: true });
-                }, 120);
-              }}
-            />
-            <Pressable
-              style={({ pressed }) => [
-                styles.commentSendBtn,
-                commentSentPulse && styles.commentSendBtnSuccess,
-                pressed && { opacity: 0.85 },
-              ]}
-              disabled={commentSending}
-              onPress={() => void submitComment()}
-            >
-              {commentSending ? (
-                <Text style={styles.commentSendText}>{t("friendsScreen.commentSendingShort")}</Text>
-              ) : commentSentPulse ? (
-                <Check size={16} color="#22c55e" strokeWidth={2.4} />
-              ) : (
-                <Text style={styles.commentSendText}>{t("friendsScreen.commentSend")}</Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-        {isOwnSession ? (
-          <>
-            <PrimaryButton label={t("sessionDetail.saveChanges")} onPress={save} loading={busy} />
-            <Pressable style={styles.dangerBtn} onPress={confirmDelete}>
-              <Text style={styles.dangerTxt}>{t("sessionDetail.deleteSession")}</Text>
-            </Pressable>
-          </>
-        ) : null}
-      </ScrollView>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -732,7 +736,12 @@ const styles = StyleSheet.create({
     ...typography.caption,
     lineHeight: 18,
   },
-  commentComposerRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.xs, marginTop: spacing.sm },
+  commentComposerRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
   commentInput: {
     flex: 1,
     minHeight: 42,

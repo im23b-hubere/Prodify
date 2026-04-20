@@ -54,7 +54,8 @@ jest.mock("@react-navigation/native", () => ({
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: { returnObjects?: boolean }) => {
-      if (options?.returnObjects && key === "dashboard.weekdayShort") return ["M", "T", "W", "T", "F", "S", "S"];
+      if (options?.returnObjects && key === "dashboard.weekdayShort")
+        return ["M", "T", "W", "T", "F", "S", "S"];
       return key;
     },
   }),

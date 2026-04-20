@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { colors, radii, spacing } from "../../constants/theme";
+import { colors, ui } from "../../constants/theme";
 
 type GlassCardProps = {
   children: ReactNode;
@@ -24,17 +24,17 @@ export const GlassCard = memo(function GlassCard({ children }: GlassCardProps) {
 
 const styles = StyleSheet.create({
   gradientBorder: {
-    borderRadius: radii.xl,
+    borderRadius: ui.cardRadius,
     padding: 1,
   },
   inner: {
-    borderRadius: radii.xl - 1,
+    borderRadius: ui.cardRadius - 1,
     overflow: "hidden",
     backgroundColor: "rgba(20,20,20,0.8)",
     borderWidth: 1,
     borderColor: colors.border,
   },
   content: {
-    padding: spacing.lg,
+    padding: ui.cardPadding,
   },
 });

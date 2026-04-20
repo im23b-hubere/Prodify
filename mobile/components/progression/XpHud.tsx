@@ -23,7 +23,14 @@ export function XpHud() {
     if (!pathname) return false;
     if (pathname.startsWith("/(auth)")) return true;
     // Expo Router may expose grouped routes with or without "(tabs)" in pathname.
-    const allowed = ["/dashboard", "/stats", "/friends", "/(tabs)/dashboard", "/(tabs)/stats", "/(tabs)/friends"];
+    const allowed = [
+      "/dashboard",
+      "/stats",
+      "/friends",
+      "/(tabs)/dashboard",
+      "/(tabs)/stats",
+      "/(tabs)/friends",
+    ];
     return !allowed.some((p) => pathname.startsWith(p));
   }, [pathname]);
 
@@ -32,7 +39,11 @@ export function XpHud() {
     async function load() {
       if (!token || hidden) return;
       try {
-        const raw = await apiJson<unknown>("/progression/me", { token });
+        const raw = await apiJson<unknown>("/progression/sync", {
+          token,
+          method: "POST",
+          body: {},
+        });
         const parsed = tryParseProgressionDto(raw);
         if (!cancelled && parsed) {
           setXp(parsed.xp_total);

@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_kpi_admin
 from app.models import ProductionSession, Streak, User, UserGoal, utcnow
 from app.schemas import (
     HeatmapDayPublic,
@@ -228,7 +228,7 @@ def stats_heatmap(
 
 @router.get("/kpi/summary", response_model=KpiSummaryPublic)
 def stats_kpi_summary(
-    _current: Annotated[User, Depends(get_current_user)],
+    _current: Annotated[User, Depends(require_kpi_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
     return kpi_summary(db)
@@ -236,7 +236,7 @@ def stats_kpi_summary(
 
 @router.get("/kpi/dashboard", response_model=KpiDashboardPublic)
 def stats_kpi_dashboard(
-    _current: Annotated[User, Depends(get_current_user)],
+    _current: Annotated[User, Depends(require_kpi_admin)],
     db: Annotated[Session, Depends(get_db)],
 ):
     return kpi_dashboard(db, window_days=7)

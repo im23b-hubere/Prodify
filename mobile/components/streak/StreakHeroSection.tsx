@@ -58,6 +58,7 @@ export function StreakHeroSection({
   return (
     <Animated.View entering={FadeInDown.duration(420)}>
       <LinearGradient colors={["#1f1410", "#141414"]} style={styles.card}>
+        <Text style={styles.streakKicker}>{t("streakHero.kicker")}</Text>
         <View style={styles.topRow}>
           <Text style={styles.flameEmoji}>🔥</Text>
           <Text style={styles.bigStreak}>{displayStreak}</Text>
@@ -178,6 +179,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.sm,
     flexWrap: "wrap",
+  },
+  streakKicker: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    textAlign: "center",
+    marginBottom: spacing.xs,
+    fontFamily: fontFamily.bodyBold,
   },
   flameEmoji: {
     fontSize: 36,

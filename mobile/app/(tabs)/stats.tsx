@@ -1,7 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import {
   Platform,
@@ -17,23 +19,27 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
+import { AppCard } from "../../components/ui/AppCard";
 import { StatCard } from "../../components/ui/StatCard";
+import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
 import { formatSessionListDate, weekdayLetterFromIsoDay } from "../../lib/sessionTime";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
-import { tryParseGoalForecastDto } from "../../lib/outcomesDto";
+import { tryParseGoalForecastDto, tryParseProgressionDto } from "../../lib/outcomesDto";
 import {
   tryParseHeatmapDays,
   tryParsePersonalRecords,
   tryParseSessionStatsDto,
 } from "../../lib/statsDto";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
-import type { GoalForecastDto } from "../../types/outcomes";
+import type { GoalForecastDto, ProgressionDto } from "../../types/outcomes";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 type PersonalRecord = {
@@ -48,7 +54,7 @@ const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
 const CALENDAR_DAY_MS = 24 * 60 * 60 * 1000;
 
 type CalendarMode = "week" | "month";
-type TTranslate = (key: string, options?: Record<string, unknown>) => string;
+type TTranslate = TFunction;
 type DecoratedRecord = PersonalRecord & { score: number; isFresh: boolean };
 
 function formatDuration(seconds: number) {
@@ -182,6 +188,7 @@ export default function StatsScreen() {
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
+  const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
@@ -202,12 +209,16 @@ export default function StatsScreen() {
   const loadStats = useCallback(async () => {
     if (!token) return;
     const seq = ++loadSeq.current;
+    if (mounted.current) setLoading(true);
     if (mounted.current) setError(null);
     try {
-      const [rawStats, rawHm, rawRec] = await Promise.all([
+      const [rawStats, rawHm, rawRec, progressionRaw] = await Promise.all([
         apiJson<unknown>(`/sessions/stats?period=${periodParam}`, { token }),
         apiJson<unknown>(`/stats/heatmap`, { token }),
         apiJson<unknown>(`/stats/records`, { token }),
+        apiJson<unknown>("/progression/sync", { token, method: "POST", body: {} }).catch(
+          () => null,
+        ),
       ]);
       const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
         token,
@@ -220,6 +231,7 @@ export default function StatsScreen() {
           setStats(null);
           setHeatmapDays([]);
           setRecords([]);
+          setProgression(null);
           setError(t("stats.invalidResponse"));
         }
         return;
@@ -229,6 +241,7 @@ export default function StatsScreen() {
         setHeatmapDays(tryParseHeatmapDays(rawHm));
         setRecords(tryParsePersonalRecords(rawRec));
         setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+        setProgression(progressionRaw ? tryParseProgressionDto(progressionRaw) : null);
       }
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
@@ -244,6 +257,12 @@ export default function StatsScreen() {
   useEffect(() => {
     loadStats().catch((e) => setError(e instanceof Error ? e.message : t("stats.loadFailed")));
   }, [loadStats, t]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadStats().catch(() => undefined);
+    }, [loadStats]),
+  );
 
   const onRefresh = useCallback(async () => {
     if (mounted.current) setRefreshing(true);
@@ -353,13 +372,35 @@ export default function StatsScreen() {
 
   const chartData = useMemo((): BarPoint[] => {
     const points = stats?.trend ?? [];
+    if (filter.period === "week") {
+      const sessionsByDay = new Map<string, number>();
+      for (const point of points) {
+        if (point?.label) {
+          sessionsByDay.set(
+            point.label,
+            Number.isFinite(point.sessions) && point.sessions >= 0 ? point.sessions : 0,
+          );
+        }
+      }
+      return Array.from({ length: 7 }, (_, index) => {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() - (6 - index));
+        const isoLabel = date.toISOString().slice(0, 10);
+        return {
+          x: weekdayLetterFromIsoDay(isoLabel),
+          y: sessionsByDay.get(isoLabel) ?? 0,
+          label: isoLabel,
+        };
+      });
+    }
     if (points.length === 0) return [{ x: "—", y: 0, label: "-" }];
     return points.map((p) => ({
       x: weekdayLetterFromIsoDay(p.label),
       y: Number.isFinite(p.sessions) && p.sessions >= 0 ? p.sessions : 0,
       label: p.label,
     }));
-  }, [stats]);
+  }, [filter.period, stats]);
 
   const breakdownData = useMemo(
     () =>
@@ -396,6 +437,7 @@ export default function StatsScreen() {
     }
     return stats?.productivity_hint ?? null;
   }, [stats?.productivity_hint_item, stats?.productivity_hint, t]);
+  const levelProgressPercent = Math.max(0, Math.min(100, progression?.progress_percent ?? 0));
 
   const weekGoal = useMemo(() => {
     if (filter.period !== "week" || !stats?.trend?.length) return null;
@@ -409,7 +451,7 @@ export default function StatsScreen() {
       const canOpen = typeof sid === "number" && Number.isFinite(sid) && sid > 0;
       return (
         <Pressable
-          style={styles.recentRow}
+          style={({ pressed }) => [styles.recentRow, pressed && styles.recentRowPressed]}
           onPress={() => {
             if (!canOpen) return;
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -445,12 +487,21 @@ export default function StatsScreen() {
         }
       >
         <View style={styles.headerRow}>
-          <Text style={styles.title}>{t("stats.title")}</Text>
+          <ScreenHeader
+            title={t("stats.title")}
+            subtitle={t("stats.filterAll")}
+            actionLabel={t("sessionFeedback.backToDashboard")}
+            onActionPress={() => router.push("/(tabs)/dashboard")}
+          />
           <View style={styles.filterRow}>
             {filters.map((f, i) => (
               <Pressable
                 key={f.key}
-                style={[styles.filterChip, filterIdx === i && styles.filterChipActive]}
+                style={({ pressed }) => [
+                  styles.filterChip,
+                  filterIdx === i && styles.filterChipActive,
+                  pressed && styles.filterChipPressed,
+                ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
                   setFilterIdx(i);
@@ -462,6 +513,16 @@ export default function StatsScreen() {
               </Pressable>
             ))}
           </View>
+        </View>
+        <View style={styles.quickActions}>
+          <PrimaryButton
+            label={t("dashboard.startSession")}
+            onPress={() => router.push("/session/setup")}
+          />
+          <SecondaryButton
+            label={t("sessionFeedback.backToDashboard")}
+            onPress={() => router.push("/(tabs)/dashboard")}
+          />
         </View>
         {loading && !refreshing ? <LoadingState message={t("stats.loading")} /> : null}
         {!loading && error ? (
@@ -504,28 +565,57 @@ export default function StatsScreen() {
           />
         </ScrollView>
 
-        {weekGoal ? (
-          <View style={styles.goalCard}>
-            <Text style={styles.goalTitle}>
-              {t("stats.weeklyPresence", { have: weekGoal.daysWith, goal: weekGoal.goal })}
+        {progression ? (
+          <AppCard style={styles.progressionCard}>
+            <View style={styles.progressionTopRow}>
+              <Text style={styles.cardTitle}>
+                {t("progression.levelTitle", { level: progression.current_level })}
+              </Text>
+              <Text style={styles.goalSubtle}>
+                {t("progression.xpTotal", { xp: progression.xp_total })}
+              </Text>
+            </View>
+            <View style={styles.progressionTrack}>
+              <View style={[styles.progressionFill, { width: `${levelProgressPercent}%` }]} />
+            </View>
+            <Text style={styles.goalSubtle}>
+              {t("progression.toNext", {
+                xp: progression.xp_to_next_level,
+                level: progression.current_level + 1,
+                percent: Math.round(levelProgressPercent),
+              })}
             </Text>
-            <Text style={styles.goalSub}>
-              {weekGoal.daysWith >= weekGoal.goal
-                ? t("stats.weeklyCrushed")
-                : t("stats.weeklyMoreDays", {
-                    count: weekGoal.goal - weekGoal.daysWith,
-                    n: weekGoal.goal - weekGoal.daysWith,
-                  })}
-            </Text>
-          </View>
-        ) : null}
-        {forecast ? (
-          <View style={styles.goalCard}>
-            <Text style={styles.goalTitle}>{forecast.warning_message}</Text>
-          </View>
+            <View style={styles.progressionButtonRow}>
+              <SecondaryButton
+                label={t("progression.openOverview")}
+                onPress={() => router.push("/progression-overview")}
+              />
+            </View>
+          </AppCard>
         ) : null}
 
-        <View style={styles.chartCard}>
+        {weekGoal || forecast ? (
+          <AppCard style={styles.goalCard}>
+            {weekGoal ? (
+              <>
+                <Text style={styles.goalTitle}>
+                  {t("stats.weeklyPresence", { have: weekGoal.daysWith, goal: weekGoal.goal })}
+                </Text>
+                <Text style={styles.goalSub}>
+                  {weekGoal.daysWith >= weekGoal.goal
+                    ? t("stats.weeklyCrushed")
+                    : t("stats.weeklyMoreDays", {
+                        count: weekGoal.goal - weekGoal.daysWith,
+                        n: weekGoal.goal - weekGoal.daysWith,
+                      })}
+                </Text>
+              </>
+            ) : null}
+            {forecast ? <Text style={styles.goalSubtle}>{forecast.warning_message}</Text> : null}
+          </AppCard>
+        ) : null}
+
+        <AppCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.heatmapTitle")}</Text>
           <View style={styles.heatmapGrid}>
             {heatmapDays.map((d) => (
@@ -546,14 +636,18 @@ export default function StatsScreen() {
               />
             ))}
           </View>
-        </View>
+        </AppCard>
 
-        <View style={styles.chartCard}>
+        <AppCard style={styles.chartCard}>
           <View style={styles.calendarHeader}>
             <Text style={styles.cardTitle}>{t("stats.activityCalendarTitle")}</Text>
             <View style={styles.calendarModeRow}>
               <Pressable
-                style={[styles.modeChip, calendarMode === "week" && styles.modeChipActive]}
+                style={({ pressed }) => [
+                  styles.modeChip,
+                  calendarMode === "week" && styles.modeChipActive,
+                  pressed && styles.modeChipPressed,
+                ]}
                 onPress={() => setCalendarMode("week")}
               >
                 <Text
@@ -566,7 +660,11 @@ export default function StatsScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.modeChip, calendarMode === "month" && styles.modeChipActive]}
+                style={({ pressed }) => [
+                  styles.modeChip,
+                  calendarMode === "month" && styles.modeChipActive,
+                  pressed && styles.modeChipPressed,
+                ]}
                 onPress={() => setCalendarMode("month")}
               >
                 <Text
@@ -583,7 +681,7 @@ export default function StatsScreen() {
 
           <View style={styles.calendarNavRow}>
             <Pressable
-              style={styles.navBtn}
+              style={({ pressed }) => [styles.navBtn, pressed && styles.navBtnPressed]}
               onPress={() => {
                 if (calendarMode === "week") setWeekOffset((prev) => prev + 1);
                 else setMonthOffset((prev) => prev - 1);
@@ -600,7 +698,7 @@ export default function StatsScreen() {
                 : monthCalendarDays.monthLabel}
             </Text>
             <Pressable
-              style={styles.navBtn}
+              style={({ pressed }) => [styles.navBtn, pressed && styles.navBtnPressed]}
               disabled={calendarMode === "week" ? weekOffset === 0 : monthOffset === 0}
               onPress={() => {
                 if (calendarMode === "week") setWeekOffset((prev) => Math.max(0, prev - 1));
@@ -654,15 +752,15 @@ export default function StatsScreen() {
               ))}
             </View>
           )}
-        </View>
+        </AppCard>
 
-        <View style={styles.chartCard}>
+        <AppCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
           {decoratedRecords.length === 0 ? (
             <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
           ) : (
             <View style={styles.recordsWrap}>
-              {decoratedRecords.map((r, idx) => {
+              {decoratedRecords.slice(0, 3).map((r, idx) => {
                 const meta = formatRecordDate(r.occurred_at, t);
                 const displayContext = formatRecordContext(r, t);
                 return (
@@ -705,17 +803,17 @@ export default function StatsScreen() {
               })}
             </View>
           )}
-        </View>
+        </AppCard>
 
-        <View style={styles.chartCard}>
+        <AppCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.perDayTitle")}</Text>
           {!loading && error ? <Text style={styles.errorText}>{error}</Text> : null}
           <View style={styles.chartInner}>
             <SessionsPerDayChart data={chartData} />
           </View>
-        </View>
+        </AppCard>
 
-        <View style={styles.chartCard}>
+        <AppCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.typeMixTitle")}</Text>
           {breakdownData.length > 0 ? (
             <View style={styles.breakdownWrap}>
@@ -744,25 +842,28 @@ export default function StatsScreen() {
               <Text style={styles.emptyText}>{t("stats.typeMixEmpty")}</Text>
             </View>
           )}
-        </View>
+        </AppCard>
 
         {productivityHintText ? (
-          <View style={styles.hintCard}>
+          <AppCard style={styles.hintCard}>
             <Text style={styles.hintText}>{productivityHintText}</Text>
-          </View>
+          </AppCard>
         ) : null}
 
         <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
         {recent.length === 0 ? (
           <Text style={styles.emptyText}>{t("stats.recentEmpty")}</Text>
         ) : (
-          recent.map((item) => (
-            <View
-              key={typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}
-            >
-              {renderRecent({ item })}
-            </View>
-          ))
+          <View style={styles.recentList}>
+            {recent.map((item) => (
+              <View
+                key={typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}
+                style={styles.recentItem}
+              >
+                {renderRecent({ item })}
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -771,9 +872,13 @@ export default function StatsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md, paddingBottom: spacing.xxl },
+  content: { padding: ui.screenPadding, paddingBottom: spacing.xxl },
   headerRow: { marginBottom: spacing.md, gap: spacing.sm },
-  title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
+  quickActions: {
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.screenTitle },
   filterRow: { flexDirection: "row", gap: spacing.sm },
   filterChip: {
     borderRadius: radii.round,
@@ -784,30 +889,48 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   filterChipActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.2)" },
+  filterChipPressed: { opacity: motion.pressOpacity, transform: [{ scale: motion.pressScale }] },
   filterLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyMedium,
-    ...typography.caption,
+    ...typography.meta,
   },
   filterLabelActive: { color: colors.textPrimary },
-  cardRow: { gap: spacing.sm, paddingBottom: spacing.md },
+  cardRow: { gap: spacing.sm, paddingBottom: spacing.lg },
   goalCard: {
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    marginBottom: spacing.lg,
   },
   goalTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  goalSub: { color: colors.textSecondary, marginTop: 4, ...typography.caption },
-  chartCard: {
-    marginBottom: spacing.md,
-    borderRadius: radii.md,
+  goalSub: { color: colors.textSecondary, marginTop: 4, ...typography.meta },
+  goalSubtle: { color: colors.textSecondary, marginTop: spacing.sm, ...typography.meta },
+  progressionCard: {
+    marginBottom: spacing.lg,
+  },
+  progressionTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  progressionTrack: {
+    marginTop: spacing.sm,
+    width: "100%",
+    height: 8,
+    borderRadius: radii.round,
+    backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
+    overflow: "hidden",
+  },
+  progressionFill: {
+    height: "100%",
+    backgroundColor: colors.primary,
+  },
+  progressionButtonRow: {
+    marginTop: spacing.xs,
+  },
+  chartCard: {
+    marginBottom: spacing.lg,
   },
   calendarHeader: {
     flexDirection: "row",
@@ -826,9 +949,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   modeChipActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.16)" },
+  modeChipPressed: { opacity: motion.pressOpacity, transform: [{ scale: motion.pressScale }] },
   modeChipText: {
     color: colors.textSecondary,
-    ...typography.caption,
+    ...typography.meta,
     fontFamily: fontFamily.bodyMedium,
   },
   modeChipTextActive: { color: colors.textPrimary },
@@ -847,13 +971,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.background,
   },
-  navBtnText: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyBold },
+  navBtnPressed: { opacity: motion.pressOpacity, transform: [{ scale: motion.pressScale }] },
+  navBtnText: { color: colors.textPrimary, ...typography.meta, fontFamily: fontFamily.bodyBold },
   navBtnTextDisabled: { color: colors.textSecondary },
   calendarRangeLabel: {
     flex: 1,
     textAlign: "center",
     color: colors.textSecondary,
-    ...typography.caption,
+    ...typography.meta,
   },
   weekGrid: {
     flexDirection: "row",
@@ -864,7 +989,7 @@ const styles = StyleSheet.create({
   weekDayCell: { width: "13.5%", alignItems: "center", gap: 4 },
   weekDayLabel: {
     color: colors.textSecondary,
-    ...typography.caption,
+    ...typography.meta,
     fontFamily: fontFamily.bodyMedium,
   },
   weekDayDot: {
@@ -907,11 +1032,15 @@ const styles = StyleSheet.create({
   },
   monthCellText: {
     color: colors.textPrimary,
-    ...typography.caption,
+    ...typography.meta,
     fontFamily: fontFamily.bodyMedium,
   },
   monthCellTextMuted: { color: colors.textSecondary },
-  cardTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  cardTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.cardTitle,
+  },
   heatmapGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -980,7 +1109,7 @@ const styles = StyleSheet.create({
   },
   recordLabel: {
     color: colors.textSecondary,
-    ...typography.caption,
+    ...typography.meta,
     fontFamily: fontFamily.bodyMedium,
     flexShrink: 1,
   },
@@ -1000,7 +1129,7 @@ const styles = StyleSheet.create({
   },
   recordCtx: {
     color: colors.textSecondary,
-    ...typography.caption,
+    ...typography.meta,
   },
   recordMeta: {
     marginTop: 2,
@@ -1068,7 +1197,7 @@ const styles = StyleSheet.create({
   breakdownLabel: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyMedium,
-    ...typography.caption,
+    ...typography.meta,
     flexShrink: 1,
   },
   breakdownTrack: {
@@ -1087,7 +1216,7 @@ const styles = StyleSheet.create({
     width: 72,
     textAlign: "right",
     fontFamily: fontFamily.bodyMedium,
-    ...typography.caption,
+    ...typography.meta,
   },
   errorText: {
     marginTop: spacing.sm,
@@ -1109,30 +1238,32 @@ const styles = StyleSheet.create({
     ...typography.caption,
   },
   hintCard: {
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    borderRadius: radii.md,
+    marginBottom: spacing.lg,
     backgroundColor: "rgba(162,89,255,0.12)",
-    borderWidth: 1,
     borderColor: colors.secondary,
   },
-  hintText: { color: colors.textSecondary, ...typography.caption, lineHeight: 20 },
+  hintText: { color: colors.textSecondary, ...typography.meta, lineHeight: 20 },
   recentTitle: {
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.subheadline,
+    ...typography.sectionTitle,
   },
   recentRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    marginBottom: spacing.sm,
+  },
+  recentRowPressed: {
+    opacity: motion.pressOpacity,
+    transform: [{ scale: motion.pressScale }],
+    borderColor: "rgba(255,255,255,0.16)",
   },
   recentType: {
     flex: 1,
@@ -1140,8 +1271,14 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.body,
   },
-  recentMid: { alignItems: "flex-end", marginRight: spacing.sm },
-  recentDur: { color: colors.textPrimary, ...typography.caption },
-  recentDate: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
-  recentChev: { color: colors.primary, fontSize: 22 },
+  recentMid: { alignItems: "flex-end", marginRight: spacing.md },
+  recentDur: { color: colors.textPrimary, ...typography.meta },
+  recentDate: { color: colors.textSecondary, ...typography.meta, marginTop: 2 },
+  recentChev: { color: colors.primary, fontSize: 20, marginLeft: spacing.xs },
+  recentList: {
+    marginBottom: spacing.md,
+  },
+  recentItem: {
+    marginBottom: spacing.md,
+  },
 });

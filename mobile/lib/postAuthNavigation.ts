@@ -6,7 +6,12 @@ import { ONBOARDING_COMPLETE_KEY } from "../constants/storageKeys";
 export type PostAuthEntryPoint = "login" | "register" | "app_launch";
 export type PaywallSource = "onboarding" | "post_auth" | "in_app";
 
-type HrefPath = "/(auth)/login" | "/(auth)/register" | "/onboarding" | "/paywall" | "/(tabs)/dashboard";
+type HrefPath =
+  | "/(auth)/login"
+  | "/(auth)/register"
+  | "/onboarding"
+  | "/paywall"
+  | "/(tabs)/dashboard";
 
 export type ResolvedRoute = {
   pathname: HrefPath;

@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -7,9 +8,14 @@ import type { ProgressionDto } from "../../types/outcomes";
 
 type Props = {
   progression: ProgressionDto | null;
+  onPress?: () => void;
 };
 
-export const ProgressionBarCard = memo(function ProgressionBarCard({ progression }: Props) {
+export const ProgressionBarCard = memo(function ProgressionBarCard({
+  progression,
+  onPress,
+}: Props) {
+  const { t } = useTranslation();
   const level = progression?.current_level ?? 1;
   const xp = progression?.xp_total ?? 0;
   const xpToNext = progression?.xp_to_next_level ?? 50;
@@ -17,18 +23,24 @@ export const ProgressionBarCard = memo(function ProgressionBarCard({ progression
   const nextLevel = level + 1;
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      style={({ pressed }) => [styles.card, onPress && pressed && styles.cardPressed]}
+      onPress={onPress}
+      disabled={!onPress}
+    >
       <View style={styles.row}>
-        <Text style={styles.title}>Level {level}</Text>
-        <Text style={styles.sub}>{xp} XP total</Text>
+        <Text style={styles.title}>{t("progression.levelTitle", { level })}</Text>
+        <Text style={styles.sub}>{t("progression.xpTotal", { xp })}</Text>
       </View>
+      <Text style={styles.hint}>{t("progression.hint")}</Text>
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${pct}%` }]} />
       </View>
       <Text style={styles.sub}>
-        {xpToNext} XP to level {nextLevel} ({Math.round(pct)}%)
+        {t("progression.toNext", { xp: xpToNext, level: nextLevel, percent: Math.round(pct) })}
       </Text>
-    </View>
+    </Pressable>
   );
 });
 
@@ -42,8 +54,16 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
+  cardPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.995 }],
+  },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.subheadline },
+  hint: {
+    color: colors.textSecondary,
+    ...typography.meta,
+  },
   sub: { color: colors.textSecondary, ...typography.caption },
   track: {
     height: 8,

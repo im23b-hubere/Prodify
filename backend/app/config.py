@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     feature_flag_billing_sync_enabled: bool = True
     feature_flag_push_notifications_enabled: bool = True
     feature_flag_smart_nudges_enabled: bool = True
+    # Comma-separated user IDs allowed to read internal KPI endpoints.
+    kpi_admin_user_ids: list[int] = []
+    # Comma-separated trusted reverse-proxy IPs/CIDRs for x-forwarded-for.
+    trusted_proxy_ips: list[str] = []
 
     @field_validator("secret_key")
     @classmethod
@@ -69,6 +73,30 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def strip_cors_origins(cls, value: object) -> object:
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return value
+
+    @field_validator("kpi_admin_user_ids", mode="before")
+    @classmethod
+    def parse_kpi_admin_user_ids(cls, value: object) -> object:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            if not value.strip():
+                return []
+            return [int(part.strip()) for part in value.split(",") if part.strip()]
+        return value
+
+    @field_validator("trusted_proxy_ips", mode="before")
+    @classmethod
+    def parse_trusted_proxy_ips(cls, value: object) -> object:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            if not value.strip():
+                return []
+            return [part.strip() for part in value.split(",") if part.strip()]
         if isinstance(value, list):
             return [str(item).strip() for item in value if str(item).strip()]
         return value

@@ -22,4 +22,3 @@ export function getExpoPublicRevenueCatApiKey(): string | null {
 export function getExpoPublicRevenueCatEntitlementId(): string | null {
   return readPublicEnv("EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID");
 }
-
