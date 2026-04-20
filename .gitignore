@@ -2,6 +2,8 @@
 backend/.venv/
 **/__pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
@@ -11,7 +13,10 @@ coverage.xml
 *.egg-info/
 backend/.env
 backend/*.db
+/test_suite.db
 backend/uploads/
+backend/__pycache__/
+backend/**/__pycache__/
 
 # Node / Expo (paths from repo root — use / only)
 mobile/node_modules/
@@ -21,8 +26,15 @@ mobile/web-build/
 mobile/.env
 mobile/.env.*
 !mobile/.env.example
+mobile/build/
+mobile/ios/Pods/
+mobile/android/app/build/
+mobile/android/app/release/
 mobile/.eslintcache
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Root: package.json is metadata-only; avoid committing an empty lockfile from accidental `npm install` here
 /package-lock.json
@@ -32,3 +44,5 @@ mobile/.eslintcache
 Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
