@@ -12,6 +12,7 @@ from sqlalchemy import inspect
 from app.config import is_sqlite_database_url, settings
 from app.database import engine
 from app.errors import APIError, api_error_handler, http_exception_handler
+from app.middleware.security import SecurityHeadersMiddleware
 from app.observability import init_observability
 from app.rate_limit import limiter
 
@@ -164,6 +165,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 UPLOADS_DIR = Path(__file__).resolve().parents[1] / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
