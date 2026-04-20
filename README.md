@@ -143,6 +143,10 @@ Vor PR:
 - alle lokalen Checks ausfuehren
 - CI gruen
 
+## App Store Preparation
+
+- Store metadata source of truth: `mobile/store/STORE_METADATA.en-US.md`
+
 ## Sentry Setup (Production)
 
 - Backend: `SENTRY_DSN` setzen (Pflicht bei `ENVIRONMENT=production`), optional `SENTRY_TRACES_SAMPLE_RATE` anpassen.
