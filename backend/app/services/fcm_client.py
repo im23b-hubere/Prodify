@@ -47,17 +47,17 @@ def send_fcm_data_messages(
     title: str,
     body: str,
     data: dict[str, str] | None = None,
-) -> tuple[int, int, str | None]:
-    """Send one FCM HTTP v1 request per token. Returns (attempted, ok, error_summary)."""
+) -> tuple[int, int, str | None, list[str]]:
+    """Send one FCM HTTP v1 request per token. Returns (attempted, ok, error_summary, invalid_tokens)."""
     if not tokens:
-        return 0, 0, None
+        return 0, 0, None, []
     auth = _access_token_for_fcm(settings)
     if not auth:
-        return 0, 0, "FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_PATH not configured"
+        return 0, 0, "FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_PATH not configured", []
     access_token, project_id = auth
 
     if not tokens:
-        return 0, 0, None
+        return 0, 0, None, []
 
     url = f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
     headers = {
@@ -67,6 +67,7 @@ def send_fcm_data_messages(
 
     ok = 0
     errs: list[str] = []
+    invalid_tokens: list[str] = []
     attempted = 0
     with httpx.Client(timeout=20.0) as client:
         for t in tokens[:100]:
@@ -89,8 +90,11 @@ def send_fcm_data_messages(
                     except ValueError:
                         detail = r.text
                     errs.append(f"{r.status_code}: {detail}"[:200])
+                    detail_text = str(detail)
+                    if "UNREGISTERED" in detail_text or "registration-token-not-registered" in detail_text:
+                        invalid_tokens.append(t)
             except httpx.HTTPError as e:
                 errs.append(str(e)[:200])
 
     summary = "; ".join(errs[:3]) if errs else None
-    return attempted, ok, summary
+    return attempted, ok, summary, invalid_tokens

@@ -8,12 +8,27 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
 
 from app.config import Settings
-from app.models import PushToken
+from app.models import PushToken, utcnow
 from app.services import expo_client, fcm_client
 from app.services import push_templates
 from app.services.push_links import push_data_dashboard
 
 logger = logging.getLogger(__name__)
+
+
+def _deactivate_invalid_tokens(db: DBSession, channel: str, tokens: list[str]) -> int:
+    if not tokens:
+        return 0
+    normalized = [t.strip() for t in tokens if t and t.strip()]
+    if not normalized:
+        return 0
+    rows = db.scalars(select(PushToken).where(PushToken.channel == channel, PushToken.token.in_(normalized))).all()
+    deactivated = 0
+    for row in rows:
+        if row.is_active == 1:
+            row.is_active = 0
+            deactivated += 1
+    return deactivated
 
 
 def dispatch_to_user(
@@ -69,21 +84,41 @@ def dispatch_to_user(
                 return m
 
             messages = [_expo_msg(t) for t in expo_tokens]
-            a, o, err = expo_client.send_expo_batch(expo_key, messages)
+            a, o, err, invalid_tokens = expo_client.send_expo_batch(expo_key, messages)
             total_ok += o
             parts.append(f"Expo {o}/{a}")
             if err:
                 parts.append(err)
+            deactivated = _deactivate_invalid_tokens(db, "expo", invalid_tokens)
+            if deactivated:
+                parts.append(f"Expo deactivated={deactivated}")
         else:
             parts.append(f"Expo 0/{len(expo_tokens)} (no EXPO_ACCESS_TOKEN)")
 
     if fcm_tokens:
-        a, o, err = fcm_client.send_fcm_data_messages(settings, fcm_tokens, title, body, data=data)
+        a, o, err, invalid_tokens = fcm_client.send_fcm_data_messages(settings, fcm_tokens, title, body, data=data)
         total_ok += o
         parts.append(f"FCM {o}/{a}")
         if err:
             parts.append(err)
+        deactivated = _deactivate_invalid_tokens(db, "fcm", invalid_tokens)
+        if deactivated:
+            parts.append(f"FCM deactivated={deactivated}")
 
+    attempted_tokens = [*expo_tokens, *fcm_tokens]
+    if attempted_tokens:
+        touched_rows = db.scalars(
+            select(PushToken).where(
+                PushToken.user_id == user_id,
+                PushToken.is_active == 1,
+                PushToken.token.in_(attempted_tokens),
+            )
+        ).all()
+        now = utcnow()
+        for row in touched_rows:
+            row.last_used_at = now
+
+    db.commit()
     summary = " · ".join(parts) if parts else None
     return total_attempted, total_ok, summary
 

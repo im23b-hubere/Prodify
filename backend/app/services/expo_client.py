@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 
 
-def send_expo_batch(access_token: str, messages: list[dict]) -> tuple[int, int, str | None]:
-    """Returns (attempted, ok_count, error_summary)."""
+def send_expo_batch(access_token: str, messages: list[dict]) -> tuple[int, int, str | None, list[str]]:
+    """Returns (attempted, ok_count, error_summary, invalid_tokens)."""
     if not messages:
-        return 0, 0, None
+        return 0, 0, None, []
     headers = {
         "Accept": "application/json",
         "Accept-Encoding": "gzip, deflate",
@@ -26,23 +26,32 @@ def send_expo_batch(access_token: str, messages: list[dict]) -> tuple[int, int, 
         resp.raise_for_status()
     except httpx.HTTPError as e:
         logger.warning("Expo push HTTP error: %s", e)
-        return len(messages), 0, str(e)
+        return len(messages), 0, str(e), []
 
     try:
         payload = resp.json()
     except ValueError:
-        return len(messages), 0, "invalid JSON from Expo"
+        return len(messages), 0, "invalid JSON from Expo", []
 
     data = payload.get("data")
     if not isinstance(data, list):
-        return len(messages), 0, "unexpected Expo response"
+        return len(messages), 0, "unexpected Expo response", []
 
     ok = 0
     errs: list[str] = []
-    for item in data:
+    invalid_tokens: list[str] = []
+    for idx, item in enumerate(data):
         if isinstance(item, dict) and item.get("status") == "ok":
             ok += 1
         elif isinstance(item, dict):
             errs.append(str(item.get("message", item)))
+            details = item.get("details")
+            detail_error = str(details.get("error")) if isinstance(details, dict) else ""
+            item_message = str(item.get("message", ""))
+            if detail_error == "DeviceNotRegistered" or "DeviceNotRegistered" in item_message:
+                if idx < len(messages):
+                    token = str(messages[idx].get("to") or "").strip()
+                    if token:
+                        invalid_tokens.append(token)
     summary = "; ".join(errs[:3]) if errs else None
-    return len(messages), ok, summary
+    return len(messages), ok, summary, invalid_tokens
