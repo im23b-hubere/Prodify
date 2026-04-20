@@ -46,16 +46,20 @@ function getApiUrl(): string {
   const envUrl = getExpoPublicApiUrl();
   const fromMetro = inferDevApiUrlFromMetroHost();
 
+  // Release / EAS builds: require a real remote API URL (not loopback).
   if (!__DEV__) {
-    if (!envUrl) {
-      console.warn("[api] EXPO_PUBLIC_API_URL is missing; network requests will be disabled.");
-      return "";
-    }
-    if (/localhost|127\.0\.0\.1|10\.0\.2\.2/i.test(envUrl)) {
-      console.warn(
-        "[api] Invalid production API URL (loopback). Network requests will be disabled.",
+    if (!envUrl?.trim()) {
+      throw new Error(
+        "EXPO_PUBLIC_API_URL is required in production builds. Set it in eas.json (build profile env) or EAS secrets.",
       );
-      return "";
+    }
+    if (isLoopbackApiUrl(envUrl) || /10\.0\.2\.2/i.test(envUrl)) {
+      throw new Error(
+        `Production build cannot use a loopback API URL. Current value: ${envUrl}`,
+      );
+    }
+    if (!/^https:\/\//i.test(envUrl)) {
+      console.warn("[api] Production API should use HTTPS.");
     }
   }
 
@@ -81,3 +85,7 @@ export function getAppEnvironment(): string {
 }
 
 export const API_BASE_URL = getApiUrl();
+
+if (__DEV__) {
+  console.log(`[api] ${API_BASE_URL} (${getAppEnvironment()})`);
+}

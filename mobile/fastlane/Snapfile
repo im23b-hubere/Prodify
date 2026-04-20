@@ -1,0 +1,17 @@
+# Fastlane Snapshot / Framefile companion — adjust device list to match App Store screenshot sizes.
+devices([
+  "iPhone 15 Pro Max",
+  "iPhone 8 Plus",
+])
+
+languages([
+  "en-US",
+])
+
+output_directory("./screenshots")
+
+clear_previous_screenshots(true)
+
+override_status_bar(true)
+
+hide_alpha_channel(true)

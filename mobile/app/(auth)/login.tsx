@@ -59,6 +59,7 @@ export default function LoginScreen() {
         <View style={styles.card}>
           <Text style={styles.fieldLabel}>{t("auth.login.email")}</Text>
           <TextInput
+            testID="email-input"
             style={styles.input}
             placeholder={t("auth.login.placeholderEmail")}
             placeholderTextColor={colors.textSecondary}
@@ -71,6 +72,7 @@ export default function LoginScreen() {
           />
           <Text style={styles.fieldLabel}>{t("auth.login.password")}</Text>
           <TextInput
+            testID="password-input"
             style={styles.input}
             placeholder={t("auth.login.placeholderPassword")}
             placeholderTextColor={colors.textSecondary}

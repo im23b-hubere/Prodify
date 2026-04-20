@@ -187,8 +187,18 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
 
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
-    if (typeof data === "object" && data !== null && "detail" in data) {
-      msg = formatApiErrorDetail((data as { detail: unknown }).detail);
+    if (typeof data === "object" && data !== null) {
+      let fromErrorShape = false;
+      if ("error" in data && typeof (data as { error?: unknown }).error === "object") {
+        const errObj = (data as { error: { message?: unknown } }).error;
+        if (errObj && "message" in errObj && typeof errObj.message === "string") {
+          msg = errObj.message;
+          fromErrorShape = true;
+        }
+      }
+      if (!fromErrorShape && "detail" in data) {
+        msg = formatApiErrorDetail((data as { detail: unknown }).detail);
+      }
     } else if (typeof data === "string" && data) {
       msg = data;
     }

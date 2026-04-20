@@ -1,3 +1,9 @@
+/**
+ * Internationalization
+ *
+ * Supported languages: English only for now. Additional locales (e.g. German for DACH)
+ * can be added by extending `resources` and `supportedLngs`.
+ */
 import i18n from "i18next";
 import { getLocales } from "expo-localization";
 import { initReactI18next } from "react-i18next";

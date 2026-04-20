@@ -40,6 +40,16 @@ def _normalize_http_exception_detail(detail: Any, status_code: int) -> tuple[str
         return message, code, extras or None
     if isinstance(detail, str):
         return detail, f"ERROR_{status_code}", None
+    if isinstance(detail, list):
+        errors: list[str] = []
+        for err in detail:
+            if isinstance(err, dict):
+                loc = err.get("loc", ["unknown"])
+                field = str(loc[-1]) if isinstance(loc, (list, tuple)) and loc else "unknown"
+                msg = str(err.get("msg", "Invalid value"))
+                errors.append(f"{field}: {msg}")
+        message = "Validation failed: " + ("; ".join(errors) if errors else "Invalid request")
+        return message, "VALIDATION_ERROR", {"errors": detail}
     return "Request failed", f"ERROR_{status_code}", None
 
 

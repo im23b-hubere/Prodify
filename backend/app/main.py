@@ -58,6 +58,10 @@ def validate_runtime_config() -> None:
             raise RuntimeError("SECRET_KEY must be changed in production.")
         if len(normalized_secret) < 32:
             raise RuntimeError("SECRET_KEY must be at least 32 characters in production.")
+        if is_sqlite_database_url(settings.database_url):
+            logger.warning(
+                "DATABASE_URL uses SQLite in production; use a server database for HA/multi-instance deployments."
+            )
 
     logger.info("Configuration validated for environment=%s", settings.environment)
 

@@ -637,6 +637,7 @@
     "keepGoing": "Keep going",
     "endSessionConfirm": "End session",
     "sessionMinutes": "{{n}} min",
+    "openSessionDetailsA11y": "Opens session details",
     "deleteSwipe": "Delete",
     "nudgeBuddyDropped": "Your buddy just dropped something new",
     "nudgeCtaKeepAlive": "Keep it alive",

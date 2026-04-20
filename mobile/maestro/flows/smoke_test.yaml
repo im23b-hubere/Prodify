@@ -1,36 +1,50 @@
+# Prodify smoke flow — requires API reachable from the simulator (e.g. EXPO_PUBLIC_API_URL).
+# Seed a test user once (username required, min 2 chars):
+#   curl -sS -X POST "https://api.prodify.app/auth/register" \
+#     -H "Content-Type: application/json" \
+#     -d '{"email":"test@prodify.app","password":"Test1234!","username":"e2euser"}'
+#
+# Override credentials when running Maestro:
+#   maestro test -e TEST_EMAIL=user@x.com -e TEST_PASSWORD='secret' maestro/flows/smoke_test.yaml
+
 appId: com.prodify.app
+env:
+  TEST_EMAIL: test@prodify.app
+  TEST_PASSWORD: Test1234!
 ---
 - launchApp
-- assertVisible: "Welcome to Prodify"
+- runFlow:
+    when:
+      visible: "Welcome to Prodify"
+    file: onboarding_then_login.yaml
+- runFlow:
+    when:
+      visible: "Welcome back"
+    file: login_with_credentials.yaml
 
-# Login Flow
-- tapOn: "Login"
-- inputText:
-    id: "email-input"
-    text: "test@prodify.app"
-- inputText:
-    id: "password-input"
-    text: "Test1234!"
-- tapOn: "Login"
-- assertVisible: "Dashboard"
-
-# Session Flow
-- tapOn: "Start Session"
+# --- Dashboard → session (aligned with en.json copy) ---
+- assertVisible: "Start session"
+- tapOn: "Start session"
+- assertVisible: "New Session"
 - tapOn: "Beat Making"
-- tapOn: "Start"
-- assertVisible: "Session Active"
+- tapOn: "START SESSION"
+- assertVisible: "STOP SESSION"
 - waitForAnimationToEnd
-- tapOn: "Stop Session"
-- assertVisible: "Session Complete"
 
-# Navigate to Stats
+# End session (confirmation alert uses sentence case)
+- tapOn: "STOP SESSION"
+- tapOn: "End session"
+- assertVisible: "Session complete"
+
+# Tabs
 - tapOn: "Stats"
-- assertVisible: "Your Stats"
+- assertVisible: "Your stats"
 
-# Navigate to Friends
 - tapOn: "Friends"
 - assertVisible: "Friends"
 
-# Navigate to Profile
 - tapOn: "Profile"
 - assertVisible: "Profile"
+
+- tapOn: "Dashboard"
+- assertVisible: "Dashboard"

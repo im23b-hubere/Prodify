@@ -2,6 +2,13 @@ import type { TFunction } from "i18next";
 
 import type { SessionDto } from "../../types/session";
 
+/** Parse activity timestamps for sorting / recency (friend feed, etc.). */
+export function parseActivityTimestamp(value: string | null | undefined): number {
+  if (!value) return 0;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 export function parseApiDate(value: string) {
   const hasTimezone = /([zZ]|[+\-]\d{2}:\d{2})$/.test(value);
   return new Date(hasTimezone ? value : `${value}Z`);

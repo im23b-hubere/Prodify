@@ -1,4 +1,4 @@
-# BeatTrack (Prodify) Monorepo
+# Prodify Monorepo
 
 Mobile App (Expo/React Native) + Backend API (FastAPI) in einem Repository.
 

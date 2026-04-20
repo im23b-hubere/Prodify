@@ -1,0 +1,19 @@
+# First-time install: onboarding slides → goal → notifications → paywall → register → login.
+- tapOn: "Skip"
+- assertVisible: "Weekly session goal"
+- tapOn: "Continue"
+- assertVisible: "Stay in the loop"
+- tapOn: "Not now"
+- waitForAnimationToEnd
+- tapOn: "Not now"
+- assertVisible: "Let's get started"
+- tapOn: "Already have an account? Sign in"
+- assertVisible: "Welcome back"
+- inputText:
+    id: email-input
+    text: ${TEST_EMAIL}
+- inputText:
+    id: password-input
+    text: ${TEST_PASSWORD}
+- tapOn: "Sign in"
+- assertVisible: "Dashboard"

@@ -1,0 +1,109 @@
+name: E2E Tests
+
+# Manual-only until simulator + build steps are verified on CI.
+# Enable pull_request / push after a green run.
+on:
+  workflow_dispatch: {}
+  # pull_request:
+  #   branches: [main]
+
+jobs:
+  e2e-ios:
+    runs-on: macos-14
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: cd mobile && npm ci
+
+      - name: Install Maestro
+        run: |
+          set -euo pipefail
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Prebuild iOS
+        working-directory: mobile
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods
+        working-directory: mobile/ios
+        run: pod install
+
+      - name: List simulators
+        run: xcrun simctl list devices available
+
+      - name: Boot simulator
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 15 Pro (" | grep -oE '\([A-F0-9-]+\)' | head -1 | tr -d '()')
+          if [[ -z "${UDID:-}" ]]; then
+            echo "Could not find iPhone 15 Pro simulator; list:"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Booting simulator: $UDID"
+          xcrun simctl boot "$UDID" || true
+          sleep 10
+
+      - name: Build app (simulator)
+        working-directory: mobile/ios
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace Prodify.xcworkspace \
+            -scheme Prodify \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Install app on booted simulator
+        run: |
+          set -euo pipefail
+          UDID=$(xcrun simctl list devices booted | grep -m1 "iPhone 15 Pro (" | grep -oE '\([A-F0-9-]+\)' | head -1 | tr -d '()')
+          APP_PATH=$(find mobile/ios/build -name "Prodify.app" -type d 2>/dev/null | head -1)
+          if [[ -z "${APP_PATH:-}" ]]; then
+            echo "Prodify.app not found under mobile/ios/build"
+            find mobile/ios/build -name "*.app" || true
+            exit 1
+          fi
+          echo "Installing $APP_PATH on $UDID"
+          xcrun simctl install "$UDID" "$APP_PATH"
+
+      - name: Run Maestro smoke
+        working-directory: mobile
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "90000"
+        run: maestro test maestro/flows/smoke_test.yaml
+
+      - name: Upload Maestro screenshots / reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-artifacts
+          path: ~/.maestro/tests/
+          retention-days: 7
+
+      - name: Upload Maestro logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-logs
+          path: |
+            ~/.maestro/logs/
+          retention-days: 7

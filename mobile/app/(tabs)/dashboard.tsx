@@ -8,16 +8,10 @@ import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } fr
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
-import Animated, {
-  FadeInUp,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { ActiveSessionBlock } from "../../features/dashboard/components/ActiveSessionBlock";
+import { ActiveSessionTimerBlock } from "../../features/dashboard/components/ActiveSessionTimerBlock";
 import { ReturnHookCard } from "../../features/dashboard/components/ReturnHookCard";
 import { DashboardSessionSetupModal } from "../../features/dashboard/components/DashboardSessionSetupModal";
 import { SessionSkeleton } from "../../features/dashboard/components/SessionSkeleton";
@@ -72,58 +66,12 @@ import {
 import {
   getLast7DaysProgress,
   getStreak,
+  parseActivityTimestamp,
   parseApiDate,
   toDateKey,
 } from "../../features/dashboard/utils";
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
-
-function parseActivityTimestamp(value: string | null | undefined): number {
-  if (!value) return 0;
-  const ms = new Date(value).getTime();
-  return Number.isFinite(ms) ? ms : 0;
-}
-
-const ActiveSessionTimerBlock = ({
-  active,
-  onOpenFullscreen,
-  onConfirmStop,
-  stopBusy,
-}: {
-  active: SessionDto;
-  onOpenFullscreen: () => void;
-  onConfirmStop: () => void;
-  stopBusy: boolean;
-}) => {
-  const [nowMs, setNowMs] = useState(Date.now());
-  const ringPulse = useSharedValue(1);
-
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    ringPulse.value = withRepeat(
-      withSequence(withTiming(1.06, { duration: 1100 }), withTiming(1, { duration: 1100 })),
-      -1,
-      true,
-    );
-  }, [ringPulse]);
-
-  const activeSeconds = useMemo(() => effectiveElapsedSeconds(active, nowMs), [active, nowMs]);
-
-  return (
-    <ActiveSessionBlock
-      active={active}
-      activeSeconds={activeSeconds}
-      ringPulse={ringPulse}
-      onOpenFullscreen={onOpenFullscreen}
-      onConfirmStop={onConfirmStop}
-      stopBusy={stopBusy}
-    />
-  );
-};
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
@@ -501,6 +449,9 @@ export default function DashboardScreen() {
       <Animated.View entering={FadeInUp.delay(100 + index * 70).duration(400)}>
         <Swipeable renderRightActions={() => renderRightActions(item.id)}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${sessionTypeLabel(String(item.session_type || "beat_making"), t)}, ${t("dashboard.sessionMinutes", { n: Math.round((item.duration_seconds ?? 0) / 60) })}`}
+            accessibilityHint={t("dashboard.openSessionDetailsA11y")}
             style={({ pressed }) => [styles.sessionRow, pressed && styles.sessionRowPressed]}
             onPress={() => {
               if (typeof item.id !== "number" || !Number.isFinite(item.id) || item.id <= 0) return;
