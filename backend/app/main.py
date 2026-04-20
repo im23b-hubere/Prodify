@@ -127,6 +127,12 @@ def validate_schema() -> None:
     push_cols = {column["name"] for column in inspector.get_columns("push_tokens")}
     if "channel" not in push_cols:
         raise RuntimeError("Database schema is missing column 'channel' on 'push_tokens'. Run Alembic migrations.")
+    required_push_cols = {"is_active", "last_used_at"}
+    missing_push = required_push_cols.difference(push_cols)
+    if missing_push:
+        raise RuntimeError(
+            f"Database schema is missing columns on 'push_tokens': {', '.join(sorted(missing_push))}. Run Alembic migrations."
+        )
 
     user_cols = {column["name"] for column in inspector.get_columns("users")}
     required_user_cols = {"profile_picture_url", "is_premium", "premium_until", "bonus_rescues", "bonus_challenge_slots"}

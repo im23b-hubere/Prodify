@@ -65,7 +65,11 @@ def register_push_token(
     )
 
     if existing is not None:
-
+        existing.platform = body.platform.strip()[:32] or "unknown"
+        existing.is_active = 1
+        existing.last_used_at = utcnow()
+        db.add(existing)
+        db.commit()
         return None
 
     db.add(
@@ -79,8 +83,10 @@ def register_push_token(
             platform=body.platform.strip()[:32] or "unknown",
 
             channel=channel,
+            is_active=1,
 
             created_at=utcnow(),
+            last_used_at=utcnow(),
 
         )
 

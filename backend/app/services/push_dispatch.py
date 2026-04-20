@@ -28,7 +28,7 @@ def dispatch_to_user(
     Send title/body to all push_tokens for user.
     Returns (total_attempted, total_ok, combined_message).
     """
-    rows = db.scalars(select(PushToken).where(PushToken.user_id == user_id)).all()
+    rows = db.scalars(select(PushToken).where(PushToken.user_id == user_id, PushToken.is_active == 1)).all()
     expo_tokens: list[str] = []
     fcm_tokens: list[str] = []
     seen: set[tuple[str, str]] = set()

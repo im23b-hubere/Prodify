@@ -125,7 +125,9 @@ class PushToken(Base):
     token: Mapped[str] = mapped_column(String(512), nullable=False)
     platform: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
     channel: Mapped[str] = mapped_column(String(16), nullable=False, default="expo")
+    is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class StreakReminderDispatchLog(Base):
