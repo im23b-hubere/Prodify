@@ -18,6 +18,7 @@ import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
+import { DeepLinkGuard } from "../components/DeepLinkGuard";
 import { OfflineBanner } from "../components/OfflineBanner";
 import { XpHud } from "../components/progression/XpHud";
 import { AuthProvider } from "../context/AuthContext";
@@ -41,6 +42,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
+          <DeepLinkGuard />
           <OfflineBanner />
           <NotificationNavBridge />
           <XpHud />
