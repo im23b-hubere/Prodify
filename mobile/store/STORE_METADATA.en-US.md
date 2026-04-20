@@ -4,6 +4,8 @@ Last updated: 2026-04-20
 App version: 1.0.0  
 Bundle/package: `com.prodify.app`
 
+Screenshot spec: `mobile/store/SCREENSHOT_PLAN.en-US.md`
+
 ## Product Positioning
 
 - **App name:** Prodify
