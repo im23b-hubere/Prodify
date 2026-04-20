@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { TextButton } from "../../components/ui/TextButton";
 import { PENDING_SESSION_SETUP_KEY } from "../../constants/sessionUi";
 import { fontFamily } from "../../constants/fonts";
 import { colors, spacing, typography } from "../../constants/theme";
@@ -14,13 +15,25 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { tryParseSessionDto } from "../../lib/sessionDto";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
-import { tryParseCoachDebriefDto } from "../../lib/outcomesDto";
+import { tryParseCoachDebriefDto, tryParseProgressionDto } from "../../lib/outcomesDto";
 import { generateMotivationMessage, getTimeOfDay } from "../../lib/motivationEngine";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDto } from "../../types/session";
-import type { CoachDebriefDto } from "../../types/outcomes";
+import type { CoachDebriefDto, ProgressionDto } from "../../types/outcomes";
 
 const AUTO_RETURN_SECONDS = 10;
+const SESSION_XP_MINUTES_FLOOR = 5;
+const BASE_SESSION_XP = 8;
+const SESSION_XP_PER_MINUTE_AFTER_FLOOR = 0.8;
+const SESSION_XP_MAX = 110;
+
+function estimateSessionXpGain(durationSeconds: number): number {
+  const minutes = Math.max(0, Math.floor(durationSeconds / 60));
+  if (minutes < SESSION_XP_MINUTES_FLOOR) return 0;
+  const scaledMinutes = minutes - SESSION_XP_MINUTES_FLOOR;
+  const raw = BASE_SESSION_XP + Math.floor(scaledMinutes * SESSION_XP_PER_MINUTE_AFTER_FLOOR);
+  return Math.max(0, Math.min(SESSION_XP_MAX, raw));
+}
 
 export default function SessionCompleteScreen() {
   const { t } = useTranslation();
@@ -32,6 +45,7 @@ export default function SessionCompleteScreen() {
   const [session, setSession] = useState<SessionDto | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
   const [coach, setCoach] = useState<CoachDebriefDto | null>(null);
+  const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_RETURN_SECONDS);
   const [autoReturnEnabled, setAutoReturnEnabled] = useState(true);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
@@ -82,6 +96,13 @@ export default function SessionCompleteScreen() {
       } catch {
         if (!cancelled.current) setCoach(null);
       }
+      try {
+        const progressionRaw = await apiJson<unknown>("/progression/me", { token });
+        const parsed = tryParseProgressionDto(progressionRaw);
+        if (!cancelled.current) setProgression(parsed);
+      } catch {
+        if (!cancelled.current) setProgression(null);
+      }
       setLoadState("ready");
       setSecondsLeft(AUTO_RETURN_SECONDS);
       setAutoReturnEnabled(true);
@@ -113,6 +134,7 @@ export default function SessionCompleteScreen() {
   }, [autoReturnEnabled, loadState, router, secondsLeft]);
 
   const dur = session?.duration_seconds ?? 0;
+  const xpGainEstimate = estimateSessionXpGain(dur);
   const autoReturnProgress = useMemo(() => {
     const elapsed = AUTO_RETURN_SECONDS - secondsLeft;
     const pct = elapsed / AUTO_RETURN_SECONDS;
@@ -154,9 +176,10 @@ export default function SessionCompleteScreen() {
           <Text style={styles.muted}>{loadError ?? t("sessionComplete.unknownError")}</Text>
           <View style={styles.actions}>
             <PrimaryButton label={t("sessionComplete.tryAgain")} onPress={() => void load()} />
-            <Pressable style={styles.textBtn} onPress={() => router.replace("/(tabs)/dashboard")}>
-              <Text style={styles.textBtnLabel}>{t("sessionComplete.backToDashboard")}</Text>
-            </Pressable>
+            <TextButton
+              label={t("sessionComplete.backToDashboard")}
+              onPress={() => router.replace("/(tabs)/dashboard")}
+            />
           </View>
         </View>
       </SafeAreaView>
@@ -173,9 +196,20 @@ export default function SessionCompleteScreen() {
           <Text style={styles.streak}>{t("sessionComplete.streakLine", { count: streak })}</Text>
         ) : null}
         {completionMessage ? <Text style={styles.motivation}>{completionMessage}</Text> : null}
+        <View style={styles.xpCard}>
+          <Text style={styles.xpTitle}>{t("sessionComplete.xpEarned", { xp: xpGainEstimate })}</Text>
+          <Text style={styles.xpMeta}>
+            {progression
+              ? t("sessionComplete.levelProgress", {
+                  level: progression.current_level,
+                  toNext: progression.xp_to_next_level,
+                })
+              : t("sessionComplete.levelProgressFallback")}
+          </Text>
+        </View>
         {coach ? (
           <View style={styles.coachCard}>
-            <Text style={styles.coachTitle}>AI Coach Debrief</Text>
+            <Text style={styles.coachTitle}>{t("sessionComplete.coachDebriefTitle")}</Text>
             {coach.went_well.slice(0, 2).map((line) => (
               <Text key={`well-${line}`} style={styles.coachLine}>
                 + {line}
@@ -234,9 +268,10 @@ export default function SessionCompleteScreen() {
             router.replace("/(tabs)/dashboard");
           }}
         />
-        <Pressable style={styles.textBtn} onPress={() => router.replace("/(tabs)/dashboard")}>
-          <Text style={styles.textBtnLabel}>{t("sessionComplete.backToDashboard")}</Text>
-        </Pressable>
+        <TextButton
+          label={t("sessionComplete.backToDashboard")}
+          onPress={() => router.replace("/(tabs)/dashboard")}
+        />
       </View>
     </SafeAreaView>
   );
@@ -291,6 +326,18 @@ const styles = StyleSheet.create({
   },
   coachTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   coachLine: { color: colors.textSecondary, ...typography.caption },
+  xpCard: {
+    marginTop: spacing.md,
+    width: "100%",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  xpTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  xpMeta: { color: colors.textSecondary, ...typography.caption },
   auto: { color: colors.textSecondary, ...typography.caption, marginTop: spacing.md },
   autoWrap: {
     marginTop: spacing.md,
@@ -326,10 +373,4 @@ const styles = StyleSheet.create({
     ...typography.caption,
   },
   actions: { marginTop: spacing.xl, gap: spacing.md },
-  textBtn: { alignItems: "center", padding: spacing.md },
-  textBtnLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.body,
-  },
 });

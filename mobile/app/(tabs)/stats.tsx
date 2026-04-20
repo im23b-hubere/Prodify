@@ -48,6 +48,8 @@ const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
 const CALENDAR_DAY_MS = 24 * 60 * 60 * 1000;
 
 type CalendarMode = "week" | "month";
+type TTranslate = (key: string, options?: Record<string, unknown>) => string;
+type DecoratedRecord = PersonalRecord & { score: number; isFresh: boolean };
 
 function formatDuration(seconds: number) {
   const s = Number.isFinite(seconds) && seconds >= 0 ? seconds : 0;
@@ -56,6 +58,69 @@ function formatDuration(seconds: number) {
   const hours = Math.floor(mins / 60);
   const rest = mins % 60;
   return `${hours}h ${rest}m`;
+}
+
+function formatRecordDate(value: string | null, t: (key: string) => string) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${t("stats.recordAchieved")} ${date.toLocaleDateString()}`;
+}
+
+function parseIsoDate(value: string | null): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatRecordContext(record: PersonalRecord, t: TTranslate) {
+  if (!record.context) return null;
+  if (record.key === "longest_session") {
+    return sessionTypeLabel(record.context, t);
+  }
+  if (record.key === "most_sessions_day") {
+    const date = new Date(record.context);
+    return Number.isNaN(date.getTime())
+      ? record.context
+      : t("stats.recordOnDate", { date: date.toLocaleDateString() });
+  }
+  if (record.key === "productive_week") {
+    const rawDate = record.context.replace("Week of ", "").trim();
+    const date = new Date(rawDate);
+    return Number.isNaN(date.getTime())
+      ? record.context
+      : t("stats.recordWeekOf", { date: date.toLocaleDateString() });
+  }
+  if (record.context === "Now") return t("stats.recordNow");
+  if (record.context === "All-time") return t("stats.recordAllTime");
+  return record.context;
+}
+
+function recordTitle(key: string, fallback: string, t: TTranslate) {
+  if (key === "longest_session") return t("stats.recordLongestSession");
+  if (key === "most_sessions_day") return t("stats.recordMostSessionsDay");
+  if (key === "longest_streak") return t("stats.recordLongestStreak");
+  if (key === "current_streak") return t("stats.recordCurrentStreak");
+  if (key === "productive_week") return t("stats.recordProductiveWeek");
+  return fallback;
+}
+
+function recordIcon(key: string) {
+  if (key === "longest_session") return "⏱";
+  if (key === "most_sessions_day") return "📅";
+  if (key === "longest_streak") return "🔥";
+  if (key === "current_streak") return "⚡";
+  if (key === "productive_week") return "🏆";
+  return "⭐";
+}
+
+function recordPriorityScore(key: string) {
+  if (key === "current_streak") return 100;
+  if (key === "longest_streak") return 90;
+  if (key === "productive_week") return 80;
+  if (key === "most_sessions_day") return 70;
+  if (key === "longest_session") return 60;
+  return 20;
 }
 
 const BAR_CHART_HEIGHT = 168;
@@ -308,6 +373,22 @@ export default function StatsScreen() {
   );
 
   const recent = stats?.recent_sessions ?? [];
+  const decoratedRecords = useMemo<DecoratedRecord[]>(() => {
+    const now = Date.now();
+    const FRESH_MS = 14 * CALENDAR_DAY_MS;
+    return records
+      .map((record) => {
+        const occurredDate = parseIsoDate(record.occurred_at);
+        const occurredMs = occurredDate?.getTime() ?? 0;
+        const isFresh = occurredDate ? now - occurredMs <= FRESH_MS : false;
+        return {
+          ...record,
+          score: recordPriorityScore(record.key) + (isFresh ? 1000 : 0),
+          isFresh,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+  }, [records]);
 
   const productivityHintText = useMemo(() => {
     if (stats?.productivity_hint_item) {
@@ -577,16 +658,52 @@ export default function StatsScreen() {
 
         <View style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
-          {records.length === 0 ? (
+          {decoratedRecords.length === 0 ? (
             <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
           ) : (
-            records.map((r) => (
-              <View key={r.key + (r.occurred_at ?? "")} style={styles.recordRow}>
-                <Text style={styles.recordLabel}>{r.label}</Text>
-                <Text style={styles.recordVal}>{r.value}</Text>
-                {r.context ? <Text style={styles.recordCtx}>{r.context}</Text> : null}
-              </View>
-            ))
+            <View style={styles.recordsWrap}>
+              {decoratedRecords.map((r, idx) => {
+                const meta = formatRecordDate(r.occurred_at, t);
+                const displayContext = formatRecordContext(r, t);
+                return (
+                  <Pressable
+                    key={r.key + (r.occurred_at ?? "")}
+                    style={({ pressed }) => [
+                      styles.recordCard,
+                      idx === 0 && styles.recordCardFeatured,
+                      pressed && styles.recordCardPressed,
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                    }}
+                  >
+                    <View style={styles.recordTitleRow}>
+                      <View style={styles.recordLabelWrap}>
+                        <Text style={styles.recordIcon}>{recordIcon(r.key)}</Text>
+                        <Text style={styles.recordLabel}>{recordTitle(r.key, r.label, t)}</Text>
+                      </View>
+                      <View style={styles.recordBadgesRow}>
+                        {r.isFresh ? (
+                          <View style={[styles.recordBadge, styles.recordBadgeFresh]}>
+                            <Text style={[styles.recordBadgeText, styles.recordBadgeTextFresh]}>
+                              {t("stats.recordFresh")}
+                            </Text>
+                          </View>
+                        ) : null}
+                        {idx === 0 ? (
+                          <View style={styles.recordBadge}>
+                            <Text style={styles.recordBadgeText}>{t("stats.recordBest")}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                    <Text style={styles.recordVal}>{r.value}</Text>
+                    {displayContext ? <Text style={styles.recordCtx}>{displayContext}</Text> : null}
+                    {meta ? <Text style={styles.recordMeta}>{meta}</Text> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
           )}
         </View>
 
@@ -806,20 +923,91 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 2,
   },
-  recordRow: {
-    marginTop: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  recordsWrap: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
   },
-  recordLabel: { color: colors.textSecondary, ...typography.caption },
+  recordCard: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    padding: spacing.md,
+    gap: 6,
+  },
+  recordCardFeatured: {
+    borderColor: "rgba(255,61,0,0.5)",
+    backgroundColor: "rgba(255,61,0,0.08)",
+    shadowColor: colors.primary,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  recordCardPressed: {
+    transform: [{ scale: 0.985 }],
+    opacity: 0.92,
+  },
+  recordTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  recordLabelWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    flexShrink: 1,
+  },
+  recordIcon: {
+    fontSize: 15,
+    lineHeight: 19,
+  },
+  recordBadge: {
+    borderRadius: radii.round,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: "rgba(255,61,0,0.2)",
+  },
+  recordBadgeFresh: {
+    backgroundColor: "rgba(162,89,255,0.2)",
+  },
+  recordBadgesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  recordLabel: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+    flexShrink: 1,
+  },
+  recordBadgeText: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 11,
+  },
+  recordBadgeTextFresh: {
+    color: colors.secondary,
+  },
   recordVal: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.subheadline,
-    marginTop: 4,
+    fontSize: 24,
+    lineHeight: 30,
   },
-  recordCtx: { color: colors.textSecondary, ...typography.caption, marginTop: 4 },
+  recordCtx: {
+    color: colors.textSecondary,
+    ...typography.caption,
+  },
+  recordMeta: {
+    marginTop: 2,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 11,
+  },
   chartInner: { marginTop: spacing.sm },
   barScrollContent: {
     flexDirection: "row",
@@ -869,7 +1057,7 @@ const styles = StyleSheet.create({
   breakdownLabelWrap: {
     flexDirection: "row",
     alignItems: "center",
-    width: 88,
+    width: 132,
     gap: spacing.xs,
   },
   breakdownDot: {
@@ -881,6 +1069,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyMedium,
     ...typography.caption,
+    flexShrink: 1,
   },
   breakdownTrack: {
     flex: 1,

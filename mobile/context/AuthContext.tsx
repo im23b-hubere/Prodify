@@ -5,6 +5,14 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { ONBOARDING_COMPLETE_KEY, REFRESH_TOKEN_KEY } from "../constants/storageKeys";
 import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } from "../lib/client";
 import i18n from "../lib/i18n";
+import { syncEntitlement } from "../lib/billing";
+import {
+  activeEntitlementExpiration,
+  configureRevenueCat,
+  getRevenueCatCustomerInfo,
+  isPremiumActive,
+  isTrialActive,
+} from "../lib/revenuecat";
 
 const TOKEN_KEY = "prodify_token";
 
@@ -111,6 +119,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(i18n.t("errors.unexpectedResponse"));
       }
       await persistTokenPair({ access_token: access, refresh_token: refresh });
+      try {
+        const me = await apiJson<UserMe>("/auth/me", { token: access });
+        await configureRevenueCat(String(me.id));
+        const info = await getRevenueCatCustomerInfo();
+        await syncEntitlement(access, {
+          app_user_id: String(me.id),
+          entitlement: isPremiumActive(info) ? "premium" : "free",
+          trial_active: isTrialActive(info),
+          expires_at: activeEntitlementExpiration(info),
+        });
+      } catch {
+        /* best effort: auth succeeds even if billing sync fails */
+      }
     },
     [persistTokenPair],
   );
@@ -127,6 +148,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(i18n.t("errors.unexpectedResponse"));
       }
       await persistTokenPair({ access_token: access, refresh_token: refresh });
+      try {
+        const me = await apiJson<UserMe>("/auth/me", { token: access });
+        await configureRevenueCat(String(me.id));
+        const info = await getRevenueCatCustomerInfo();
+        await syncEntitlement(access, {
+          app_user_id: String(me.id),
+          entitlement: isPremiumActive(info) ? "premium" : "free",
+          trial_active: isTrialActive(info),
+          expires_at: activeEntitlementExpiration(info),
+        });
+      } catch {
+        /* best effort: auth succeeds even if billing sync fails */
+      }
     },
     [persistTokenPair],
   );

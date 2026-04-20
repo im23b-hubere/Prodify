@@ -6,12 +6,12 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import Friendship, FriendshipStatus, ProductionSession, Streak, User, utcnow
+from app.models import Friendship, FriendshipStatus, ProductionSession, SocialComment, SocialReaction, Streak, User, utcnow
 from app.schemas import (
     FriendActivityPublic,
     FriendIncomingPublic,
@@ -23,6 +23,7 @@ from app.schemas import (
     FriendshipPublic,
 )
 from app.services.kpi_tracker import track_event
+from app.services.progression_service import grant_xp
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
@@ -87,8 +88,8 @@ def send_friend_request(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    uname = body.username.strip()
-    target = db.scalar(select(User).where(User.username == uname))
+    uname = body.username.strip().lower()
+    target = db.scalar(select(User).where(func.lower(User.username) == uname))
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
     if target.id == current.id:
@@ -178,6 +179,14 @@ def accept_friend_request(
         requester.bonus_challenge_slots = int(requester.bonus_challenge_slots or 0) + 1
     current.bonus_rescues = int(current.bonus_rescues or 0) + 1
     current.bonus_challenge_slots = int(current.bonus_challenge_slots or 0) + 1
+    grant_xp(
+        db,
+        current.id,
+        10,
+        source_type="friend_request_accept",
+        source_id=str(row.id),
+        meta={"friend_user_id": row.user_id},
+    )
     db.commit()
     db.refresh(row)
     return row
@@ -253,24 +262,24 @@ def friends_leaderboard(
     user_rows = db.scalars(select(User).where(User.id.in_(user_ids))).all()
     users = {u.id: u for u in user_rows}
 
-    rows: list[tuple[int, str, int, int, bool]] = []
+    rows: list[tuple[int, str, int, int, bool, str | None]] = []
     for uid in user_ids:
         u = users.get(uid)
         if u is None:
             continue
         sc = _session_count_in_period(db, uid, period_days)
         st = _streak_days(db, uid)
-        rows.append((uid, u.username, sc, st, bool(int(u.is_premium or 0))))
+        rows.append((uid, u.username, sc, st, bool(int(u.is_premium or 0)), u.profile_picture_url))
 
     rows.sort(key=lambda x: (x[2], x[3]), reverse=True)
     me_rank = None
-    for idx, (uid, _, _, _, _) in enumerate(rows, start=1):
+    for idx, (uid, _, _, _, _, _) in enumerate(rows, start=1):
         if uid == current.id:
             me_rank = idx
             break
 
     entries: list[FriendLeaderboardEntryPublic] = []
-    for rank, (uid, name, sc, st, is_premium) in enumerate(rows, start=1):
+    for rank, (uid, name, sc, st, is_premium, profile_picture_url) in enumerate(rows, start=1):
         delta = 0
         if period_days is not None:
             until = utcnow() - timedelta(days=period_days)
@@ -289,6 +298,7 @@ def friends_leaderboard(
                 is_chasing_you=bool(me_rank is not None and rank == me_rank - 1 and uid != current.id),
                 is_threatening_you=bool(me_rank is not None and rank == me_rank + 1 and uid != current.id),
                 is_premium=is_premium,
+                profile_picture_url=profile_picture_url,
             )
         )
 
@@ -314,26 +324,64 @@ def friends_activity(
         .where(
             ProductionSession.user_id.in_(scope),
             ProductionSession.deleted_at.is_(None),
-            ProductionSession.stopped_at.is_not(None),
-            ProductionSession.duration_seconds.is_not(None),
         )
-        .order_by(ProductionSession.stopped_at.desc())
+        .order_by(func.coalesce(ProductionSession.stopped_at, ProductionSession.started_at).desc())
         .limit(limit)
     ).all()
+    session_ids = [row.id for row in rows]
+    reactions_count_by_session: dict[int, int] = {}
+    comments_count_by_session: dict[int, int] = {}
+    viewer_reaction_by_session: dict[int, str] = {}
+    if session_ids:
+        reaction_rows = db.execute(
+            select(SocialReaction.target_id, func.count(SocialReaction.id))
+            .where(SocialReaction.target_type == "session", SocialReaction.target_id.in_(session_ids))
+            .group_by(SocialReaction.target_id)
+        ).all()
+        reactions_count_by_session = {int(target_id): int(count) for target_id, count in reaction_rows}
+        comment_rows = db.execute(
+            select(SocialComment.target_id, func.count(SocialComment.id))
+            .where(SocialComment.target_type == "session", SocialComment.target_id.in_(session_ids))
+            .group_by(SocialComment.target_id)
+        ).all()
+        comments_count_by_session = {int(target_id): int(count) for target_id, count in comment_rows}
+        viewer_rows = db.scalars(
+            select(SocialReaction).where(
+                SocialReaction.target_type == "session",
+                SocialReaction.target_id.in_(session_ids),
+                SocialReaction.user_id == current.id,
+            )
+        ).all()
+        viewer_reaction_by_session = {int(row.target_id): row.emoji for row in viewer_rows}
 
-    user_cache = {u.id: u.username for u in db.scalars(select(User).where(User.id.in_(scope))).all()}
+    user_cache = {
+        u.id: {"username": u.username, "profile_picture_url": u.profile_picture_url}
+        for u in db.scalars(select(User).where(User.id.in_(scope))).all()
+    }
 
     out: list[FriendActivityPublic] = []
     for s in rows:
-        name = user_cache.get(s.user_id) or "?"
+        user_meta = user_cache.get(s.user_id, {})
+        name = str(user_meta.get("username") or "?")
+        profile_picture_url = user_meta.get("profile_picture_url")
+        is_live = s.stopped_at is None
+        activity_at = s.started_at if is_live else s.stopped_at
+        if activity_at is None:
+            activity_at = s.started_at
         out.append(
             FriendActivityPublic(
                 session_id=s.id,
                 user_id=s.user_id,
                 username=name,
+                profile_picture_url=str(profile_picture_url) if profile_picture_url else None,
                 session_type=s.session_type,
-                completed_at=s.stopped_at,  # type: ignore[arg-type]
-                duration_seconds=int(s.duration_seconds or 0),
+                activity_at=activity_at,
+                status="live" if is_live else "completed",
+                completed_at=s.stopped_at,
+                duration_seconds=(None if is_live else int(s.duration_seconds or 0)),
+                reactions_count=reactions_count_by_session.get(s.id, 0),
+                comments_count=comments_count_by_session.get(s.id, 0),
+                viewer_reaction=viewer_reaction_by_session.get(s.id),
             )
         )
     return out

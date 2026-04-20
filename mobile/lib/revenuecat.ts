@@ -7,11 +7,9 @@ import Purchases, {
 
 let configuredForUser: string | null = null;
 
-function getRevenueCatApiKey(): string {
+function getRevenueCatApiKey(): string | null {
   const key = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY?.trim();
-  if (!key) {
-    throw new Error("EXPO_PUBLIC_REVENUECAT_API_KEY is missing.");
-  }
+  if (!key) return null;
   return key;
 }
 
@@ -21,17 +19,37 @@ function configuredEntitlementId(): string {
   return raw;
 }
 
-export async function configureRevenueCat(appUserId: string): Promise<void> {
+export async function configureRevenueCat(appUserId?: string): Promise<void> {
   if (Platform.OS === "web") {
     return;
   }
-  if (configuredForUser === appUserId) return;
-  await Purchases.configure({ apiKey: getRevenueCatApiKey(), appUserID: appUserId });
-  configuredForUser = appUserId;
+  const apiKey = getRevenueCatApiKey();
+  if (!apiKey) return;
+  const normalized = appUserId?.trim() ? appUserId.trim() : null;
+
+  if (configuredForUser === normalized) return;
+  if (configuredForUser === null) {
+    await Purchases.configure({
+      apiKey,
+      ...(normalized ? { appUserID: normalized } : {}),
+    });
+    configuredForUser = normalized;
+    return;
+  }
+
+  if (normalized) {
+    await Purchases.logIn(normalized);
+    configuredForUser = normalized;
+    return;
+  }
+
+  await Purchases.logOut();
+  configuredForUser = null;
 }
 
 export async function getDefaultOffering(): Promise<PurchasesOffering | null> {
   if (Platform.OS === "web") return null;
+  if (!getRevenueCatApiKey()) return null;
   const offerings = await Purchases.getOfferings();
   return offerings.current ?? null;
 }
@@ -69,9 +87,15 @@ export function activeEntitlementExpiration(info: CustomerInfo): string | null {
 }
 
 export async function restoreRevenueCatPurchases(): Promise<CustomerInfo> {
+  if (!getRevenueCatApiKey()) {
+    throw new Error("RevenueCat is not configured for this build.");
+  }
   return Purchases.restorePurchases();
 }
 
 export async function getRevenueCatCustomerInfo(): Promise<CustomerInfo> {
+  if (!getRevenueCatApiKey()) {
+    throw new Error("RevenueCat is not configured for this build.");
+  }
   return Purchases.getCustomerInfo();
 }

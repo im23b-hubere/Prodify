@@ -14,13 +14,18 @@ const LEGACY_TO_ID: Record<string, SessionType> = {
 
 function normalizeSessionTypeId(type: string): SessionType | string {
   const trimmed = type.trim();
+  const normalized = trimmed.toLowerCase().replace(/[\s-]+/g, "_");
   if (trimmed in LEGACY_TO_ID) {
     return LEGACY_TO_ID[trimmed];
   }
-  if ((SESSION_TYPE_IDS as readonly string[]).includes(trimmed)) {
-    return trimmed as SessionType;
+  if ((SESSION_TYPE_IDS as readonly string[]).includes(normalized)) {
+    return normalized as SessionType;
   }
-  return trimmed;
+  // Handle backend/UI variants that still appear in legacy rows.
+  if (normalized === "mix_master" || normalized === "mix_and_mastering") {
+    return "mix_and_master";
+  }
+  return normalized;
 }
 
 export function sessionTypeLabel(type: string, tr: TFunction): string {

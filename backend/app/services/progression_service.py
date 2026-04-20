@@ -7,6 +7,11 @@ from sqlalchemy.orm import Session
 from app.models import UserProgression, XpLedger, utcnow
 from app.schemas import ProgressionPublic
 
+SESSION_XP_MINUTES_FLOOR = 5
+BASE_SESSION_XP = 8
+SESSION_XP_PER_MINUTE_AFTER_FLOOR = 0.8
+SESSION_XP_MAX = 110
+
 
 def _level_for_xp(xp_total: int) -> int:
     return max(1, int(math.floor(1 + math.sqrt(max(0, xp_total) / 50))))
@@ -14,6 +19,17 @@ def _level_for_xp(xp_total: int) -> int:
 
 def _next_level_threshold(level: int) -> int:
     return int(((level) ** 2) * 50)
+
+
+def xp_for_completed_session(duration_seconds: int) -> int:
+    """Session XP based on meaningful duration with anti-tap exploitation."""
+    minutes = max(0, int(duration_seconds // 60))
+    # Avoid abuse from extremely short sessions (start/stop spam).
+    if minutes < SESSION_XP_MINUTES_FLOOR:
+        return 0
+    scaled_minutes = minutes - SESSION_XP_MINUTES_FLOOR
+    raw = BASE_SESSION_XP + int(scaled_minutes * SESSION_XP_PER_MINUTE_AFTER_FLOOR)
+    return max(0, min(SESSION_XP_MAX, raw))
 
 
 def grant_xp(

@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 import { useAuth } from "../../context/AuthContext";
-import { POST_REGISTER_HREF } from "../../lib/postAuthNavigation";
+import { resolvePostAuthRouteFromStorage, toHref } from "../../lib/postAuthNavigation";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -33,7 +33,11 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await signUp(email.trim(), username.trim(), password);
-      router.replace(POST_REGISTER_HREF);
+      const next = await resolvePostAuthRouteFromStorage({
+        hasToken: true,
+        entryPoint: "register",
+      });
+      router.replace(toHref(next));
     } catch (e) {
       setError(e instanceof Error ? e.message : t("auth.register.registerFailed"));
     } finally {
@@ -58,32 +62,35 @@ export default function RegisterScreen() {
           <TextInput
             style={styles.input}
             placeholder={t("auth.register.placeholderEmail")}
-            placeholderTextColor="#737373"
+            placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
             value={email}
             onChangeText={setEmail}
+            accessibilityLabel={t("auth.register.email")}
           />
           <Text style={styles.fieldLabel}>{t("auth.register.username")}</Text>
           <TextInput
             style={styles.input}
             placeholder={t("auth.register.placeholderUsername")}
-            placeholderTextColor="#737373"
+            placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             autoComplete="username"
             value={username}
             onChangeText={setUsername}
+            accessibilityLabel={t("auth.register.username")}
           />
           <Text style={styles.fieldLabel}>{t("auth.register.password")}</Text>
           <TextInput
             style={styles.input}
             placeholder={t("auth.register.placeholderPassword")}
-            placeholderTextColor="#737373"
+            placeholderTextColor={colors.textSecondary}
             secureTextEntry
             autoComplete="new-password"
             value={password}
             onChangeText={setPassword}
+            accessibilityLabel={t("auth.register.password")}
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -96,7 +103,11 @@ export default function RegisterScreen() {
         </View>
 
         <Link href="/(auth)/login" asChild>
-          <Pressable style={styles.linkWrap}>
+          <Pressable
+            style={styles.linkWrap}
+            accessibilityRole="button"
+            accessibilityLabel={t("auth.register.hasAccount")}
+          >
             <Text style={styles.link}>{t("auth.register.hasAccount")}</Text>
           </Pressable>
         </Link>
@@ -168,7 +179,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     color: colors.textPrimary,
-    backgroundColor: "#1f1f1f",
+    backgroundColor: colors.border,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 14,

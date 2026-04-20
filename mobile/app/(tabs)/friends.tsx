@@ -1,13 +1,13 @@
 import { useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
-import { Search } from "lucide-react-native";
+import { type Href, useRouter } from "expo-router";
+import { Activity, MessageCircle, Search, ThumbsUp, Trophy, UserPlus, Users } from "lucide-react-native";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -25,22 +25,21 @@ import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-import { apiJson } from "../../lib/client";
+import { ApiError, apiJson } from "../../lib/client";
 import { fetchEntitlement } from "../../lib/billing";
 import { recordMomentumAction } from "../../lib/momentum";
+import { formatTimeAgo } from "../../lib/timeAgo";
 import {
   createChallenge,
-  createSessionComment,
   fetchBuddyStatus,
   fetchSessionReactionUsers,
-  fetchSessionComments,
   fetchChallenges,
   fetchCheckinStatus,
   fetchCommitment,
-  fetchSessionReactions,
   fetchWeeklyRecap,
+  toggleSessionReaction,
 } from "../../lib/social";
 import type {
   BuddyStatusDto,
@@ -50,8 +49,6 @@ import type {
   FriendIncomingDto,
   FriendLeaderboardDto,
   SocialChallengeDto,
-  SocialCommentDto,
-  SocialReactionDto,
   SocialReactionUserDto,
   SocialRecapDto,
 } from "../../types/friends";
@@ -64,19 +61,6 @@ function rankColor(rank: number) {
   return colors.secondary;
 }
 
-function formatAgo(iso: string, t: TFunction): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return t("friendsScreen.unknownTime");
-  const diff = Math.max(0, Date.now() - d.getTime());
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return t("friendsWidget.agoNow");
-  if (mins < 60) return t("friendsWidget.agoMinutes", { mins });
-  const hours = Math.floor(mins / 60);
-  if (hours < 48) return t("friendsWidget.agoHours", { hours });
-  const days = Math.floor(hours / 24);
-  return t("friendsWidget.agoDays", { days });
-}
-
 function formatDuration(sec: number, t: TFunction): string {
   const m = Math.floor(sec / 60);
   if (m < 1) return t("friendsScreen.durationUnderOne");
@@ -84,6 +68,93 @@ function formatDuration(sec: number, t: TFunction): string {
   const h = Math.floor(m / 60);
   return t("friendsScreen.durationHours", { h, m: m % 60 });
 }
+
+function challengeKindLabel(kind: string, t: TFunction): string {
+  if (kind === "duel") return t("friendsScreen.challengeKindDuel");
+  if (kind === "team") return t("friendsScreen.challengeKindTeam");
+  if (kind === "group") return t("friendsScreen.challengeKindGroup");
+  return kind;
+}
+
+function challengeDaysLeft(weekStart: string, durationDays?: number): number | null {
+  const start = new Date(weekStart);
+  if (!Number.isFinite(start.getTime())) return null;
+  const totalDays = Math.max(1, durationDays ?? 7);
+  const end = new Date(start.getTime() + totalDays * 24 * 60 * 60 * 1000);
+  const diffDays = Math.ceil((end.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+  return Math.max(0, diffDays);
+}
+
+function sessionTypeSlugToCamelKey(slug: string): string {
+  return slug
+    .split("_")
+    .map((w, i) => (i === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join("");
+}
+
+function formatSessionTypeLabel(type: string, t: TFunction): string {
+  const key = `sessionTypes.${sessionTypeSlugToCamelKey(type)}`;
+  const label = t(key);
+  if (label !== key) return label;
+  return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function FriendsSectionHeader({
+  title,
+  subtitle,
+  icon,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  icon?: ReactNode;
+  right?: ReactNode;
+}) {
+  return (
+    <View style={friendsSectionStyles.headerRow}>
+      {icon ? <View style={friendsSectionStyles.headerIconWrap}>{icon}</View> : null}
+      <View style={friendsSectionStyles.headerTextCol}>
+        <Text style={friendsSectionStyles.headerTitle}>{title}</Text>
+        {subtitle ? <Text style={friendsSectionStyles.headerSubtitle}>{subtitle}</Text> : null}
+      </View>
+      {right ? <View style={friendsSectionStyles.headerRight}>{right}</View> : null}
+    </View>
+  );
+}
+
+const friendsSectionStyles = StyleSheet.create({
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    flexWrap: "wrap",
+  },
+  headerIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTextCol: { flex: 1, minWidth: 0 },
+  headerRight: { marginLeft: "auto", alignSelf: "center" },
+  headerTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.body,
+    lineHeight: 22,
+  },
+  headerSubtitle: {
+    marginTop: 4,
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.body,
+  },
+});
 
 export default function FriendsScreen() {
   const { t } = useTranslation();
@@ -106,14 +177,6 @@ export default function FriendsScreen() {
   const [challenges, setChallenges] = useState<SocialChallengeDto[]>([]);
   const [commitment, setCommitment] = useState<CommitmentDto | null>(null);
   const [recap, setRecap] = useState<SocialRecapDto | null>(null);
-  const [reactionPreview, setReactionPreview] = useState<Record<number, SocialReactionDto[]>>({});
-  const [commentsBySession, setCommentsBySession] = useState<Record<number, SocialCommentDto[]>>(
-    {},
-  );
-  const [composerBySession, setComposerBySession] = useState<Record<number, string>>({});
-  const [commentBusy, setCommentBusy] = useState<Record<number, boolean>>({});
-  const [commentsModalSession, setCommentsModalSession] = useState<FriendActivityDto | null>(null);
-  const [commentsModalLoading, setCommentsModalLoading] = useState(false);
   const [reactionUsersOpen, setReactionUsersOpen] = useState(false);
   const [reactionUsers, setReactionUsers] = useState<SocialReactionUserDto[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -127,23 +190,41 @@ export default function FriendsScreen() {
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [challengeCreateBusy, setChallengeCreateBusy] = useState(false);
   const [triggerIndex, setTriggerIndex] = useState(0);
-  const commentScrollRef = useRef<ScrollView | null>(null);
+  const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
+  const [reactionUsersLoading, setReactionUsersLoading] = useState(false);
+  const [buddyPickerOpen, setBuddyPickerOpen] = useState(false);
+  const [goalEditorOpen, setGoalEditorOpen] = useState(false);
+  const [goalTargetInput, setGoalTargetInput] = useState("5");
+  const [goalDaysInput, setGoalDaysInput] = useState("7");
+  const [goalSaving, setGoalSaving] = useState(false);
+  const [sectionTab, setSectionTab] = useState<"overview" | "tools">("overview");
+  const [feedMetricsBySession, setFeedMetricsBySession] = useState<
+    Record<number, { reactionsCount: number; commentsCount: number; viewerReaction: string | null }>
+  >({});
+  const [reactionBusyBySession, setReactionBusyBySession] = useState<Record<number, boolean>>({});
   const loadSeq = useRef(0);
   const mounted = useRef(true);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       loadSeq.current += 1;
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+        toastTimeoutRef.current = null;
+      }
     };
   }, []);
 
   const periodParam = mode === "week" ? "week" : "all";
   const showToast = useCallback((message: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToastMessage(message);
-    setTimeout(() => {
+    toastTimeoutRef.current = setTimeout(() => {
       setToastMessage(null);
+      toastTimeoutRef.current = null;
     }, 1800);
   }, []);
 
@@ -177,28 +258,22 @@ export default function FriendsScreen() {
       setCommitment(commitmentRes);
       setRecap(recapRes);
       setEntitlement(ent);
+      const metricsSeed: Record<
+        number,
+        { reactionsCount: number; commentsCount: number; viewerReaction: string | null }
+      > = {};
+      for (const item of Array.isArray(feed) ? feed : []) {
+        metricsSeed[item.session_id] = {
+          reactionsCount: item.reactions_count ?? 0,
+          commentsCount: item.comments_count ?? 0,
+          viewerReaction: item.viewer_reaction ?? null,
+        };
+      }
+      setFeedMetricsBySession(metricsSeed);
       const ch = await apiJson<{ challenge_id: number }>("/challenges/weekly/leaderboard", {
         token,
       }).catch(() => null);
       setChallengeId(typeof ch?.challenge_id === "number" ? ch.challenge_id : null);
-      const sessionIds = (Array.isArray(feed) ? feed : [])
-        .slice(0, 5)
-        .map((item) => item.session_id);
-      const reactions = await Promise.all(
-        sessionIds.map(
-          async (sessionId) =>
-            [sessionId, await fetchSessionReactions(token, sessionId).catch(() => [])] as const,
-        ),
-      );
-      setReactionPreview(Object.fromEntries(reactions));
-      const firstThree = sessionIds.slice(0, 3);
-      const commentSeed = await Promise.all(
-        firstThree.map(
-          async (sessionId) =>
-            [sessionId, await fetchSessionComments(token, sessionId).catch(() => [])] as const,
-        ),
-      );
-      setCommentsBySession((prev) => ({ ...prev, ...Object.fromEntries(commentSeed) }));
       setUpsellMessage(null);
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
@@ -211,7 +286,7 @@ export default function FriendsScreen() {
       setChallenges([]);
       setCommitment(null);
       setRecap(null);
-      setCommentsBySession({});
+      setFeedMetricsBySession({});
       setEntitlement(null);
     } finally {
       if (!mounted.current || seq !== loadSeq.current) return;
@@ -303,125 +378,129 @@ export default function FriendsScreen() {
   }
 
   const entries = leaderboard?.entries ?? [];
+  const hasOtherFriends = entries.some((entry) => entry.user_id !== user?.id);
+  const friendCandidates = entries.filter((entry) => entry.user_id !== user?.id);
 
   async function joinChallenge() {
-    if (!token || !challengeId) return;
-    await apiJson("/challenges/join", {
-      token,
-      method: "POST",
-      body: { challenge_id: challengeId },
-    });
-    await load();
-    if (user?.id) {
-      await recordMomentumAction(user.id, "challenge");
+    if (!token) return;
+    if (!challengeId) {
+      Alert.alert(t("friendsScreen.errorGeneric"), t("friendsScreen.noChallengesYet"));
+      setChallengeCreateOpen(true);
+      return;
     }
-    showToast(t("friendsScreen.toastPressure"));
-    setUpsellMessage(t("friendsScreen.upsellInviteFriend"));
+    setBusyActionKey("join_challenge");
+    try {
+      await apiJson("/social/challenges/join", {
+        token,
+        method: "POST",
+        body: { challenge_id: challengeId },
+      });
+      await load();
+      if (user?.id) {
+        await recordMomentumAction(user.id, "challenge");
+      }
+      showToast(t("friendsScreen.toastPressure"));
+      setUpsellMessage(t("friendsScreen.upsellInviteFriend"));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t("common.tryAgain");
+      if (e instanceof ApiError && e.status === 402) {
+        setUpsellMessage(msg);
+      }
+      Alert.alert(t("friendsScreen.errorGeneric"), msg);
+    } finally {
+      setBusyActionKey(null);
+    }
   }
 
   async function submitShipCheckin() {
     if (!token) return;
-    await apiJson("/challenges/checkin", {
-      token,
-      method: "POST",
-      body: { did_ship: true, shipped_note: "Shipped this week." },
-    });
-    await load();
-  }
-
-  async function inviteBuddy() {
-    if (!token) return;
-    const candidate = entries.find((e) => user?.id !== e.user_id);
-    if (!candidate) return;
-    await apiJson("/social/buddy/invite", {
-      token,
-      method: "POST",
-      body: { friend_user_id: candidate.user_id },
-    });
-    await load();
-  }
-
-  async function markCheckinDone() {
-    if (!token) return;
-    await apiJson("/social/checkins/done", { token, method: "POST", body: { note: "Done." } });
-    await load();
-    if (user?.id) {
-      await recordMomentumAction(user.id, "checkin");
+    setBusyActionKey("ship_checkin");
+    try {
+      await apiJson("/social/checkins/done", {
+        token,
+        method: "POST",
+        body: { note: "Shipped this week." },
+      });
+      await load();
+      showToast(t("friendsScreen.toastMomentum"));
+    } catch (e) {
+      Alert.alert(
+        t("friendsScreen.errorGeneric"),
+        e instanceof Error ? e.message : t("common.tryAgain"),
+      );
+    } finally {
+      setBusyActionKey(null);
     }
-    showToast(t("friendsScreen.toastMomentum"));
   }
 
-  async function setCommitmentTarget() {
+  async function inviteBuddy(friendUserId: number) {
     if (!token) return;
+    if (!friendCandidates.some((entry) => entry.user_id === friendUserId)) {
+      Alert.alert(t("friendsScreen.errorGeneric"), t("friendsScreen.feedEmptyMessage"));
+      setAddOpen(true);
+      return;
+    }
+    setBusyActionKey("buddy_invite");
+    try {
+      await apiJson("/social/buddy/invite", {
+        token,
+        method: "POST",
+        body: { friend_user_id: friendUserId },
+      });
+      await load();
+      showToast(t("friendsScreen.toastSocialEngaged"));
+      setBuddyPickerOpen(false);
+    } catch (e) {
+      Alert.alert(
+        t("friendsScreen.errorGeneric"),
+        e instanceof Error ? e.message : t("common.tryAgain"),
+      );
+    } finally {
+      setBusyActionKey(null);
+    }
+  }
+
+  function openGoalEditor() {
+    setGoalTargetInput(String(Math.max(1, commitment?.target_sessions ?? 5)));
+    setGoalDaysInput(String(Math.max(3, commitment?.period_days ?? 7)));
+    setGoalEditorOpen(true);
+  }
+
+  async function saveCommitmentTarget() {
+    if (!token) return;
+    const target = Number.parseInt(goalTargetInput, 10);
+    const periodDays = Number.parseInt(goalDaysInput, 10);
+    if (!Number.isFinite(target) || target < 1 || target > 50) {
+      Alert.alert(t("friendsScreen.couldNotSetGoal"), t("friendsScreen.invalidChallengeBody"));
+      return;
+    }
+    if (!Number.isFinite(periodDays) || periodDays < 3 || periodDays > 30) {
+      Alert.alert(t("friendsScreen.couldNotSetGoal"), t("friendsScreen.invalidChallengeBody"));
+      return;
+    }
+    setGoalSaving(true);
     try {
       await apiJson("/social/commitment", {
         token,
         method: "POST",
         body: {
-          target_sessions: 5,
+          target_sessions: target,
           visibility: "friends",
           commitment_key: "sessions",
-          period_days: 7,
+          period_days: periodDays,
         },
       });
       await load();
+      setGoalEditorOpen(false);
+      showToast(t("friendsScreen.toastExtraGoal"));
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("common.tryAgain");
       if (msg.toLowerCase().includes("premium")) {
         setUpsellMessage(msg);
       }
       Alert.alert(t("friendsScreen.couldNotSetGoal"), msg);
-    }
-  }
-
-  async function addExtraCommitment() {
-    if (!token) return;
-    try {
-      await apiJson("/social/commitment", {
-        token,
-        method: "POST",
-        body: {
-          target_sessions: 4,
-          visibility: "friends",
-          commitment_key: "checkins",
-          period_days: 14,
-        },
-      });
-      await load();
-      showToast(t("friendsScreen.toastExtraGoal"));
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t("common.tryAgain");
-      if (msg.toLowerCase().includes("premium")) {
-        setUpsellMessage(t("friendsScreen.upsellTrackMoreGoals"));
-      }
-      Alert.alert(t("friendsScreen.couldNotAddGoal"), msg);
-    }
-  }
-
-  async function submitComment(sessionId: number) {
-    if (!token) return;
-    const text = (composerBySession[sessionId] ?? "").trim();
-    if (!text) return;
-    setCommentBusy((prev) => ({ ...prev, [sessionId]: true }));
-    try {
-      await createSessionComment(token, sessionId, text);
-      setComposerBySession((prev) => ({ ...prev, [sessionId]: "" }));
-      const fresh = await fetchSessionComments(token, sessionId);
-      setCommentsBySession((prev) => ({ ...prev, [sessionId]: fresh }));
-      if (user?.id) {
-        await recordMomentumAction(user.id, "social");
-      }
-      showToast(t("friendsScreen.toastSocialEngaged"));
-      setTimeout(() => {
-        commentScrollRef.current?.scrollToEnd({ animated: true });
-      }, 50);
-    } catch (e) {
-      Alert.alert(
-        t("friendsScreen.couldNotSendComment"),
-        e instanceof Error ? e.message : t("common.tryAgain"),
-      );
     } finally {
-      setCommentBusy((prev) => ({ ...prev, [sessionId]: false }));
+      setGoalSaving(false);
     }
   }
 
@@ -474,26 +553,82 @@ export default function FriendsScreen() {
     }
   }
 
-  const openComments = useCallback(
-    async (item: FriendActivityDto) => {
-      if (!token) return;
-      setCommentsModalSession(item);
-      setCommentsModalLoading(true);
-      const fresh = await fetchSessionComments(token, item.session_id).catch(() => []);
-      setCommentsBySession((prev) => ({ ...prev, [item.session_id]: fresh }));
-      setCommentsModalLoading(false);
-      setTimeout(() => {
-        commentScrollRef.current?.scrollToEnd({ animated: false });
-      }, 50);
-    },
-    [token],
-  );
-
   async function openReactionUsers(sessionId: number) {
     if (!token) return;
     setReactionUsersOpen(true);
-    const rows = await fetchSessionReactionUsers(token, sessionId).catch(() => []);
-    setReactionUsers(rows);
+    setReactionUsersLoading(true);
+    try {
+      const rows = await fetchSessionReactionUsers(token, sessionId);
+      setReactionUsers(rows);
+    } catch (e) {
+      setReactionUsers([]);
+      Alert.alert(
+        t("friendsScreen.errorGeneric"),
+        e instanceof Error ? e.message : t("common.tryAgain"),
+      );
+    } finally {
+      setReactionUsersLoading(false);
+    }
+  }
+
+  async function toggleThumbReaction(item: FriendActivityDto) {
+    if (!token || reactionBusyBySession[item.session_id]) return;
+    const sessionId = item.session_id;
+    const previous = feedMetricsBySession[sessionId] ?? {
+      reactionsCount: item.reactions_count ?? 0,
+      commentsCount: item.comments_count ?? 0,
+      viewerReaction: item.viewer_reaction ?? null,
+    };
+    const hadThumb = previous.viewerReaction === "👍";
+    const optimistic = {
+      ...previous,
+      viewerReaction: hadThumb ? null : "👍",
+      reactionsCount: Math.max(0, previous.reactionsCount + (hadThumb ? -1 : 1)),
+    };
+    setFeedMetricsBySession((prev) => ({ ...prev, [sessionId]: optimistic }));
+    setReactionBusyBySession((prev) => ({ ...prev, [sessionId]: true }));
+    try {
+      const updated = await toggleSessionReaction(token, sessionId, "👍");
+      const updatedCount = updated.reduce((sum, row) => sum + row.count, 0);
+      const mine = updated.find((row) => row.emoji === "👍" && row.reacted_by_me);
+      setFeedMetricsBySession((prev) => ({
+        ...prev,
+        [sessionId]: {
+          reactionsCount: updatedCount,
+          commentsCount: prev[sessionId]?.commentsCount ?? previous.commentsCount,
+          viewerReaction: mine ? "👍" : null,
+        },
+      }));
+    } catch (e) {
+      setFeedMetricsBySession((prev) => ({ ...prev, [sessionId]: previous }));
+      Alert.alert(
+        t("friendsScreen.errorGeneric"),
+        e instanceof Error ? e.message : t("common.tryAgain"),
+      );
+    } finally {
+      setReactionBusyBySession((prev) => ({ ...prev, [sessionId]: false }));
+    }
+  }
+
+  async function acceptBuddyInvite(inviteId: number) {
+    if (!token) return;
+    setBusyActionKey("buddy_accept");
+    try {
+      await apiJson("/social/buddy/accept", {
+        token,
+        method: "POST",
+        body: { invite_id: inviteId },
+      });
+      await load();
+      showToast(t("friendsScreen.toastCollaborativeMove"));
+    } catch (e) {
+      Alert.alert(
+        t("friendsScreen.errorGeneric"),
+        e instanceof Error ? e.message : t("common.tryAgain"),
+      );
+    } finally {
+      setBusyActionKey(null);
+    }
   }
 
   const challengeCards = useMemo(() => challenges.slice(0, 5), [challenges]);
@@ -520,7 +655,12 @@ export default function FriendsScreen() {
               }
               showToast(t("friendsScreen.toastLockedIn"));
             })
-            .catch(() => undefined);
+                            .catch((e: unknown) => {
+                              Alert.alert(
+                                t("friendsScreen.errorGeneric"),
+                                e instanceof Error ? e.message : t("common.tryAgain"),
+                              );
+                            });
         },
       });
     }
@@ -538,7 +678,15 @@ export default function FriendsScreen() {
           if (user?.id) {
             void recordMomentumAction(user.id, "social");
           }
-          if (activity[0]) void openComments(activity[0]);
+          if (activity[0]) {
+            router.push({
+              pathname: "/session/[id]",
+              params: {
+                id: String(activity[0].session_id),
+                ownerName: activity[0].username,
+              },
+            } as Href);
+          }
         },
       });
     }
@@ -561,12 +709,17 @@ export default function FriendsScreen() {
               showToast(t("friendsScreen.toastCollaborativeMove"));
               return load();
             })
-            .catch(() => undefined);
+                            .catch((e: unknown) => {
+                              Alert.alert(
+                                t("friendsScreen.errorGeneric"),
+                                e instanceof Error ? e.message : t("common.tryAgain"),
+                              );
+                            });
         },
       });
     }
     return cards;
-  }, [buddy, challengeCards, user?.id, token, activity, showToast, load, openComments, t]);
+  }, [buddy, challengeCards, user?.id, token, activity, showToast, load, router, t]);
 
   const activeTriggerCard = triggerCards[triggerIndex] ?? null;
 
@@ -596,7 +749,10 @@ export default function FriendsScreen() {
         }
       >
         <View style={styles.topBar}>
-          <Text style={styles.title}>{t("friendsScreen.title")}</Text>
+          <View style={styles.titleBlock}>
+            <Text style={styles.title}>{t("friendsScreen.title")}</Text>
+            <Text style={styles.screenSubtitle}>{t("friendsScreen.subtitle")}</Text>
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("friendsScreen.addFriendA11y")}
@@ -609,118 +765,62 @@ export default function FriendsScreen() {
             <Search color={colors.textPrimary} size={18} />
           </Pressable>
         </View>
+        <View style={styles.screenSegmentedRow}>
+          <Pressable
+            style={[
+              styles.screenSegmentChip,
+              sectionTab === "overview" && styles.screenSegmentChipActive,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: sectionTab === "overview" }}
+            accessibilityLabel={t("friendsScreen.tabOverview")}
+            onPress={() => setSectionTab("overview")}
+          >
+            <Text
+              style={[
+                styles.screenSegmentText,
+                sectionTab === "overview" && styles.screenSegmentTextActive,
+              ]}
+            >
+              {t("friendsScreen.tabOverview")}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.screenSegmentChip, sectionTab === "tools" && styles.screenSegmentChipActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: sectionTab === "tools" }}
+            accessibilityLabel={t("friendsScreen.tabSocialTools")}
+            onPress={() => setSectionTab("tools")}
+          >
+            <Text
+              style={[styles.screenSegmentText, sectionTab === "tools" && styles.screenSegmentTextActive]}
+            >
+              {t("friendsScreen.tabSocialTools")}
+            </Text>
+          </Pressable>
+        </View>
+        {!loading && !hasOtherFriends ? (
+          <View style={styles.emptyFriendsCard}>
+            <View style={styles.emptyFriendsIcon}>
+              <UserPlus color={colors.primary} size={18} />
+            </View>
+            <View style={styles.emptyFriendsCopy}>
+              <Text style={styles.emptyFriendsTitle}>{t("friendsScreen.feedEmptyTitle")}</Text>
+              <Text style={styles.userMeta}>{t("friendsScreen.feedEmptyMessage")}</Text>
+            </View>
+            <PrimaryButton label={t("friendsScreen.feedEmptyCta")} onPress={() => setAddOpen(true)} />
+          </View>
+        ) : null}
         {entitlement?.entitlement !== "premium" && upsellMessage ? (
           <View style={styles.upsellCard}>
             <Text style={styles.upsellTitle}>{t("friendsScreen.premiumBoost")}</Text>
             <Text style={styles.userMeta}>{upsellMessage}</Text>
+            <PrimaryButton
+              label={t("friendsScreen.unlockPremiumCta")}
+              onPress={() => router.push("/paywall")}
+            />
           </View>
         ) : null}
-        <View style={styles.challengeRow}>
-          <PrimaryButton
-            label={t("friendsScreen.joinCreativeChallenge")}
-            onPress={() => void joinChallenge()}
-          />
-          <PrimaryButton
-            label={t("friendsScreen.droppedThisWeek")}
-            onPress={() => void submitShipCheckin()}
-          />
-          <PrimaryButton
-            label={t("friendsScreen.createCreativeChallenge")}
-            onPress={() => setChallengeCreateOpen(true)}
-          />
-        </View>
-
-        <View style={styles.block}>
-          <Text style={styles.incomingTitle}>{t("friendsScreen.buddyConnection")}</Text>
-          <Text style={styles.userMeta}>
-            {buddy?.status === "active"
-              ? t("friendsScreen.buddyActive", {
-                  buddy: buddy.buddy_username,
-                  buddyWeek: buddy.buddy_week_sessions ?? 0,
-                  yourWeek: buddy.this_week_sessions ?? 0,
-                })
-              : buddy?.status === "pending_incoming"
-                ? t("friendsScreen.buddyPendingIncoming", {
-                    buddy: buddy.buddy_username ?? "buddy",
-                  })
-                : buddy?.status === "pending_outgoing"
-                  ? t("friendsScreen.buddyPendingOutgoing", {
-                      buddy: buddy.buddy_username ?? "buddy",
-                    })
-                  : t("friendsScreen.buddyPickOne")}
-          </Text>
-          {entitlement?.entitlement === "premium" ? (
-            <Text style={styles.premiumPill}>{t("friendsScreen.premiumActive")}</Text>
-          ) : null}
-          {buddy?.status === "none" ? (
-            <PrimaryButton
-              label={t("friendsScreen.inviteBuddy")}
-              onPress={() => void inviteBuddy()}
-            />
-          ) : null}
-          {buddy?.status === "pending_incoming" && buddy.invite_id ? (
-            <PrimaryButton
-              label={t("friendsScreen.acceptBuddyInvite")}
-              onPress={async () => {
-                if (!token) return;
-                await apiJson("/social/buddy/accept", {
-                  token,
-                  method: "POST",
-                  body: { invite_id: buddy.invite_id },
-                });
-                await load();
-              }}
-            />
-          ) : null}
-        </View>
-
-        <View style={styles.block}>
-          <Text style={styles.incomingTitle}>{t("friendsScreen.studioActivity")}</Text>
-          <Text style={styles.userMeta}>
-            {checkin
-              ? t("friendsScreen.checkinStatus", {
-                  done: checkin.done_count,
-                  target: checkin.target_checkins,
-                  state: checkin.on_track
-                    ? t("friendsScreen.checkinInFlow")
-                    : t("friendsScreen.checkinNeedsPush"),
-                })
-              : t("friendsScreen.checkinHint")}
-          </Text>
-          <PrimaryButton
-            label={t("friendsScreen.logActivity")}
-            onPress={() => void markCheckinDone()}
-          />
-        </View>
-
-        <View style={styles.block}>
-          <Text style={styles.incomingTitle}>{t("friendsScreen.creativeGoal")}</Text>
-          <Text style={styles.userMeta}>
-            {commitment
-              ? t("friendsScreen.commitmentStatus", {
-                  current: commitment.current_sessions,
-                  target: commitment.target_sessions,
-                  status: commitment.status,
-                })
-              : t("friendsScreen.commitmentHint")}
-          </Text>
-          <PrimaryButton
-            label={t("friendsScreen.setGoalFive")}
-            onPress={() => void setCommitmentTarget()}
-          />
-          <PrimaryButton
-            label={t("friendsScreen.addExtraGoal")}
-            onPress={() => void addExtraCommitment()}
-          />
-          {commitment?.status === "completed" ? (
-            <Text style={styles.upsellHint}>{t("friendsScreen.upsellInviteFriend")}</Text>
-          ) : null}
-          {commitment?.upsell_hint && entitlement?.entitlement !== "premium" ? (
-            <Text style={styles.upsellHint}>{commitment.upsell_hint}</Text>
-          ) : null}
-        </View>
-
-        {loading && !refreshing ? <LoadingState message={t("friendsScreen.loading")} /> : null}
 
         {error ? (
           <ErrorState
@@ -731,283 +831,684 @@ export default function FriendsScreen() {
           />
         ) : null}
 
-        {incoming.length > 0 ? (
-          <View style={styles.incomingBlock}>
-            <Text style={styles.incomingTitle}>{t("friendsScreen.incomingTitle")}</Text>
-            {incoming.map((req) => (
-              <View key={req.id} style={styles.incomingRow}>
-                <View style={styles.incomingCopy}>
-                  <Text style={styles.incomingName}>{req.username}</Text>
-                  <Text style={styles.incomingHint}>{t("friendsScreen.incomingHint")}</Text>
-                </View>
-                <View style={styles.incomingActions}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.smallBtn,
-                      styles.acceptBtn,
-                      pressed && { opacity: 0.9 },
-                    ]}
-                    disabled={actionBusy === req.id}
-                    onPress={() => acceptRequest(req.id)}
-                  >
-                    <Text style={styles.smallBtnText}>{t("friendsScreen.accept")}</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.smallBtn,
-                      styles.declineBtn,
-                      pressed && { opacity: 0.9 },
-                    ]}
-                    disabled={actionBusy === req.id}
-                    onPress={() => declineRequest(req.id)}
-                  >
-                    <Text style={styles.smallBtnTextDim}>{t("friendsScreen.decline")}</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-          </View>
+        {loading && !refreshing && !error ? (
+          <LoadingState message={t("friendsScreen.loading")} />
         ) : null}
 
-        <View style={styles.toggleRow}>
-          {modeOptions.map((item) => (
-            <Pressable
-              key={item.key}
-              style={[styles.toggleChip, mode === item.key && styles.toggleChipActive]}
-              onPress={() => setMode(item.key)}
-            >
-              <Text style={[styles.toggleText, mode === item.key && styles.toggleTextActive]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <View style={styles.block}>
-          {!loading && entries.length === 1 && user?.id === entries[0]?.user_id ? (
-            <Text style={styles.emptyLeader}>{t("friendsScreen.soloLeader")}</Text>
-          ) : null}
-          {entries.map((entry, idx) => (
-            <Animated.View
-              key={`${entry.user_id}-${entry.rank}`}
-              entering={FadeInDown.delay(idx * 35).duration(320)}
-            >
-              <Pressable
-                style={[styles.leaderItem, idx > 0 && styles.leaderDivider]}
-                onPress={() => {
-                  Haptics.selectionAsync().catch(() => undefined);
-                  router.push(`/profile/${entry.user_id}`);
-                }}
-              >
-                <View style={[styles.rankBadge, { backgroundColor: rankColor(entry.rank) }]}>
-                  <Text style={styles.rankText}>#{entry.rank}</Text>
-                </View>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarLabel}>{entry.username.slice(0, 2).toUpperCase()}</Text>
-                </View>
-                <View style={styles.userCopy}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.userName}>{entry.username}</Text>
-                    {entry.is_premium ? <Text style={styles.premiumTag}>PRO</Text> : null}
-                    {user?.id === entry.user_id ? (
-                      <View style={styles.youPill}>
-                        <Text style={styles.youPillText}>{t("friendsScreen.youPill")}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={styles.userMeta}>
-                    {mode === "week"
-                      ? t("friendsScreen.metaWeek", {
-                          sessions: entry.sessions_in_period,
-                          days: entry.current_streak_days,
-                        })
-                      : t("friendsScreen.metaAll", {
-                          sessions: entry.sessions_in_period,
-                          days: entry.current_streak_days,
-                        })}
-                  </Text>
-                  <Text style={styles.userMeta}>
-                    {entry.trend === "up"
-                      ? t("friendsScreen.trendUp")
-                      : entry.trend === "down"
-                        ? t("friendsScreen.trendDown")
-                        : t("friendsScreen.trendStable")}{" "}
-                    ·{" "}
-                    {entry.is_chasing_you
-                      ? t("friendsScreen.statusChasingYou")
-                      : entry.is_threatening_you
-                        ? t("friendsScreen.statusCloseBehind")
-                        : t("friendsScreen.statusDelta", {
-                            sign: (entry.sessions_delta_vs_prior ?? 0) >= 0 ? "+" : "",
-                            delta: entry.sessions_delta_vs_prior ?? 0,
-                          })}
-                  </Text>
-                </View>
-              </Pressable>
-            </Animated.View>
-          ))}
-        </View>
-
-        <Text style={styles.sectionTitle}>{t("friendsScreen.activityTitle")}</Text>
-        {activeTriggerCard ? (
-          <View style={styles.block}>
-            <View key={activeTriggerCard.key} style={styles.triggerCardPrimary}>
-              <Text style={styles.userName}>{activeTriggerCard.title}</Text>
-              <Pressable
-                style={styles.triggerActionPrimary}
-                onPress={() => {
-                  activeTriggerCard.onPress();
-                  completeTriggerAction();
-                }}
-              >
-                <Text style={styles.triggerActionTextPrimary}>{activeTriggerCard.actionLabel}</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-        <View style={styles.block}>
-          {activity.length === 0 && !loading ? (
-            <EmptyState
-              icon="🎛️"
-              title={t("friendsScreen.activityTitle")}
-              message={t("friendsScreen.feedEmpty")}
-            />
-          ) : null}
-          {activity.map((item, idx) => (
-            <Pressable
-              key={item.session_id}
-              style={[styles.feedRow, idx !== activity.length - 1 && styles.feedDivider]}
-              onPress={() => {
-                Haptics.selectionAsync().catch(() => undefined);
-                router.push(`/profile/${item.user_id}`);
-              }}
-            >
-              <View style={styles.feedDot} />
-              <Text style={styles.feedText}>
-                {t("friendsScreen.feedLine", {
-                  user: item.username,
-                  type: item.session_type,
-                  duration: formatDuration(item.duration_seconds, t),
-                  ago: formatAgo(item.completed_at, t),
-                })}
-              </Text>
-              <View style={styles.socialStatsRow}>
-                <Pressable onPress={() => void openReactionUsers(item.session_id)}>
-                  <Text style={styles.userMeta}>
-                    👍{" "}
-                    {(reactionPreview[item.session_id] ?? []).reduce((acc, r) => acc + r.count, 0)}
-                  </Text>
-                </Pressable>
-                <Pressable onPress={() => void openComments(item)}>
-                  <Text style={styles.userMeta}>
-                    💬{" "}
-                    {(commentsBySession[item.session_id] ?? []).length > 0
-                      ? (commentsBySession[item.session_id] ?? []).length
-                      : 0}
-                  </Text>
-                </Pressable>
-              </View>
-              <View style={styles.commentComposerRow}>
-                <TextInput
-                  value={composerBySession[item.session_id] ?? ""}
-                  onChangeText={(value) =>
-                    setComposerBySession((prev) => ({
-                      ...prev,
-                      [item.session_id]: value,
-                    }))
+        {!(loading && !refreshing) && !error ? (
+          <>
+            {incoming.length > 0 ? (
+              <View style={styles.sectionWrap}>
+                <FriendsSectionHeader
+                  title={
+                    incoming.length > 1
+                      ? t("friendsScreen.incomingTitleCount", { count: incoming.length })
+                      : t("friendsScreen.incomingTitle")
                   }
-                  placeholder={t("friendsScreen.commentPlaceholder")}
-                  placeholderTextColor={colors.textSecondary}
-                  style={styles.commentInput}
+                  subtitle={t("friendsScreen.incomingSectionSub")}
                 />
-                <Pressable
-                  style={({ pressed }) => [styles.commentSendBtn, pressed && { opacity: 0.8 }]}
-                  disabled={commentBusy[item.session_id]}
-                  onPress={() => void submitComment(item.session_id)}
-                >
-                  <Text style={styles.commentSendText}>
-                    {commentBusy[item.session_id]
-                      ? t("friendsScreen.commentSendingShort")
-                      : t("friendsScreen.commentSend")}
-                  </Text>
-                </Pressable>
-              </View>
-              <Pressable onPress={() => void openComments(item)}>
-                <Text style={styles.viewAllComments}>
-                  {(commentsBySession[item.session_id] ?? []).length > 0
-                    ? t("friendsScreen.viewAllComments")
-                    : t("friendsScreen.beFirstToComment")}
-                </Text>
-              </Pressable>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={styles.sectionTitle}>{t("friendsScreen.socialChallenges")}</Text>
-        <View style={styles.block}>
-          {challengeCards.length === 0 ? (
-            <>
-              <Text style={styles.feedEmpty}>{t("friendsScreen.noChallengesYet")}</Text>
-              <PrimaryButton
-                label={t("friendsScreen.startFirstChallenge")}
-                onPress={() => setChallengeCreateOpen(true)}
-              />
-            </>
-          ) : null}
-          {challengeCards.map((challenge) => (
-            <View key={challenge.id} style={styles.feedRow}>
-              <Text style={styles.userName}>
-                {challenge.title} ({challenge.challenge_kind})
-              </Text>
-              {challenge.members.map((m) => {
-                const pct = Math.max(
-                  0,
-                  Math.min(
-                    100,
-                    Math.round((m.progress_sessions / challenge.target_sessions) * 100),
-                  ),
-                );
-                const me = m.user_id === user?.id;
-                const leader = Math.max(...challenge.members.map((x) => x.progress_sessions));
-                const label =
-                  m.progress_sessions === leader
-                    ? t("friendsScreen.challengeLabelTone")
-                    : leader - m.progress_sessions <= 1
-                      ? t("friendsScreen.challengeLabelCloseBattle")
-                      : t("friendsScreen.challengeLabelBuildingPressure");
-                return (
-                  <View key={`${challenge.id}-${m.user_id}`} style={styles.challengeMemberRow}>
-                    <Text style={[styles.userMeta, me && styles.challengeMe]}>
-                      {m.username} {m.progress_sessions}/{challenge.target_sessions} · {label}
-                    </Text>
-                    <View style={styles.progressTrack}>
-                      <View style={[styles.progressFill, { width: `${pct}%` }]} />
+                <View style={styles.incomingList}>
+                  {incoming.map((req) => (
+                    <View key={req.id} style={styles.incomingRow}>
+                      <View style={styles.incomingCopy}>
+                        <Text style={styles.incomingName}>{req.username}</Text>
+                        <Text style={styles.incomingHint}>{t("friendsScreen.incomingHint")}</Text>
+                      </View>
+                      <View style={styles.incomingActions}>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.smallBtn,
+                            styles.acceptBtn,
+                            pressed && { opacity: 0.9 },
+                          ]}
+                          disabled={actionBusy === req.id}
+                          onPress={() => acceptRequest(req.id)}
+                        >
+                          <Text style={styles.smallBtnText}>{t("friendsScreen.accept")}</Text>
+                        </Pressable>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.smallBtn,
+                            styles.declineBtn,
+                            pressed && { opacity: 0.9 },
+                          ]}
+                          disabled={actionBusy === req.id}
+                          onPress={() => declineRequest(req.id)}
+                        >
+                          <Text style={styles.smallBtnTextDim}>{t("friendsScreen.decline")}</Text>
+                        </Pressable>
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
-            </View>
-          ))}
-        </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
 
-        <Text style={styles.sectionTitle}>{t("friendsScreen.weeklySocialRecap")}</Text>
-        <View style={styles.block}>
-          <Text style={styles.userMeta}>{recap?.recap_line ?? t("friendsScreen.noRecapYet")}</Text>
-          {recap?.identity_line ? (
-            <Text style={styles.identityLine}>{recap.identity_line}</Text>
-          ) : null}
-          {recap ? (
-            <Text style={styles.userMeta}>
-              Team {recap.team_sessions} · WoW {recap.wow_delta_sessions >= 0 ? "+" : ""}
-              {recap.wow_delta_sessions}
-            </Text>
-          ) : null}
-          {recap?.premium_detail_locked ? (
-            <Text style={styles.upsellHint}>
-              {recap.upsell_hint ?? t("friendsScreen.unlockPremiumInsights")}
-            </Text>
-          ) : null}
-        </View>
+            {sectionTab === "tools" ? (
+            <View style={styles.sectionWrap}>
+              <FriendsSectionHeader
+                icon={<Users color={colors.primary} size={20} />}
+                title={t("friendsScreen.sectionChallengesTitle")}
+                subtitle={t("friendsScreen.sectionChallengesSub")}
+              />
+              <View style={styles.cardElevated}>
+                <PrimaryButton
+                  label={
+                    busyActionKey === "join_challenge"
+                      ? t("friendsScreen.loading")
+                      : t("friendsScreen.joinCreativeChallenge")
+                  }
+                  onPress={() => void joinChallenge()}
+                  disabled={busyActionKey === "join_challenge"}
+                />
+                <Text style={styles.sectionHintText}>{t("friendsScreen.challengeQuickActionsHint")}</Text>
+                <View style={styles.challengeSecondaryRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      styles.secondaryBtn,
+                      styles.secondaryBtnHalf,
+                      pressed && { opacity: 0.88 },
+                    ]}
+                    onPress={() => void submitShipCheckin()}
+                    disabled={busyActionKey === "ship_checkin"}
+                  >
+                    <Text style={styles.secondaryBtnText}>
+                      {busyActionKey === "ship_checkin"
+                        ? t("friendsScreen.loading")
+                        : t("friendsScreen.checkInNow")}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      styles.secondaryBtn,
+                      styles.secondaryBtnHalf,
+                      pressed && { opacity: 0.88 },
+                    ]}
+                    onPress={() => setChallengeCreateOpen(true)}
+                  >
+                    <Text style={styles.secondaryBtnText}>
+                      {t("friendsScreen.createCreativeChallenge")}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+            ) : null}
+
+            {sectionTab === "tools" ? (
+            <View style={styles.sectionWrap}>
+              <FriendsSectionHeader
+                title={t("friendsScreen.sectionCircleTitle")}
+                subtitle={t("friendsScreen.sectionCircleSub")}
+              />
+              <View style={styles.cardElevated}>
+                <View style={styles.innerPanel}>
+                  <Text style={styles.innerHeading}>{t("friendsScreen.buddyConnection")}</Text>
+                  <Text style={styles.helperText}>{t("friendsScreen.buddyHelper")}</Text>
+                  <Text style={styles.userMeta}>
+                    {buddy?.status === "active"
+                      ? t("friendsScreen.buddyActive", {
+                          buddy: buddy.buddy_username,
+                          buddyWeek: buddy.buddy_week_sessions ?? 0,
+                          yourWeek: buddy.this_week_sessions ?? 0,
+                        })
+                      : buddy?.status === "pending_incoming"
+                        ? t("friendsScreen.buddyPendingIncoming", {
+                            buddy: buddy.buddy_username ?? "buddy",
+                          })
+                        : buddy?.status === "pending_outgoing"
+                          ? t("friendsScreen.buddyPendingOutgoing", {
+                              buddy: buddy.buddy_username ?? "buddy",
+                            })
+                          : t("friendsScreen.buddyPickOne")}
+                  </Text>
+                  {entitlement?.entitlement === "premium" ? (
+                    <Text style={styles.premiumPill}>{t("friendsScreen.premiumActive")}</Text>
+                  ) : null}
+                  {buddy?.status === "none" ? (
+                    <PrimaryButton
+                      label={
+                        busyActionKey === "buddy_invite"
+                          ? t("friendsScreen.loading")
+                          : t("friendsScreen.inviteBuddy")
+                      }
+                      onPress={() => setBuddyPickerOpen(true)}
+                      disabled={busyActionKey === "buddy_invite" || !hasOtherFriends}
+                    />
+                  ) : null}
+                  {buddy?.status === "pending_incoming" && buddy.invite_id ? (
+                    <PrimaryButton
+                      label={
+                        busyActionKey === "buddy_accept"
+                          ? t("friendsScreen.loading")
+                          : t("friendsScreen.acceptBuddyInvite")
+                      }
+                      onPress={() => void acceptBuddyInvite(buddy.invite_id)}
+                      disabled={busyActionKey === "buddy_accept"}
+                    />
+                  ) : null}
+                </View>
+
+                <View style={styles.innerDivider} />
+
+                <View style={styles.innerPanel}>
+                  <Text style={styles.innerHeading}>{t("friendsScreen.studioActivity")}</Text>
+                  <Text style={styles.helperText}>{t("friendsScreen.checkinHelper")}</Text>
+                  <Text style={styles.userMeta}>
+                    {checkin
+                      ? t("friendsScreen.checkinStatus", {
+                          done: checkin.done_count,
+                          target: checkin.target_checkins,
+                          state: checkin.on_track
+                            ? t("friendsScreen.checkinInFlow")
+                            : t("friendsScreen.checkinNeedsPush"),
+                        })
+                      : t("friendsScreen.checkinHint")}
+                  </Text>
+                  {checkin?.day_states?.length ? (
+                    <View style={styles.dayStateRow}>
+                      {checkin.day_states.map((day) => (
+                        <View
+                          key={day.day_key}
+                          style={[
+                            styles.dayStatePill,
+                            day.state === "done"
+                              ? styles.dayStateDone
+                              : day.state === "missed"
+                                ? styles.dayStateMissed
+                                : styles.dayStateOpen,
+                          ]}
+                        >
+                          <Text style={styles.dayStateText}>
+                            {new Date(day.day_key).toLocaleDateString(undefined, {
+                              weekday: "short",
+                            })}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+
+                <View style={styles.innerDivider} />
+
+                <View style={styles.innerPanel}>
+                  <Text style={styles.innerHeading}>{t("friendsScreen.creativeGoal")}</Text>
+                  <Text style={styles.helperText}>{t("friendsScreen.goalHelper")}</Text>
+                  <Text style={styles.userMeta}>
+                    {commitment
+                      ? t("friendsScreen.commitmentStatus", {
+                          current: commitment.current_sessions,
+                          target: commitment.target_sessions,
+                          status: commitment.status,
+                        })
+                      : t("friendsScreen.commitmentHint")}
+                  </Text>
+                  <PrimaryButton
+                    label={t("friendsScreen.editGoal")}
+                    onPress={openGoalEditor}
+                  />
+                  {commitment?.status === "completed" ? (
+                    <Text style={styles.upsellHint}>{t("friendsScreen.upsellInviteFriend")}</Text>
+                  ) : null}
+                  {commitment?.upsell_hint && entitlement?.entitlement !== "premium" ? (
+                    <Text style={styles.upsellHint}>{commitment.upsell_hint}</Text>
+                  ) : null}
+                </View>
+              </View>
+            </View>
+            ) : null}
+
+            {sectionTab === "overview" ? (
+            <View style={styles.sectionWrap}>
+              <FriendsSectionHeader
+                icon={<Trophy color={colors.primary} size={20} />}
+                title={t("friendsScreen.sectionLeaderboardTitle")}
+                subtitle={t("friendsScreen.sectionLeaderboardSub")}
+                right={
+                  <View style={styles.periodToggle}>
+                    {modeOptions.map((item) => (
+                      <Pressable
+                        key={item.key}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: mode === item.key }}
+                        style={[
+                          styles.periodChip,
+                          mode === item.key && styles.periodChipActive,
+                        ]}
+                        onPress={() => setMode(item.key)}
+                      >
+                        <Text
+                          style={[
+                            styles.periodChipText,
+                            mode === item.key && styles.periodChipTextActive,
+                          ]}
+                        >
+                          {item.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                }
+              />
+              <View style={styles.cardElevated}>
+                {!loading && entries.length === 1 && user?.id === entries[0]?.user_id ? (
+                  <Text style={styles.emptyLeader}>{t("friendsScreen.soloLeader")}</Text>
+                ) : null}
+                {entries.map((entry, idx) => (
+                  <Animated.View
+                    key={`${entry.user_id}-${entry.rank}`}
+                    entering={FadeInDown.delay(idx * 35).duration(320)}
+                  >
+                    <Pressable
+                      style={[styles.leaderItem, idx > 0 && styles.leaderDivider]}
+                      onPress={() => {
+                        Haptics.selectionAsync().catch(() => undefined);
+                        router.push(`/profile/${entry.user_id}`);
+                      }}
+                    >
+                      <View style={[styles.rankBadge, { backgroundColor: rankColor(entry.rank) }]}>
+                        <Text style={styles.rankText}>#{entry.rank}</Text>
+                      </View>
+                      {entry.profile_picture_url ? (
+                        <Image source={{ uri: entry.profile_picture_url }} style={styles.avatarImage} />
+                      ) : (
+                        <View style={styles.avatar}>
+                          <Text style={styles.avatarLabel}>
+                            {entry.username.slice(0, 2).toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.userCopy}>
+                        <View style={styles.nameRow}>
+                          <Text style={styles.userName}>{entry.username}</Text>
+                          {entry.is_premium ? <Text style={styles.premiumTag}>PRO</Text> : null}
+                          {user?.id === entry.user_id ? (
+                            <View style={styles.youPill}>
+                              <Text style={styles.youPillText}>{t("friendsScreen.youPill")}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text style={styles.userMeta}>
+                          {mode === "week"
+                            ? t("friendsScreen.metaWeek", {
+                                sessions: entry.sessions_in_period,
+                                days: entry.current_streak_days,
+                              })
+                            : t("friendsScreen.metaAll", {
+                                sessions: entry.sessions_in_period,
+                                days: entry.current_streak_days,
+                              })}
+                        </Text>
+                        <Text style={styles.userMeta}>
+                          {entry.trend === "up"
+                            ? t("friendsScreen.trendUp")
+                            : entry.trend === "down"
+                              ? t("friendsScreen.trendDown")
+                              : t("friendsScreen.trendStable")}{" "}
+                          ·{" "}
+                          {entry.is_chasing_you
+                            ? t("friendsScreen.statusChasingYou")
+                            : entry.is_threatening_you
+                              ? t("friendsScreen.statusCloseBehind")
+                              : t("friendsScreen.statusDelta", {
+                                  sign: (entry.sessions_delta_vs_prior ?? 0) >= 0 ? "+" : "",
+                                  delta: entry.sessions_delta_vs_prior ?? 0,
+                                })}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  </Animated.View>
+                ))}
+              </View>
+            </View>
+            ) : null}
+
+            {sectionTab === "overview" ? (
+            <View style={styles.sectionWrap}>
+              <FriendsSectionHeader
+                icon={<Activity color={colors.primary} size={20} />}
+                title={t("friendsScreen.sectionActivityTitle")}
+                subtitle={t("friendsScreen.sectionActivitySub")}
+                right={
+                  activity.length > 0 ? (
+                    <View style={styles.activityCountPill}>
+                      <Text style={styles.activityCountText}>{activity.length}</Text>
+                    </View>
+                  ) : null
+                }
+              />
+              {activeTriggerCard ? (
+                <View style={styles.cardElevated}>
+                  <View key={activeTriggerCard.key} style={styles.triggerCardPrimary}>
+                    <Text style={styles.userName}>{activeTriggerCard.title}</Text>
+                    <Pressable
+                      style={styles.triggerActionPrimary}
+                      onPress={() => {
+                        activeTriggerCard.onPress();
+                        completeTriggerAction();
+                      }}
+                    >
+                      <Text style={styles.triggerActionTextPrimary}>
+                        {activeTriggerCard.actionLabel}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
+              <View style={styles.activityFeedStack}>
+                {activity.length === 0 && !loading ? (
+                  <EmptyState
+                    icon="🎛️"
+                    title={t("friendsScreen.feedEmptyTitle")}
+                    message={t("friendsScreen.feedEmptyMessage")}
+                    actionLabel={t("friendsScreen.feedEmptyCta")}
+                    onAction={() => {
+                      Haptics.selectionAsync().catch(() => undefined);
+                      setAddOpen(true);
+                    }}
+                  />
+                ) : null}
+                {activity.map((item, idx) => {
+                  const metrics = feedMetricsBySession[item.session_id];
+                  const reactionTotal = metrics?.reactionsCount ?? item.reactions_count ?? 0;
+                  const commentCount = metrics?.commentsCount ?? item.comments_count ?? 0;
+                  const reactedByMe = metrics?.viewerReaction === "👍";
+                  const typeLabel = formatSessionTypeLabel(item.session_type, t);
+                  return (
+                    <Animated.View
+                      key={item.session_id}
+                      entering={FadeInDown.delay(Math.min(idx, 8) * 40).duration(280)}
+                      style={styles.feedItemCard}
+                    >
+                      <View style={styles.feedItemAccent} />
+                      <View style={styles.feedItemInner}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={t("friendsScreen.activityOpenSessionA11y", {
+                            name: item.username,
+                          })}
+                          style={styles.feedHeaderRow}
+                          onPress={() => {
+                            Haptics.selectionAsync().catch(() => undefined);
+                            router.push({
+                              pathname: "/session/[id]",
+                              params: {
+                                id: String(item.session_id),
+                                ownerName: item.username,
+                              },
+                            } as Href);
+                          }}
+                        >
+                          {item.profile_picture_url ? (
+                            <Image source={{ uri: item.profile_picture_url }} style={styles.feedAvatarImage} />
+                          ) : (
+                            <View style={styles.feedAvatar}>
+                              <Text style={styles.feedAvatarText}>
+                                {item.username.slice(0, 2).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          <View style={styles.feedHeaderCopy}>
+                            <View style={styles.feedNameRow}>
+                              <Text
+                                style={[styles.feedUserName, styles.feedUserNameFlex]}
+                                numberOfLines={1}
+                              >
+                                {item.username}
+                              </Text>
+                              {user?.id === item.user_id ? (
+                                <View style={styles.feedYouPill}>
+                                  <Text style={styles.feedYouPillText}>{t("friendsScreen.youPill")}</Text>
+                                </View>
+                              ) : null}
+                            </View>
+                            <Text style={styles.feedSessionMeta} numberOfLines={2}>
+                              {item.status === "live"
+                                ? t("friendsScreen.feedSessionMetaLive", {
+                                    type: typeLabel,
+                                    ago: formatTimeAgo(item.activity_at, t),
+                                  })
+                                : t("friendsScreen.feedSessionMeta", {
+                                    type: typeLabel,
+                                    duration: formatDuration(item.duration_seconds ?? 0, t),
+                                    ago: formatTimeAgo(item.activity_at, t),
+                                  })}
+                            </Text>
+                          </View>
+                        </Pressable>
+
+                        <View style={styles.feedActionsRow}>
+                          <Pressable
+                            accessibilityRole="button"
+                            style={({ pressed }) => [
+                              styles.feedReactPrimaryChip,
+                              reactedByMe && styles.feedReactPrimaryChipActive,
+                              pressed && { opacity: 0.88 },
+                            ]}
+                            disabled={reactionBusyBySession[item.session_id]}
+                            onPress={() => void toggleThumbReaction(item)}
+                          >
+                            <ThumbsUp
+                              color={reactedByMe ? colors.textPrimary : colors.textSecondary}
+                              size={16}
+                              strokeWidth={2}
+                            />
+                            <Text
+                              style={[
+                                styles.feedReactPrimaryChipText,
+                                reactedByMe && styles.feedReactPrimaryChipTextActive,
+                              ]}
+                            >
+                              {reactedByMe
+                                ? t("friendsScreen.reactedShort")
+                                : t("friendsScreen.reactShort")}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t("friendsScreen.activityReactionsA11y", {
+                              count: reactionTotal,
+                            })}
+                            style={({ pressed }) => [
+                              styles.feedActionChip,
+                              pressed && styles.feedActionChipPressed,
+                            ]}
+                            onPress={() => void openReactionUsers(item.session_id)}
+                          >
+                            <ThumbsUp color={colors.textSecondary} size={16} strokeWidth={2} />
+                            <Text style={styles.feedActionChipText}>
+                              {t("friendsScreen.reactionsCount", { count: reactionTotal })}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t("friendsScreen.activityCommentsA11y", {
+                              count: commentCount,
+                            })}
+                            style={({ pressed }) => [
+                              styles.feedActionChip,
+                              pressed && styles.feedActionChipPressed,
+                            ]}
+                            onPress={() =>
+                              router.push({
+                                pathname: "/session/[id]",
+                                params: {
+                                  id: String(item.session_id),
+                                  ownerName: item.username,
+                                },
+                              } as Href)
+                            }
+                          >
+                            <MessageCircle color={colors.textSecondary} size={16} strokeWidth={2} />
+                            <Text style={styles.feedActionChipText}>
+                              {t("friendsScreen.commentsCount", { count: commentCount })}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            accessibilityRole="button"
+                            style={({ pressed }) => [styles.feedReplyChip, pressed && { opacity: 0.88 }]}
+                            onPress={() =>
+                              router.push({
+                                pathname: "/session/[id]",
+                                params: {
+                                  id: String(item.session_id),
+                                  ownerName: item.username,
+                                },
+                              } as Href)
+                            }
+                          >
+                            <Text style={styles.feedReplyChipText}>
+                              {t("friendsScreen.openSessionComments")}
+                            </Text>
+                          </Pressable>
+                        </View>
+
+                        <Pressable
+                          accessibilityRole="button"
+                          style={({ pressed }) => [styles.feedThreadLink, pressed && { opacity: 0.85 }]}
+                          onPress={() =>
+                            router.push({
+                              pathname: "/session/[id]",
+                              params: {
+                                id: String(item.session_id),
+                                ownerName: item.username,
+                              },
+                            } as Href)
+                          }
+                        >
+                          <Text style={styles.viewAllComments}>
+                            {commentCount > 0
+                              ? t("friendsScreen.viewCommentsCount", { count: commentCount })
+                              : t("friendsScreen.beFirstToComment")}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </Animated.View>
+                  );
+                })}
+              </View>
+            </View>
+            ) : null}
+
+            {sectionTab === "tools" ? (
+            <View style={styles.sectionWrap}>
+              <FriendsSectionHeader
+                title={t("friendsScreen.socialChallenges")}
+                subtitle={t("friendsScreen.sectionSocialChallengesSub")}
+              />
+              <View style={styles.cardElevated}>
+                {challengeCards.length === 0 ? (
+                  <>
+                    <Text style={styles.feedEmpty}>{t("friendsScreen.noChallengesYet")}</Text>
+                    <Text style={styles.sectionHintText}>{t("friendsScreen.challengeEmptyHint")}</Text>
+                    <PrimaryButton
+                      label={t("friendsScreen.startFirstChallenge")}
+                      onPress={() => setChallengeCreateOpen(true)}
+                    />
+                  </>
+                ) : null}
+                {challengeCards.map((challenge) => (
+                  <View key={challenge.id} style={styles.challengeBlock}>
+                    <View style={styles.challengeHeaderRow}>
+                      <Text style={styles.userName}>{challenge.title}</Text>
+                      <View style={styles.challengeKindPill}>
+                        <Text style={styles.challengeKindPillText}>
+                          {challengeKindLabel(challenge.challenge_kind, t)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.userMeta}>
+                      {t("friendsScreen.challengeGoalLine", {
+                        target: challenge.target_sessions,
+                        days:
+                          challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
+                          challenge.duration_days ??
+                          7,
+                      })}
+                    </Text>
+                    {challenge.members.map((m) => {
+                      const pct = Math.max(
+                        0,
+                        Math.min(
+                          100,
+                          Math.round((m.progress_sessions / challenge.target_sessions) * 100),
+                        ),
+                      );
+                      const me = m.user_id === user?.id;
+                      const leader = Math.max(...challenge.members.map((x) => x.progress_sessions));
+                      const label =
+                        m.progress_sessions === leader
+                          ? t("friendsScreen.challengeLabelTone")
+                          : leader - m.progress_sessions <= 1
+                            ? t("friendsScreen.challengeLabelCloseBattle")
+                            : t("friendsScreen.challengeLabelKeepGoing");
+                      return (
+                        <View key={`${challenge.id}-${m.user_id}`} style={styles.challengeMemberRow}>
+                          <View style={styles.challengeMemberHeader}>
+                            <Text style={[styles.userMeta, me && styles.challengeMe]}>{m.username}</Text>
+                            <Text style={[styles.userMeta, me && styles.challengeMe]}>
+                              {m.progress_sessions}/{challenge.target_sessions}
+                            </Text>
+                          </View>
+                          <View style={styles.progressTrack}>
+                            <View style={[styles.progressFill, { width: `${pct}%` }]} />
+                          </View>
+                          <Text style={styles.challengeMemberLabel}>{label}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            </View>
+            ) : null}
+
+            {sectionTab === "tools" ? (
+            <View style={styles.sectionWrap}>
+              <FriendsSectionHeader
+                title={t("friendsScreen.weeklySocialRecap")}
+                subtitle={t("friendsScreen.sectionRecapSub")}
+              />
+              <View style={styles.cardElevated}>
+                <Text style={styles.userMeta}>
+                  {recap
+                    ? recap.has_active_buddy
+                      ? t("friendsScreen.recapWithBuddy", {
+                          your: recap.your_sessions,
+                          buddy: recap.buddy_sessions,
+                        })
+                      : t("friendsScreen.recapSolo", {
+                          your: recap.your_sessions,
+                        })
+                    : t("friendsScreen.noRecapYet")}
+                </Text>
+                {recap?.identity_tag ? (
+                  <Text style={styles.identityLine}>
+                    {t(`friendsScreen.identityTag.${recap.identity_tag}`)}
+                  </Text>
+                ) : null}
+                {recap ? (
+                  <Text style={styles.userMeta}>
+                    {t("friendsScreen.recapTeamLine", { count: recap.team_sessions })} ·{" "}
+                    {t("friendsScreen.recapWowLine", {
+                      sign: recap.wow_delta_sessions >= 0 ? "+" : "",
+                      delta: recap.wow_delta_sessions,
+                    })}
+                  </Text>
+                ) : null}
+                {recap?.premium_detail_locked ? (
+                  <Text style={styles.upsellHint}>
+                    {recap.upsell_hint ?? t("friendsScreen.unlockPremiumInsights")}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            ) : null}
+          </>
+        ) : null}
       </ScrollView>
 
       {toastMessage ? (
@@ -1015,62 +1516,6 @@ export default function FriendsScreen() {
           <Text style={styles.toastText}>{toastMessage}</Text>
         </Animated.View>
       ) : null}
-
-      <Modal
-        visible={commentsModalSession !== null}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setCommentsModalSession(null)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setCommentsModalSession(null)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>{t("friendsScreen.commentsTitle")}</Text>
-            <ScrollView ref={commentScrollRef} style={{ maxHeight: 320 }}>
-              {commentsModalLoading ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (commentsBySession[commentsModalSession?.session_id ?? -1] ?? []).length === 0 ? (
-                <Text style={styles.feedEmpty}>{t("friendsScreen.beFirstToComment")}</Text>
-              ) : (
-                (commentsBySession[commentsModalSession?.session_id ?? -1] ?? []).map((comment) => (
-                  <View
-                    key={comment.id}
-                    style={[
-                      styles.commentBubble,
-                      comment.author_id === user?.id && styles.commentBubbleMe,
-                    ]}
-                  >
-                    <Text style={styles.commentAuthor}>{comment.author_username}</Text>
-                    <Text style={styles.commentLine}>{comment.body}</Text>
-                  </View>
-                ))
-              )}
-            </ScrollView>
-            {commentsModalSession ? (
-              <View style={styles.commentComposerRow}>
-                <TextInput
-                  value={composerBySession[commentsModalSession.session_id] ?? ""}
-                  onChangeText={(value) =>
-                    setComposerBySession((prev) => ({
-                      ...prev,
-                      [commentsModalSession.session_id]: value,
-                    }))
-                  }
-                  placeholder={t("friendsScreen.commentPlaceholder")}
-                  placeholderTextColor={colors.textSecondary}
-                  style={styles.commentInput}
-                />
-                <Pressable
-                  style={({ pressed }) => [styles.commentSendBtn, pressed && { opacity: 0.8 }]}
-                  disabled={commentBusy[commentsModalSession.session_id]}
-                  onPress={() => void submitComment(commentsModalSession.session_id)}
-                >
-                  <Text style={styles.commentSendText}>{t("friendsScreen.commentSend")}</Text>
-                </Pressable>
-              </View>
-            ) : null}
-          </Pressable>
-        </Pressable>
-      </Modal>
 
       <Modal
         visible={reactionUsersOpen}
@@ -1081,7 +1526,16 @@ export default function FriendsScreen() {
         <Pressable style={styles.modalBackdrop} onPress={() => setReactionUsersOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>{t("friendsScreen.reactionsTitle")}</Text>
-            {(reactionUsers.length === 0
+            {(reactionUsersLoading
+              ? [
+                  {
+                    username: t("friendsScreen.loading"),
+                    emoji: "",
+                    user_id: -1,
+                    created_at: "loading",
+                  },
+                ]
+              : reactionUsers.length === 0
               ? [
                   {
                     username: t("friendsScreen.noReactionsYet"),
@@ -1096,6 +1550,77 @@ export default function FriendsScreen() {
                 {row.emoji} {row.username}
               </Text>
             ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={buddyPickerOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setBuddyPickerOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setBuddyPickerOpen(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>{t("friendsScreen.pickBuddyTitle")}</Text>
+            <Text style={styles.modalHint}>{t("friendsScreen.pickBuddyHint")}</Text>
+            <View style={styles.memberChips}>
+              {friendCandidates.length === 0 ? (
+                <Text style={styles.userMeta}>{t("friendsScreen.feedEmptyMessage")}</Text>
+              ) : (
+                friendCandidates.slice(0, 12).map((entry) => (
+                  <Pressable
+                    key={`buddy-${entry.user_id}`}
+                    style={styles.memberChip}
+                    disabled={busyActionKey === "buddy_invite"}
+                    onPress={() => void inviteBuddy(entry.user_id)}
+                  >
+                    <Text style={styles.memberChipText}>{entry.username}</Text>
+                  </Pressable>
+                ))
+              )}
+            </View>
+            <Pressable style={styles.modalCancel} onPress={() => setBuddyPickerOpen(false)}>
+              <Text style={styles.modalCancelText}>{t("friendsScreen.modalCancel")}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={goalEditorOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setGoalEditorOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setGoalEditorOpen(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>{t("friendsScreen.editGoalTitle")}</Text>
+            <Text style={styles.modalHint}>{t("friendsScreen.editGoalHint")}</Text>
+            <TextInput
+              value={goalTargetInput}
+              onChangeText={setGoalTargetInput}
+              keyboardType="number-pad"
+              placeholder={t("friendsScreen.challengeTargetPlaceholder")}
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+            />
+            <TextInput
+              value={goalDaysInput}
+              onChangeText={setGoalDaysInput}
+              keyboardType="number-pad"
+              placeholder={t("friendsScreen.challengeDurationPlaceholder")}
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+            />
+            <PrimaryButton
+              label={goalSaving ? t("friendsScreen.loading") : t("friendsScreen.saveGoal")}
+              disabled={goalSaving}
+              onPress={() => void saveCommitmentTarget()}
+            />
+            <Pressable style={styles.modalCancel} onPress={() => setGoalEditorOpen(false)}>
+              <Text style={styles.modalCancelText}>{t("friendsScreen.modalCancel")}</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1225,6 +1750,31 @@ export default function FriendsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: spacing.xxl },
+  emptyFriendsCard: {
+    marginBottom: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  emptyFriendsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  emptyFriendsCopy: { gap: 4 },
+  emptyFriendsTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.body,
+  },
   upsellCard: {
     padding: spacing.md,
     borderRadius: radii.lg,
@@ -1238,14 +1788,45 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.md,
+    alignItems: "flex-start",
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
-  challengeRow: {
-    gap: spacing.sm,
-    marginBottom: spacing.md,
+  titleBlock: { flex: 1, minWidth: 0 },
+  screenSubtitle: {
+    marginTop: spacing.xs,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+    lineHeight: 20,
   },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
+  screenSegmentedRow: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  screenSegmentChip: {
+    flex: 1,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+  },
+  screenSegmentChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.16)",
+  },
+  screenSegmentText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  screenSegmentTextActive: {
+    color: colors.textPrimary,
+  },
   iconButton: {
     width: 38,
     height: 38,
@@ -1256,7 +1837,59 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  incomingBlock: { marginBottom: spacing.md, gap: spacing.sm },
+  sectionWrap: { marginBottom: spacing.xl },
+  cardElevated: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.sm,
+    ...shadows.card,
+  },
+  challengeSecondaryRow: { flexDirection: "row", gap: spacing.sm },
+  secondaryBtn: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minHeight: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  secondaryBtnHalf: { flex: 1, minWidth: 0 },
+  secondaryBtnText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+    textAlign: "center",
+  },
+  sectionHintText: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.body,
+  },
+  innerPanel: { gap: spacing.sm },
+  innerHeading: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  helperText: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.body,
+  },
+  innerDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.sm,
+  },
+  incomingList: { gap: spacing.sm },
   incomingTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
@@ -1296,6 +1929,22 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
   },
+  periodToggle: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, justifyContent: "flex-end" },
+  periodChip: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  periodChipActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.2)" },
+  periodChipText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+  },
+  periodChipTextActive: { color: colors.textPrimary },
   toggleRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.md },
   toggleChip: {
     flex: 1,
@@ -1313,14 +1962,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
   },
   toggleTextActive: { color: colors.textPrimary },
-  block: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
   emptyLeader: {
     color: colors.textSecondary,
     ...typography.caption,
@@ -1349,6 +1990,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#2b2140",
     justifyContent: "center",
     alignItems: "center",
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   avatarLabel: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold },
   userCopy: { flex: 1 },
@@ -1392,30 +2041,164 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.bodySmall,
   },
-  sectionTitle: {
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
+  feedEmpty: { color: colors.textSecondary, ...typography.caption },
+  activityCountPill: {
+    minWidth: 28,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radii.round,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activityCountText: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.subheadline,
+    ...typography.caption,
   },
-  feedEmpty: { color: colors.textSecondary, ...typography.caption },
-  feedRow: {
+  activityFeedStack: { gap: spacing.md },
+  feedItemCard: {
+    position: "relative",
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
+    ...shadows.card,
+  },
+  feedItemAccent: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: colors.primary,
+    opacity: 0.85,
+  },
+  feedItemInner: { padding: spacing.md, gap: spacing.sm, paddingLeft: spacing.md + 4 },
+  feedHeaderRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  feedAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#2b2140",
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  feedAvatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  feedAvatarText: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, fontSize: 15 },
+  feedHeaderCopy: { flex: 1, minWidth: 0 },
+  feedNameRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
-    alignItems: "flex-start",
-    paddingVertical: spacing.xs,
+    flexWrap: "wrap",
   },
-  feedDivider: { borderBottomWidth: 1, borderBottomColor: "#202020", paddingBottom: spacing.sm },
-  feedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginTop: 6 },
-  feedText: {
-    flex: 1,
+  feedUserNameFlex: { flex: 1, minWidth: 0 },
+  feedYouPill: {
+    flexShrink: 0,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.round,
+    backgroundColor: "rgba(162,89,255,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(162,89,255,0.45)",
+  },
+  feedYouPillText: { color: colors.secondary, fontFamily: fontFamily.bodyBold, fontSize: 10 },
+  feedUserName: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.body,
+    lineHeight: 22,
+  },
+  feedSessionMeta: {
+    marginTop: 2,
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
     ...typography.caption,
+    lineHeight: 18,
   },
-  commentWrap: { flex: 1, marginTop: spacing.xs, gap: 4 },
-  socialStatsRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  feedActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  feedActionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  feedActionChipPressed: { backgroundColor: "rgba(255,255,255,0.08)" },
+  feedActionChipText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  feedReactPrimaryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.08)",
+  },
+  feedReactPrimaryChipActive: {
+    backgroundColor: "rgba(255,61,0,0.2)",
+  },
+  feedReactPrimaryChipText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  feedReactPrimaryChipTextActive: {
+    color: colors.textPrimary,
+  },
+  feedReplyChip: {
+    marginLeft: "auto",
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "transparent",
+  },
+  feedReplyChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.12)",
+  },
+  feedReplyChipText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  feedReplyChipTextActive: { color: colors.textPrimary },
+  feedComposerBlock: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: spacing.xs,
+  },
+  feedThreadLink: { alignSelf: "flex-start", paddingVertical: 2 },
   commentLine: { color: colors.textSecondary, ...typography.caption },
   commentAuthor: {
     color: colors.textPrimary,
@@ -1432,6 +2215,17 @@ const styles = StyleSheet.create({
   },
   commentBubbleMe: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.08)" },
   commentComposerRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  dayStateRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  dayStatePill: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  dayStateDone: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.16)" },
+  dayStateMissed: { borderColor: colors.border, backgroundColor: "rgba(255,255,255,0.04)" },
+  dayStateOpen: { borderColor: colors.border, backgroundColor: "transparent" },
+  dayStateText: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
   commentInput: {
     flex: 1,
     borderWidth: 1,
@@ -1470,7 +2264,34 @@ const styles = StyleSheet.create({
   memberChipSelected: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.18)" },
   memberChipText: { color: colors.textSecondary, ...typography.caption },
   memberChipTextSelected: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold },
+  challengeBlock: {
+    width: "100%",
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: "rgba(255,255,255,0.02)",
+    padding: spacing.sm,
+  },
+  challengeHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  challengeKindPill: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: radii.round,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  challengeKindPillText: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyBold,
+    textTransform: "capitalize",
+  },
   challengeMemberRow: { width: "100%", gap: 4, marginTop: spacing.xs },
+  challengeMemberHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  challengeMemberLabel: { color: colors.textSecondary, ...typography.caption, fontFamily: fontFamily.body },
   challengeMe: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold },
   progressTrack: {
     width: "100%",

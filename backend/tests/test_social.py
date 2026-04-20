@@ -155,7 +155,7 @@ def test_social_challenge_comment_recap_and_leaderboard_context(client):
 
     recap = client.get("/social/weekly-recap", headers=a)
     assert recap.status_code == 200
-    assert "recap_line" in recap.json()
+    assert "has_active_buddy" in recap.json()
 
     context = client.get("/social/leaderboard/context", headers=a)
     assert context.status_code == 200
@@ -211,7 +211,7 @@ def test_friend_accept_grants_growth_perks(client):
         assert int(ub.bonus_rescues or 0) >= 1
 
 
-def test_identity_endpoint_and_recap_identity_line(client):
+def test_identity_endpoint_and_recap_identity_tag(client):
     a = _auth_headers(client, "social-m@example.com", "social-m")
     b = _auth_headers(client, "social-n@example.com", "social-n")
     _make_friends(client, a, b, "social-n")
@@ -242,4 +242,4 @@ def test_identity_endpoint_and_recap_identity_line(client):
 
     recap = client.get("/social/weekly-recap", headers=b)
     assert recap.status_code == 200
-    assert "identity_line" in recap.json()
+    assert "identity_tag" in recap.json()

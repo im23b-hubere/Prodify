@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { getI18n } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { debugLog } from "../../lib/debugLog";
@@ -35,15 +36,21 @@ export class CrashBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    const t = getI18n().t;
+    const title = this.props.fallbackTitle ?? t("crashBoundary.genericTitle");
+    const message = this.props.fallbackMessage ?? t("crashBoundary.genericMessage");
 
     return (
       <View style={styles.wrap}>
-        <Text style={styles.title}>{this.props.fallbackTitle ?? "Something went wrong"}</Text>
-        <Text style={styles.message}>
-          {this.props.fallbackMessage ?? "Please try again. If this continues, restart the app."}
-        </Text>
-        <Pressable style={styles.btn} onPress={this.onRecover}>
-          <Text style={styles.btnTxt}>Retry</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.message}>{message}</Text>
+        <Pressable
+          style={styles.btn}
+          onPress={this.onRecover}
+          accessibilityRole="button"
+          accessibilityLabel={t("crashBoundary.retry")}
+        >
+          <Text style={styles.btnTxt}>{t("crashBoundary.retry")}</Text>
         </Pressable>
       </View>
     );

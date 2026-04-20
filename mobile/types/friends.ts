@@ -16,6 +16,7 @@ export type FriendLeaderboardEntryDto = {
   is_chasing_you?: boolean;
   is_threatening_you?: boolean;
   is_premium?: boolean;
+  profile_picture_url?: string | null;
 };
 
 export type FriendLeaderboardDto = {
@@ -27,9 +28,15 @@ export type FriendActivityDto = {
   session_id: number;
   user_id: number;
   username: string;
+  profile_picture_url?: string | null;
   session_type: string;
-  completed_at: string;
-  duration_seconds: number;
+  activity_at: string;
+  status?: "live" | "completed" | string;
+  completed_at?: string | null;
+  duration_seconds?: number | null;
+  reactions_count?: number;
+  comments_count?: number;
+  viewer_reaction?: string | null;
 };
 
 export type BuddyStatusDto = {
@@ -106,11 +113,11 @@ export type SocialRecapDto = {
   buddy_sessions: number;
   team_sessions: number;
   wow_delta_sessions: number;
-  recap_line: string;
+  has_active_buddy?: boolean;
+  identity_tag?: string | null;
   trend_vs_last_week_percent?: number | null;
   premium_detail_locked?: boolean;
   upsell_hint?: string | null;
-  identity_line?: string | null;
 };
 
 export type SocialCommentDto = {
@@ -119,6 +126,7 @@ export type SocialCommentDto = {
   target_id: number;
   author_id: number;
   author_username: string;
+  author_profile_picture_url?: string | null;
   body: string;
   created_at: string;
 };

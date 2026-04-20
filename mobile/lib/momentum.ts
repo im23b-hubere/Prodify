@@ -9,8 +9,17 @@ type MomentumBlob = {
   updated_at_ms: number;
 };
 
-function keyFor(userId: number): string {
-  return `retention:momentum:${userId}`;
+function sanitizeUserId(userId: number): string | null {
+  const raw = String(userId).trim();
+  const safe = raw.replace(/[^A-Za-z0-9._-]/g, "");
+  return safe.length > 0 ? safe : null;
+}
+
+function keyFor(userId: number): string | null {
+  // Expo SecureStore keys allow only [A-Za-z0-9._-].
+  const safeUserId = sanitizeUserId(userId);
+  if (!safeUserId) return null;
+  return `retention_momentum_${safeUserId}`;
 }
 
 function clampScore(v: number): number {
@@ -36,7 +45,16 @@ export async function getMomentumSnapshot(userId: number): Promise<{
   state: MomentumState;
   lastAction: MomentumAction | null;
 }> {
-  const raw = await SecureStore.getItemAsync(keyFor(userId));
+  const key = keyFor(userId);
+  if (!key) {
+    return { score: 0, state: "low", lastAction: null };
+  }
+  let raw: string | null = null;
+  try {
+    raw = await SecureStore.getItemAsync(key);
+  } catch {
+    return { score: 0, state: "low", lastAction: null };
+  }
   if (!raw) {
     return { score: 0, state: "low", lastAction: null };
   }
@@ -67,6 +85,14 @@ export async function recordMomentumAction(
     last_action: action,
     updated_at_ms: Date.now(),
   };
-  await SecureStore.setItemAsync(keyFor(userId), JSON.stringify(next));
+  const key = keyFor(userId);
+  if (!key) {
+    return { score: nextScore, state: momentumStateFromScore(nextScore) };
+  }
+  try {
+    await SecureStore.setItemAsync(key, JSON.stringify(next));
+  } catch {
+    // Momentum must never break user actions.
+  }
   return { score: nextScore, state: momentumStateFromScore(nextScore) };
 }

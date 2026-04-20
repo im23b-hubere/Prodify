@@ -18,6 +18,7 @@ import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
+import { XpHud } from "../components/progression/XpHud";
 import { AuthProvider } from "../context/AuthContext";
 import { colors } from "../constants/theme";
 import { initSentry } from "../lib/sentry";
@@ -40,6 +41,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthProvider>
           <NotificationNavBridge />
+          <XpHud />
           <StatusBar style="light" />
           <Stack
             screenOptions={{

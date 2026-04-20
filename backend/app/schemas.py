@@ -12,10 +12,29 @@ class UserCreate(BaseModel):
     username: str = Field(min_length=2, max_length=64)
     password: str = Field(min_length=8, max_length=128)
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        # Treat email identity as case-insensitive and ignore accidental whitespace.
+        return str(value).strip().lower()
+
+    @field_validator("username")
+    @classmethod
+    def normalize_username(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if len(normalized) < 2:
+            raise ValueError("username must contain at least 2 characters")
+        return normalized
+
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
 
 class UserPublic(BaseModel):
@@ -193,6 +212,7 @@ class FriendLeaderboardEntryPublic(BaseModel):
     is_chasing_you: bool = False
     is_threatening_you: bool = False
     is_premium: bool = False
+    profile_picture_url: str | None = None
 
 
 class FriendLeaderboardPublic(BaseModel):
@@ -204,9 +224,15 @@ class FriendActivityPublic(BaseModel):
     session_id: int
     user_id: int
     username: str
+    profile_picture_url: str | None = None
     session_type: str
-    completed_at: datetime
-    duration_seconds: int
+    activity_at: datetime
+    status: str = "completed"
+    completed_at: datetime | None = None
+    duration_seconds: int | None = None
+    reactions_count: int = 0
+    comments_count: int = 0
+    viewer_reaction: str | None = None
 
 
 class FriendshipPublic(BaseModel):
@@ -589,6 +615,7 @@ class SocialCommentPublic(BaseModel):
     target_id: int
     author_id: int
     author_username: str
+    author_profile_picture_url: str | None = None
     body: str
     created_at: datetime
 
@@ -683,11 +710,11 @@ class SocialWeeklyRecapPublic(BaseModel):
     buddy_sessions: int
     team_sessions: int
     wow_delta_sessions: int
-    recap_line: str
+    has_active_buddy: bool = False
+    identity_tag: str | None = None
     trend_vs_last_week_percent: float | None = None
     premium_detail_locked: bool = False
     upsell_hint: str | None = None
-    identity_line: str | None = None
 
 
 class BuddyRiskPublic(BaseModel):

@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -44,21 +45,28 @@ def issue_tokens_for_user(db: Session, user: User, *, replace_all: bool) -> Toke
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings.rate_limit_auth_register)
 def register(request: Request, payload: UserCreate, db: Annotated[Session, Depends(get_db)]):
-    if db.scalar(select(User).where(User.email == payload.email)):
+    normalized_email = str(payload.email).strip().lower()
+    normalized_username = payload.username.strip().lower()
+
+    if db.scalar(select(User).where(func.lower(User.email) == normalized_email)):
         raise HTTPException(status_code=400, detail="Email already registered")
-    if db.scalar(select(User).where(User.username == payload.username)):
+    if db.scalar(select(User).where(func.lower(User.username) == normalized_username)):
         raise HTTPException(status_code=400, detail="Username already taken")
 
     user = User(
-        email=payload.email,
-        username=payload.username,
+        email=normalized_email,
+        username=normalized_username,
         hashed_password=hash_password(payload.password),
     )
-    db.add(user)
-    db.flush()
-    db.add(Streak(user_id=user.id, current_streak=0, longest_streak=0))
-    db.commit()
-    db.refresh(user)
+    try:
+        db.add(user)
+        db.flush()
+        db.add(Streak(user_id=user.id, current_streak=0, longest_streak=0))
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Email or username already exists") from None
 
     return issue_tokens_for_user(db, user, replace_all=True)
 
@@ -66,7 +74,8 @@ def register(request: Request, payload: UserCreate, db: Annotated[Session, Depen
 @router.post("/login", response_model=TokenPair)
 @limiter.limit(settings.rate_limit_auth_login)
 def login(request: Request, payload: UserLogin, db: Annotated[Session, Depends(get_db)]):
-    user = db.scalar(select(User).where(User.email == payload.email))
+    normalized_email = str(payload.email).strip().lower()
+    user = db.scalar(select(User).where(func.lower(User.email) == normalized_email))
     if user is None or not verify_password(payload.password, user.hashed_password):
         _log.warning("auth_login_failed")
         raise HTTPException(status_code=401, detail="Incorrect email or password")

@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal, Pressable, StyleSheet, Text } from "react-native";
 
 import { PrimaryButton } from "./ui/PrimaryButton";
@@ -10,6 +11,7 @@ import { colors, radii, spacing, typography } from "../constants/theme";
 const KEY = "prodify_tutorial_v1";
 
 export function TutorialOverlay() {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -39,15 +41,15 @@ export function TutorialOverlay() {
     <Modal transparent animationType="fade" visible={visible} onRequestClose={dismiss}>
       <Pressable style={styles.backdrop} onPress={dismiss}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>Track every session</Text>
+          <Text style={styles.title}>{t("tutorialOverlay.title")}</Text>
           <Text style={styles.body}>
-            Tap <Text style={styles.bold}>START SESSION</Text> to set type, mood, notes, and tags —
-            the sheet slides away and your timer stays right here on the dashboard.
+            {t("tutorialOverlay.bodyPrefix")} <Text style={styles.bold}>{t("tutorialOverlay.startSessionCta")}</Text>{" "}
+            {t("tutorialOverlay.bodyMiddle")}
             {"\n\n"}
-            Swipe up on the timer for focus mode; swipe down from there to come back. End with{" "}
-            <Text style={styles.bold}>STOP SESSION</Text> when you are done.
+            {t("tutorialOverlay.bodySuffix")} <Text style={styles.bold}>{t("tutorialOverlay.stopSessionCta")}</Text>{" "}
+            {t("tutorialOverlay.bodyEnd")}
           </Text>
-          <PrimaryButton label="Got it" onPress={dismiss} />
+          <PrimaryButton label={t("tutorialOverlay.gotIt")} onPress={dismiss} />
         </Pressable>
       </Pressable>
     </Modal>

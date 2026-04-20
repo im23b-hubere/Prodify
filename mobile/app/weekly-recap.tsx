@@ -5,6 +5,9 @@ import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { EmptyState } from "../components/states/EmptyState";
+import { ErrorState } from "../components/states/ErrorState";
+import { LoadingState } from "../components/states/LoadingState";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
@@ -22,9 +25,11 @@ export default function WeeklyRecapScreen() {
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
   const [review, setReview] = useState<WeeklyReviewDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!token) return;
+    setLoading(true);
     setError(null);
     try {
       const [rawReview, rawStats] = await Promise.all([
@@ -40,6 +45,8 @@ export default function WeeklyRecapScreen() {
       setStats(null);
       setReview(null);
       setError(e instanceof Error ? e.message : t("weeklyRecap.loadFailed"));
+    } finally {
+      setLoading(false);
     }
   }, [token, t]);
 
@@ -58,8 +65,16 @@ export default function WeeklyRecapScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>{t("weeklyRecap.title")}</Text>
-        {error ? <Text style={styles.err}>{error}</Text> : null}
-        {s ? (
+        {loading ? <LoadingState message={t("weeklyRecap.loading")} /> : null}
+        {!loading && error ? (
+          <ErrorState
+            title={t("common.oops")}
+            message={error}
+            retryLabel={t("common.tryAgain")}
+            onRetry={() => void load()}
+          />
+        ) : null}
+        {!loading && !error && s ? (
           <View style={styles.card}>
             <Text style={styles.line}>
               {t("weeklyRecap.sessionsHours", {
@@ -83,7 +98,7 @@ export default function WeeklyRecapScreen() {
             ) : null}
             {review?.insights?.length ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Insights</Text>
+                <Text style={styles.sectionTitle}>{t("weeklyRecap.sections.insights")}</Text>
                 {review.insights.slice(0, 3).map((item) => (
                   <Text key={item} style={styles.line}>
                     - {item}
@@ -93,7 +108,7 @@ export default function WeeklyRecapScreen() {
             ) : null}
             {review?.blockers?.length ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Blockers</Text>
+                <Text style={styles.sectionTitle}>{t("weeklyRecap.sections.blockers")}</Text>
                 {review.blockers.slice(0, 2).map((item) => (
                   <Text key={item} style={styles.line}>
                     - {item}
@@ -103,7 +118,7 @@ export default function WeeklyRecapScreen() {
             ) : null}
             {review?.suggestions?.length ? (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Next Week</Text>
+                <Text style={styles.sectionTitle}>{t("weeklyRecap.sections.nextWeek")}</Text>
                 {review.suggestions.slice(0, 3).map((item) => (
                   <Text key={item} style={styles.line}>
                     - {item}
@@ -113,15 +128,24 @@ export default function WeeklyRecapScreen() {
             ) : null}
             <Text style={styles.quote}>{review?.ai_feedback || t("weeklyRecap.quote")}</Text>
           </View>
-        ) : (
-          <Text style={styles.muted}>{t("weeklyRecap.loading")}</Text>
-        )}
+        ) : null}
+        {!loading && !error && !s ? (
+          <EmptyState
+            title={t("weeklyRecap.emptyTitle")}
+            message={t("weeklyRecap.emptyBody")}
+            actionLabel={t("common.tryAgain")}
+            onAction={() => void load()}
+          />
+        ) : null}
         <PrimaryButton
-          label="Share weekly review"
+          label={t("weeklyRecap.shareCta")}
           onPress={() => {
             const text =
               review?.ai_feedback ??
-              `I completed ${displaySessions} sessions and ${displayHours.toFixed(1)}h in Prodify this week.`;
+              t("weeklyRecap.shareFallback", {
+                sessions: displaySessions,
+                hours: displayHours.toFixed(1),
+              });
             Share.share({ message: text }).catch(() => undefined);
           }}
         />
@@ -134,6 +158,8 @@ export default function WeeklyRecapScreen() {
         />
         <Pressable
           style={styles.back}
+          accessibilityRole="button"
+          accessibilityLabel={t("weeklyRecap.close")}
           onPress={() => {
             Haptics.selectionAsync().catch(() => undefined);
             router.back();
@@ -171,8 +197,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
   },
-  err: { color: colors.danger, ...typography.caption },
-  muted: { color: colors.textSecondary, ...typography.body },
   back: { alignItems: "center", padding: spacing.md },
   backTxt: { color: colors.primary, fontFamily: fontFamily.bodyBold },
 });

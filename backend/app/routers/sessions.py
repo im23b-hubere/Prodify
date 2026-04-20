@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -17,10 +17,10 @@ from app.achievementsutil import (
     grant_achievements_after_completed_session,
     session_focus_metrics,
 )
-from app.models import ProductionSession, SessionType, Streak, User, UserGoal, utcnow
+from app.models import CheckinLog, Friendship, FriendshipStatus, ProductionSession, SessionType, Streak, User, UserGoal, utcnow
 from app.services.push_dispatch import notify_session_complete
 from app.services.kpi_tracker import track_event
-from app.services.progression_service import grant_xp
+from app.services.progression_service import grant_xp, xp_for_completed_session
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 from app.schemas import (
@@ -41,6 +41,42 @@ from app.schemas import (
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 _log = logging.getLogger(__name__)
+
+def _mark_auto_checkin_done(db: Session, user_id: int) -> None:
+    """Automatically reflect session activity in social check-in status."""
+    day_key = utcnow().date().isoformat()
+    row = db.scalar(select(CheckinLog).where(CheckinLog.user_id == user_id, CheckinLog.day_key == day_key))
+    if row is None:
+        row = CheckinLog(user_id=user_id, day_key=day_key, state="done", note="Auto session activity")
+        db.add(row)
+    else:
+        row.state = "done"
+        if not row.note:
+            row.note = "Auto session activity"
+
+
+def _friend_user_ids(db: Session, user_id: int) -> list[int]:
+    """Same logic as friends activity feed — use this for 'can view friend session' checks."""
+    rows = db.scalars(
+        select(Friendship).where(
+            Friendship.status == FriendshipStatus.accepted,
+            or_(Friendship.user_id == user_id, Friendship.friend_id == user_id),
+        )
+    ).all()
+    out: list[int] = []
+    for r in rows:
+        out.append(r.friend_id if r.user_id == user_id else r.user_id)
+    return out
+
+
+def _can_view_session(db: Session, viewer_id: int, row: ProductionSession) -> bool:
+    if row.user_id == viewer_id:
+        return True
+    if row.deleted_at is not None:
+        return False
+    if row.stopped_at is None or row.duration_seconds is None:
+        return False
+    return row.user_id in _friend_user_ids(db, viewer_id)
 
 
 def _accumulate_pause_if_needed(row: ProductionSession, end_time) -> None:
@@ -104,6 +140,7 @@ def start_session(
             paused_duration_seconds=0,
         )
         db.add(row)
+        _mark_auto_checkin_done(db, current.id)
         db.commit()
         db.refresh(row)
         track_event(db, "session_started", current.id, {"session_id": row.id, "session_type": row.session_type})
@@ -175,8 +212,9 @@ def stop_session(
     row.stopped_at = end
     row.duration_seconds = max(0, gross - paused)
     row.focus_score = compute_focus_score_for_session(row)
+    _mark_auto_checkin_done(db, current.id)
     db.flush()
-    xp_delta = 10 + (5 if int(row.duration_seconds or 0) >= 45 * 60 else 0)
+    xp_delta = xp_for_completed_session(int(row.duration_seconds or 0))
     grant_xp(
         db,
         current.id,
@@ -278,6 +316,7 @@ def quick_start_session(
         paused_duration_seconds=0,
     )
     db.add(row)
+    _mark_auto_checkin_done(db, current.id)
     try:
         db.commit()
     except IntegrityError:
@@ -342,7 +381,7 @@ def get_session(
     db: Annotated[Session, Depends(get_db)],
 ):
     row = db.get(ProductionSession, session_id)
-    if row is None or row.user_id != current.id:
+    if row is None or not _can_view_session(db, current.id, row):
         raise HTTPException(status_code=404, detail="Session not found")
     return row
 

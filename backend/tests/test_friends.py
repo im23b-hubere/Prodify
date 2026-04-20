@@ -78,3 +78,53 @@ def test_delete_pending_cancel(client):
 
     inc = client.get("/friends/incoming", headers={"Authorization": f"Bearer {t_b}"})
     assert inc.json() == []
+
+
+def test_activity_includes_reaction_and_comment_counts(client):
+    t_a = _register(client, "g@example.com", "gina")
+    t_b = _register(client, "h@example.com", "hank")
+
+    req = client.post(
+        "/friends/request",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={"username": "hank"},
+    )
+    assert req.status_code == 201
+    fid = req.json()["id"]
+    acc = client.post(f"/friends/{fid}/accept", headers={"Authorization": f"Bearer {t_b}"})
+    assert acc.status_code == 200
+
+    start = client.post(
+        "/sessions/quick-start",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={"session_type": "beat_making"},
+    )
+    assert start.status_code == 201
+    sid = start.json()["id"]
+    stop = client.post(
+        "/sessions/stop",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={"session_id": sid},
+    )
+    assert stop.status_code == 200
+
+    react = client.post(
+        f"/social/feed/{sid}/reactions",
+        headers={"Authorization": f"Bearer {t_b}"},
+        json={"emoji": "👍"},
+    )
+    assert react.status_code == 200
+    comment = client.post(
+        f"/social/feed/{sid}/comments",
+        headers={"Authorization": f"Bearer {t_b}"},
+        json={"body": "Nice session"},
+    )
+    assert comment.status_code == 200
+
+    feed = client.get("/friends/activity?limit=20", headers={"Authorization": f"Bearer {t_b}"})
+    assert feed.status_code == 200
+    row = next((item for item in feed.json() if item["session_id"] == sid), None)
+    assert row is not None
+    assert row["reactions_count"] >= 1
+    assert row["comments_count"] >= 1
+    assert row["viewer_reaction"] == "👍"

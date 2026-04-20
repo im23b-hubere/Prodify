@@ -74,6 +74,47 @@ import {
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
 
+const ActiveSessionTimerBlock = ({
+  active,
+  onOpenFullscreen,
+  onConfirmStop,
+  stopBusy,
+}: {
+  active: SessionDto;
+  onOpenFullscreen: () => void;
+  onConfirmStop: () => void;
+  stopBusy: boolean;
+}) => {
+  const [nowMs, setNowMs] = useState(Date.now());
+  const ringPulse = useSharedValue(1);
+
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    ringPulse.value = withRepeat(
+      withSequence(withTiming(1.06, { duration: 1100 }), withTiming(1, { duration: 1100 })),
+      -1,
+      true,
+    );
+  }, [ringPulse]);
+
+  const activeSeconds = useMemo(() => effectiveElapsedSeconds(active, nowMs), [active, nowMs]);
+
+  return (
+    <ActiveSessionBlock
+      active={active}
+      activeSeconds={activeSeconds}
+      ringPulse={ringPulse}
+      onOpenFullscreen={onOpenFullscreen}
+      onConfirmStop={onConfirmStop}
+      stopBusy={stopBusy}
+    />
+  );
+};
+
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
@@ -109,7 +150,6 @@ export default function DashboardScreen() {
     loadSocial,
     refreshDashboard,
   } = useDashboardData(token);
-  const [nowMs, setNowMs] = useState(Date.now());
   const {
     setupVisible,
     setupModalKey,
@@ -130,19 +170,12 @@ export default function DashboardScreen() {
 
   const stopSessionInFlight = useRef(false);
 
-  const ringPulse = useSharedValue(1);
-
   const weekProgress = useMemo(() => getLast7DaysProgress(sessions), [sessions]);
   const clientStreak = useMemo(() => getStreak(sessions), [sessions]);
   const visibleSessions = useMemo(
     () => sessions.filter((session) => session.stopped_at !== null),
     [sessions],
   );
-  const activeSeconds = useMemo(() => {
-    if (!active) return 0;
-    return effectiveElapsedSeconds(active, nowMs);
-  }, [active, nowMs]);
-
   const {
     momentumState,
     momentumScore,
@@ -212,24 +245,6 @@ export default function DashboardScreen() {
     if (!token) return;
     registerPushTokenWithBackend(token).catch(() => undefined);
   }, [token]);
-
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [active]);
-
-  useEffect(() => {
-    if (!active) {
-      ringPulse.value = 1;
-      return;
-    }
-    ringPulse.value = withRepeat(
-      withSequence(withTiming(1.06, { duration: 1100 }), withTiming(1, { duration: 1100 })),
-      -1,
-      true,
-    );
-  }, [active, ringPulse]);
 
   const openSetup = useCallback(() => {
     if (active) {
@@ -564,10 +579,8 @@ export default function DashboardScreen() {
             />
 
             {active ? (
-              <ActiveSessionBlock
+              <ActiveSessionTimerBlock
                 active={active}
-                activeSeconds={activeSeconds}
-                ringPulse={ringPulse}
                 onOpenFullscreen={openFullscreenActive}
                 onConfirmStop={confirmStop}
                 stopBusy={stopBusy}
@@ -607,6 +620,16 @@ export default function DashboardScreen() {
               weekGoalTarget={weeklyGoalTarget}
               goalForecast={forecast}
             />
+            {entitlement?.entitlement !== "premium" ? (
+              <View style={styles.premiumCtaCard}>
+                <Text style={styles.premiumCtaTitle}>{t("dashboard.premiumUpsellTitle")}</Text>
+                <Text style={styles.premiumCtaBody}>{t("dashboard.premiumUpsellBody")}</Text>
+                <PrimaryButton
+                  label={t("dashboard.premiumUpsellCta")}
+                  onPress={() => router.push("/paywall")}
+                />
+              </View>
+            ) : null}
             <ProgressionBarCard progression={progression} />
 
             <View style={styles.sectionHeader}>
@@ -705,7 +728,6 @@ export default function DashboardScreen() {
             const rest = prev.filter((s) => s.id !== session.id);
             return [session, ...rest];
           });
-          setNowMs(Date.now());
           closeSetupModal(() => {
             void Promise.all([
               loadSessions().catch(() => null),
@@ -913,5 +935,24 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontFamily: fontFamily.bodyMedium,
     ...typography.caption,
+  },
+  premiumCtaCard: {
+    marginTop: spacing.lg,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.45)",
+    backgroundColor: "rgba(251,191,36,0.08)",
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  premiumCtaTitle: {
+    color: "#fcd34d",
+    fontFamily: fontFamily.heading,
+    ...typography.body,
+  },
+  premiumCtaBody: {
+    color: colors.textPrimary,
+    ...typography.caption,
+    fontFamily: fontFamily.body,
   },
 });

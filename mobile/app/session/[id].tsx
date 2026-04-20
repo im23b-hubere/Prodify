@@ -1,9 +1,20 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useState } from "react";
+import { Check } from "lucide-react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from "react-native-reanimated";
 import {
   Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,15 +26,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionInsightSections } from "../../components/session/SessionInsightSections";
+import { ErrorState } from "../../components/states/ErrorState";
+import { LoadingState } from "../../components/states/LoadingState";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { SessionTypeChip } from "../../components/ui/SessionTypeChip";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { createSessionComment, fetchSessionComments } from "../../lib/social";
 import { sessionMoodLabel, sessionTypeLabel } from "../../lib/sessionI18n";
 import { sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { formatDurationWords, parseSessionDate } from "../../lib/sessionTime";
+import { formatTimeAgo } from "../../lib/timeAgo";
+import type { SocialCommentDto } from "../../types/friends";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import {
   DEFAULT_SESSION_TYPE,
@@ -32,12 +48,81 @@ import {
   type SessionType,
 } from "../../types/session";
 
+function CommentRow({
+  comment,
+  highlighted,
+}: {
+  comment: SocialCommentDto;
+  highlighted: boolean;
+}) {
+  const pulse = useSharedValue(highlighted ? 1 : 0);
+
+  useEffect(() => {
+    if (!highlighted) {
+      pulse.value = 0;
+      return;
+    }
+    pulse.value = 1;
+    pulse.value = withDelay(120, withTiming(0, { duration: 1200 }));
+  }, [highlighted, pulse]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      pulse.value,
+      [0, 1],
+      ["rgba(255,255,255,0.03)", "rgba(255,61,0,0.16)"],
+    ),
+    borderColor: interpolateColor(pulse.value, [0, 1], [colors.border, "rgba(255,61,0,0.5)"]),
+  }));
+
+  return (
+    <Animated.View style={[styles.commentItem, animatedStyle]}>
+      {comment.author_profile_picture_url ? (
+        <Image source={{ uri: comment.author_profile_picture_url }} style={styles.commentAvatarImage} />
+      ) : (
+        <View style={styles.commentAvatarFallback}>
+          <Text style={styles.commentAvatarInitials}>{comment.author_username.slice(0, 2).toUpperCase()}</Text>
+        </View>
+      )}
+      <View style={styles.commentContent}>
+        <View style={styles.commentHeaderRow}>
+          <Text style={styles.commentAuthor}>{comment.author_username}</Text>
+          {/* keep existing relative time style from parent rendering */}
+        </View>
+        <Text style={styles.commentBody}>{comment.body}</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function SessionDetailScreen() {
+  function formatCommentAgo(iso: string): string {
+    const normalizedIso = /(?:Z|[+-]\d{2}:\d{2})$/.test(iso) ? iso : `${iso}Z`;
+    return formatTimeAgo(normalizedIso, t);
+  }
+
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const router = useRouter();
-  const raw = useLocalSearchParams<{ id: string | string[] }>().id;
-  const id = Array.isArray(raw) ? raw[0] : raw;
+  const rawParams = useLocalSearchParams<{ id?: string | string[]; ownerName?: string | string[] }>();
+  const rawId = rawParams.id;
+  const idFromParams =
+    rawId === undefined || rawId === ""
+      ? undefined
+      : Array.isArray(rawId)
+        ? rawId[0]
+        : rawId;
+  const routeSegments = useSegments();
+  const idFromPathSegments = (() => {
+    const i = routeSegments.indexOf("session");
+    if (i < 0 || i + 1 >= routeSegments.length) return undefined;
+    const seg = routeSegments[i + 1];
+    return seg && /^\d+$/.test(String(seg)) ? String(seg) : undefined;
+  })();
+  const id = idFromParams ?? idFromPathSegments;
+  const rawOwner = rawParams.ownerName;
+  const ownerNameParam =
+    rawOwner === undefined ? undefined : Array.isArray(rawOwner) ? rawOwner[0] : rawOwner;
 
   const [session, setSession] = useState<SessionDto | null>(null);
   const [selectedType, setSelectedType] = useState<SessionType>(DEFAULT_SESSION_TYPE);
@@ -46,6 +131,26 @@ export default function SessionDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [insights, setInsights] = useState<SessionDetailInsightsDto | null>(null);
+  const [comments, setComments] = useState<SocialCommentDto[]>([]);
+  const [commentInput, setCommentInput] = useState("");
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentSending, setCommentSending] = useState(false);
+  const [newCommentId, setNewCommentId] = useState<number | null>(null);
+  const [commentSentPulse, setCommentSentPulse] = useState(false);
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  const loadComments = useCallback(async () => {
+    if (!token || !id || !Number.isFinite(Number(id))) return;
+    setCommentsLoading(true);
+    try {
+      const rows = await fetchSessionComments(token, Number(id));
+      setComments(Array.isArray(rows) ? rows : []);
+    } catch {
+      setComments([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [id, token]);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -83,13 +188,46 @@ export default function SessionDetailScreen() {
     load().catch((e) => setError(e instanceof Error ? e.message : t("sessionDetail.loadFailed")));
   }, [load, t]);
 
+  useEffect(() => {
+    loadComments().catch(() => undefined);
+  }, [loadComments]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load().catch((e) =>
       setError(e instanceof Error ? e.message : t("sessionDetail.refreshFailed")),
     );
+    await loadComments().catch(() => undefined);
     setRefreshing(false);
-  }, [load, t]);
+  }, [load, loadComments, t]);
+
+  const submitComment = useCallback(async () => {
+    if (!token || !id) return;
+    const body = commentInput.trim();
+    if (!body) return;
+    setCommentSending(true);
+    try {
+      const created = await createSessionComment(token, Number(id), body);
+      setCommentInput("");
+      await loadComments();
+      setNewCommentId(created.id);
+      setCommentSentPulse(true);
+      setTimeout(() => {
+        setNewCommentId(null);
+      }, 1800);
+      setTimeout(() => {
+        setCommentSentPulse(false);
+      }, 900);
+      Haptics.selectionAsync().catch(() => undefined);
+    } catch (e) {
+      Alert.alert(
+        t("friendsScreen.couldNotSendComment"),
+        e instanceof Error ? e.message : t("common.tryAgain"),
+      );
+    } finally {
+      setCommentSending(false);
+    }
+  }, [commentInput, id, loadComments, t, token]);
 
   const save = useCallback(async () => {
     if (!token || !id) return;
@@ -145,12 +283,35 @@ export default function SessionDetailScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.loadingWrap}>
-          <Text style={styles.loadingText}>{t("sessionDetail.loading")}</Text>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? (
+            <ErrorState
+              title={t("common.oops")}
+              message={error}
+              retryLabel={t("common.tryAgain")}
+              onRetry={() => void load()}
+            />
+          ) : (
+            <LoadingState message={t("sessionDetail.loading")} />
+          )}
+          <Pressable
+            style={styles.backRow}
+            accessibilityRole="button"
+            accessibilityLabel={t("sessionDetail.back")}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.backChevron}>‹</Text>
+            <Text style={styles.backText}>{t("sessionDetail.back")}</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
   }
+
+  const isOwnSession = Boolean(user?.id != null && session.user_id === user.id);
+  const producerDisplayName =
+    ownerNameParam?.trim() ||
+    (isOwnSession ? user?.username : undefined) ||
+    t("sessionDetail.friendProducerFallback");
 
   const start = parseSessionDate(session.started_at);
   const startOk = Number.isFinite(start.getTime());
@@ -167,7 +328,14 @@ export default function SessionDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={styles.keyboardWrap}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
+      >
       <ScrollView
+        ref={scrollRef}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
@@ -193,13 +361,32 @@ export default function SessionDetailScreen() {
               ? ` – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
               : ""}
           </Text>
+          {!isOwnSession ? (
+            <>
+              <Text style={styles.friendReadOnlyHint}>{t("sessionDetail.friendSessionReadOnly")}</Text>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={t("sessionDetail.viewProfileA11y", { name: producerDisplayName })}
+                style={({ pressed }) => [styles.producerLink, pressed && { opacity: 0.85 }]}
+                onPress={() => {
+                  Haptics.selectionAsync().catch(() => undefined);
+                  router.push(`/profile/${session.user_id}`);
+                }}
+              >
+                <Text style={styles.producerLinkName}>
+                  {t("sessionDetail.byProducer", { name: producerDisplayName })}
+                </Text>
+                <Text style={styles.producerLinkCta}>{t("sessionDetail.viewProfile")}</Text>
+              </Pressable>
+            </>
+          ) : null}
         </View>
 
         {insights ? (
           <SessionInsightSections
             session={session}
             insights={insights}
-            producerName={user?.username}
+            producerName={isOwnSession ? user?.username : producerDisplayName}
           />
         ) : null}
 
@@ -239,30 +426,43 @@ export default function SessionDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
-          <View style={styles.chips}>
-            {SESSION_TYPE_IDS.map((type) => (
-              <SessionTypeChip
-                key={type}
-                label={sessionTypeLabel(type, t)}
-                active={selectedType === type}
-                onPress={() => setSelectedType(type)}
-              />
-            ))}
+        {isOwnSession ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
+            <View style={styles.chips}>
+              {SESSION_TYPE_IDS.map((type) => (
+                <SessionTypeChip
+                  key={type}
+                  label={sessionTypeLabel(type, t)}
+                  active={selectedType === type}
+                  onPress={() => setSelectedType(type)}
+                />
+              ))}
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
+            <Text style={styles.readOnlyVal}>{sessionTypeLabel(session.session_type, t)}</Text>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t("sessionDetail.notes")}</Text>
-          <TextInput
-            style={styles.noteInput}
-            value={note}
-            onChangeText={setNote}
-            placeholder={t("sessionDetail.notesPlaceholder")}
-            placeholderTextColor={colors.textSecondary}
-            multiline
-          />
+          {isOwnSession ? (
+            <TextInput
+              style={styles.noteInput}
+              value={note}
+              onChangeText={setNote}
+              placeholder={t("sessionDetail.notesPlaceholder")}
+              placeholderTextColor={colors.textSecondary}
+              multiline
+            />
+          ) : note.trim() ? (
+            <Text style={styles.noteReadOnly}>{note}</Text>
+          ) : (
+            <Text style={styles.mutedNote}>{t("sessionDetail.noNotes")}</Text>
+          )}
         </View>
 
         {tagList.length > 0 ? (
@@ -278,19 +478,76 @@ export default function SessionDetailScreen() {
           </View>
         ) : null}
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t("friendsScreen.commentsTitle")}</Text>
+          {commentsLoading ? (
+            <Text style={styles.mutedNote}>{t("friendsScreen.loading")}</Text>
+          ) : comments.length === 0 ? (
+            <Text style={styles.mutedNote}>{t("friendsScreen.beFirstToComment")}</Text>
+          ) : (
+            comments.map((comment) => (
+              <View key={comment.id}>
+                <CommentRow comment={comment} highlighted={newCommentId === comment.id} />
+                <View style={styles.commentMetaRow}>
+                  <Text style={styles.commentTime}>{formatCommentAgo(comment.created_at)}</Text>
+                </View>
+              </View>
+            ))
+          )}
+          <View style={styles.commentComposerRow}>
+            <TextInput
+              value={commentInput}
+              onChangeText={setCommentInput}
+              placeholder={t("friendsScreen.commentPlaceholder")}
+              placeholderTextColor={colors.textSecondary}
+              style={styles.commentInput}
+              multiline
+              maxLength={400}
+              onFocus={() => {
+                setTimeout(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }, 120);
+              }}
+            />
+            <Pressable
+              style={({ pressed }) => [
+                styles.commentSendBtn,
+                commentSentPulse && styles.commentSendBtnSuccess,
+                pressed && { opacity: 0.85 },
+              ]}
+              disabled={commentSending}
+              onPress={() => void submitComment()}
+            >
+              {commentSending ? (
+                <Text style={styles.commentSendText}>{t("friendsScreen.commentSendingShort")}</Text>
+              ) : commentSentPulse ? (
+                <Check size={16} color="#22c55e" strokeWidth={2.4} />
+              ) : (
+                <Text style={styles.commentSendText}>{t("friendsScreen.commentSend")}</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <PrimaryButton label={t("sessionDetail.saveChanges")} onPress={save} loading={busy} />
-        <Pressable style={styles.dangerBtn} onPress={confirmDelete}>
-          <Text style={styles.dangerTxt}>{t("sessionDetail.deleteSession")}</Text>
-        </Pressable>
+        {isOwnSession ? (
+          <>
+            <PrimaryButton label={t("sessionDetail.saveChanges")} onPress={save} loading={busy} />
+            <Pressable style={styles.dangerBtn} onPress={confirmDelete}>
+              <Text style={styles.dangerTxt}>{t("sessionDetail.deleteSession")}</Text>
+            </Pressable>
+          </>
+        ) : null}
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
+  keyboardWrap: { flex: 1 },
   content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.lg },
   loadingText: { color: colors.textSecondary, fontFamily: fontFamily.body, ...typography.body },
@@ -306,6 +563,44 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   heroMeta: { color: colors.textSecondary, marginTop: spacing.sm, ...typography.caption },
+  friendReadOnlyHint: {
+    marginTop: spacing.sm,
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+  },
+  producerLink: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    gap: 4,
+  },
+  producerLinkName: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
+  producerLinkCta: {
+    color: colors.secondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  readOnlyVal: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.body,
+    ...typography.body,
+  },
+  noteReadOnly: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.body,
+    ...typography.body,
+    lineHeight: 22,
+  },
+  mutedNote: { color: colors.textSecondary, ...typography.caption },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -371,4 +666,104 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,59,48,0.1)",
   },
   dangerTxt: { color: colors.danger, fontFamily: fontFamily.bodyBold, ...typography.body },
+  commentItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  commentMetaRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  commentAvatarImage: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  commentAvatarFallback: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  commentAvatarInitials: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 11,
+  },
+  commentContent: {
+    flex: 1,
+    gap: 4,
+  },
+  commentHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  commentAuthor: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  commentTime: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+    fontSize: 11,
+  },
+  commentBody: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+    lineHeight: 18,
+  },
+  commentComposerRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.xs, marginTop: spacing.sm },
+  commentInput: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    color: colors.textPrimary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    textAlignVertical: "top",
+    ...typography.caption,
+    fontFamily: fontFamily.body,
+  },
+  commentSendBtn: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: "rgba(255,61,0,0.12)",
+    minWidth: 52,
+    alignItems: "center",
+  },
+  commentSendBtnSuccess: {
+    backgroundColor: "rgba(34,197,94,0.16)",
+    borderColor: "rgba(34,197,94,0.8)",
+  },
+  commentSendText: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
 });

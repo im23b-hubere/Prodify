@@ -12,12 +12,23 @@ type PrimaryButtonProps = {
   disabled?: boolean;
   loading?: boolean;
   icon?: ReactNode;
+  accessibilityLabel?: string;
 };
 
-export function PrimaryButton({ label, onPress, disabled, loading, icon }: PrimaryButtonProps) {
+export function PrimaryButton({
+  label,
+  onPress,
+  disabled,
+  loading,
+  icon,
+  accessibilityLabel,
+}: PrimaryButtonProps) {
   return (
     <Pressable
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: Boolean(disabled || loading), busy: Boolean(loading) }}
       onPress={() => {
         Haptics.selectionAsync().catch(() => undefined);
         onPress();

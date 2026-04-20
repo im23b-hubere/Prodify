@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 import { useAuth } from "../../context/AuthContext";
-import { getPostLoginHref } from "../../lib/postAuthNavigation";
+import { resolvePostAuthRouteFromStorage, toHref } from "../../lib/postAuthNavigation";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -32,8 +32,11 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      const next = await getPostLoginHref();
-      router.replace(next);
+      const next = await resolvePostAuthRouteFromStorage({
+        hasToken: true,
+        entryPoint: "login",
+      });
+      router.replace(toHref(next));
     } catch (e) {
       setError(e instanceof Error ? e.message : t("auth.login.signInFailed"));
     } finally {
@@ -58,22 +61,24 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder={t("auth.login.placeholderEmail")}
-            placeholderTextColor="#737373"
+            placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
             value={email}
             onChangeText={setEmail}
+            accessibilityLabel={t("auth.login.email")}
           />
           <Text style={styles.fieldLabel}>{t("auth.login.password")}</Text>
           <TextInput
             style={styles.input}
             placeholder={t("auth.login.placeholderPassword")}
-            placeholderTextColor="#737373"
+            placeholderTextColor={colors.textSecondary}
             secureTextEntry
             autoComplete="password"
             value={password}
             onChangeText={setPassword}
+            accessibilityLabel={t("auth.login.password")}
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -82,7 +87,11 @@ export default function LoginScreen() {
         </View>
 
         <Link href="/(auth)/register" asChild>
-          <Pressable style={styles.linkWrap}>
+          <Pressable
+            style={styles.linkWrap}
+            accessibilityRole="button"
+            accessibilityLabel={t("auth.login.noAccount")}
+          >
             <Text style={styles.link}>{t("auth.login.noAccount")}</Text>
           </Pressable>
         </Link>
@@ -154,7 +163,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     color: colors.textPrimary,
-    backgroundColor: "#1f1f1f",
+    backgroundColor: colors.border,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 14,

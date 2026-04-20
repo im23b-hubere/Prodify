@@ -2,13 +2,13 @@ import * as Haptics from "expo-haptics";
 import { type Href, useRouter } from "expo-router";
 import { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { GlassCard } from "../ui/GlassCard";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
+import { formatTimeAgo } from "../../lib/timeAgo";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../types/friends";
 
 type Props = {
@@ -27,19 +27,6 @@ function rankColor(rank: number) {
   return colors.secondary;
 }
 
-function formatAgo(iso: string, t: TFunction): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "";
-  const diff = Math.max(0, Date.now() - d.getTime());
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return t("friendsWidget.agoNow");
-  if (mins < 60) return t("friendsWidget.agoMinutes", { mins });
-  const hours = Math.floor(mins / 60);
-  if (hours < 48) return t("friendsWidget.agoHours", { hours });
-  const days = Math.floor(hours / 24);
-  return t("friendsWidget.agoDays", { days });
-}
-
 export const FriendsActivityWidget = memo(function FriendsActivityWidget({
   currentUserId,
   activity,
@@ -50,7 +37,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
 }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
-  const ago = useCallback((iso: string) => formatAgo(iso, t), [t]);
+  const ago = useCallback((iso: string) => formatTimeAgo(iso, t, "friendsWidget.agoNow"), [t]);
 
   const topOthers = leaderboard.filter((e) => e.user_id !== currentUserId).slice(0, 3);
   const feed = activity.slice(0, 5);
@@ -127,7 +114,10 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
               style={({ pressed }) => [styles.feedRow, pressed && { opacity: 0.88 }]}
               onPress={() => {
                 Haptics.selectionAsync().catch(() => undefined);
-                router.push(`/profile/${a.user_id}` as Href);
+                router.push({
+                  pathname: "/session/[id]",
+                  params: { id: String(a.session_id), ownerName: a.username },
+                } as Href);
               }}
             >
               <Text style={styles.feedName} numberOfLines={1}>

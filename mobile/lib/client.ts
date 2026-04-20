@@ -16,6 +16,7 @@ type TokenPair = { access_token: string; refresh_token: string };
 
 let getRefreshTokenFromStore: (() => Promise<string | null>) | null = null;
 let applyTokenPair: ((pair: TokenPair) => Promise<void>) | null = null;
+let inFlightRefresh: Promise<TokenPair | null> | null = null;
 
 /** Wired from AuthProvider so apiJson can renew access tokens after expiry. */
 export function setAuthRefreshBridge(
@@ -88,29 +89,37 @@ function humanizeValidationMessage(msg: string, field: string | null): string {
 }
 
 async function tryRefreshAccessToken(): Promise<TokenPair | null> {
-  if (!getRefreshTokenFromStore || !applyTokenPair) return null;
-  const rt = await getRefreshTokenFromStore();
-  if (!rt?.trim()) return null;
-  try {
-    const data = await apiJson<TokenPair>("/auth/refresh", {
-      method: "POST",
-      body: { refresh_token: rt.trim() },
-      _skipRefresh: true,
-    });
-    if (typeof data.access_token === "string" && typeof data.refresh_token === "string") {
-      await applyTokenPair({
-        access_token: data.access_token.trim(),
-        refresh_token: data.refresh_token.trim(),
+  if (inFlightRefresh) return inFlightRefresh;
+  inFlightRefresh = (async () => {
+    if (!getRefreshTokenFromStore || !applyTokenPair) return null;
+    const rt = await getRefreshTokenFromStore();
+    if (!rt?.trim()) return null;
+    try {
+      const data = await apiJson<TokenPair>("/auth/refresh", {
+        method: "POST",
+        body: { refresh_token: rt.trim() },
+        _skipRefresh: true,
       });
-      return {
-        access_token: data.access_token.trim(),
-        refresh_token: data.refresh_token.trim(),
-      };
+      if (typeof data.access_token === "string" && typeof data.refresh_token === "string") {
+        await applyTokenPair({
+          access_token: data.access_token.trim(),
+          refresh_token: data.refresh_token.trim(),
+        });
+        return {
+          access_token: data.access_token.trim(),
+          refresh_token: data.refresh_token.trim(),
+        };
+      }
+    } catch {
+      /* handled below */
     }
-  } catch {
-    /* handled below */
+    return null;
+  })();
+  try {
+    return await inFlightRefresh;
+  } finally {
+    inFlightRefresh = null;
   }
-  return null;
 }
 
 export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {

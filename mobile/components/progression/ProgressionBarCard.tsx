@@ -14,17 +14,20 @@ export const ProgressionBarCard = memo(function ProgressionBarCard({ progression
   const xp = progression?.xp_total ?? 0;
   const xpToNext = progression?.xp_to_next_level ?? 50;
   const pct = Math.max(0, Math.min(100, progression?.progress_percent ?? 0));
+  const nextLevel = level + 1;
 
   return (
     <View style={styles.card}>
       <View style={styles.row}>
-        <Text style={styles.title}>Producer Level {level}</Text>
-        <Text style={styles.sub}>{xp} XP</Text>
+        <Text style={styles.title}>Level {level}</Text>
+        <Text style={styles.sub}>{xp} XP total</Text>
       </View>
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${pct}%` }]} />
       </View>
-      <Text style={styles.sub}>{xpToNext} XP to next level</Text>
+      <Text style={styles.sub}>
+        {xpToNext} XP to level {nextLevel} ({Math.round(pct)}%)
+      </Text>
     </View>
   );
 });

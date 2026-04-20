@@ -39,6 +39,18 @@ export async function fetchSessionReactions(
   return apiJson<SocialReactionDto[]>(`/social/feed/${sessionId}/reactions`, { token });
 }
 
+export async function toggleSessionReaction(
+  token: string,
+  sessionId: number,
+  emoji = "👍",
+): Promise<SocialReactionDto[]> {
+  return apiJson<SocialReactionDto[]>(`/social/feed/${sessionId}/reactions`, {
+    token,
+    method: "POST",
+    body: { emoji },
+  });
+}
+
 export async function fetchSessionReactionUsers(
   token: string,
   sessionId: number,

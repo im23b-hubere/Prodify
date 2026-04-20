@@ -57,6 +57,7 @@ from app.schemas import (
     StreakRescueBody,
 )
 from app.streakutil import dump_frozen_json, parse_frozen_json
+from app.services.progression_service import grant_xp
 
 router = APIRouter(prefix="/social", tags=["social"])
 
@@ -91,11 +92,35 @@ def _session_count_for_week(db: Session, user_id: int, week_start: str) -> int:
 
 
 def _current_buddy_row(db: Session, user_id: int) -> BuddyRelationship | None:
-    return db.scalar(
+    rows = db.scalars(
         select(BuddyRelationship).where(
             or_(BuddyRelationship.requester_id == user_id, BuddyRelationship.addressee_id == user_id)
         )
-    )
+    ).all()
+    if not rows:
+        return None
+
+    # Deterministic priority:
+    # 1) active relationships (most recently activated)
+    # 2) pending incoming requests (most recent)
+    # 3) pending outgoing requests (most recent)
+    active_rows = [row for row in rows if row.status == BuddyStatus.active]
+    if active_rows:
+        active_rows.sort(key=lambda row: (row.activated_at or row.created_at, row.id), reverse=True)
+        return active_rows[0]
+
+    incoming_pending = [row for row in rows if row.status == BuddyStatus.pending and row.addressee_id == user_id]
+    if incoming_pending:
+        incoming_pending.sort(key=lambda row: (row.created_at, row.id), reverse=True)
+        return incoming_pending[0]
+
+    outgoing_pending = [row for row in rows if row.status == BuddyStatus.pending and row.requester_id == user_id]
+    if outgoing_pending:
+        outgoing_pending.sort(key=lambda row: (row.created_at, row.id), reverse=True)
+        return outgoing_pending[0]
+
+    rows.sort(key=lambda row: (row.created_at, row.id), reverse=True)
+    return rows[0]
 
 
 def _identity_tags(db: Session, user: User) -> list[str]:
@@ -273,11 +298,21 @@ def mark_checkin_done(
 ):
     day_key = utcnow().date().isoformat()
     row = db.scalar(select(CheckinLog).where(CheckinLog.user_id == current.id, CheckinLog.day_key == day_key))
+    first_done_today = row is None or row.state != "done"
     if row is None:
         row = CheckinLog(user_id=current.id, day_key=day_key, state="done")
         db.add(row)
     row.state = "done"
     row.note = body.note
+    if first_done_today:
+        grant_xp(
+            db,
+            current.id,
+            6,
+            source_type="social_checkin_done",
+            source_id=day_key,
+            meta={"day_key": day_key},
+        )
     db.commit()
     return checkin_status(current, db)
 
@@ -338,6 +373,7 @@ def add_session_comment(
         target_id=row.target_id,
         author_id=row.author_id,
         author_username=current.username,
+        author_profile_picture_url=current.profile_picture_url,
         body=row.body,
         created_at=row.created_at,
     )
@@ -361,14 +397,22 @@ def list_session_comments(
         .order_by(SocialComment.created_at.asc())
         .limit(80)
     ).all()
-    users = {u.id: u.username for u in db.scalars(select(User).where(User.id.in_([r.author_id for r in rows]))).all()}
+    users = {
+        u.id: {"username": u.username, "profile_picture_url": u.profile_picture_url}
+        for u in db.scalars(select(User).where(User.id.in_([r.author_id for r in rows]))).all()
+    }
     return [
         SocialCommentPublic(
             id=r.id,
             target_type=r.target_type,
             target_id=r.target_id,
             author_id=r.author_id,
-            author_username=users.get(r.author_id, "?"),
+            author_username=str(users.get(r.author_id, {}).get("username", "?")),
+            author_profile_picture_url=(
+                str(users.get(r.author_id, {}).get("profile_picture_url"))
+                if users.get(r.author_id, {}).get("profile_picture_url")
+                else None
+            ),
             body=r.body,
             created_at=r.created_at,
         )
@@ -387,6 +431,9 @@ def react_to_session(
     if session_row is None or session_row.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Session not found")
     emoji = body.emoji.strip() or "👍"
+    allowed_ids = {current.id, *_friend_user_ids(db, current.id)}
+    if session_row.user_id not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not allowed")
     existing = db.scalar(
         select(SocialReaction).where(
             SocialReaction.target_type == "session",
@@ -397,7 +444,9 @@ def react_to_session(
     )
     if existing is None:
         db.add(SocialReaction(target_type="session", target_id=session_id, user_id=current.id, emoji=emoji))
-        db.commit()
+    else:
+        db.delete(existing)
+    db.commit()
     return list_session_reactions(session_id, current, db)
 
 
@@ -407,6 +456,12 @@ def list_session_reactions(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
+    session_row = db.get(ProductionSession, session_id)
+    if session_row is None or session_row.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    allowed_ids = {current.id, *_friend_user_ids(db, current.id)}
+    if session_row.user_id not in allowed_ids:
+        raise HTTPException(status_code=403, detail="Not allowed")
     rows = db.scalars(
         select(SocialReaction).where(SocialReaction.target_type == "session", SocialReaction.target_id == session_id)
     ).all()
@@ -550,6 +605,14 @@ def join_social_challenge(
     )
     if member is None:
         db.add(SocialChallengeMember(challenge_id=row.id, user_id=current.id, progress_sessions=0))
+        grant_xp(
+            db,
+            current.id,
+            8,
+            source_type="social_challenge_join",
+            source_id=str(row.id),
+            meta={"challenge_id": row.id},
+        )
         db.commit()
     return _challenge_public(db, row.id)
 
@@ -592,6 +655,14 @@ def set_commitment(
     if row is None:
         row = SocialCommitment(user_id=current.id, week_start=wk)
         db.add(row)
+        grant_xp(
+            db,
+            current.id,
+            5,
+            source_type="social_commitment_set",
+            source_id=f"{wk}:{body.commitment_key}",
+            meta={"week_start": wk, "commitment_key": body.commitment_key},
+        )
     row.target_sessions = body.target_sessions
     row.visibility = body.visibility
     row.commitment_key = body.commitment_key
@@ -704,6 +775,14 @@ def rescue_streak(
         frozen.append(today)
         streak.frozen_day_keys = dump_frozen_json(frozen)
     db.add(StreakRescue(rescued_user_id=buddy_id, rescuer_user_id=current.id, day_key=today))
+    grant_xp(
+        db,
+        current.id,
+        12,
+        source_type="social_streak_rescue",
+        source_id=f"{buddy_id}:{today}",
+        meta={"rescued_user_id": buddy_id, "day_key": today},
+    )
     db.commit()
     return {"message": "Buddy streak rescued", "rescued_user_id": buddy_id}
 
@@ -726,32 +805,18 @@ def weekly_social_recap(
     trend_pct = None
     if prev > 0:
         trend_pct = round(((my_count - prev) / prev) * 100, 1)
-    if buddy.status == "active":
-        line = f"You {my_count} vs buddy {buddy_count} sessions this week."
-    else:
-        line = f"You logged {my_count} sessions this week."
     identity_tags = _identity_tags(db, current)
-    if "locked_in" in identity_tags:
-        identity_line = "You were in a creative flow this week."
-    elif "collaborative" in identity_tags:
-        identity_line = "You showed up for your producer circle this week."
-    elif "competitive" in identity_tags:
-        identity_line = "You kept pressure on the creative leaderboard."
-    elif "building_momentum" in identity_tags:
-        identity_line = "You found your way back into creation."
-    else:
-        identity_line = "You kept creating this week."
     return SocialWeeklyRecapPublic(
         week_start=wk,
         your_sessions=my_count,
         buddy_sessions=buddy_count,
         team_sessions=team_total,
         wow_delta_sessions=wow,
-        recap_line=line,
+        has_active_buddy=buddy.status == "active",
+        identity_tag=identity_tags[0] if identity_tags else None,
         trend_vs_last_week_percent=trend_pct if premium else None,
         premium_detail_locked=not premium,
         upsell_hint=None if premium else "Unlock full social insights with Premium.",
-        identity_line=identity_line,
     )
 
 

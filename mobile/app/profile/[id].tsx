@@ -211,23 +211,32 @@ export default function FriendProfileScreen() {
               ) : null}
               <Text style={styles.line}>
                 {buddyStatus?.buddy_user_id === profile.id
-                  ? "Your active buddy"
-                  : "Friend in your social network"}
+                  ? t("friendProfile.activeBuddy")
+                  : t("friendProfile.socialFriend")}
               </Text>
             </View>
 
             <View style={styles.statsCard}>
-              <Text style={styles.cardTitle}>Shared momentum</Text>
+              <Text style={styles.cardTitle}>{t("friendProfile.sharedMomentumTitle")}</Text>
               <Text style={styles.line}>
-                Your creative run: {yourStreak}d vs {stats.current_streak}d
+                {t("friendProfile.creativeRunLine", {
+                  yours: yourStreak,
+                  theirs: stats.current_streak,
+                })}
               </Text>
               <Text style={styles.line}>
                 {socialRecap
-                  ? `Team sessions this week: ${socialRecap.team_sessions} · WoW ${socialRecap.wow_delta_sessions >= 0 ? "+" : ""}${socialRecap.wow_delta_sessions}`
-                  : "Complete more sessions together to unlock better comparisons."}
+                  ? t("friendProfile.teamSessionsLine", {
+                      sessions: socialRecap.team_sessions,
+                      sign: socialRecap.wow_delta_sessions >= 0 ? "+" : "",
+                      wow: socialRecap.wow_delta_sessions,
+                    })
+                  : t("friendProfile.comparisonHint")}
               </Text>
-              {socialRecap?.identity_line ? (
-                <Text style={styles.lineStrong}>{socialRecap.identity_line}</Text>
+              {socialRecap?.identity_tag ? (
+                <Text style={styles.lineStrong}>
+                  {t(`friendsScreen.identityTag.${socialRecap.identity_tag}`)}
+                </Text>
               ) : null}
             </View>
 

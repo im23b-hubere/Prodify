@@ -53,7 +53,7 @@ export default function OnboardingScreen() {
         /* Expo Go / mismatched native module: still continue to app */
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      router.replace("/(tabs)/dashboard");
+      router.replace({ pathname: "/paywall", params: { source: "onboarding" } });
     } finally {
       setBusy(false);
     }
