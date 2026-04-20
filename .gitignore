@@ -15,6 +15,7 @@ backend/.env
 backend/*.db
 /test_suite.db
 backend/uploads/
+backend/backups/
 backend/__pycache__/
 backend/**/__pycache__/
 
