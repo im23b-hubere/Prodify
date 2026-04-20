@@ -22,7 +22,9 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_APP_ENV": "production"
+        "EXPO_PUBLIC_API_URL": "https://api.prodify.app",
+        "EXPO_PUBLIC_SENTRY_DSN": "your-production-dsn",
+        "EXPO_PUBLIC_ENV": "production"
       }
     }
   },
