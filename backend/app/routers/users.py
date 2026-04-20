@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import mimetypes
 import secrets
 from pathlib import Path
 from collections import Counter, defaultdict
@@ -39,6 +38,12 @@ router = APIRouter(prefix="/users", tags=["users"])
 PROFILE_UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "profile_pictures"
 PROFILE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024
+ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MIME_TO_EXT = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
@@ -124,17 +129,14 @@ def _require_friend_profile(db: Session, current: User, target_id: int) -> User:
     return target
 
 
-def _safe_image_extension(file: UploadFile) -> str:
-    content_type = (file.content_type or "").lower().strip()
-    if not content_type.startswith("image/"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only image uploads are allowed")
-    guessed = mimetypes.guess_extension(content_type) or ""
-    if guessed in {".jpg", ".jpeg", ".png", ".webp"}:
-        return guessed
-    original = Path(file.filename or "").suffix.lower()
-    if original in {".jpg", ".jpeg", ".png", ".webp"}:
-        return original
-    return ".jpg"
+def _detect_image_mime(content: bytes) -> str | None:
+    if len(content) >= 8 and content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if len(content) >= 3 and content.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+        return "image/webp"
+    return None
 
 
 def _identity_tags_for_profile(db: Session, user_id: int) -> list[str]:
@@ -169,12 +171,21 @@ async def upload_profile_picture(
     db: Annotated[Session, Depends(get_db)],
     file: UploadFile = File(...),
 ):
-    ext = _safe_image_extension(file)
+    declared_content_type = (file.content_type or "").lower().strip()
+    if not declared_content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only image uploads are allowed")
+
     content = await file.read()
     if len(content) == 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded image is empty")
     if len(content) > MAX_PROFILE_IMAGE_BYTES:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Image exceeds 5MB limit")
+
+    detected_mime = _detect_image_mime(content)
+    if detected_mime not in ALLOWED_IMAGE_MIME_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image format")
+
+    ext = MIME_TO_EXT[detected_mime]
 
     filename = f"{current.id}-{secrets.token_hex(8)}{ext}"
     target = PROFILE_UPLOAD_DIR / filename

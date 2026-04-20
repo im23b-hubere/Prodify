@@ -18,6 +18,29 @@ def test_upload_profile_picture_updates_me(client):
     assert me.json()["profile_picture_url"]
 
 
+def test_upload_profile_picture_rejects_non_image_content(client):
+    token = _register(client, "pic-bad@example.com", "picbad")
+    uploaded = client.post(
+        "/users/me/profile-picture",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("avatar.png", b"not-an-image", "image/png")},
+    )
+    assert uploaded.status_code == 400
+    assert uploaded.json()["error"]["message"] == "Unsupported image format"
+
+
+def test_upload_profile_picture_rejects_oversize_image(client):
+    token = _register(client, "pic-big@example.com", "picbig")
+    oversized_png = b"\x89PNG\r\n\x1a\n" + (b"x" * (5 * 1024 * 1024 + 1))
+    uploaded = client.post(
+        "/users/me/profile-picture",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("big.png", oversized_png, "image/png")},
+    )
+    assert uploaded.status_code == 413
+    assert uploaded.json()["error"]["message"] == "Image exceeds 5MB limit"
+
+
 def test_delete_me_removes_account(client):
     token = _register(client, "delete-me@example.com", "deleteme")
     me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
