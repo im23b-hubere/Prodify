@@ -20,8 +20,9 @@ from app.schemas import (
     ProductivityInsightsPublic,
     StatsInsightsPublic,
     KpiSummaryPublic,
+    KpiDashboardPublic,
 )
-from app.services.kpi_tracker import kpi_summary
+from app.services.kpi_tracker import kpi_dashboard, kpi_summary
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 
@@ -231,3 +232,11 @@ def stats_kpi_summary(
     db: Annotated[Session, Depends(get_db)],
 ):
     return kpi_summary(db)
+
+
+@router.get("/kpi/dashboard", response_model=KpiDashboardPublic)
+def stats_kpi_dashboard(
+    _current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    return kpi_dashboard(db, window_days=7)

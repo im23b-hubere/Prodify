@@ -97,6 +97,12 @@ cd backend
 pytest -q
 ```
 
+Optional analytics snapshot endpoint (authenticated):
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/stats/kpi/dashboard -Headers @{ Authorization = "Bearer <token>" }
+```
+
 ### Mobile
 
 ```powershell

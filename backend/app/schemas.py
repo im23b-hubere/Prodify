@@ -575,6 +575,29 @@ class KpiSummaryPublic(BaseModel):
     challenge_participation: int
 
 
+class KpiTrendPointPublic(BaseModel):
+    date: str
+    sessions_completed: int
+    active_users: int
+    growth_events: int
+
+
+class KpiDashboardPublic(BaseModel):
+    generated_at: datetime
+    window_days: int
+    totals: KpiSummaryPublic
+    users_total: int
+    users_new_7d: int
+    sessions_completed_7d: int
+    active_users_7d: int
+    growth_events_7d: int
+    trial_active_total: int
+    premium_total: int
+    push_tokens_active: int
+    push_tokens_inactive: int
+    trend: list[KpiTrendPointPublic] = Field(default_factory=list)
+
+
 class PublicGoalBody(BaseModel):
     target_sessions: int = Field(ge=1, le=50, default=4)
     is_public: bool = False
