@@ -612,6 +612,12 @@ class LegalDocumentsPublic(BaseModel):
     support_email: str
 
 
+class FeatureFlagsPublic(BaseModel):
+    billing_sync_enabled: bool
+    push_notifications_enabled: bool
+    smart_nudges_enabled: bool
+
+
 class PublicGoalBody(BaseModel):
     target_sessions: int = Field(ge=1, le=50, default=4)
     is_public: bool = False

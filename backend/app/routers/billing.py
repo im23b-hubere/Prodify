@@ -46,6 +46,8 @@ def sync_entitlement(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
+    if not settings.feature_flag_billing_sync_enabled:
+        raise HTTPException(status_code=503, detail="Billing sync is temporarily disabled")
     if body.app_user_id != str(current.id):
         raise HTTPException(status_code=403, detail="app_user_id does not match authenticated user")
     if settings.environment == "production" and not settings.revenuecat_secret_key:
@@ -82,6 +84,8 @@ async def revenuecat_webhook(
     db: Annotated[Session, Depends(get_db)],
     signature: str | None = Header(default=None, alias="X-Webhook-Signature"),
 ):
+    if not settings.feature_flag_billing_sync_enabled:
+        raise HTTPException(status_code=503, detail="Billing sync is temporarily disabled")
     raw_payload = await request.body()
     if not _verify_webhook_signature(signature, raw_payload, settings.webhook_secret):
         raise HTTPException(status_code=403, detail="Invalid webhook signature")

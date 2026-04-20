@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     legal_effective_date: str = "2026-04-20"
     legal_version: str = "2026.04"
     support_email: str = "support@prodify.app"
+    feature_flag_billing_sync_enabled: bool = True
+    feature_flag_push_notifications_enabled: bool = True
+    feature_flag_smart_nudges_enabled: bool = True
 
     @field_validator("secret_key")
     @classmethod
@@ -103,6 +106,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def feature_flags_snapshot() -> dict[str, bool]:
+    return {
+        "billing_sync_enabled": bool(settings.feature_flag_billing_sync_enabled),
+        "push_notifications_enabled": bool(settings.feature_flag_push_notifications_enabled),
+        "smart_nudges_enabled": bool(settings.feature_flag_smart_nudges_enabled),
+    }
 
 
 def is_sqlite_database_url(database_url: str) -> bool:

@@ -45,6 +45,8 @@ def register_push_token(
     db: Annotated[Session, Depends(get_db)],
 
 ):
+    if not settings.feature_flag_push_notifications_enabled:
+        raise HTTPException(status_code=503, detail="Push notifications are temporarily disabled")
 
     token = body.token.strip()
 
@@ -111,6 +113,8 @@ def ping_self_push(
     db: Annotated[Session, Depends(get_db)],
 
 ):
+    if not settings.feature_flag_push_notifications_enabled:
+        raise HTTPException(status_code=503, detail="Push notifications are temporarily disabled")
 
     """Send a test push using Expo and/or FCM tokens for the current user."""
 
@@ -159,6 +163,10 @@ def smart_nudge(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
+    if not settings.feature_flag_push_notifications_enabled:
+        raise HTTPException(status_code=503, detail="Push notifications are temporarily disabled")
+    if not settings.feature_flag_smart_nudges_enabled:
+        raise HTTPException(status_code=503, detail="Smart nudges are temporarily disabled")
     kind = str(body.get("kind") or "inactivity")
     if kind == "best_time":
         hour = int(body.get("hour") or 20)

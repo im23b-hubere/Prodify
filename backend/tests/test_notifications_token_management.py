@@ -37,3 +37,15 @@ def test_register_push_token_creates_and_reactivates_existing_token(client):
         assert row.is_active == 1
         assert row.platform == "android"
         assert row.last_used_at is not None
+
+
+def test_register_push_token_respects_feature_flag(client, monkeypatch):
+    headers = _auth_headers(client, "push-flag@example.com", "push-flag-user")
+    monkeypatch.setattr("app.routers.notifications.settings.feature_flag_push_notifications_enabled", False)
+    created = client.post(
+        "/notifications/register-token",
+        headers=headers,
+        json={"token": "ExponentPushToken[flag-test]", "platform": "ios", "channel": "expo"},
+    )
+    assert created.status_code == 503
+    assert "temporarily disabled" in created.json()["error"]["message"].lower()

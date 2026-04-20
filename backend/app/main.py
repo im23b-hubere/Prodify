@@ -22,6 +22,7 @@ from app.routers import (
     auth,
     billing as billing_router,
     challenges as challenges_router,
+    feature_flags as feature_flags_router,
     friends,
     goals as goals_router,
     jobs as jobs_router,
@@ -179,6 +180,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 app.include_router(auth.router)
+app.include_router(feature_flags_router.router)
 app.include_router(sessions.router)
 app.include_router(streak.router)
 app.include_router(friends.router)

@@ -65,3 +65,20 @@ def test_billing_sync_requires_verification_config_in_production(client, monkeyp
     )
     assert synced.status_code == 503
     assert "not configured" in synced.json()["error"]["message"].lower()
+
+
+def test_billing_sync_respects_feature_flag(client, monkeypatch):
+    headers = _auth_headers(client, "bill-flag@example.com", "bill-flag-user")
+    monkeypatch.setattr("app.routers.billing.settings.feature_flag_billing_sync_enabled", False)
+    synced = client.post(
+        "/billing/sync",
+        headers=headers,
+        json={
+            "app_user_id": "1",
+            "entitlement": "premium",
+            "trial_active": True,
+            "expires_at": None,
+        },
+    )
+    assert synced.status_code == 503
+    assert "temporarily disabled" in synced.json()["error"]["message"].lower()

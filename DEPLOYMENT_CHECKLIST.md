@@ -34,6 +34,7 @@ Release target: Production (`com.prodify.app`)
 - [ ] `EXPO_ACCESS_TOKEN` configured
 - [ ] `CORS_ORIGINS` set to production origins only
 - [ ] `LEGAL_*` and `SUPPORT_EMAIL` values are correct
+- [ ] Feature flags validated for launch state (`FEATURE_FLAG_*`)
 
 ## Mobile (EAS production profile)
 - [ ] `EXPO_PUBLIC_API_URL=https://api.prodify.app`
