@@ -9,19 +9,38 @@ from datetime import datetime, time, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import (
+    BuddyRelationship,
+    ChallengeParticipant,
+    CheckinLog,
+    CheckinPlan,
     Friendship,
     FriendshipStatus,
+    GrowthEvent,
+    PublicGoal,
     ProductionSession,
+    PushToken,
+    RefreshToken,
+    SocialComment,
+    SocialCommitment,
     SocialChallengeMember,
+    SocialReaction,
     Streak,
+    StreakReminderDispatchLog,
+    StreakRescue,
     User,
     UserAchievement,
+    UserGoal,
+    UserProgression,
+    UserSubscription,
+    WeeklyCheckin,
+    WeeklyReviewSnapshot,
+    XpLedger,
     utcnow,
 )
 from app.schemas import (
@@ -52,9 +71,62 @@ def delete_my_account(
     db: Annotated[Session, Depends(get_db)],
 ) -> Response:
     """Permanently delete the authenticated account and associated data (DSGVO / right to erasure)."""
+    _delete_profile_picture_file(current.profile_picture_url)
+    _purge_user_data(db, current.id)
     db.delete(current)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _delete_profile_picture_file(profile_picture_url: str | None) -> None:
+    if not profile_picture_url or "/uploads/profile_pictures/" not in profile_picture_url:
+        return
+    file_name = profile_picture_url.split("/uploads/profile_pictures/", 1)[1].strip("/")
+    if not file_name:
+        return
+    file_path = PROFILE_UPLOAD_DIR / file_name
+    if file_path.exists():
+        file_path.unlink(missing_ok=True)
+
+
+def _purge_user_data(db: Session, user_id: int) -> None:
+    direct_user_models = [
+        RefreshToken,
+        PushToken,
+        ProductionSession,
+        Streak,
+        UserGoal,
+        UserAchievement,
+        UserSubscription,
+        UserProgression,
+        XpLedger,
+        GrowthEvent,
+        WeeklyReviewSnapshot,
+        PublicGoal,
+        WeeklyCheckin,
+        CheckinPlan,
+        CheckinLog,
+        SocialReaction,
+        SocialChallengeMember,
+        SocialCommitment,
+        StreakReminderDispatchLog,
+        ChallengeParticipant,
+    ]
+    for model in direct_user_models:
+        db.execute(delete(model).where(model.user_id == user_id))
+
+    db.execute(delete(Friendship).where(or_(Friendship.user_id == user_id, Friendship.friend_id == user_id)))
+    db.execute(delete(SocialComment).where(SocialComment.author_id == user_id))
+    db.execute(
+        delete(BuddyRelationship).where(
+            or_(BuddyRelationship.requester_id == user_id, BuddyRelationship.addressee_id == user_id)
+        )
+    )
+    db.execute(
+        delete(StreakRescue).where(
+            or_(StreakRescue.rescued_user_id == user_id, StreakRescue.rescuer_user_id == user_id)
+        )
+    )
 
 
 def _accepted_friendship(db: Session, a: int, b: int) -> bool:

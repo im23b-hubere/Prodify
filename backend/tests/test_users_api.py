@@ -1,4 +1,6 @@
 from tests.test_friends import _register
+from app.database import SessionLocal
+from app.models import GrowthEvent, PushToken, User, UserGoal, utcnow
 
 
 def test_upload_profile_picture_updates_me(client):
@@ -57,6 +59,52 @@ def test_delete_me_removes_account(client):
         json={"email": "delete-me@example.com", "password": "strong-pass-123"},
     )
     assert relogin.status_code == 401
+
+
+def test_delete_me_purges_related_rows_and_profile_picture_file(client):
+    token = _register(client, "delete-deep@example.com", "deepdelete")
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    user_id = me.json()["id"]
+
+    uploaded = client.post(
+        "/users/me/profile-picture",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("avatar.png", b"\x89PNG\r\n\x1a\nfakepngcontent", "image/png")},
+    )
+    assert uploaded.status_code == 200
+    profile_url = uploaded.json()["profile_picture_url"]
+    assert "/uploads/profile_pictures/" in profile_url
+    file_name = profile_url.split("/uploads/profile_pictures/", 1)[1]
+
+    with SessionLocal() as db:
+        db.add(UserGoal(user_id=user_id, goal_type="weekly_sessions", target_value=4, week_start="2026-04-20"))
+        db.add(
+            PushToken(
+                user_id=user_id,
+                token="ExponentPushToken[delete-check]",
+                platform="ios",
+                channel="expo",
+                is_active=1,
+                created_at=utcnow(),
+                last_used_at=utcnow(),
+            )
+        )
+        db.add(GrowthEvent(user_id=user_id, event_name="invite_sent", event_props_json="{}"))
+        db.commit()
+
+    deleted = client.delete("/users/me", headers={"Authorization": f"Bearer {token}"})
+    assert deleted.status_code == 204
+
+    with SessionLocal() as db:
+        assert db.query(User).filter(User.id == user_id).first() is None
+        assert db.query(UserGoal).filter(UserGoal.user_id == user_id).first() is None
+        assert db.query(PushToken).filter(PushToken.user_id == user_id).first() is None
+        assert db.query(GrowthEvent).filter(GrowthEvent.user_id == user_id).first() is None
+
+    from app.routers.users import PROFILE_UPLOAD_DIR
+
+    assert not (PROFILE_UPLOAD_DIR / file_name).exists()
 
 
 def test_friend_status_and_user_profile(client):
