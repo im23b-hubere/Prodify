@@ -3,7 +3,15 @@ import * as Haptics from "expo-haptics";
 import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
@@ -16,6 +24,7 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, motion, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { fetchEntitlement } from "../../lib/billing";
 import { buildWeeklyForecast } from "../../lib/forecastEngine";
 import { buildSessionFeedback } from "../../lib/sessionFeedbackEngine";
 import { tryParseSessionDto } from "../../lib/sessionDto";
@@ -55,6 +64,10 @@ export default function SessionCompleteScreen() {
   const [weekSessionsCount, setWeekSessionsCount] = useState<number>(0);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_RETURN_SECONDS);
   const [autoReturnEnabled, setAutoReturnEnabled] = useState(true);
+  const [trackOutcome, setTrackOutcome] = useState<"none" | "wip" | "finished">("none");
+  const [trackTitle, setTrackTitle] = useState("");
+  const [trackSaveBusy, setTrackSaveBusy] = useState(false);
+  const [trackSaved, setTrackSaved] = useState(false);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
   const cancelled = useRef(false);
@@ -89,48 +102,43 @@ export default function SessionCompleteScreen() {
         return;
       }
       setSession(s);
-      try {
-        const statsRaw = await apiJson<unknown>("/sessions/stats?period=all", { token });
-        const stats = tryParseSessionStatsDto(statsRaw);
-        if (!cancelled.current) setStreak(stats?.summary.current_streak_days ?? null);
-      } catch {
-        if (!cancelled.current) setStreak(null);
+      setTrackOutcome(
+        s.track_outcome === "wip" || s.track_outcome === "finished" || s.track_outcome === "none"
+          ? s.track_outcome
+          : "none",
+      );
+      setTrackTitle(s.track_title ?? "");
+      setTrackSaved(false);
+      const [statsRaw, progressionRaw, goalRaw, ent] = await Promise.all([
+        apiJson<unknown>("/sessions/stats?period=all", { token }).catch(() => null),
+        apiJson<unknown>("/progression/sync", { token, method: "POST", body: {} }).catch(
+          () => null,
+        ),
+        apiJson<unknown>("/goals/current", { token }).catch(() => null),
+        fetchEntitlement(token).catch(() => null),
+      ]);
+      if (cancelled.current) return;
+      const stats = statsRaw ? tryParseSessionStatsDto(statsRaw) : null;
+      setStreak(stats?.summary.current_streak_days ?? null);
+      setProgression(progressionRaw ? tryParseProgressionDto(progressionRaw) : null);
+      if (goalRaw && typeof goalRaw === "object") {
+        const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
+        setWeeklyGoalTarget(typeof g.target_value === "number" ? g.target_value : null);
+        setWeekSessionsCount(typeof g.current_sessions === "number" ? g.current_sessions : 0);
+      } else {
+        setWeeklyGoalTarget(null);
+        setWeekSessionsCount(0);
       }
-      try {
-        const coachRaw = await apiJson<unknown>(`/outcomes/coach/session/${id}`, { token });
-        const parsedCoach = tryParseCoachDebriefDto(coachRaw);
-        if (!cancelled.current) setCoach(parsedCoach);
-      } catch {
-        if (!cancelled.current) setCoach(null);
-      }
-      try {
-        const progressionRaw = await apiJson<unknown>("/progression/sync", {
-          token,
-          method: "POST",
-          body: {},
-        });
-        const parsed = tryParseProgressionDto(progressionRaw);
-        if (!cancelled.current) setProgression(parsed);
-      } catch {
-        if (!cancelled.current) setProgression(null);
-      }
-      try {
-        const goalRaw = await apiJson<unknown>("/goals/current", { token });
-        if (goalRaw && typeof goalRaw === "object") {
-          const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
-          if (!cancelled.current) {
-            setWeeklyGoalTarget(typeof g.target_value === "number" ? g.target_value : null);
-            setWeekSessionsCount(typeof g.current_sessions === "number" ? g.current_sessions : 0);
-          }
-        } else if (!cancelled.current) {
-          setWeeklyGoalTarget(null);
-          setWeekSessionsCount(0);
+      const premiumish = Boolean(ent && (ent.entitlement === "premium" || ent.trial_active));
+      if (premiumish) {
+        try {
+          const coachRaw = await apiJson<unknown>(`/outcomes/coach/session/${id}`, { token });
+          if (!cancelled.current) setCoach(tryParseCoachDebriefDto(coachRaw));
+        } catch {
+          if (!cancelled.current) setCoach(null);
         }
-      } catch {
-        if (!cancelled.current) {
-          setWeeklyGoalTarget(null);
-          setWeekSessionsCount(0);
-        }
+      } else if (!cancelled.current) {
+        setCoach(null);
       }
       setLoadState("ready");
       setSecondsLeft(AUTO_RETURN_SECONDS);
@@ -218,6 +226,28 @@ export default function SessionCompleteScreen() {
       ],
     [t],
   );
+  const persistTrackOutcome = useCallback(
+    async (nextOutcome: "none" | "wip" | "finished", nextTitle: string) => {
+      if (!token || !session?.id) return;
+      setTrackSaveBusy(true);
+      try {
+        await apiJson<SessionDto>(`/sessions/item/${session.id}`, {
+          token,
+          method: "PATCH",
+          body: {
+            track_outcome: nextOutcome,
+            track_title: nextOutcome === "finished" ? nextTitle.trim() || null : null,
+          },
+        });
+        setTrackSaved(true);
+      } catch {
+        setTrackSaved(false);
+      } finally {
+        setTrackSaveBusy(false);
+      }
+    },
+    [session?.id, token],
+  );
 
   if (loadState === "loading") {
     return (
@@ -293,6 +323,65 @@ export default function SessionCompleteScreen() {
           <Text style={styles.nextActionText}>
             {t(feedback.nextActionKey, feedback.nextActionParams)}
           </Text>
+        </AppCard>
+
+        <AppCard style={styles.trackCard}>
+          <Text style={styles.nextActionTitle}>{t("sessionComplete.trackOutcomeTitle")}</Text>
+          <Text style={styles.trackHint}>{t("sessionComplete.trackOutcomeHint")}</Text>
+          <View style={styles.trackOutcomeRow}>
+            {(["none", "wip", "finished"] as const).map((option) => (
+              <Pressable
+                key={option}
+                style={({ pressed }) => [
+                  styles.trackChip,
+                  trackOutcome === option && styles.trackChipActive,
+                  pressed && { opacity: 0.9 },
+                ]}
+                onPress={() => {
+                  setTrackOutcome(option);
+                  if (option !== "finished") {
+                    setTrackTitle("");
+                  }
+                  void persistTrackOutcome(option, option === "finished" ? trackTitle : "");
+                }}
+              >
+                <Text
+                  style={[
+                    styles.trackChipText,
+                    trackOutcome === option && styles.trackChipTextActive,
+                  ]}
+                >
+                  {option === "none"
+                    ? t("sessionComplete.trackOutcomeNone")
+                    : option === "wip"
+                      ? t("sessionComplete.trackOutcomeWip")
+                      : t("sessionComplete.trackOutcomeFinished")}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {trackOutcome === "finished" ? (
+            <View style={styles.trackTitleWrap}>
+              <TextInput
+                value={trackTitle}
+                onChangeText={setTrackTitle}
+                placeholder={t("sessionComplete.trackTitlePlaceholder")}
+                placeholderTextColor={colors.textSecondary}
+                style={styles.trackTitleInput}
+              />
+              <PrimaryButton
+                label={
+                  trackSaveBusy
+                    ? t("sessionComplete.trackSaveBusy")
+                    : t("sessionComplete.trackSaveCta")
+                }
+                onPress={() => void persistTrackOutcome("finished", trackTitle)}
+              />
+            </View>
+          ) : null}
+          {trackSaved ? (
+            <Text style={styles.trackSaved}>{t("sessionComplete.trackSaved")}</Text>
+          ) : null}
         </AppCard>
 
         <AppCard style={styles.xpCard}>
@@ -557,6 +646,57 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     ...typography.body,
     lineHeight: 22,
+  },
+  trackCard: {
+    marginTop: spacing.sm,
+    width: "100%",
+    gap: spacing.sm,
+  },
+  trackHint: {
+    color: colors.textSecondary,
+    ...typography.meta,
+  },
+  trackOutcomeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  trackChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    backgroundColor: "rgba(255,255,255,0.02)",
+  },
+  trackChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.14)",
+  },
+  trackChipText: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyBold,
+  },
+  trackChipTextActive: {
+    color: colors.textPrimary,
+  },
+  trackTitleWrap: {
+    gap: spacing.sm,
+  },
+  trackTitleInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    color: colors.textPrimary,
+    ...typography.body,
+  },
+  trackSaved: {
+    color: colors.success,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyBold,
   },
   coachCard: {
     marginTop: spacing.sm,

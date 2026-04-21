@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 import { MessageCircle, ThumbsUp } from "lucide-react-native";
 import { Image, Pressable, Text, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import { colors } from "../../../constants/theme";
 import { formatTimeAgo } from "../../../lib/timeAgo";
@@ -21,6 +21,9 @@ type Props = {
   onOpenSession: () => void;
   onToggleThumb: () => void;
   onOpenReactionUsers: () => void;
+  onSupportStreakBreak?: () => void;
+  onViewCommitment?: () => void;
+  supportBusy?: boolean;
 };
 
 export function FriendsActivityFeedItem({
@@ -35,8 +38,14 @@ export function FriendsActivityFeedItem({
   onOpenSession,
   onToggleThumb,
   onOpenReactionUsers,
+  onSupportStreakBreak,
+  onViewCommitment,
+  supportBusy = false,
 }: Props) {
   const typeLabel = formatSessionTypeLabel(item.session_type, t);
+  const isStreakBroken = item.status === "streak_broken";
+  const isCommitmentPublished = item.status === "commitment_published";
+  const isEventCard = isStreakBroken || isCommitmentPublished;
 
   return (
     <Animated.View
@@ -63,6 +72,16 @@ export function FriendsActivityFeedItem({
               <Text style={[styles.feedUserName, styles.feedUserNameFlex]} numberOfLines={1}>
                 {item.username}
               </Text>
+              <Text style={styles.feedSessionMeta}>
+                {item.streak_status_emoji ?? "🌱"} {item.streak_status_label ?? "STARTING"}
+              </Text>
+              {isCommitmentPublished ? (
+                <Animated.View entering={FadeIn.duration(220)} style={styles.commitmentEventBadge}>
+                  <Text style={styles.commitmentEventBadgeText}>
+                    {t("friendsScreen.commitmentPublishedBadge")}
+                  </Text>
+                </Animated.View>
+              ) : null}
               {currentUserId === item.user_id ? (
                 <View style={styles.feedYouPill}>
                   <Text style={styles.feedYouPillText}>{t("friendsScreen.youPill")}</Text>
@@ -70,93 +89,135 @@ export function FriendsActivityFeedItem({
               ) : null}
             </View>
             <Text style={styles.feedSessionMeta} numberOfLines={2}>
-              {item.status === "live"
-                ? t("friendsScreen.feedSessionMetaLive", {
-                    type: typeLabel,
-                    ago: formatTimeAgo(item.activity_at, t),
-                  })
-                : t("friendsScreen.feedSessionMeta", {
-                    type: typeLabel,
-                    duration: formatDuration(item.duration_seconds ?? 0, t),
-                    ago: formatTimeAgo(item.activity_at, t),
-                  })}
+              {isEventCard
+                ? (item.event_message ?? t("friendsScreen.streakBrokenEventFallback"))
+                : item.status === "live"
+                  ? t("friendsScreen.feedSessionMetaLive", {
+                      type: typeLabel,
+                      ago: formatTimeAgo(item.activity_at, t),
+                    })
+                  : t("friendsScreen.feedSessionMeta", {
+                      type: typeLabel,
+                      duration: formatDuration(item.duration_seconds ?? 0, t),
+                      ago: formatTimeAgo(item.activity_at, t),
+                    })}
             </Text>
           </View>
         </Pressable>
 
-        <View style={styles.feedActionsRow}>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.feedReactPrimaryChip,
-              reactedByMe && styles.feedReactPrimaryChipActive,
-              pressed && { opacity: 0.88 },
-            ]}
-            disabled={reactionBusy}
-            onPress={onToggleThumb}
-          >
-            <ThumbsUp
-              color={reactedByMe ? colors.textPrimary : colors.textSecondary}
-              size={16}
-              strokeWidth={2}
-            />
-            <Text
-              style={[
-                styles.feedReactPrimaryChipText,
-                reactedByMe && styles.feedReactPrimaryChipTextActive,
-              ]}
-            >
-              {reactedByMe ? t("friendsScreen.reactedShort") : t("friendsScreen.reactShort")}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("friendsScreen.activityReactionsA11y", { count: reactionTotal })}
-            style={({ pressed }) => [
-              styles.feedActionChip,
-              pressed && styles.feedActionChipPressed,
-            ]}
-            onPress={onOpenReactionUsers}
-          >
-            <ThumbsUp color={colors.textSecondary} size={16} strokeWidth={2} />
-            <Text style={styles.feedActionChipText}>
-              {t("friendsScreen.reactionsCount", { count: reactionTotal })}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("friendsScreen.activityCommentsA11y", { count: commentCount })}
-            style={({ pressed }) => [
-              styles.feedActionChip,
-              pressed && styles.feedActionChipPressed,
-            ]}
-            onPress={onOpenSession}
-          >
-            <MessageCircle color={colors.textSecondary} size={16} strokeWidth={2} />
-            <Text style={styles.feedActionChipText}>
-              {t("friendsScreen.commentsCount", { count: commentCount })}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.feedReplyChip, pressed && { opacity: 0.88 }]}
-            onPress={onOpenSession}
-          >
-            <Text style={styles.feedReplyChipText}>{t("friendsScreen.openSessionComments")}</Text>
-          </Pressable>
-        </View>
+        {!isEventCard ? (
+          <>
+            <View style={styles.feedActionsRow}>
+              <Pressable
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.feedReactPrimaryChip,
+                  reactedByMe && styles.feedReactPrimaryChipActive,
+                  pressed && { opacity: 0.88 },
+                ]}
+                disabled={reactionBusy}
+                onPress={onToggleThumb}
+              >
+                <ThumbsUp
+                  color={reactedByMe ? colors.textPrimary : colors.textSecondary}
+                  size={16}
+                  strokeWidth={2}
+                />
+                <Text
+                  style={[
+                    styles.feedReactPrimaryChipText,
+                    reactedByMe && styles.feedReactPrimaryChipTextActive,
+                  ]}
+                >
+                  {reactedByMe ? t("friendsScreen.reactedShort") : t("friendsScreen.reactShort")}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("friendsScreen.activityReactionsA11y", {
+                  count: reactionTotal,
+                })}
+                style={({ pressed }) => [
+                  styles.feedActionChip,
+                  pressed && styles.feedActionChipPressed,
+                ]}
+                onPress={onOpenReactionUsers}
+              >
+                <ThumbsUp color={colors.textSecondary} size={16} strokeWidth={2} />
+                <Text style={styles.feedActionChipText}>
+                  {t("friendsScreen.reactionsCount", { count: reactionTotal })}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("friendsScreen.activityCommentsA11y", {
+                  count: commentCount,
+                })}
+                style={({ pressed }) => [
+                  styles.feedActionChip,
+                  pressed && styles.feedActionChipPressed,
+                ]}
+                onPress={onOpenSession}
+              >
+                <MessageCircle color={colors.textSecondary} size={16} strokeWidth={2} />
+                <Text style={styles.feedActionChipText}>
+                  {t("friendsScreen.commentsCount", { count: commentCount })}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.feedReplyChip, pressed && { opacity: 0.88 }]}
+                onPress={onOpenSession}
+              >
+                <Text style={styles.feedReplyChipText}>
+                  {t("friendsScreen.openSessionComments")}
+                </Text>
+              </Pressable>
+            </View>
 
-        <Pressable
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.feedThreadLink, pressed && { opacity: 0.85 }]}
-          onPress={onOpenSession}
-        >
-          <Text style={styles.viewAllComments}>
-            {commentCount > 0
-              ? t("friendsScreen.viewCommentsCount", { count: commentCount })
-              : t("friendsScreen.beFirstToComment")}
-          </Text>
-        </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.feedThreadLink, pressed && { opacity: 0.85 }]}
+              onPress={onOpenSession}
+            >
+              <Text style={styles.viewAllComments}>
+                {commentCount > 0
+                  ? t("friendsScreen.viewCommentsCount", { count: commentCount })
+                  : t("friendsScreen.beFirstToComment")}
+              </Text>
+            </Pressable>
+          </>
+        ) : isStreakBroken ? (
+          <View style={styles.feedActionsRow}>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.triggerActionPrimary, pressed && { opacity: 0.88 }]}
+              onPress={onSupportStreakBreak}
+              disabled={supportBusy}
+            >
+              <Text style={styles.triggerActionTextPrimary}>
+                {supportBusy
+                  ? t("friendsScreen.loading")
+                  : t("friendsScreen.supportStreakBreakCta")}
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.feedActionsRow}>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.triggerActionPrimary,
+                pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] },
+              ]}
+              onPress={onViewCommitment}
+            >
+              <Text style={styles.triggerActionTextPrimary}>
+                {t("friendsScreen.commitmentViewCta")}
+              </Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     </Animated.View>
   );

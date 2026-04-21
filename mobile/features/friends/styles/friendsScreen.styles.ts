@@ -377,6 +377,19 @@ export const friendsScreenStyles = StyleSheet.create({
     borderColor: "rgba(162,89,255,0.45)",
   },
   feedYouPillText: { color: colors.secondary, fontFamily: fontFamily.bodyBold, fontSize: 10 },
+  commitmentEventBadge: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.45)",
+    backgroundColor: "rgba(34,197,94,0.14)",
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+  },
+  commitmentEventBadgeText: {
+    color: "#86efac",
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 10,
+  },
   feedUserName: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,

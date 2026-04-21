@@ -1,7 +1,10 @@
 from datetime import timedelta
 
+from sqlalchemy import func, select
+
 from app.database import SessionLocal
 from app.models import UserProgression, XpLedger, utcnow
+from app.services.progression_service import grant_xp
 
 
 def _register_token(client, email: str, username: str) -> str:
@@ -11,6 +14,31 @@ def _register_token(client, email: str, username: str) -> str:
     )
     assert res.status_code == 201
     return res.json()["access_token"]
+
+
+def test_grant_xp_idempotent_session_complete_source(client):
+    token = _register_token(client, "xp-idem@example.com", "xp-idem")
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    user_id = me.json()["id"]
+
+    with SessionLocal() as db:
+        grant_xp(db, user_id, 10, "session_complete", source_id="42", meta={})
+        grant_xp(db, user_id, 10, "session_complete", source_id="42", meta={})
+        db.commit()
+        n = int(
+            db.scalar(
+                select(func.count()).select_from(XpLedger).where(
+                    XpLedger.user_id == user_id,
+                    XpLedger.source_type == "session_complete",
+                    XpLedger.source_id == "42",
+                )
+            )
+            or 0
+        )
+        assert n == 1
+        row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
+        assert int(row.xp_total or 0) == 10
 
 
 def test_progression_me_applies_inactivity_decay_once(client):

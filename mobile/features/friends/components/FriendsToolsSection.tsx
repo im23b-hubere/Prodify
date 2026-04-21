@@ -214,6 +214,13 @@ export function FriendsToolsSection({
                   })
                 : t("friendsScreen.commitmentHint")}
             </Text>
+            {commitment?.witness_usernames?.length ? (
+              <Text style={styles.userMeta}>
+                {t("friendsScreen.commitmentWitnessedBy", {
+                  names: commitment.witness_usernames.map((name) => `@${name}`).join(", "),
+                })}
+              </Text>
+            ) : null}
             <PrimaryButton label={t("friendsScreen.editGoal")} onPress={onOpenGoalEditor} />
             {commitment?.status === "completed" ? (
               <Text style={styles.upsellHint}>{t("friendsScreen.upsellInviteFriend")}</Text>

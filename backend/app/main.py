@@ -59,8 +59,9 @@ def validate_runtime_config() -> None:
         if len(normalized_secret) < 32:
             raise RuntimeError("SECRET_KEY must be at least 32 characters in production.")
         if is_sqlite_database_url(settings.database_url):
-            logger.warning(
-                "DATABASE_URL uses SQLite in production; use a server database for HA/multi-instance deployments."
+            raise RuntimeError(
+                "DATABASE_URL uses SQLite with ENVIRONMENT=production. "
+                "Use PostgreSQL (or another server database) for production deployments."
             )
 
     logger.info("Configuration validated for environment=%s", settings.environment)
@@ -97,6 +98,8 @@ def validate_schema() -> None:
         "social_challenge_members",
         "social_commitments",
         "streak_rescues",
+        "streak_break_notify_dedupe",
+        "analytics_event_dedupe",
     }
     missing_tables = required_tables.difference(table_names)
     if missing_tables:
@@ -121,6 +124,8 @@ def validate_schema() -> None:
         "paused_duration_seconds",
         "pause_started_at",
         "focus_score",
+        "track_outcome",
+        "track_title",
     }
     missing_columns = required_columns.difference(column_names)
     if missing_columns:
@@ -141,7 +146,14 @@ def validate_schema() -> None:
         )
 
     user_cols = {column["name"] for column in inspector.get_columns("users")}
-    required_user_cols = {"profile_picture_url", "is_premium", "premium_until", "bonus_rescues", "bonus_challenge_slots"}
+    required_user_cols = {
+        "profile_picture_url",
+        "is_premium",
+        "premium_until",
+        "bonus_rescues",
+        "bonus_challenge_slots",
+        "access_token_version",
+    }
     missing_user = required_user_cols.difference(user_cols)
     if missing_user:
         raise RuntimeError(
@@ -157,10 +169,33 @@ def validate_schema() -> None:
             )
 
 
+def validate_alembic_head_matches() -> None:
+    """When `alembic_version` exists, require it matches the application's migration head (avoids partial migrations)."""
+    from pathlib import Path
+
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import text
+
+    inspector = inspect(engine)
+    if "alembic_version" not in inspector.get_table_names():
+        return
+    cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    script = ScriptDirectory.from_config(cfg)
+    head = script.get_current_head()
+    with engine.connect() as conn:
+        rev = conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).scalar_one_or_none()
+    if rev and head and rev != head:
+        raise RuntimeError(
+            f"Alembic database revision is '{rev}' but code expects '{head}'. Run `alembic upgrade head` before starting."
+        )
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     validate_runtime_config()
     validate_schema()
+    validate_alembic_head_matches()
     yield
 
 
@@ -181,6 +216,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 UPLOADS_DIR = Path(__file__).resolve().parents[1] / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+# Local/dev static serving. For production scale-out, prefer object storage + CDN and keep this mount for dev only.
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 app.include_router(auth.router)

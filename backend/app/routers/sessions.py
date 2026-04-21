@@ -18,7 +18,9 @@ from app.achievementsutil import (
     session_focus_metrics,
 )
 from app.models import CheckinLog, Friendship, FriendshipStatus, ProductionSession, SessionType, Streak, User, UserGoal, utcnow
-from app.services.push_dispatch import notify_session_complete
+from app.services.push_dispatch import schedule_notify_session_complete
+from app.services.social_consequence import maybe_notify_streak_break_on_transition
+from app.services.streak_reconcile_service import reconcile_streak_row_for_user
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp, xp_for_completed_session
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
@@ -41,6 +43,13 @@ from app.schemas import (
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 _log = logging.getLogger(__name__)
+
+# Applied only in /sessions/stats aggregates; raw `duration_seconds` on each session row is unchanged.
+_STATS_DURATION_CAP_SECONDS = 48 * 3600
+
+
+def _duration_for_stats_seconds(sec: int | None) -> int:
+    return min(int(sec or 0), _STATS_DURATION_CAP_SECONDS)
 
 def _mark_auto_checkin_done(db: Session, user_id: int) -> None:
     """Automatically reflect session activity in social check-in status."""
@@ -231,18 +240,19 @@ def stop_session(
     )
     streak_row = db.scalar(select(Streak).where(Streak.user_id == current.id))
     grant_achievements_after_completed_session(db, current.id, row, streak_row)
+    _, prev_streak, new_streak, _, _ = reconcile_streak_row_for_user(db, current.id)
     db.commit()
     db.refresh(row)
+    maybe_notify_streak_break_on_transition(prev_streak, new_streak, current.id)
     try:
-        notify_session_complete(
+        schedule_notify_session_complete(
             settings,
-            db,
             current.id,
             str(row.session_type),
             int(row.duration_seconds or 0),
         )
     except Exception:
-        _log.exception("Expo push after session stop failed")
+        _log.exception("schedule session-complete push failed")
     _log.info("session_stopped user_id=%s session_id=%s duration_s=%s", current.id, row.id, row.duration_seconds)
     return row
 
@@ -553,6 +563,12 @@ def update_session(
         row.mood_level = updates["mood_level"]
     if "tags" in updates:
         row.tags = json.dumps(updates["tags"]) if updates["tags"] else None
+    if "track_outcome" in updates:
+        row.track_outcome = updates["track_outcome"]
+        if updates["track_outcome"] != "finished":
+            row.track_title = None
+    if "track_title" in updates:
+        row.track_title = updates["track_title"]
 
     db.commit()
     db.refresh(row)
@@ -571,6 +587,7 @@ def delete_session(
     if row.stopped_at is None:
         raise HTTPException(status_code=409, detail="Active sessions cannot be deleted")
     row.deleted_at = utcnow()
+    reconcile_streak_row_for_user(db, current.id)
     db.commit()
     return None
 
@@ -600,6 +617,7 @@ def restore_session(
                 detail={"message": "Active session already exists", "session_id": active.id},
             )
     row.deleted_at = None
+    reconcile_streak_row_for_user(db, current.id)
     db.commit()
     db.refresh(row)
     return row
@@ -638,7 +656,7 @@ def sessions_stats(
 
     completed = [row for row in rows if row.duration_seconds is not None]
     total_sessions = len(completed)
-    total_seconds = int(sum((row.duration_seconds or 0) for row in completed))
+    total_seconds = int(sum(_duration_for_stats_seconds(row.duration_seconds) for row in completed))
     avg_session_seconds = int(total_seconds / total_sessions) if total_sessions > 0 else 0
 
     all_for_streak = db.scalars(
@@ -669,14 +687,17 @@ def sessions_stats(
                 ProductionSession.duration_seconds.is_not(None),
             )
         ).all()
-        prior_seconds = int(sum((r.duration_seconds or 0) for r in prior_rows))
+        prior_seconds = int(sum(_duration_for_stats_seconds(r.duration_seconds) for r in prior_rows))
         hours_delta = round((total_seconds - prior_seconds) / 3600, 1)
 
     trend_map: dict[str, tuple[int, int]] = {}
     for row in completed:
         key = as_utc_aware(row.started_at).date().isoformat()
         sessions_count, seconds_count = trend_map.get(key, (0, 0))
-        trend_map[key] = (sessions_count + 1, seconds_count + int(row.duration_seconds or 0))
+        trend_map[key] = (
+            sessions_count + 1,
+            seconds_count + _duration_for_stats_seconds(row.duration_seconds),
+        )
     trend = [
         SessionStatsTrendPoint(label=key, sessions=sessions_count, seconds=seconds_count)
         for key, (sessions_count, seconds_count) in sorted(trend_map.items())

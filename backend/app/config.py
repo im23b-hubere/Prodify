@@ -132,6 +132,17 @@ class Settings(BaseSettings):
             raise ValueError("SENTRY_DSN must be set when ENVIRONMENT=production.")
         return self
 
+    @model_validator(mode="after")
+    def validate_internal_job_key_in_production(self):
+        if self.environment != "production":
+            return self
+        key = (self.internal_job_key or "").strip()
+        if len(key) < 24:
+            raise ValueError(
+                "INTERNAL_JOB_KEY must be set to a strong secret (24+ characters) when ENVIRONMENT=production."
+            )
+        return self
+
 
 settings = Settings()
 

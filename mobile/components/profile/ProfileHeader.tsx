@@ -14,6 +14,8 @@ type Props = {
   status: "self" | "none" | "pending" | "accepted";
   isPremium?: boolean;
   identityTags?: string[];
+  streakStatusLabel?: string;
+  streakStatusEmoji?: string;
   onAddFriend?: () => void;
 };
 
@@ -32,6 +34,8 @@ export const ProfileHeader = memo(function ProfileHeader({
   status,
   isPremium = false,
   identityTags = [],
+  streakStatusLabel,
+  streakStatusEmoji,
   onAddFriend,
 }: Props) {
   const { t } = useTranslation();
@@ -55,6 +59,13 @@ export const ProfileHeader = memo(function ProfileHeader({
                 </Text>
               </View>
             ))}
+          </View>
+        ) : null}
+        {streakStatusLabel ? (
+          <View style={styles.statusPill}>
+            <Text style={styles.statusPillText}>
+              {streakStatusEmoji ?? "🌱"} {streakStatusLabel}
+            </Text>
           </View>
         ) : null}
         <View style={styles.quick}>
@@ -148,6 +159,20 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     fontSize: 10,
     fontFamily: fontFamily.bodyBold,
+  },
+  statusPill: {
+    alignSelf: "center",
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+  },
+  statusPillText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
   },
   quick: { flexDirection: "row", justifyContent: "space-around", marginTop: spacing.sm },
   qItem: { alignItems: "center", gap: 4 },

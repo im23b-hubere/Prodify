@@ -21,6 +21,8 @@ export type SessionDto = {
   paused_duration_seconds?: number;
   pause_started_at?: string | null;
   focus_score?: number | null;
+  track_outcome?: "none" | "wip" | "finished" | null;
+  track_title?: string | null;
 };
 
 export type SessionStatsDto = {

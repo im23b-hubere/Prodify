@@ -35,9 +35,10 @@ def require_premium_or_trial(
 
 
 def user_has_premium_access(db: Session, user: User) -> bool:
-    if EntitlementService.is_premium(user):
-        return True
+    """
+    Prefer persisted subscription row as source of truth when present to avoid drift from `users.is_premium`.
+    """
     row = db.scalar(select(UserSubscription).where(UserSubscription.user_id == user.id))
-    if row is None:
-        return False
-    return row.entitlement == "premium" or bool(row.trial_active)
+    if row is not None:
+        return row.entitlement == "premium" or bool(row.trial_active)
+    return EntitlementService.is_premium(user)

@@ -2,6 +2,7 @@ import type {
   CoachDebriefDto,
   EntitlementDto,
   GoalForecastDto,
+  OutputMetricsDto,
   ProgressionDto,
   WeeklyReviewDto,
 } from "../types/outcomes";
@@ -71,5 +72,23 @@ export function tryParseProgressionDto(raw: unknown): ProgressionDto | null {
     current_level: Number(raw.current_level ?? 1),
     xp_to_next_level: Number(raw.xp_to_next_level ?? 50),
     progress_percent: Number(raw.progress_percent ?? 0),
+  };
+}
+
+export function tryParseOutputMetricsDto(raw: unknown): OutputMetricsDto | null {
+  if (!isObj(raw)) return null;
+  const trend = raw.productivity_trend;
+  if (trend !== "up" && trend !== "down" && trend !== "stable") return null;
+  return {
+    tracks_finished_30d: Number(raw.tracks_finished_30d ?? 0),
+    avg_completion_time_days: Number(raw.avg_completion_time_days ?? 0),
+    release_consistency: Number(raw.release_consistency ?? 0),
+    productivity_trend: trend,
+    vs_previous_month: Number(raw.vs_previous_month ?? 0),
+    days_using: Number(raw.days_using ?? 0),
+    completed_tracks: Number(raw.completed_tracks ?? 0),
+    consistency_improvement: Number(raw.consistency_improvement ?? 0),
+    output_increase: Number(raw.output_increase ?? 0),
+    baseline_tracks_30d: Number(raw.baseline_tracks_30d ?? 0),
   };
 }

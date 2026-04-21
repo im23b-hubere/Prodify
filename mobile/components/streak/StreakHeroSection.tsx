@@ -5,11 +5,12 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-import type { WeekDotKind } from "../ui/WeekProgressDots";
 import { useAnimatedStreakCount } from "../../hooks/useAnimatedStreakCount";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
 import type { StreakOverviewDto } from "../../types/streak";
+
+type WeekDotKind = "none" | "session" | "freeze";
 
 type StreakHeroSectionProps = {
   overview: StreakOverviewDto | null;

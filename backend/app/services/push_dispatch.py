@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
@@ -132,6 +133,21 @@ def notify_session_complete(settings: Settings, db: DBSession, user_id: int, ses
             logger.info("push session-complete: ok=%s/%s %s", ok, attempted, msg)
     except Exception:
         logger.exception("push session-complete failed")
+
+
+def schedule_notify_session_complete(settings: Settings, user_id: int, session_type: str, duration_seconds: int) -> None:
+    """Fire-and-forget push so HTTP workers are not blocked on upstream push latency."""
+
+    def _run() -> None:
+        from app.database import SessionLocal
+
+        try:
+            with SessionLocal() as bg_db:
+                notify_session_complete(settings, bg_db, user_id, session_type, duration_seconds)
+        except Exception:
+            logger.exception("deferred push session-complete failed")
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def send_ping(

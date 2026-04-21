@@ -1,13 +1,11 @@
-import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import ProductionSession, Streak, User, utcnow
+from app.models import User, utcnow
 from app.schemas import (
     StreakFreezeResult,
     StreakMilestoneItem,
@@ -15,15 +13,14 @@ from app.schemas import (
     StreakOverviewPublic,
     StreakRunPublic,
 )
-from app.streakutil import (
-    best_streak_run,
-    compute_current_streak,
-    compute_streak_runs,
-    dump_frozen_json,
-    last_7_day_states,
-    parse_frozen_json,
+from app.services.social_consequence import maybe_notify_streak_break_on_transition
+from app.services.streak_reconcile_service import (
+    ensure_monthly_freeze_allowance,
+    get_or_create_streak,
+    list_session_day_keys,
+    reconcile_streak_row_for_user,
 )
-from app.timeutil import as_utc_aware
+from app.streakutil import best_streak_run, compute_current_streak, compute_streak_runs, dump_frozen_json, last_7_day_states, parse_frozen_json
 
 router = APIRouter(prefix="/streak", tags=["streak"])
 
@@ -37,44 +34,6 @@ MILESTONES: list[tuple[int, str]] = [
 ]
 
 
-def _get_or_create_streak(db: Session, user_id: int) -> Streak:
-    row = db.scalar(select(Streak).where(Streak.user_id == user_id))
-    if row is None:
-        row = Streak(
-            user_id=user_id,
-            current_streak=0,
-            longest_streak=0,
-            frozen_day_keys="[]",
-            freezes_remaining=1,
-            billing_month="",
-        )
-        db.add(row)
-        db.commit()
-        db.refresh(row)
-    return row
-
-
-def _ensure_monthly_freeze(streak: Streak) -> None:
-    m = utcnow().strftime("%Y-%m")
-    if not streak.billing_month:
-        streak.billing_month = m
-        return
-    if streak.billing_month != m:
-        streak.freezes_remaining = 1
-        streak.billing_month = m
-
-
-def _session_day_keys(db: Session, user_id: int) -> list[str]:
-    rows = db.scalars(
-        select(ProductionSession).where(
-            ProductionSession.user_id == user_id,
-            ProductionSession.deleted_at.is_(None),
-            ProductionSession.duration_seconds.is_not(None),
-        )
-    ).all()
-    return [as_utc_aware(r.started_at).date().isoformat() for r in rows]
-
-
 def _next_milestone(current: int) -> tuple[int | None, str | None, int | None]:
     for days, title in MILESTONES:
         if current < days:
@@ -82,26 +41,33 @@ def _next_milestone(current: int) -> tuple[int | None, str | None, int | None]:
     return None, None, None
 
 
+@router.post("/reconcile", status_code=status.HTTP_204_NO_CONTENT)
+def streak_reconcile(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """
+    Recompute persisted streak fields and emit streak-break side effects when appropriate.
+    Call from the client after meaningful state changes (e.g. app foreground) — not from GET /overview.
+    """
+    streak, prev, cur, _, _ = reconcile_streak_row_for_user(db, current.id)
+    db.commit()
+    db.refresh(streak)
+    maybe_notify_streak_break_on_transition(prev, cur, current.id)
+    return None
+
+
 @router.get("/overview", response_model=StreakOverviewPublic)
 def streak_overview(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    streak = _get_or_create_streak(db, current.id)
-    _ensure_monthly_freeze(streak)
-
-    session_days = _session_day_keys(db, current.id)
-    frozen = parse_frozen_json(streak.frozen_day_keys)
-    merged = list(set(session_days) | set(frozen))
-
-    cur = compute_current_streak(merged)
-    best = best_streak_run(merged)
-    streak.current_streak = cur
-    streak.longest_streak = max(streak.longest_streak, best, cur)
+    streak, _prev, cur, merged, session_days = reconcile_streak_row_for_user(db, current.id)
     db.commit()
     db.refresh(streak)
 
     today = utcnow().date().isoformat()
+    frozen = parse_frozen_json(streak.frozen_day_keys)
     has_session_today = today in set(session_days)
     frozen_today = today in set(frozen)
     streak_at_risk = cur > 0 and not has_session_today and not frozen_today
@@ -137,11 +103,8 @@ def streak_history(
     db: Annotated[Session, Depends(get_db)],
     limit: int = 40,
 ):
-    streak = _get_or_create_streak(db, current.id)
-    _ensure_monthly_freeze(streak)
-    session_days = _session_day_keys(db, current.id)
-    frozen = parse_frozen_json(streak.frozen_day_keys)
-    merged = list(set(session_days) | set(frozen))
+    streak, _, _, merged, _ = reconcile_streak_row_for_user(db, current.id)
+    db.commit()
     runs = compute_streak_runs(merged)
     if limit < 1:
         limit = 1
@@ -158,15 +121,7 @@ def streak_milestones(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    streak = _get_or_create_streak(db, current.id)
-    _ensure_monthly_freeze(streak)
-    session_days = _session_day_keys(db, current.id)
-    frozen = parse_frozen_json(streak.frozen_day_keys)
-    merged = list(set(session_days) | set(frozen))
-    cur = compute_current_streak(merged)
-    best = best_streak_run(merged)
-    streak.current_streak = cur
-    streak.longest_streak = max(streak.longest_streak, best, cur)
+    streak, _, _, merged, _ = reconcile_streak_row_for_user(db, current.id)
     db.commit()
     db.refresh(streak)
     longest = streak.longest_streak
@@ -182,10 +137,10 @@ def use_streak_freeze(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    streak = _get_or_create_streak(db, current.id)
-    _ensure_monthly_freeze(streak)
+    streak = get_or_create_streak(db, current.id)
+    ensure_monthly_freeze_allowance(streak, current)
 
-    session_days = _session_day_keys(db, current.id)
+    session_days = list_session_day_keys(db, current.id)
     frozen = parse_frozen_json(streak.frozen_day_keys)
     merged = list(set(session_days) | set(frozen))
     cur = compute_current_streak(merged)

@@ -118,6 +118,10 @@ export function FriendsOverviewSection({
                 <View style={styles.userCopy}>
                   <View style={styles.nameRow}>
                     <Text style={styles.userName}>{entry.username}</Text>
+                    <Text style={styles.userMeta}>
+                      {" "}
+                      {entry.streak_status_emoji ?? "🌱"} {entry.streak_status_label ?? "STARTING"}
+                    </Text>
                     {entry.is_premium ? <Text style={styles.premiumTag}>PRO</Text> : null}
                     {currentUserId === entry.user_id ? (
                       <View style={styles.youPill}>

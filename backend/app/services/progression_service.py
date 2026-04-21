@@ -2,6 +2,7 @@ import json
 import math
 
 from sqlalchemy import desc, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import UserProgression, XpLedger, utcnow
@@ -131,6 +132,23 @@ def grant_xp(
     source_id: str | None = None,
     meta: dict | None = None,
 ) -> UserProgression:
+    if source_id is not None and str(source_id).strip():
+        existing = db.scalar(
+            select(XpLedger.id).where(
+                XpLedger.user_id == user_id,
+                XpLedger.source_type == source_type,
+                XpLedger.source_id == str(source_id),
+            )
+        )
+        if existing is not None:
+            row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
+            if row is None:
+                row = UserProgression(user_id=user_id)
+                db.add(row)
+                db.flush()
+                _recompute_progression_fields(row)
+            return row
+
     row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
     if row is None:
         row = UserProgression(user_id=user_id)
@@ -142,15 +160,25 @@ def grant_xp(
     row.xp_total = max(0, int(row.xp_total or 0) + int(xp_delta))
     _recompute_progression_fields(row)
     row.updated_at = utcnow()
-    db.add(
-        XpLedger(
-            user_id=user_id,
-            source_type=source_type,
-            source_id=source_id,
-            xp_delta=xp_delta,
-            meta_json=json.dumps(meta or {}),
-        )
+    ledger = XpLedger(
+        user_id=user_id,
+        source_type=source_type,
+        source_id=source_id,
+        xp_delta=xp_delta,
+        meta_json=json.dumps(meta or {}),
     )
+    db.add(ledger)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.expunge(ledger)
+        row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
+        if row is None:
+            row = UserProgression(user_id=user_id)
+            db.add(row)
+            db.flush()
+            _recompute_progression_fields(row)
+        return row
     return row
 
 

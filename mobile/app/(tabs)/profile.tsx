@@ -28,6 +28,7 @@ import { ApiError, apiJson } from "../../lib/client";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
 import type { SessionStatsDto } from "../../types/session";
 import type { StreakMilestonesDto } from "../../types/streak";
+import type { ReliabilityScoreDto } from "../../types/friends";
 
 function formatHours(totalSeconds: number): string {
   const h = totalSeconds / 3600;
@@ -44,6 +45,7 @@ export default function ProfileScreen() {
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
   const [milestones, setMilestones] = useState<StreakMilestonesDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reliability, setReliability] = useState<ReliabilityScoreDto | null>(null);
   const [pictureBusy, setPictureBusy] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pingTemplate, setPingTemplate] = useState<"test" | "session_demo" | "streak_demo">("test");
@@ -69,18 +71,21 @@ export default function ProfileScreen() {
       setError(null);
     }
     try {
-      const [rawS, m] = await Promise.all([
+      const [rawS, m, rel] = await Promise.all([
         apiJson<unknown>("/sessions/stats?period=all", { token }),
         apiJson<StreakMilestonesDto>("/streak/milestones", { token }),
+        apiJson<ReliabilityScoreDto>("/users/me/reliability", { token }).catch(() => null),
       ]);
       if (!mounted.current || seq !== loadSeq.current) return;
       setStats(tryParseSessionStatsDto(rawS));
       setMilestones(m);
+      setReliability(rel);
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
       setError(e instanceof Error ? e.message : t("profile.errorLoadProfile"));
       setStats(null);
       setMilestones(null);
+      setReliability(null);
     } finally {
       if (!mounted.current || seq !== loadSeq.current) return;
       setLoading(false);
@@ -288,6 +293,31 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
+        {!loading && reliability ? (
+          <View style={styles.reliabilityCard}>
+            <View style={styles.reliabilityHead}>
+              <Text style={styles.reliabilityLabel}>{t("profile.reliabilityTitle")}</Text>
+              <Text style={styles.reliabilityTrend}>
+                {reliability.trend === "up"
+                  ? t("profile.reliabilityTrendUp")
+                  : reliability.trend === "down"
+                    ? t("profile.reliabilityTrendDown")
+                    : t("profile.reliabilityTrendStable")}
+              </Text>
+            </View>
+            <Text style={styles.reliabilityScore}>{reliability.score.toFixed(1)}/10</Text>
+            <Text style={styles.reliabilityMeta}>
+              {t("profile.reliabilityRank", { rank: reliability.rank_percent })}
+            </Text>
+            <Text style={styles.reliabilityHint}>
+              {t("profile.reliabilityHint", {
+                consistency: reliability.consistency_90d,
+                completion: reliability.completion_rate_90d,
+              })}
+            </Text>
+          </View>
+        ) : null}
+
         <Text style={styles.sectionTitle}>{t("profile.milestonesTitle")}</Text>
         {milestones ? (
           <Text style={styles.milestoneSub}>
@@ -461,6 +491,44 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.sm,
     justifyContent: "space-between",
+  },
+  reliabilityCard: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: spacing.xs,
+  },
+  reliabilityHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  reliabilityLabel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  reliabilityTrend: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  reliabilityScore: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.headline,
+  },
+  reliabilityMeta: {
+    color: colors.textPrimary,
+    ...typography.body,
+  },
+  reliabilityHint: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    lineHeight: 18,
   },
   sectionTitle: {
     marginTop: spacing.lg,

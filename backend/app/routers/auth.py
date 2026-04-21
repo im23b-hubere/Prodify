@@ -1,6 +1,6 @@
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -12,24 +12,24 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import RefreshToken, Streak, User, utcnow
-
-
-def _expires_at_utc(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
 from app.rate_limit import limiter
-from app.schemas import RefreshRequest, TokenPair, UserCreate, UserLogin, UserPublic
+from app.schemas import RefreshRequest, TokenPair, UserAccountPublic, UserCreate, UserLogin
 from app.security import create_access_token, hash_password, hash_refresh_token, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 _log = logging.getLogger(__name__)
 
 
+def _expires_at_utc(dt) -> object:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def issue_tokens_for_user(db: Session, user: User, *, replace_all: bool) -> TokenPair:
     if replace_all:
         db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
-    access = create_access_token(str(user.id))
+    access = create_access_token(str(user.id), token_version=int(user.access_token_version or 0))
     raw_refresh = secrets.token_urlsafe(48)
     db.add(
         RefreshToken(
@@ -49,9 +49,9 @@ def register(request: Request, payload: UserCreate, db: Annotated[Session, Depen
     normalized_username = payload.username.strip().lower()
 
     if db.scalar(select(User).where(func.lower(User.email) == normalized_email)):
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Unable to register with the provided credentials")
     if db.scalar(select(User).where(func.lower(User.username) == normalized_username)):
-        raise HTTPException(status_code=400, detail="Username already taken")
+        raise HTTPException(status_code=400, detail="Unable to register with the provided credentials")
 
     user = User(
         email=normalized_email,
@@ -66,7 +66,7 @@ def register(request: Request, payload: UserCreate, db: Annotated[Session, Depen
         db.refresh(user)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Email or username already exists") from None
+        raise HTTPException(status_code=400, detail="Unable to register with the provided credentials") from None
 
     return issue_tokens_for_user(db, user, replace_all=True)
 
@@ -78,7 +78,7 @@ def login(request: Request, payload: UserLogin, db: Annotated[Session, Depends(g
     user = db.scalar(select(User).where(func.lower(User.email) == normalized_email))
     if user is None or not verify_password(payload.password, user.hashed_password):
         _log.warning("auth_login_failed")
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     return issue_tokens_for_user(db, user, replace_all=True)
 
 
@@ -106,11 +106,12 @@ def refresh_tokens(
 
 @router.post("/logout")
 def logout(current: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    current.access_token_version = int(current.access_token_version or 0) + 1
     db.execute(delete(RefreshToken).where(RefreshToken.user_id == current.id))
     db.commit()
     return {"ok": True}
 
 
-@router.get("/me", response_model=UserPublic)
+@router.get("/me", response_model=UserAccountPublic)
 def me(current: Annotated[User, Depends(get_current_user)]):
     return current

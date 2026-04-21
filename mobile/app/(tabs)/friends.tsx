@@ -75,6 +75,8 @@ export default function FriendsScreen() {
     setGoalTargetInput,
     goalDaysInput,
     setGoalDaysInput,
+    goalWitnesses,
+    setGoalWitnesses,
     goalSaving,
     sectionTab,
     setSectionTab,
@@ -106,6 +108,8 @@ export default function FriendsScreen() {
 
   const renderActivityItem = useCallback<ListRenderItem<FriendActivityDto>>(
     ({ item, index }) => {
+      const isSessionItem =
+        item.session_id > 0 && (item.status === "live" || item.status === "completed");
       const metrics = feedMetricsBySession[item.session_id];
       const reactionTotal = metrics?.reactionsCount ?? item.reactions_count ?? 0;
       const commentCount = metrics?.commentsCount ?? item.comments_count ?? 0;
@@ -120,13 +124,45 @@ export default function FriendsScreen() {
           reactionBusy={!!reactionBusyBySession[item.session_id]}
           currentUserId={user?.id}
           t={t}
-          onOpenSession={() => openSession(item.session_id, item.username)}
-          onToggleThumb={() => void actions.toggleThumbReaction(item)}
-          onOpenReactionUsers={() => void actions.openReactionUsers(item.session_id)}
+          onOpenSession={() => {
+            if (isSessionItem) {
+              openSession(item.session_id, item.username);
+            }
+          }}
+          onToggleThumb={() => {
+            if (isSessionItem) {
+              void actions.toggleThumbReaction(item);
+            }
+          }}
+          onOpenReactionUsers={() => {
+            if (isSessionItem) {
+              void actions.openReactionUsers(item.session_id);
+            }
+          }}
+          onSupportStreakBreak={() => {
+            if (item.status === "streak_broken") {
+              void actions.supportStreakBreak(item);
+            }
+          }}
+          onViewCommitment={() => {
+            if (item.status === "commitment_published") {
+              setSectionTab("tools");
+            }
+          }}
+          supportBusy={item.status === "streak_broken" && busyActionKey === "streak_support"}
         />
       );
     },
-    [actions, feedMetricsBySession, reactionBusyBySession, t, openSession, user?.id],
+    [
+      actions,
+      busyActionKey,
+      feedMetricsBySession,
+      reactionBusyBySession,
+      setSectionTab,
+      t,
+      openSession,
+      user?.id,
+    ],
   );
 
   return (
@@ -266,6 +302,8 @@ export default function FriendsScreen() {
         setGoalTargetInput={setGoalTargetInput}
         goalDaysInput={goalDaysInput}
         setGoalDaysInput={setGoalDaysInput}
+        goalWitnesses={goalWitnesses}
+        setGoalWitnesses={setGoalWitnesses}
         goalSaving={goalSaving}
         saveCommitmentTarget={actions.saveCommitmentTarget}
         challengeCreateOpen={challengeCreateOpen}

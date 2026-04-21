@@ -54,9 +54,7 @@ function getApiUrl(): string {
       );
     }
     if (isLoopbackApiUrl(envUrl) || /10\.0\.2\.2/i.test(envUrl)) {
-      throw new Error(
-        `Production build cannot use a loopback API URL. Current value: ${envUrl}`,
-      );
+      throw new Error(`Production build cannot use a loopback API URL. Current value: ${envUrl}`);
     }
     if (!/^https:\/\//i.test(envUrl)) {
       console.warn("[api] Production API should use HTTPS.");

@@ -89,12 +89,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const me = await apiJson<UserMe>("/auth/me", { token });
       setUser(me);
     } catch (e) {
-      setUser(null);
       if (e instanceof ApiError && e.status === 401) {
+        setUser(null);
         await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
         await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
         setToken(null);
       }
+      /* Transient errors: keep existing user snapshot to avoid blanking the profile UI. */
     }
   }, [token]);
 
@@ -177,8 +178,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteAccount = useCallback(async () => {
-    const t = await SecureStore.getItemAsync(TOKEN_KEY).catch(() => null);
-    const trimmed = t?.trim();
+    const fromStore = await SecureStore.getItemAsync(TOKEN_KEY).catch(() => null);
+    const trimmed = (token?.trim() || fromStore?.trim() || "").trim();
     if (!trimmed) {
       throw new Error(i18n.t("errors.unexpectedResponse"));
     }
@@ -188,7 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY).catch(() => undefined);
     setToken(null);
     setUser(null);
-  }, []);
+  }, [token]);
 
   const value = useMemo(
     () => ({

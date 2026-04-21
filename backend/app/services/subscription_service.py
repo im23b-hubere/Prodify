@@ -58,6 +58,9 @@ def _verification_from_client_body(body: BillingSyncBody) -> BillingVerification
 
 def _verification_from_revenuecat(body: BillingSyncBody) -> BillingVerificationResult:
     if not settings.revenuecat_secret_key:
+        # Never trust client-asserted entitlements on public / staging hosts.
+        if settings.environment != "development":
+            raise ValueError("RevenueCat secret is required when ENVIRONMENT is not development")
         return _verification_from_client_body(body)
 
     response = requests.get(

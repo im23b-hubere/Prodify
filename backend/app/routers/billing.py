@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -55,6 +56,8 @@ def sync_entitlement(
 
     try:
         verified = verify_billing_sync(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception:
         raise HTTPException(status_code=502, detail="Could not verify purchase state with billing provider")
 
@@ -89,8 +92,13 @@ async def revenuecat_webhook(
     raw_payload = await request.body()
     if not _verify_webhook_signature(signature, raw_payload, settings.webhook_secret):
         raise HTTPException(status_code=403, detail="Invalid webhook signature")
-    payload = await request.json()
-    user_id, row = sync_from_webhook_payload(db, payload if isinstance(payload, dict) else {})
+    try:
+        payload = json.loads(raw_payload.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from None
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Unsupported webhook payload")
+    user_id, row = sync_from_webhook_payload(db, payload)
     if row is None:
         raise HTTPException(status_code=400, detail="Unsupported webhook payload")
     if user_id is not None:

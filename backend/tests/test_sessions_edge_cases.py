@@ -49,7 +49,7 @@ def test_session_with_expired_token(client):
     assert me.status_code == 200
     user_id = str(me.json()["id"])
 
-    expired_token = create_access_token(user_id, expires_delta=timedelta(seconds=-5))
+    expired_token = create_access_token(user_id, token_version=0, expires_delta=timedelta(seconds=-5))
     response = client.post(
         "/sessions/start",
         json={"session_type": "beat_making"},

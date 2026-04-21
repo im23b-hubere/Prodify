@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import timedelta
 from typing import Annotated
 
@@ -11,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import Friendship, FriendshipStatus, ProductionSession, SocialComment, SocialReaction, Streak, User, utcnow
+from app.models import Friendship, FriendshipStatus, GrowthEvent, ProductionSession, SocialComment, SocialReaction, Streak, User, utcnow
 from app.schemas import (
     FriendActivityPublic,
     FriendIncomingPublic,
@@ -24,6 +25,8 @@ from app.schemas import (
 )
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp
+from app.services.streak_reconcile_service import compute_streak_counts_for_display
+from app.services.streak_status_service import streak_status_for_days
 
 router = APIRouter(prefix="/friends", tags=["friends"])
 
@@ -75,11 +78,48 @@ def _session_count_between(db: Session, user_id: int, since, until) -> int:
     return len(db.scalars(q).all())
 
 
+def _session_counts_by_user_since(db: Session, user_ids: list[int], since) -> dict[int, int]:
+    if not user_ids:
+        return {}
+    rows = db.execute(
+        select(ProductionSession.user_id, func.count(ProductionSession.id))
+        .where(
+            ProductionSession.user_id.in_(user_ids),
+            ProductionSession.deleted_at.is_(None),
+            ProductionSession.duration_seconds.is_not(None),
+            ProductionSession.started_at >= since,
+        )
+        .group_by(ProductionSession.user_id)
+    ).all()
+    return {int(uid): int(cnt) for uid, cnt in rows}
+
+
+def _session_counts_by_user_between(db: Session, user_ids: list[int], since, until) -> dict[int, int]:
+    if not user_ids:
+        return {}
+    rows = db.execute(
+        select(ProductionSession.user_id, func.count(ProductionSession.id))
+        .where(
+            ProductionSession.user_id.in_(user_ids),
+            ProductionSession.deleted_at.is_(None),
+            ProductionSession.duration_seconds.is_not(None),
+            ProductionSession.started_at >= since,
+            ProductionSession.started_at < until,
+        )
+        .group_by(ProductionSession.user_id)
+    ).all()
+    return {int(uid): int(cnt) for uid, cnt in rows}
+
+
 def _streak_days(db: Session, user_id: int) -> int:
     row = db.scalar(select(Streak).where(Streak.user_id == user_id))
     if row is None:
         return 0
     return int(row.current_streak or 0)
+
+
+def _streak_row(db: Session, user_id: int) -> Streak | None:
+    return db.scalar(select(Streak).where(Streak.user_id == user_id))
 
 
 @router.post("/request", response_model=FriendshipPublic, status_code=status.HTTP_201_CREATED)
@@ -262,29 +302,56 @@ def friends_leaderboard(
     user_rows = db.scalars(select(User).where(User.id.in_(user_ids))).all()
     users = {u.id: u for u in user_rows}
 
-    rows: list[tuple[int, str, int, int, bool, str | None]] = []
+    now = utcnow()
+    cur_counts: dict[int, int]
+    prev_counts: dict[int, int] = {}
+    if period_days is not None:
+        since_cur = now - timedelta(days=period_days)
+        cur_counts = _session_counts_by_user_since(db, user_ids, since_cur)
+        until = now - timedelta(days=period_days)
+        since_prev = until - timedelta(days=period_days)
+        prev_counts = _session_counts_by_user_between(db, user_ids, since_prev, until)
+    else:
+        cur_counts = _session_counts_by_user_since(db, user_ids, now - timedelta(days=365 * 50))
+
+    rows: list[tuple[int, str, int, int, bool, str | None, str, str, str]] = []
     for uid in user_ids:
         u = users.get(uid)
         if u is None:
             continue
-        sc = _session_count_in_period(db, uid, period_days)
-        st = _streak_days(db, uid)
-        rows.append((uid, u.username, sc, st, bool(int(u.is_premium or 0)), u.profile_picture_url))
+        sc = int(cur_counts.get(uid, 0))
+        st, _long = compute_streak_counts_for_display(db, uid)
+        streak_row = _streak_row(db, uid)
+        inactive_days = 0
+        if streak_row and streak_row.last_session_date:
+            inactive_days = max((utcnow().date() - streak_row.last_session_date.date()).days, 0)
+        status_key, status_label, status_emoji = streak_status_for_days(st, inactive_days)
+        rows.append(
+            (
+                uid,
+                u.username,
+                sc,
+                st,
+                bool(int(u.is_premium or 0)),
+                u.profile_picture_url,
+                status_key,
+                status_label,
+                status_emoji,
+            )
+        )
 
     rows.sort(key=lambda x: (x[2], x[3]), reverse=True)
     me_rank = None
-    for idx, (uid, _, _, _, _, _) in enumerate(rows, start=1):
+    for idx, (uid, _, _, _, _, _, _, _, _) in enumerate(rows, start=1):
         if uid == current.id:
             me_rank = idx
             break
 
     entries: list[FriendLeaderboardEntryPublic] = []
-    for rank, (uid, name, sc, st, is_premium, profile_picture_url) in enumerate(rows, start=1):
+    for rank, (uid, name, sc, st, is_premium, profile_picture_url, status_key, status_label, status_emoji) in enumerate(rows, start=1):
         delta = 0
         if period_days is not None:
-            until = utcnow() - timedelta(days=period_days)
-            since = until - timedelta(days=period_days)
-            prev_sc = _session_count_between(db, uid, since, until)
+            prev_sc = int(prev_counts.get(uid, 0))
             delta = sc - prev_sc
         entries.append(
             FriendLeaderboardEntryPublic(
@@ -299,6 +366,9 @@ def friends_leaderboard(
                 is_threatening_you=bool(me_rank is not None and rank == me_rank + 1 and uid != current.id),
                 is_premium=is_premium,
                 profile_picture_url=profile_picture_url,
+                streak_status_key=status_key,
+                streak_status_label=status_label,
+                streak_status_emoji=status_emoji,
             )
         )
 
@@ -319,16 +389,27 @@ def friends_activity(
     friend_ids = _friend_user_ids(db, current.id)
     scope = [current.id, *friend_ids]
 
-    rows = db.scalars(
+    session_rows = db.scalars(
         select(ProductionSession)
         .where(
             ProductionSession.user_id.in_(scope),
             ProductionSession.deleted_at.is_(None),
+            ProductionSession.stopped_at.is_not(None),
+            ProductionSession.duration_seconds.is_not(None),
         )
         .order_by(func.coalesce(ProductionSession.stopped_at, ProductionSession.started_at).desc())
-        .limit(limit)
+        .limit(limit * 2)
     ).all()
-    session_ids = [row.id for row in rows]
+    growth_events = db.scalars(
+        select(GrowthEvent)
+        .where(
+            GrowthEvent.user_id.in_(scope),
+            GrowthEvent.event_name.in_(["streak_broken", "commitment_published"]),
+        )
+        .order_by(GrowthEvent.created_at.desc())
+        .limit(limit * 2)
+    ).all()
+    session_ids = [row.id for row in session_rows]
     reactions_count_by_session: dict[int, int] = {}
     comments_count_by_session: dict[int, int] = {}
     viewer_reaction_by_session: dict[int, str] = {}
@@ -354,13 +435,26 @@ def friends_activity(
         ).all()
         viewer_reaction_by_session = {int(row.target_id): row.emoji for row in viewer_rows}
 
-    user_cache = {
-        u.id: {"username": u.username, "profile_picture_url": u.profile_picture_url}
-        for u in db.scalars(select(User).where(User.id.in_(scope))).all()
-    }
+    streak_rows = db.scalars(select(Streak).where(Streak.user_id.in_(scope))).all()
+    streak_map = {row.user_id: row for row in streak_rows}
+    user_cache = {}
+    for u in db.scalars(select(User).where(User.id.in_(scope))).all():
+        streak_row = streak_map.get(u.id)
+        streak_days = int(streak_row.current_streak or 0) if streak_row else 0
+        inactive_days = 0
+        if streak_row and streak_row.last_session_date:
+            inactive_days = max((utcnow().date() - streak_row.last_session_date.date()).days, 0)
+        status_key, status_label, status_emoji = streak_status_for_days(streak_days, inactive_days)
+        user_cache[u.id] = {
+            "username": u.username,
+            "profile_picture_url": u.profile_picture_url,
+            "streak_status_key": status_key,
+            "streak_status_label": status_label,
+            "streak_status_emoji": status_emoji,
+        }
 
-    out: list[FriendActivityPublic] = []
-    for s in rows:
+    session_items: list[FriendActivityPublic] = []
+    for s in session_rows:
         user_meta = user_cache.get(s.user_id, {})
         name = str(user_meta.get("username") or "?")
         profile_picture_url = user_meta.get("profile_picture_url")
@@ -368,7 +462,7 @@ def friends_activity(
         activity_at = s.started_at if is_live else s.stopped_at
         if activity_at is None:
             activity_at = s.started_at
-        out.append(
+        session_items.append(
             FriendActivityPublic(
                 session_id=s.id,
                 user_id=s.user_id,
@@ -382,6 +476,63 @@ def friends_activity(
                 reactions_count=reactions_count_by_session.get(s.id, 0),
                 comments_count=comments_count_by_session.get(s.id, 0),
                 viewer_reaction=viewer_reaction_by_session.get(s.id),
+                streak_status_key=str(user_meta.get("streak_status_key") or "starting"),
+                streak_status_label=str(user_meta.get("streak_status_label") or "STARTING"),
+                streak_status_emoji=str(user_meta.get("streak_status_emoji") or "🌱"),
             )
         )
-    return out
+    event_items: list[FriendActivityPublic] = []
+    for event in growth_events:
+        user_meta = user_cache.get(int(event.user_id or 0), {})
+        props: dict = {}
+        try:
+            parsed = json.loads(event.event_props_json or "{}")
+            if isinstance(parsed, dict):
+                props = parsed
+        except json.JSONDecodeError:
+            props = {}
+        username = str(user_meta.get("username") or "?")
+        if event.event_name == "streak_broken":
+            streak_days = int(props.get("streak_days") or 0) if str(props.get("streak_days", "")).isdigit() else None
+            base_message = f"{username}'s streak just ended"
+            detail = f"{streak_days}-day streak ended 💔" if streak_days and streak_days > 0 else "Streak ended 💔"
+            status = "streak_broken"
+            session_type = "streak_broken"
+            event_message = f"{base_message} · {detail}"
+        else:
+            streak_days = None
+            target = int(props.get("target_sessions") or 0) if str(props.get("target_sessions", "")).isdigit() else 0
+            witnesses = int(props.get("witness_count") or 0) if str(props.get("witness_count", "")).isdigit() else 0
+            status = "commitment_published"
+            session_type = "commitment_published"
+            event_message = (
+                f"{username} published a commitment: {target} sessions this week"
+                + (f" · {witnesses} witnesses" if witnesses > 0 else "")
+            )
+        event_items.append(
+            FriendActivityPublic(
+                session_id=-int(event.id),
+                user_id=int(event.user_id or 0),
+                username=username,
+                profile_picture_url=(
+                    str(user_meta.get("profile_picture_url")) if user_meta.get("profile_picture_url") else None
+                ),
+                session_type=session_type,
+                activity_at=event.created_at,
+                status=status,
+                completed_at=event.created_at,
+                duration_seconds=None,
+                reactions_count=0,
+                comments_count=0,
+                viewer_reaction=None,
+                streak_status_key=str(user_meta.get("streak_status_key") or "starting"),
+                streak_status_label=str(user_meta.get("streak_status_label") or "STARTING"),
+                streak_status_emoji=str(user_meta.get("streak_status_emoji") or "🌱"),
+                event_message=event_message,
+                streak_break_days=streak_days,
+            )
+        )
+
+    merged = [*session_items, *event_items]
+    merged.sort(key=lambda item: item.activity_at, reverse=True)
+    return merged[:limit]

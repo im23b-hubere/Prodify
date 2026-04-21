@@ -5,6 +5,7 @@ import i18n from "./i18n";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 2;
 const BASE_RETRY_DELAY_MS = 600;
+const REFRESH_ACCESS_TIMEOUT_MS = 12_000;
 
 /** Set from AuthProvider: clear stored token when an authenticated request returns 401. */
 let unauthorizedHandler: (() => void | Promise<void>) | null = null;
@@ -90,17 +91,28 @@ function humanizeValidationMessage(msg: string, field: string | null): string {
 }
 
 async function tryRefreshAccessToken(): Promise<TokenPair | null> {
-  if (inFlightRefresh) return inFlightRefresh;
-  inFlightRefresh = (async () => {
+  if (inFlightRefresh) {
+    try {
+      return await inFlightRefresh;
+    } catch {
+      return null;
+    }
+  }
+  const refreshPromise = (async (): Promise<TokenPair | null> => {
     if (!getRefreshTokenFromStore || !applyTokenPair) return null;
     const rt = await getRefreshTokenFromStore();
     if (!rt?.trim()) return null;
     try {
-      const data = await apiJson<TokenPair>("/auth/refresh", {
+      const refreshCall = apiJson<TokenPair>("/auth/refresh", {
         method: "POST",
         body: { refresh_token: rt.trim() },
         _skipRefresh: true,
       });
+      const data = await Promise.race([
+        refreshCall,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), REFRESH_ACCESS_TIMEOUT_MS)),
+      ]);
+      if (!data) return null;
       if (typeof data.access_token === "string" && typeof data.refresh_token === "string") {
         await applyTokenPair({
           access_token: data.access_token.trim(),
@@ -116,10 +128,13 @@ async function tryRefreshAccessToken(): Promise<TokenPair | null> {
     }
     return null;
   })();
+  inFlightRefresh = refreshPromise;
   try {
-    return await inFlightRefresh;
+    return await refreshPromise;
   } finally {
-    inFlightRefresh = null;
+    if (inFlightRefresh === refreshPromise) {
+      inFlightRefresh = null;
+    }
   }
 }
 
@@ -128,7 +143,9 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
     throw new Error(i18n.t("errors.serviceUnavailable"));
   }
   const connection = await NetInfo.fetch();
-  if (connection.isConnected === false || connection.isInternetReachable === false) {
+  // Only treat explicit "disconnected" as offline. `isInternetReachable === false` is common on
+  // LAN-only dev (phone → PC API) even when requests work; blocking it breaks flows like DELETE /users/me.
+  if (connection.isConnected === false) {
     throw new Error(i18n.t("errors.network"));
   }
 

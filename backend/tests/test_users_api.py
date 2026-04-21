@@ -144,6 +144,8 @@ def test_friend_status_and_user_profile(client):
     body = prof.json()
     assert body["username"] == "galuser"
     assert "total_sessions" in body
+    assert "reliability_score" in body
+    assert "reliability_rank_percent" in body
 
     t_c = _register(client, "g3@example.com", "patuser")
     rc = client.get("/auth/me", headers={"Authorization": f"Bearer {t_c}"})
@@ -153,3 +155,15 @@ def test_friend_status_and_user_profile(client):
 
     stranger = client.get("/users/99999/profile", headers={"Authorization": f"Bearer {t_a}"})
     assert stranger.status_code == 404
+
+
+def test_me_reliability_returns_score(client):
+    token = _register(client, "rel1@example.com", "reluser")
+    response = client.get("/users/me/reliability", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    body = response.json()
+    assert "score" in body
+    assert "trend" in body
+    assert "rank_percent" in body
+    assert "consistency_90d" in body
+    assert "completion_rate_90d" in body

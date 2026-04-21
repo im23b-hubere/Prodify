@@ -192,6 +192,7 @@ export function useFriendsScreenActions({ token, userId, t, load, state, openSes
   const openGoalEditor = useCallback(() => {
     state.setGoalTargetInput(String(Math.max(1, state.commitment?.target_sessions ?? 5)));
     state.setGoalDaysInput(String(Math.max(3, state.commitment?.period_days ?? 7)));
+    state.setGoalWitnesses((state.commitment?.witness_user_ids ?? []).slice(0, 3));
     state.setGoalEditorOpen(true);
   }, [state]);
 
@@ -217,6 +218,7 @@ export function useFriendsScreenActions({ token, userId, t, load, state, openSes
           visibility: "friends",
           commitment_key: "sessions",
           period_days: periodDays,
+          witness_user_ids: state.goalWitnesses.slice(0, 3),
         },
       });
       await load();
@@ -369,6 +371,41 @@ export function useFriendsScreenActions({ token, userId, t, load, state, openSes
     [load, state, t, token],
   );
 
+  const supportStreakBreak = useCallback(
+    async (item: FriendActivityDto) => {
+      if (!token || !item.user_id || item.user_id <= 0) return;
+      state.setBusyActionKey("streak_support");
+      try {
+        const canRescue =
+          state.buddy?.status === "active" && state.buddy.buddy_user_id === item.user_id;
+        if (canRescue) {
+          await apiJson("/social/streak/rescue", {
+            token,
+            method: "POST",
+            body: { rescued_user_id: item.user_id },
+          });
+          state.showToast(t("friendsScreen.streakSupportRescueSuccess"));
+        } else {
+          await apiJson("/social/streak/encourage", {
+            token,
+            method: "POST",
+            body: { rescued_user_id: item.user_id },
+          });
+          state.showToast(t("friendsScreen.streakSupportEncourageSuccess"));
+        }
+        await load();
+      } catch (e) {
+        Alert.alert(
+          t("friendsScreen.errorGeneric"),
+          e instanceof Error ? e.message : t("common.tryAgain"),
+        );
+      } finally {
+        state.setBusyActionKey(null);
+      }
+    },
+    [load, state, t, token],
+  );
+
   const triggerCards = useMemo<FriendsTriggerCard[]>(() => {
     const cards: FriendsTriggerCard[] = [];
     if (
@@ -492,6 +529,7 @@ export function useFriendsScreenActions({ token, userId, t, load, state, openSes
     openReactionUsers,
     toggleThumbReaction,
     acceptBuddyInvite,
+    supportStreakBreak,
     openSessionHref,
   };
 }

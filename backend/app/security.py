@@ -19,27 +19,50 @@ def hash_refresh_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    subject: str,
+    *,
+    token_version: int = 0,
+    expires_delta: timedelta | None = None,
+) -> str:
     if expires_delta is None:
         expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
     expire = datetime.now(timezone.utc) + expires_delta
-    to_encode = {"sub": subject, "exp": int(expire.timestamp()), "typ": "access"}
+    to_encode = {
+        "sub": subject,
+        "exp": int(expire.timestamp()),
+        "typ": "access",
+        "tv": int(token_version),
+    }
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def decode_access_token(token: str) -> str | None:
+def decode_access_token_claims(token: str) -> tuple[str | None, int]:
+    """Return (subject_user_id_str, token_version_claim). Missing `tv` in legacy JWTs => 0."""
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         typ = payload.get("typ")
         if typ is not None and typ != "access":
-            return None
+            return None, 0
         sub = payload.get("sub")
         if sub is None:
-            return None
+            return None, 0
         if isinstance(sub, int):
-            return str(sub)
-        if isinstance(sub, str):
-            return str(sub)
-        return None
+            sub_s = str(sub)
+        elif isinstance(sub, str):
+            sub_s = str(sub)
+        else:
+            return None, 0
+        raw_tv = payload.get("tv", 0)
+        try:
+            tv = int(raw_tv)
+        except (TypeError, ValueError):
+            tv = 0
+        return sub_s, tv
     except JWTError:
-        return None
+        return None, 0
+
+
+def decode_access_token(token: str) -> str | None:
+    sub, _tv = decode_access_token_claims(token)
+    return sub

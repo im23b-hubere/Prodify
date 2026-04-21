@@ -22,6 +22,8 @@ type Props = {
   setGoalTargetInput: (v: string) => void;
   goalDaysInput: string;
   setGoalDaysInput: (v: string) => void;
+  goalWitnesses: number[];
+  setGoalWitnesses: (updater: (prev: number[]) => number[]) => void;
   goalSaving: boolean;
   saveCommitmentTarget: () => void;
   challengeCreateOpen: boolean;
@@ -65,6 +67,8 @@ export function FriendsModals({
   setGoalTargetInput,
   goalDaysInput,
   setGoalDaysInput,
+  goalWitnesses,
+  setGoalWitnesses,
   goalSaving,
   saveCommitmentTarget,
   challengeCreateOpen,
@@ -188,6 +192,37 @@ export function FriendsModals({
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
             />
+            <Text style={styles.modalHint}>{t("friendsScreen.witnessesLabel")}</Text>
+            <View style={styles.memberChips}>
+              {friendCandidates.length === 0 ? (
+                <Text style={styles.userMeta}>{t("friendsScreen.feedEmptyMessage")}</Text>
+              ) : (
+                friendCandidates.slice(0, 12).map((entry) => {
+                  const selected = goalWitnesses.includes(entry.user_id);
+                  return (
+                    <Pressable
+                      key={`witness-${entry.user_id}`}
+                      style={[styles.memberChip, selected && styles.memberChipSelected]}
+                      onPress={() =>
+                        setGoalWitnesses((prev) => {
+                          if (prev.includes(entry.user_id)) {
+                            return prev.filter((id) => id !== entry.user_id);
+                          }
+                          if (prev.length >= 3) return prev;
+                          return [...prev, entry.user_id];
+                        })
+                      }
+                    >
+                      <Text
+                        style={[styles.memberChipText, selected && styles.memberChipTextSelected]}
+                      >
+                        {entry.username}
+                      </Text>
+                    </Pressable>
+                  );
+                })
+              )}
+            </View>
             <PrimaryButton
               label={goalSaving ? t("friendsScreen.loading") : t("friendsScreen.saveGoal")}
               disabled={goalSaving}

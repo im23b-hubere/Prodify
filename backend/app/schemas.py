@@ -38,6 +38,20 @@ class UserLogin(BaseModel):
 
 
 class UserPublic(BaseModel):
+    """Friend-visible / non-account fields (no email)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    profile_picture_url: str | None = None
+    is_premium: bool = False
+    created_at: datetime
+
+
+class UserAccountPublic(BaseModel):
+    """Authenticated account view — includes email for the signed-in user only."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -108,6 +122,8 @@ class SessionUpdate(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
     mood_level: int | None = Field(default=None, ge=1, le=5)
     tags: list[str] | None = None
+    track_outcome: Literal["none", "wip", "finished"] | None = None
+    track_title: str | None = Field(default=None, max_length=160)
 
     @field_validator("notes")
     @classmethod
@@ -134,6 +150,14 @@ class SessionUpdate(BaseModel):
             out.append(s)
         return out or None
 
+    @field_validator("track_title")
+    @classmethod
+    def sanitize_track_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = " ".join(value.strip().split())
+        return cleaned or None
+
 
 class SessionPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -150,6 +174,8 @@ class SessionPublic(BaseModel):
     paused_duration_seconds: int = 0
     pause_started_at: datetime | None = None
     focus_score: int | None = None
+    track_outcome: Literal["none", "wip", "finished"] | None = None
+    track_title: str | None = None
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -237,6 +263,9 @@ class FriendLeaderboardEntryPublic(BaseModel):
     is_threatening_you: bool = False
     is_premium: bool = False
     profile_picture_url: str | None = None
+    streak_status_key: str = "starting"
+    streak_status_label: str = "STARTING"
+    streak_status_emoji: str = "🌱"
 
 
 class FriendLeaderboardPublic(BaseModel):
@@ -257,6 +286,11 @@ class FriendActivityPublic(BaseModel):
     reactions_count: int = 0
     comments_count: int = 0
     viewer_reaction: str | None = None
+    streak_status_key: str = "starting"
+    streak_status_label: str = "STARTING"
+    streak_status_emoji: str = "🌱"
+    event_message: str | None = None
+    streak_break_days: int | None = None
 
 
 class FriendshipPublic(BaseModel):
@@ -500,6 +534,20 @@ class UserFriendProfilePublic(BaseModel):
     is_premium: bool = False
     identity_tags: list[str] = Field(default_factory=list)
     created_at: datetime
+    reliability_score: float = 0.0
+    reliability_trend: Literal["up", "down", "stable"] = "stable"
+    reliability_rank_percent: int = 100
+    streak_status_key: str = "starting"
+    streak_status_label: str = "STARTING"
+    streak_status_emoji: str = "🌱"
+
+
+class ReliabilityScorePublic(BaseModel):
+    score: float
+    trend: Literal["up", "down", "stable"]
+    rank_percent: int
+    consistency_90d: float
+    completion_rate_90d: float
 
 
 class UserFriendStatsPublic(BaseModel):
@@ -578,6 +626,19 @@ class CoachDebriefPublic(BaseModel):
     didnt_go_well: list[str] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)
     tone: str = "motivating_realistic"
+
+
+class OutputMetricsPublic(BaseModel):
+    tracks_finished_30d: int
+    avg_completion_time_days: float
+    release_consistency: float
+    productivity_trend: Literal["up", "down", "stable"]
+    vs_previous_month: float
+    days_using: int
+    completed_tracks: int
+    consistency_improvement: float
+    output_increase: float
+    baseline_tracks_30d: int
 
 
 class KpiSummaryPublic(BaseModel):
@@ -801,6 +862,7 @@ class CommitmentBody(BaseModel):
     visibility: Literal["friends", "buddy"] = "friends"
     commitment_key: Literal["sessions", "checkins", "focus_hours"] = "sessions"
     period_days: int = Field(default=7, ge=7, le=30)
+    witness_user_ids: list[int] = Field(default_factory=list)
 
 
 class CommitmentPublic(BaseModel):
@@ -812,6 +874,8 @@ class CommitmentPublic(BaseModel):
     status: Literal["on_track", "behind", "completed"]
     visibility: str
     upsell_hint: str | None = None
+    witness_user_ids: list[int] = Field(default_factory=list)
+    witness_usernames: list[str] = Field(default_factory=list)
 
 
 class StreakRescueBody(BaseModel):

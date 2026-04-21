@@ -61,6 +61,16 @@ export function tryParseSessionDto(value: unknown): SessionDto | null {
       : typeof v.focus_score === "number" && Number.isFinite(v.focus_score)
         ? Math.round(v.focus_score)
         : null;
+  const track_outcome =
+    v.track_outcome === "none" || v.track_outcome === "wip" || v.track_outcome === "finished"
+      ? v.track_outcome
+      : null;
+  const track_title =
+    v.track_title === null || v.track_title === undefined
+      ? null
+      : typeof v.track_title === "string"
+        ? v.track_title
+        : null;
 
   return {
     id,
@@ -75,6 +85,8 @@ export function tryParseSessionDto(value: unknown): SessionDto | null {
     paused_duration_seconds,
     pause_started_at,
     focus_score,
+    track_outcome,
+    track_title,
   };
 }
 

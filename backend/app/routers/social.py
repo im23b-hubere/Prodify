@@ -6,9 +6,10 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.dependencies_subscription import user_has_premium_access
@@ -19,6 +20,7 @@ from app.models import (
     CheckinPlan,
     Friendship,
     FriendshipStatus,
+    GrowthEvent,
     ProductionSession,
     SocialChallenge,
     SocialChallengeMember,
@@ -57,6 +59,9 @@ from app.schemas import (
     StreakRescueBody,
 )
 from app.streakutil import dump_frozen_json, parse_frozen_json
+from app.timeutil import as_utc_aware
+from app.services.kpi_tracker import track_event
+from app.services.push_dispatch import send_ping
 from app.services.progression_service import grant_xp
 
 router = APIRouter(prefix="/social", tags=["social"])
@@ -88,7 +93,14 @@ def _session_count_for_week(db: Session, user_id: int, week_start: str) -> int:
             ProductionSession.duration_seconds.is_not(None),
         )
     ).all()
-    return sum(1 for r in rows if (r.started_at.date() - timedelta(days=r.started_at.date().weekday())).isoformat() == week_start)
+    return sum(
+        1
+        for r in rows
+        if (
+            as_utc_aware(r.started_at).date() - timedelta(days=as_utc_aware(r.started_at).date().weekday())
+        ).isoformat()
+        == week_start
+    )
 
 
 def _current_buddy_row(db: Session, user_id: int) -> BuddyRelationship | None:
@@ -129,61 +141,252 @@ def _identity_tags(db: Session, user: User) -> list[str]:
     sessions_this_week = _session_count_for_week(db, user.id, wk)
     if sessions_this_week >= 4:
         tags.append("consistent_creator")
-    checkins_week = db.scalars(
-        select(CheckinLog).where(CheckinLog.user_id == user.id, CheckinLog.day_key >= wk)
-    ).all()
-    if len(checkins_week) >= 3 and "consistent_creator" not in tags:
-        tags.append("consistent_creator")
-    supportive_score = 0
-    supportive_score += len(
-        db.scalars(select(SocialComment).where(SocialComment.author_id == user.id)).all()
+    checkins_week_count = int(
+        db.scalar(
+            select(func.count())
+            .select_from(CheckinLog)
+            .where(CheckinLog.user_id == user.id, CheckinLog.day_key >= wk)
+        )
+        or 0
     )
-    supportive_score += len(
-        db.scalars(select(StreakRescue).where(StreakRescue.rescuer_user_id == user.id)).all()
-    ) * 2
+    if checkins_week_count >= 3 and "consistent_creator" not in tags:
+        tags.append("consistent_creator")
+    comment_count = int(
+        db.scalar(select(func.count()).select_from(SocialComment).where(SocialComment.author_id == user.id)) or 0
+    )
+    rescue_count = int(
+        db.scalar(
+            select(func.count()).select_from(StreakRescue).where(StreakRescue.rescuer_user_id == user.id)
+        )
+        or 0
+    )
+    supportive_score = comment_count + rescue_count * 2
     if supportive_score >= 2:
         tags.append("collaborative")
-    challenge_rows = db.scalars(
-        select(SocialChallengeMember).where(SocialChallengeMember.user_id == user.id)
-    ).all()
-    if challenge_rows:
-        lead_count = 0
-        for member in challenge_rows:
-            peers = db.scalars(
-                select(SocialChallengeMember).where(SocialChallengeMember.challenge_id == member.challenge_id)
-            ).all()
-            if peers and member.progress_sessions >= max(int(p.progress_sessions or 0) for p in peers):
-                lead_count += 1
-        if lead_count > 0:
-            tags.append("competitive")
-    momentum_like = sessions_this_week + len(checkins_week) + min(3, len(challenge_rows))
+    challenge_count = int(
+        db.scalar(
+            select(func.count()).select_from(SocialChallengeMember).where(SocialChallengeMember.user_id == user.id)
+        )
+        or 0
+    )
+    if challenge_count > 0:
+        tags.append("competitive")
+    momentum_like = sessions_this_week + checkins_week_count + min(3, challenge_count)
     if momentum_like >= 6:
         tags.append("locked_in")
     now = utcnow()
-    recent_7 = db.scalars(
-        select(ProductionSession).where(
-            ProductionSession.user_id == user.id,
-            ProductionSession.deleted_at.is_(None),
-            ProductionSession.duration_seconds.is_not(None),
-            ProductionSession.started_at >= now - timedelta(days=7),
+    recent_7_count = int(
+        db.scalar(
+            select(func.count())
+            .select_from(ProductionSession)
+            .where(
+                ProductionSession.user_id == user.id,
+                ProductionSession.deleted_at.is_(None),
+                ProductionSession.duration_seconds.is_not(None),
+                ProductionSession.started_at >= now - timedelta(days=7),
+            )
         )
-    ).all()
-    prior_30_to_7 = db.scalars(
-        select(ProductionSession).where(
-            ProductionSession.user_id == user.id,
-            ProductionSession.deleted_at.is_(None),
-            ProductionSession.duration_seconds.is_not(None),
-            ProductionSession.started_at < now - timedelta(days=7),
-            ProductionSession.started_at >= now - timedelta(days=30),
+        or 0
+    )
+    prior_30_to_7_count = int(
+        db.scalar(
+            select(func.count())
+            .select_from(ProductionSession)
+            .where(
+                ProductionSession.user_id == user.id,
+                ProductionSession.deleted_at.is_(None),
+                ProductionSession.duration_seconds.is_not(None),
+                ProductionSession.started_at < now - timedelta(days=7),
+                ProductionSession.started_at >= now - timedelta(days=30),
+            )
         )
-    ).all()
-    if len(recent_7) >= 2 and len(prior_30_to_7) == 0:
+        or 0
+    )
+    if recent_7_count >= 2 and prior_30_to_7_count == 0:
         tags.append("building_momentum")
     return tags[:2] if tags else ["creator"]
 
 
 def _is_premium(db: Session, user: User) -> bool:
     return user_has_premium_access(db, user)
+
+
+def _load_commitment_witness_config(db: Session, user_id: int, week_start: str, commitment_key: str) -> list[int]:
+    rows = db.scalars(
+        select(GrowthEvent)
+        .where(
+            GrowthEvent.user_id == user_id,
+            GrowthEvent.event_name == "commitment_witness_config",
+        )
+        .order_by(GrowthEvent.created_at.desc())
+    ).all()
+    for row in rows:
+        try:
+            props = json.loads(row.event_props_json or "{}")
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(props, dict):
+            continue
+        if str(props.get("week_start")) != week_start or str(props.get("commitment_key")) != commitment_key:
+            continue
+        raw = props.get("witness_user_ids")
+        if isinstance(raw, list):
+            out: list[int] = []
+            for item in raw:
+                try:
+                    uid = int(item)
+                except (TypeError, ValueError):
+                    continue
+                if uid > 0:
+                    out.append(uid)
+            return sorted(set(out))
+    return []
+
+
+def _save_commitment_witness_config(
+    db: Session,
+    *,
+    user_id: int,
+    week_start: str,
+    commitment_key: str,
+    witness_user_ids: list[int],
+) -> None:
+    track_event(
+        db,
+        "commitment_witness_config",
+        user_id=user_id,
+        props={
+            "week_start": week_start,
+            "commitment_key": commitment_key,
+            "witness_user_ids": witness_user_ids,
+        },
+    )
+    db.commit()
+
+
+def _witness_user_ids(
+    db: Session,
+    user_id: int,
+    week_start: str,
+    commitment_key: str,
+    limit: int = 3,
+) -> list[int]:
+    friend_ids = _friend_user_ids(db, user_id)
+    configured = _load_commitment_witness_config(db, user_id, week_start, commitment_key)
+    if configured:
+        filtered = [uid for uid in configured if uid in set(friend_ids)]
+        return filtered[: max(0, limit)]
+    return friend_ids[: max(0, limit)]
+
+
+def _witness_usernames(db: Session, witness_ids: list[int]) -> list[str]:
+    if not witness_ids:
+        return []
+    users = db.scalars(select(User).where(User.id.in_(witness_ids))).all()
+    by_id = {u.id: u.username for u in users}
+    return [by_id[uid] for uid in witness_ids if uid in by_id]
+
+
+def _has_growth_event(
+    db: Session,
+    *,
+    user_id: int,
+    event_name: str,
+    week_start: str,
+    commitment_key: str,
+    notify_kind: str,
+    marker: str,
+) -> bool:
+    rows = db.scalars(
+        select(GrowthEvent).where(
+            GrowthEvent.user_id == user_id,
+            GrowthEvent.event_name == event_name,
+        )
+    ).all()
+    for row in rows:
+        try:
+            props = json.loads(row.event_props_json or "{}")
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(props, dict):
+            continue
+        if (
+            str(props.get("week_start")) == week_start
+            and str(props.get("commitment_key")) == commitment_key
+            and str(props.get("notify_kind")) == notify_kind
+            and str(props.get("marker")) == marker
+        ):
+            return True
+    return False
+
+
+def _notify_commitment_witnesses(
+    db: Session,
+    *,
+    actor: User,
+    week_start: str,
+    commitment_key: str,
+    target_sessions: int,
+    current_sessions: int,
+    status: str,
+    notify_kind: str,
+    marker: str,
+) -> None:
+    if _has_growth_event(
+        db,
+        user_id=actor.id,
+        event_name="commitment_witness_notified",
+        week_start=week_start,
+        commitment_key=commitment_key,
+        notify_kind=notify_kind,
+        marker=marker,
+    ):
+        return
+
+    witness_ids = _witness_user_ids(db, actor.id, week_start, commitment_key, limit=3)
+    if notify_kind == "started":
+        title = "New public commitment"
+        body = f"{actor.username} committed to {target_sessions} sessions this week."
+    elif notify_kind == "completed":
+        title = "Commitment completed"
+        body = f"{actor.username} completed their commitment ({current_sessions}/{target_sessions})."
+    elif notify_kind == "behind":
+        title = "Commitment at risk"
+        body = f"{actor.username} is behind ({current_sessions}/{target_sessions}). Encourage them."
+    else:
+        title = "Commitment progress"
+        body = f"{actor.username} is at {current_sessions}/{target_sessions} this week."
+
+    for witness_id in witness_ids:
+        send_ping(
+            settings,
+            db,
+            witness_id,
+            title,
+            body,
+            data={
+                "kind": "commitment_witness",
+                "notify_kind": notify_kind,
+                "user_id": str(actor.id),
+                "week_start": week_start,
+                "commitment_key": commitment_key,
+            },
+        )
+
+    track_event(
+        db,
+        "commitment_witness_notified",
+        user_id=actor.id,
+        props={
+            "week_start": week_start,
+            "commitment_key": commitment_key,
+            "notify_kind": notify_kind,
+            "marker": marker,
+            "witness_count": len(witness_ids),
+            "status": status,
+        },
+    )
+    db.commit()
 
 
 @router.get("/buddy", response_model=BuddyStatusPublic)
@@ -659,6 +862,13 @@ def set_commitment(
     if not premium and body.commitment_key != "sessions":
         raise HTTPException(status_code=402, detail="Track multiple commitments with Premium.")
     wk = _week_start_key()
+    requested_witnesses = sorted({int(uid) for uid in body.witness_user_ids if int(uid) > 0 and int(uid) != current.id})
+    if len(requested_witnesses) > 3:
+        raise HTTPException(status_code=400, detail="Pick up to 3 witnesses")
+    friend_ids = set(_friend_user_ids(db, current.id))
+    invalid_witnesses = [uid for uid in requested_witnesses if uid not in friend_ids]
+    if invalid_witnesses:
+        raise HTTPException(status_code=403, detail="Witnesses must be accepted friends")
     row = db.scalar(
         select(SocialCommitment).where(
             SocialCommitment.user_id == current.id,
@@ -681,6 +891,37 @@ def set_commitment(
     row.visibility = body.visibility
     row.commitment_key = body.commitment_key
     row.period_days = body.period_days
+    db.commit()
+    _save_commitment_witness_config(
+        db,
+        user_id=current.id,
+        week_start=wk,
+        commitment_key=row.commitment_key,
+        witness_user_ids=requested_witnesses,
+    )
+    _notify_commitment_witnesses(
+        db,
+        actor=current,
+        week_start=wk,
+        commitment_key=row.commitment_key,
+        target_sessions=row.target_sessions,
+        current_sessions=0,
+        status="on_track",
+        notify_kind="started",
+        marker=f"target:{row.target_sessions}",
+    )
+    track_event(
+        db,
+        "commitment_published",
+        user_id=current.id,
+        props={
+            "week_start": wk,
+            "commitment_key": row.commitment_key,
+            "target_sessions": row.target_sessions,
+            "witness_count": len(requested_witnesses),
+            "witness_user_ids": requested_witnesses,
+        },
+    )
     db.commit()
     return commitment_status(current, db)
 
@@ -708,6 +949,24 @@ def commitment_status(
         status = "on_track"
     else:
         status = "behind"
+    notify_kind = "progress"
+    if status == "completed":
+        notify_kind = "completed"
+    elif status == "behind":
+        notify_kind = "behind"
+    _notify_commitment_witnesses(
+        db,
+        actor=current,
+        week_start=wk,
+        commitment_key=row.commitment_key,
+        target_sessions=row.target_sessions,
+        current_sessions=cur,
+        status=status,
+        notify_kind=notify_kind,
+        marker=f"{status}:{cur}",
+    )
+    witness_ids = _witness_user_ids(db, current.id, wk, row.commitment_key, limit=3)
+    witness_names = _witness_usernames(db, witness_ids)
     return CommitmentPublic(
         week_start=wk,
         commitment_key=row.commitment_key,
@@ -717,6 +976,8 @@ def commitment_status(
         status=status,
         visibility=row.visibility,
         upsell_hint=None if premium else "Track more goals with Premium.",
+        witness_user_ids=witness_ids,
+        witness_usernames=witness_names,
     )
 
 
@@ -747,6 +1008,11 @@ def list_commitments(
                 status=status,
                 visibility=row.visibility,
                 upsell_hint=None if premium else "Track more goals with Premium.",
+                witness_user_ids=_witness_user_ids(db, current.id, wk, row.commitment_key, limit=3),
+                witness_usernames=_witness_usernames(
+                    db,
+                    _witness_user_ids(db, current.id, wk, row.commitment_key, limit=3),
+                ),
             )
         )
     return out
@@ -799,6 +1065,40 @@ def rescue_streak(
     )
     db.commit()
     return {"message": "Buddy streak rescued", "rescued_user_id": buddy_id}
+
+
+@router.post("/streak/encourage", response_model=dict[str, str | int])
+def encourage_streak_restart(
+    body: StreakRescueBody,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    target = db.get(User, body.rescued_user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == current.id:
+        raise HTTPException(status_code=400, detail="Cannot encourage yourself")
+    if body.rescued_user_id not in set(_friend_user_ids(db, current.id)):
+        raise HTTPException(status_code=403, detail="You can only encourage friends")
+
+    title = "Your crew has your back"
+    body_text = f"{current.username} sent support after your streak break. Start fresh today."
+    send_ping(
+        settings,
+        db,
+        target.id,
+        title,
+        body_text,
+        data={"kind": "streak_encouragement", "from_user_id": str(current.id)},
+    )
+    track_event(
+        db,
+        "streak_encouragement_sent",
+        user_id=current.id,
+        props={"target_user_id": target.id},
+    )
+    db.commit()
+    return {"message": "Encouragement sent", "rescued_user_id": target.id}
 
 
 @router.get("/weekly-recap", response_model=SocialWeeklyRecapPublic)

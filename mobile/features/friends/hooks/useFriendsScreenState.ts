@@ -55,6 +55,7 @@ export function useFriendsScreenState() {
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   const [goalTargetInput, setGoalTargetInput] = useState("5");
   const [goalDaysInput, setGoalDaysInput] = useState("7");
+  const [goalWitnesses, setGoalWitnesses] = useState<number[]>([]);
   const [goalSaving, setGoalSaving] = useState(false);
   const [sectionTab, setSectionTab] = useState<"overview" | "tools">("overview");
   const [feedMetricsBySession, setFeedMetricsBySession] = useState<FeedMetrics>({});
@@ -157,6 +158,8 @@ export function useFriendsScreenState() {
     setGoalTargetInput,
     goalDaysInput,
     setGoalDaysInput,
+    goalWitnesses,
+    setGoalWitnesses,
     goalSaving,
     setGoalSaving,
     sectionTab,

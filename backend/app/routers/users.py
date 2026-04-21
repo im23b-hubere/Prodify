@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import (
+    AnalyticsEventDedupe,
     BuddyRelationship,
     ChallengeParticipant,
     CheckinLog,
@@ -31,6 +32,7 @@ from app.models import (
     SocialChallengeMember,
     SocialReaction,
     Streak,
+    StreakBreakNotifyDedupe,
     StreakReminderDispatchLog,
     StreakRescue,
     User,
@@ -46,11 +48,15 @@ from app.models import (
 from app.schemas import (
     AchievementUnlockedPublic,
     HeatmapDayPublic,
+    ReliabilityScorePublic,
+    UserAccountPublic,
     UserFriendProfilePublic,
     UserFriendStatsPublic,
-    UserPublic,
     UserPublicSessionItem,
 )
+from app.services.reliability_service import ReliabilityScoreService
+from app.services.streak_reconcile_service import compute_streak_counts_for_display
+from app.services.streak_status_service import streak_status_for_days
 from app.timeutil import as_utc_aware
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -91,10 +97,12 @@ def _delete_profile_picture_file(profile_picture_url: str | None) -> None:
 
 def _purge_user_data(db: Session, user_id: int) -> None:
     direct_user_models = [
+        AnalyticsEventDedupe,
         RefreshToken,
         PushToken,
         ProductionSession,
         Streak,
+        StreakBreakNotifyDedupe,
         UserGoal,
         UserAchievement,
         UserSubscription,
@@ -236,7 +244,7 @@ def _identity_tags_for_profile(db: Session, user_id: int) -> list[str]:
     return tags[:2] if tags else ["creator"]
 
 
-@router.post("/me/profile-picture", response_model=UserPublic)
+@router.post("/me/profile-picture", response_model=UserAccountPublic)
 async def upload_profile_picture(
     request: Request,
     current: Annotated[User, Depends(get_current_user)],
@@ -259,6 +267,25 @@ async def upload_profile_picture(
 
     ext = MIME_TO_EXT[detected_mime]
 
+    # Re-encode to strip metadata / normalize payload (best-effort if Pillow is unavailable).
+    try:
+        from io import BytesIO
+
+        from PIL import Image
+
+        img = Image.open(BytesIO(content))
+        img = img.convert("RGB") if detected_mime == "image/jpeg" else img.convert("RGBA")
+        buf = BytesIO()
+        if detected_mime == "image/jpeg":
+            img.save(buf, format="JPEG", quality=88, optimize=True)
+        elif detected_mime == "image/png":
+            img.save(buf, format="PNG", optimize=True)
+        else:
+            img.save(buf, format="WEBP", quality=85, method=6)
+        content = buf.getvalue()
+    except Exception:
+        pass
+
     filename = f"{current.id}-{secrets.token_hex(8)}{ext}"
     target = PROFILE_UPLOAD_DIR / filename
     target.write_bytes(content)
@@ -278,7 +305,7 @@ async def upload_profile_picture(
     # Return absolute URL to avoid client-side URL joining bugs.
     base = str(request.base_url).rstrip("/")
     absolute_url = f"{base}{current.profile_picture_url}" if current.profile_picture_url else None
-    return UserPublic(
+    return UserAccountPublic(
         id=current.id,
         email=current.email,
         username=current.username,
@@ -295,6 +322,7 @@ def get_user_profile(
     db: Annotated[Session, Depends(get_db)],
 ):
     user = _require_friend_profile(db, current, user_id)
+    reliability = ReliabilityScoreService.calculate(user_id, db)
 
     completed = db.scalars(
         select(ProductionSession).where(
@@ -306,8 +334,11 @@ def get_user_profile(
     total_sessions = len(completed)
 
     streak_row = db.scalar(select(Streak).where(Streak.user_id == user_id))
-    cur = int(streak_row.current_streak or 0) if streak_row else 0
-    longest = int(streak_row.longest_streak or 0) if streak_row else 0
+    cur, longest = compute_streak_counts_for_display(db, user_id)
+    inactive_days = 0
+    if streak_row and streak_row.last_session_date:
+        inactive_days = max((utcnow().date() - streak_row.last_session_date.date()).days, 0)
+    status_key, status_label, status_emoji = streak_status_for_days(cur, inactive_days)
 
     return UserFriendProfilePublic(
         id=user.id,
@@ -320,6 +351,27 @@ def get_user_profile(
         is_premium=bool(int(user.is_premium or 0)),
         identity_tags=_identity_tags_for_profile(db, user_id),
         created_at=user.created_at,
+        reliability_score=reliability.score,
+        reliability_trend=reliability.trend,
+        reliability_rank_percent=reliability.rank_percent,
+        streak_status_key=status_key,
+        streak_status_label=status_label,
+        streak_status_emoji=status_emoji,
+    )
+
+
+@router.get("/me/reliability", response_model=ReliabilityScorePublic)
+def get_my_reliability(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    result = ReliabilityScoreService.calculate(current.id, db)
+    return ReliabilityScorePublic(
+        score=result.score,
+        trend=result.trend,
+        rank_percent=result.rank_percent,
+        consistency_90d=result.consistency_90d,
+        completion_rate_90d=result.completion_rate_90d,
     )
 
 
@@ -349,9 +401,7 @@ def get_user_stats(
         day_counts[as_utc_aware(s.started_at).strftime("%A")] += 1
     best_day = max(day_counts.items(), key=lambda x: x[1])[0] if day_counts else None
 
-    streak_row = db.scalar(select(Streak).where(Streak.user_id == user_id))
-    cur = int(streak_row.current_streak or 0) if streak_row else 0
-    longest = int(streak_row.longest_streak or 0) if streak_row else 0
+    cur, longest = compute_streak_counts_for_display(db, user_id)
 
     ach_rows = db.scalars(select(UserAchievement).where(UserAchievement.user_id == user_id)).all()
     achievements = [AchievementUnlockedPublic(id=r.achievement_type, unlocked_at=r.unlocked_at) for r in ach_rows]

@@ -157,6 +157,7 @@ export function useDashboardData(token: string | null) {
     if (!token) return;
     const seq = ++loadStreakSeq.current;
     try {
+      await apiJson("/streak/reconcile", { method: "POST", token }).catch(() => undefined);
       const data = await apiJson<StreakOverviewDto>("/streak/overview", { token });
       if (seq !== loadStreakSeq.current) return;
       setStreakOverview(data);

@@ -42,3 +42,16 @@ export type ProgressionDto = {
   xp_to_next_level: number;
   progress_percent: number;
 };
+
+export type OutputMetricsDto = {
+  tracks_finished_30d: number;
+  avg_completion_time_days: number;
+  release_consistency: number;
+  productivity_trend: "up" | "down" | "stable";
+  vs_previous_month: number;
+  days_using: number;
+  completed_tracks: number;
+  consistency_improvement: number;
+  output_increase: number;
+  baseline_tracks_30d: number;
+};

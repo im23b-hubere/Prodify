@@ -1,9 +1,7 @@
 jest.mock("@react-native-community/netinfo", () => ({
   __esModule: true,
   default: {
-    fetch: jest.fn(() =>
-      Promise.resolve({ isConnected: true, isInternetReachable: true }),
-    ),
+    fetch: jest.fn(() => Promise.resolve({ isConnected: true, isInternetReachable: true })),
   },
 }));
 
@@ -12,6 +10,7 @@ jest.mock("../../constants/api", () => ({
   getAppEnvironment: () => "development",
 }));
 
+import NetInfo from "@react-native-community/netinfo";
 import { apiJson, ApiError } from "../../lib/client";
 
 describe("apiJson error parsing", () => {
@@ -65,5 +64,20 @@ describe("apiJson error parsing", () => {
     await expect(apiJson("/sessions/start", { method: "POST", body: {} })).rejects.toThrow(
       "Validation failed",
     );
+  });
+
+  it("still performs request when LAN reports isInternetReachable false", async () => {
+    (NetInfo.fetch as jest.Mock).mockResolvedValueOnce({
+      isConnected: true,
+      isInternetReachable: false,
+    });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 204,
+      text: async () => "",
+    });
+
+    await expect(apiJson("/users/me", { method: "DELETE", token: "t" })).resolves.toBeNull();
+    expect(global.fetch).toHaveBeenCalled();
   });
 });

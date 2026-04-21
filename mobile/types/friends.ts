@@ -17,6 +17,9 @@ export type FriendLeaderboardEntryDto = {
   is_threatening_you?: boolean;
   is_premium?: boolean;
   profile_picture_url?: string | null;
+  streak_status_key?: string;
+  streak_status_label?: string;
+  streak_status_emoji?: string;
 };
 
 export type FriendLeaderboardDto = {
@@ -37,6 +40,11 @@ export type FriendActivityDto = {
   reactions_count?: number;
   comments_count?: number;
   viewer_reaction?: string | null;
+  streak_status_key?: string;
+  streak_status_label?: string;
+  streak_status_emoji?: string;
+  event_message?: string | null;
+  streak_break_days?: number | null;
 };
 
 export type BuddyStatusDto = {
@@ -90,6 +98,8 @@ export type CommitmentDto = {
   status: "on_track" | "behind" | "completed";
   visibility: string;
   upsell_hint?: string | null;
+  witness_user_ids?: number[];
+  witness_usernames?: string[];
 };
 
 export type SocialReactionDto = {
@@ -151,4 +161,12 @@ export type IdentityStateDto = {
   secondary_tag?: string | null;
   tags: string[];
   line: string;
+};
+
+export type ReliabilityScoreDto = {
+  score: number;
+  trend: "up" | "down" | "stable";
+  rank_percent: number;
+  consistency_90d: number;
+  completion_rate_90d: number;
 };

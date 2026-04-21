@@ -40,6 +40,12 @@ type ProfilePayload = {
   is_premium?: boolean;
   identity_tags?: string[];
   created_at: string;
+  reliability_score?: number;
+  reliability_trend?: "up" | "down" | "stable";
+  reliability_rank_percent?: number;
+  streak_status_key?: string;
+  streak_status_label?: string;
+  streak_status_emoji?: string;
 };
 
 type StatsPayload = {
@@ -188,6 +194,8 @@ export default function FriendProfileScreen() {
               status={status === "self" ? "self" : "accepted"}
               isPremium={Boolean(profile.is_premium)}
               identityTags={profile.identity_tags ?? []}
+              streakStatusLabel={profile.streak_status_label}
+              streakStatusEmoji={profile.streak_status_emoji}
             />
 
             {status !== "self" ? (
@@ -195,6 +203,26 @@ export default function FriendProfileScreen() {
                 <StreakComparison yourStreak={yourStreak} theirStreak={stats.current_streak} />
               </View>
             ) : null}
+
+            <View style={styles.statsCard}>
+              <Text style={styles.cardTitle}>{t("friendProfile.reliabilityTitle")}</Text>
+              <Text style={styles.lineStrong}>
+                {(profile.reliability_score ?? 0).toFixed(1)}
+                /10
+              </Text>
+              <Text style={styles.line}>
+                {t("friendProfile.reliabilityRank", {
+                  rank: profile.reliability_rank_percent ?? 100,
+                })}
+              </Text>
+              <Text style={styles.line}>
+                {profile.reliability_trend === "up"
+                  ? t("friendProfile.reliabilityTrendUp")
+                  : profile.reliability_trend === "down"
+                    ? t("friendProfile.reliabilityTrendDown")
+                    : t("friendProfile.reliabilityTrendStable")}
+              </Text>
+            </View>
 
             <View style={styles.statsCard}>
               <Text style={styles.cardTitle}>{t("friendProfile.overview")}</Text>

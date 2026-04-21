@@ -41,6 +41,8 @@ class User(Base):
     premium_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     bonus_rescues: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     bonus_challenge_slots: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Incremented on logout (and similar events) to invalidate outstanding access JWTs (`tv` claim).
+    access_token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     sessions: Mapped[list["ProductionSession"]] = relationship(
@@ -93,6 +95,8 @@ class ProductionSession(Base):
     paused_duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pause_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     focus_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    track_outcome: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    track_title: Mapped[str | None] = mapped_column(String(160), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="sessions")
 
@@ -233,6 +237,30 @@ class GrowthEvent(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True)
     event_name: Mapped[str] = mapped_column(String(96), nullable=False)
     event_props_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StreakBreakNotifyDedupe(Base):
+    """At most one streak-break friend notification per user per UTC calendar day."""
+
+    __tablename__ = "streak_break_notify_dedupe"
+    __table_args__ = (UniqueConstraint("user_id", "utc_day_key", name="uq_streak_break_notify_user_day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    utc_day_key: Mapped[str] = mapped_column(String(10), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AnalyticsEventDedupe(Base):
+    """Deduplicate high-frequency analytics writes (e.g. repeated GETs) per user + logical bucket."""
+
+    __tablename__ = "analytics_event_dedupe"
+    __table_args__ = (UniqueConstraint("user_id", "bucket_key", name="uq_analytics_event_dedupe_user_bucket"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    bucket_key: Mapped[str] = mapped_column(String(192), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

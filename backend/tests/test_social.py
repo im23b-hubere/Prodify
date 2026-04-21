@@ -1,7 +1,9 @@
+from datetime import timedelta
+
 from sqlalchemy import select
 
 from app.database import SessionLocal
-from app.models import BuddyRelationship, BuddyStatus, Streak, User
+from app.models import BuddyRelationship, BuddyStatus, GrowthEvent, Streak, User, utcnow
 
 
 def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
@@ -87,6 +89,15 @@ def test_commitment_status_behind_and_completed(client):
     status = client.get("/social/commitment", headers=a)
     assert status.status_code == 200
     assert status.json()["status"] == "completed"
+
+    with SessionLocal() as db:
+        witness_events = db.scalars(
+            select(GrowthEvent).where(
+                GrowthEvent.user_id == 1,
+                GrowthEvent.event_name == "commitment_witness_notified",
+            )
+        ).all()
+        assert len(witness_events) >= 1
 
 
 def test_streak_rescue_rules_and_limit(client):
@@ -243,3 +254,76 @@ def test_identity_endpoint_and_recap_identity_tag(client):
     recap = client.get("/social/weekly-recap", headers=b)
     assert recap.status_code == 200
     assert "identity_tag" in recap.json()
+
+
+def test_streak_break_creates_social_consequence_event_once(client):
+    a = _auth_headers(client, "social-o@example.com", "social-o")
+    b = _auth_headers(client, "social-p@example.com", "social-p")
+    _make_friends(client, a, b, "social-p")
+
+    with SessionLocal() as db:
+        row = db.scalar(select(Streak).where(Streak.user_id == 1))
+        assert row is not None
+        row.current_streak = 6
+        row.longest_streak = max(int(row.longest_streak or 0), 6)
+        row.last_session_date = utcnow() - timedelta(days=2)
+        db.commit()
+
+    first = client.post("/streak/reconcile", headers=a)
+    assert first.status_code == 204
+    second = client.post("/streak/reconcile", headers=a)
+    assert second.status_code == 204
+
+    with SessionLocal() as db:
+        events = db.scalars(
+            select(GrowthEvent).where(
+                GrowthEvent.user_id == 1,
+                GrowthEvent.event_name == "streak_broken",
+            )
+        ).all()
+        assert len(events) == 1
+
+
+def test_streak_encourage_requires_friend_and_creates_event(client):
+    a = _auth_headers(client, "social-q@example.com", "social-q")
+    b = _auth_headers(client, "social-r@example.com", "social-r")
+    _make_friends(client, a, b, "social-r")
+
+    encourage = client.post("/social/streak/encourage", headers=a, json={"rescued_user_id": 2})
+    assert encourage.status_code == 200
+
+    with SessionLocal() as db:
+        events = db.scalars(
+            select(GrowthEvent).where(
+                GrowthEvent.user_id == 1,
+                GrowthEvent.event_name == "streak_encouragement_sent",
+            )
+        ).all()
+        assert len(events) >= 1
+
+
+def test_commitment_witness_selection_persists_and_returns(client):
+    a = _auth_headers(client, "social-s@example.com", "social-s")
+    b = _auth_headers(client, "social-t@example.com", "social-t")
+    _make_friends(client, a, b, "social-t")
+
+    created = client.post(
+        "/social/commitment",
+        headers=a,
+        json={
+            "target_sessions": 4,
+            "visibility": "friends",
+            "commitment_key": "sessions",
+            "period_days": 7,
+            "witness_user_ids": [2],
+        },
+    )
+    assert created.status_code == 200
+
+    status = client.get("/social/commitment", headers=a)
+    assert status.status_code == 200
+    body = status.json()
+    assert "witness_user_ids" in body
+    assert 2 in body["witness_user_ids"]
+    assert "witness_usernames" in body
+    assert "social-t" in body["witness_usernames"]

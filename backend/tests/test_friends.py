@@ -1,3 +1,8 @@
+from datetime import timedelta
+
+from app.models import Streak, utcnow
+
+
 def _register(client, email: str, username: str, password: str = "strong-pass-123"):
     r = client.post("/auth/register", json={"email": email, "username": username, "password": password})
     assert r.status_code == 201, r.text
@@ -39,6 +44,8 @@ def test_friend_request_accept_and_leaderboard(client):
     names = {e["username"] for e in data["entries"]}
     assert names == {"alice", "bob"}
     assert len(data["entries"]) == 2
+    assert "streak_status_label" in data["entries"][0]
+    assert "streak_status_emoji" in data["entries"][0]
 
 
 def test_friend_request_reverse_pending_rejected(client):
@@ -128,3 +135,76 @@ def test_activity_includes_reaction_and_comment_counts(client):
     assert row["reactions_count"] >= 1
     assert row["comments_count"] >= 1
     assert row["viewer_reaction"] == "👍"
+    assert "streak_status_label" in row
+    assert "streak_status_emoji" in row
+
+
+def test_activity_includes_streak_broken_event_item(client):
+    t_a = _register(client, "i@example.com", "iris")
+    t_b = _register(client, "j@example.com", "jules")
+
+    req = client.post(
+        "/friends/request",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={"username": "jules"},
+    )
+    assert req.status_code == 201
+    fid = req.json()["id"]
+    acc = client.post(f"/friends/{fid}/accept", headers={"Authorization": f"Bearer {t_b}"})
+    assert acc.status_code == 200
+
+    from app.database import SessionLocal
+
+    with SessionLocal() as db:
+        streak = db.query(Streak).filter(Streak.user_id == 1).first()
+        assert streak is not None
+        streak.current_streak = 5
+        streak.last_session_date = utcnow() - timedelta(days=2)
+        db.commit()
+
+    rec = client.post("/streak/reconcile", headers={"Authorization": f"Bearer {t_a}"})
+    assert rec.status_code == 204
+
+    feed = client.get("/friends/activity?limit=20", headers={"Authorization": f"Bearer {t_b}"})
+    assert feed.status_code == 200
+    rows = feed.json()
+    event = next((item for item in rows if item.get("status") == "streak_broken"), None)
+    assert event is not None
+    assert event["user_id"] == 1
+    assert event["session_type"] == "streak_broken"
+
+
+def test_activity_includes_commitment_published_event_item(client):
+    t_a = _register(client, "k@example.com", "kira")
+    t_b = _register(client, "l@example.com", "loki")
+
+    req = client.post(
+        "/friends/request",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={"username": "loki"},
+    )
+    assert req.status_code == 201
+    fid = req.json()["id"]
+    acc = client.post(f"/friends/{fid}/accept", headers={"Authorization": f"Bearer {t_b}"})
+    assert acc.status_code == 200
+
+    commitment = client.post(
+        "/social/commitment",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={
+            "target_sessions": 4,
+            "visibility": "friends",
+            "commitment_key": "sessions",
+            "period_days": 7,
+            "witness_user_ids": [2],
+        },
+    )
+    assert commitment.status_code == 200
+
+    feed = client.get("/friends/activity?limit=20", headers={"Authorization": f"Bearer {t_b}"})
+    assert feed.status_code == 200
+    rows = feed.json()
+    event = next((item for item in rows if item.get("status") == "commitment_published"), None)
+    assert event is not None
+    assert event["user_id"] == 1
+    assert event["session_type"] == "commitment_published"

@@ -10,6 +10,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -19,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
+import { OutputMetricsShareModal } from "../../components/outcomes/OutputMetricsShareModal";
 import { AppCard } from "../../components/ui/AppCard";
 import { StatCard } from "../../components/ui/StatCard";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
@@ -32,14 +34,18 @@ import { debugLog } from "../../lib/debugLog";
 import { formatSessionListDate, weekdayLetterFromIsoDay } from "../../lib/sessionTime";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
-import { tryParseGoalForecastDto, tryParseProgressionDto } from "../../lib/outcomesDto";
+import {
+  tryParseGoalForecastDto,
+  tryParseOutputMetricsDto,
+  tryParseProgressionDto,
+} from "../../lib/outcomesDto";
 import {
   tryParseHeatmapDays,
   tryParsePersonalRecords,
   tryParseSessionStatsDto,
 } from "../../lib/statsDto";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
-import type { GoalForecastDto, ProgressionDto } from "../../types/outcomes";
+import type { GoalForecastDto, OutputMetricsDto, ProgressionDto } from "../../types/outcomes";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 type PersonalRecord = {
@@ -188,10 +194,12 @@ export default function StatsScreen() {
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
+  const [outputMetrics, setOutputMetrics] = useState<OutputMetricsDto | null>(null);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [outputShareOpen, setOutputShareOpen] = useState(false);
   const loadSeq = useRef(0);
   const mounted = useRef(true);
 
@@ -212,13 +220,14 @@ export default function StatsScreen() {
     if (mounted.current) setLoading(true);
     if (mounted.current) setError(null);
     try {
-      const [rawStats, rawHm, rawRec, progressionRaw] = await Promise.all([
+      const [rawStats, rawHm, rawRec, progressionRaw, outputMetricsRaw] = await Promise.all([
         apiJson<unknown>(`/sessions/stats?period=${periodParam}`, { token }),
         apiJson<unknown>(`/stats/heatmap`, { token }),
         apiJson<unknown>(`/stats/records`, { token }),
         apiJson<unknown>("/progression/sync", { token, method: "POST", body: {} }).catch(
           () => null,
         ),
+        apiJson<unknown>("/outcomes/output-metrics/current", { token }).catch(() => null),
       ]);
       const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
         token,
@@ -241,6 +250,7 @@ export default function StatsScreen() {
         setHeatmapDays(tryParseHeatmapDays(rawHm));
         setRecords(tryParsePersonalRecords(rawRec));
         setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+        setOutputMetrics(outputMetricsRaw ? tryParseOutputMetricsDto(outputMetricsRaw) : null);
         setProgression(progressionRaw ? tryParseProgressionDto(progressionRaw) : null);
       }
     } catch (e) {
@@ -565,6 +575,91 @@ export default function StatsScreen() {
           />
         </ScrollView>
 
+        {outputMetrics ? (
+          <AppCard style={styles.outcomeCard}>
+            <Text style={styles.cardTitle}>{t("stats.outputMetricsTitle")}</Text>
+            <View style={styles.beforeAfterRow}>
+              <View style={styles.beforeAfterCell}>
+                <Text style={styles.beforeAfterKicker}>{t("stats.beforeProdifyLabel")}</Text>
+                <Text style={styles.beforeAfterValue}>{outputMetrics.baseline_tracks_30d}</Text>
+              </View>
+              <Text style={styles.beforeAfterArrow}>→</Text>
+              <View style={[styles.beforeAfterCell, styles.beforeAfterCellHighlight]}>
+                <Text style={styles.beforeAfterKicker}>{t("stats.nowLabel")}</Text>
+                <Text style={styles.beforeAfterValue}>{outputMetrics.tracks_finished_30d}</Text>
+              </View>
+            </View>
+            <View style={styles.outcomeGrid}>
+              <View style={styles.outcomeStatBlock}>
+                <Text style={styles.outcomeValue}>{outputMetrics.tracks_finished_30d}</Text>
+                <Text style={styles.outcomeLabel}>{t("stats.finishedTracks30d")}</Text>
+                <Text style={styles.outcomeMeta}>
+                  {t("stats.vsLastMonthPct", {
+                    sign: outputMetrics.vs_previous_month >= 0 ? "+" : "",
+                    pct: Math.round(outputMetrics.vs_previous_month),
+                  })}
+                </Text>
+              </View>
+              <View style={styles.outcomeStatBlock}>
+                <Text style={styles.outcomeValue}>{outputMetrics.avg_completion_time_days}d</Text>
+                <Text style={styles.outcomeLabel}>{t("stats.avgCompletionTime")}</Text>
+                <Text style={styles.outcomeMeta}>
+                  {t(
+                    outputMetrics.productivity_trend === "up"
+                      ? "stats.productivityTrendUp"
+                      : outputMetrics.productivity_trend === "down"
+                        ? "stats.productivityTrendDown"
+                        : "stats.productivityTrendStable",
+                  )}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.outcomeInsight}>
+              <Text style={styles.outcomeInsightText}>
+                {t("stats.sinceProdify", { days: outputMetrics.days_using })}
+              </Text>
+              <Text style={styles.outcomeInsightText}>
+                {t("stats.completedTracksCount", { count: outputMetrics.completed_tracks })}
+              </Text>
+              <Text style={styles.outcomeInsightText}>
+                {t("stats.consistencyImprovement", {
+                  sign: outputMetrics.consistency_improvement >= 0 ? "+" : "",
+                  pct: Math.round(outputMetrics.consistency_improvement),
+                })}
+              </Text>
+              <Text style={styles.outcomeInsightText}>
+                {t("stats.outputIncrease", {
+                  sign: outputMetrics.output_increase >= 0 ? "+" : "",
+                  pct: Math.round(outputMetrics.output_increase),
+                })}
+              </Text>
+            </View>
+            <View style={styles.outcomeShareRow}>
+              <PrimaryButton
+                label={t("stats.shareProducerStatsCta")}
+                onPress={() => {
+                  setOutputShareOpen(true);
+                }}
+              />
+              <SecondaryButton
+                label={t("stats.shareProducerStatsTextCta")}
+                onPress={() => {
+                  const msg = t("stats.shareProducerStatsText", {
+                    current: outputMetrics.tracks_finished_30d,
+                    baseline: outputMetrics.baseline_tracks_30d,
+                    growthSign: outputMetrics.output_increase >= 0 ? "+" : "",
+                    growth: Math.round(outputMetrics.output_increase),
+                    consistencySign: outputMetrics.consistency_improvement >= 0 ? "+" : "",
+                    consistency: Math.round(outputMetrics.consistency_improvement),
+                  });
+                  Share.share({ message: msg }).catch(() => undefined);
+                }}
+              />
+              <Text style={styles.outcomeShareHint}>{t("stats.shareQuickHint")}</Text>
+            </View>
+          </AppCard>
+        ) : null}
+
         {progression ? (
           <AppCard style={styles.progressionCard}>
             <View style={styles.progressionTopRow}>
@@ -865,6 +960,19 @@ export default function StatsScreen() {
             ))}
           </View>
         )}
+
+        {outputMetrics ? (
+          <OutputMetricsShareModal
+            visible={outputShareOpen}
+            onClose={() => setOutputShareOpen(false)}
+            metrics={outputMetrics}
+            title={t("stats.shareProofModalTitle")}
+            subtitle={t("stats.shareProofModalSubtitle")}
+            shareLabel={t("stats.shareProofPngCta")}
+            closeLabel={t("common.cancel")}
+            busyLabel={t("stats.shareProofBusy")}
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -931,6 +1039,96 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     marginBottom: spacing.lg,
+  },
+  outcomeCard: {
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  outcomeGrid: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  beforeAfterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  beforeAfterCell: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: "rgba(255,255,255,0.02)",
+    padding: spacing.sm,
+    gap: 4,
+    alignItems: "center",
+  },
+  beforeAfterCellHighlight: {
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.12)",
+  },
+  beforeAfterKicker: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyMedium,
+  },
+  beforeAfterValue: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 24,
+    lineHeight: 28,
+  },
+  beforeAfterArrow: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.bodyStrong,
+  },
+  outcomeStatBlock: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    backgroundColor: "rgba(255,255,255,0.02)",
+    gap: 4,
+  },
+  outcomeValue: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 26,
+    lineHeight: 30,
+  },
+  outcomeLabel: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyMedium,
+  },
+  outcomeMeta: {
+    color: colors.primary,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyBold,
+  },
+  outcomeInsight: {
+    borderWidth: 1,
+    borderColor: "rgba(162,89,255,0.45)",
+    borderRadius: radii.md,
+    backgroundColor: "rgba(162,89,255,0.1)",
+    padding: spacing.sm,
+    gap: 4,
+  },
+  outcomeShareRow: {
+    marginTop: spacing.xs,
+    gap: spacing.sm,
+  },
+  outcomeShareHint: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+  },
+  outcomeInsightText: {
+    color: colors.textPrimary,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyMedium,
   },
   calendarHeader: {
     flexDirection: "row",

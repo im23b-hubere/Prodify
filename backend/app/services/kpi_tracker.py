@@ -1,11 +1,15 @@
 import json
+import logging
 from datetime import timedelta
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import GrowthEvent, ProductionSession, PushToken, User, UserSubscription, utcnow
+from app.models import AnalyticsEventDedupe, GrowthEvent, ProductionSession, PushToken, User, UserSubscription, utcnow
 from app.schemas import KpiDashboardPublic, KpiSummaryPublic, KpiTrendPointPublic
+
+_log = logging.getLogger(__name__)
 
 
 def track_event(db: Session, event_name: str, user_id: int | None = None, props: dict | None = None) -> None:
@@ -17,19 +21,63 @@ def track_event(db: Session, event_name: str, user_id: int | None = None, props:
     db.add(row)
 
 
+def track_event_deduped(
+    db: Session,
+    *,
+    user_id: int,
+    bucket_key: str,
+    event_name: str,
+    props: dict | None = None,
+) -> bool:
+    """
+    Record a growth event at most once per (user_id, bucket_key) for this DB transaction chain.
+    Returns True if a new row was recorded, False if this bucket was already claimed.
+    """
+    try:
+        with db.begin_nested():
+            db.add(
+                AnalyticsEventDedupe(
+                    user_id=user_id,
+                    bucket_key=bucket_key[:192],
+                    created_at=utcnow(),
+                )
+            )
+            db.flush()
+    except IntegrityError:
+        _log.debug("analytics dedupe skip user_id=%s bucket=%s", user_id, bucket_key)
+        return False
+    track_event(db, event_name, user_id, props)
+    return True
+
+
 def _safe_div(n: float, d: float) -> float:
     return round(n / d, 4) if d > 0 else 0.0
 
 
 def kpi_summary(db: Session) -> KpiSummaryPublic:
     users_total = int(db.scalar(select(func.count()).select_from(User)) or 0)
-    sessions_per_week = float(
+    d7_cut = utcnow() - timedelta(days=7)
+    sessions_completed_last_7d = int(
         db.scalar(
-            select(func.count()).select_from(ProductionSession).where(ProductionSession.duration_seconds.is_not(None))
+            select(func.count())
+            .select_from(ProductionSession)
+            .where(ProductionSession.duration_seconds.is_not(None), ProductionSession.started_at >= d7_cut)
         )
         or 0
     )
-    sessions_per_week_per_user = round(_safe_div(sessions_per_week, max(users_total, 1)), 3)
+    d7_active_users = int(
+        db.scalar(
+            select(func.count(func.distinct(ProductionSession.user_id))).where(
+                ProductionSession.duration_seconds.is_not(None),
+                ProductionSession.started_at >= d7_cut,
+            )
+        )
+        or 0
+    )
+    sessions_per_week_per_user = round(
+        _safe_div(sessions_completed_last_7d, max(d7_active_users, 1)),
+        3,
+    )
 
     d1_cut = utcnow() - timedelta(days=1)
     d7_cut = utcnow() - timedelta(days=7)
