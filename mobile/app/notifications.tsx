@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { fontFamily } from "../constants/fonts";
 import { useAuth } from "../context/AuthContext";
 import { debugNav } from "../lib/debugLog";
+import { deepLinkRequiresAuth, isAllowedDeepLinkPath, toRoutableHref } from "../lib/deepLinkGuard";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import {
   loadInbox,
@@ -74,6 +75,21 @@ export default function NotificationsScreen() {
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<NotificationCategory | "all">("all");
+
+  const pushInboxActionRoute = useCallback(
+    (rawPath: string) => {
+      if (!isAllowedDeepLinkPath(rawPath)) {
+        debugNav("inbox_action_route_blocked", { path: rawPath });
+        return;
+      }
+      if (deepLinkRequiresAuth(rawPath) && !token) {
+        router.replace("/(auth)/login");
+        return;
+      }
+      router.push(toRoutableHref(rawPath) as Href);
+    },
+    [router, token],
+  );
 
   const load = useCallback(async () => {
     if (token) {
@@ -164,8 +180,10 @@ export default function NotificationsScreen() {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
                           () => undefined,
                         );
+                        const actionRoute = item.actionRoute;
+                        if (!actionRoute) return;
                         try {
-                          router.push(item.actionRoute as Href);
+                          pushInboxActionRoute(actionRoute);
                         } catch (e) {
                           debugNav("inbox_action_push_failed", {
                             message: e instanceof Error ? e.message : "unknown",
@@ -183,7 +201,7 @@ export default function NotificationsScreen() {
         </Swipeable>
       );
     },
-    [renderRight, router, t],
+    [pushInboxActionRoute, renderRight, t],
   );
 
   return (

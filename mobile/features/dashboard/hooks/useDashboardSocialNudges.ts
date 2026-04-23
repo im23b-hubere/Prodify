@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 
 import {
@@ -63,6 +63,7 @@ export function useDashboardSocialNudges({
   const [primaryNudge, setPrimaryNudge] = useState<DashboardPrimaryNudge | null>(null);
   const [secondaryNudge, setSecondaryNudge] = useState<string | null>(null);
   const [returnHook, setReturnHook] = useState<string | null>(null);
+  const hasHydratedNudgesRef = useRef(false);
 
   const effectiveStreak = streakOverviewCurrent ?? clientStreak;
 
@@ -202,9 +203,17 @@ export function useDashboardSocialNudges({
 
   useEffect(() => {
     if (!userId) return;
+    if (weightedNudgeCandidates.length === 0 && friendActivity.length === 0) {
+      setPrimaryNudge(null);
+      setSecondaryNudge(null);
+      setReturnHook(null);
+      hasHydratedNudgesRef.current = true;
+      return;
+    }
     const key = secureStoreKey("retention_last_primary", userId);
     const cooldownKey = secureStoreKey("retention_primary_cooldowns", userId);
     const visitKey = secureStoreKey("retention_last_visit", userId);
+    const delayMs = hasHydratedNudgesRef.current ? 80 : 400;
     const timer = setTimeout(() => {
       void (async () => {
         try {
@@ -263,11 +272,12 @@ export function useDashboardSocialNudges({
             setReturnHook(null);
           }
           await SecureStore.setItemAsync(visitKey, `${Date.now()}`);
+          hasHydratedNudgesRef.current = true;
         } catch {
           /* ignore persistence failures */
         }
       })();
-    }, 7000);
+    }, delayMs);
     return () => clearTimeout(timer);
   }, [userId, weightedNudgeCandidates, friendActivity, t]);
 

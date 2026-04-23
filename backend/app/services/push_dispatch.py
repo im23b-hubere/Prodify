@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import threading
 
@@ -15,6 +16,25 @@ from app.services import push_templates
 from app.services.push_links import push_data_dashboard
 
 logger = logging.getLogger(__name__)
+_push_executor: ThreadPoolExecutor | None = None
+_push_executor_size: int | None = None
+_push_executor_lock = threading.Lock()
+
+
+def _get_push_executor(settings: Settings) -> ThreadPoolExecutor:
+    global _push_executor, _push_executor_size
+    max_workers = max(1, int(settings.push_async_max_workers or 1))
+    if _push_executor is not None and _push_executor_size == max_workers:
+        return _push_executor
+    with _push_executor_lock:
+        if _push_executor is not None and _push_executor_size == max_workers:
+            return _push_executor
+        _push_executor = ThreadPoolExecutor(
+            max_workers=max_workers,
+            thread_name_prefix="push-dispatch",
+        )
+        _push_executor_size = max_workers
+        return _push_executor
 
 
 def _deactivate_invalid_tokens(db: DBSession, channel: str, tokens: list[str]) -> int:
@@ -148,7 +168,16 @@ def schedule_notify_session_complete(settings: Settings, user_id: int, session_t
         except Exception:
             logger.exception("deferred push session-complete failed")
 
-    threading.Thread(target=_run, daemon=True).start()
+    backend = (settings.push_async_backend or "threadpool").strip().lower()
+    if backend == "inline":
+        _run()
+        return
+    if backend == "arq":
+        logger.warning("push_async_backend=arq is not wired yet; falling back to threadpool")
+    try:
+        _get_push_executor(settings).submit(_run)
+    except RuntimeError:
+        logger.warning("push dispatch executor unavailable; dropping deferred session-complete push")
 
 
 def send_ping(

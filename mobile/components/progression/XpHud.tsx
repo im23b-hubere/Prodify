@@ -4,8 +4,7 @@ import { usePathname, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../../context/AuthContext";
-import { apiJson } from "../../lib/client";
-import { tryParseProgressionDto } from "../../lib/outcomesDto";
+import { syncProgression } from "../../lib/progressionSync";
 import { colors, spacing } from "../../constants/theme";
 import { fontFamily } from "../../constants/fonts";
 
@@ -49,12 +48,7 @@ export function XpHud() {
     async function load() {
       if (!token || hidden) return;
       try {
-        const raw = await apiJson<unknown>("/progression/sync", {
-          token,
-          method: "POST",
-          body: {},
-        });
-        const parsed = tryParseProgressionDto(raw);
+        const parsed = await syncProgression(token);
         if (!cancelled && parsed) {
           setXp(parsed.xp_total);
           setLevel(parsed.current_level);

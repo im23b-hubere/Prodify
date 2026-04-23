@@ -16,6 +16,7 @@ import { useAuth } from "../../context/AuthContext";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { ApiError } from "../../lib/client";
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -28,17 +29,26 @@ export default function LoginScreen() {
 
   async function onSubmit() {
     if (loading) return;
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError(t("errors.validation.emailRequired"));
+      return;
+    }
+    if (!password.trim()) {
+      setError(t("errors.validation.passwordRequired"));
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
-      await signIn(email.trim(), password);
+      await signIn(trimmedEmail, password);
       // Always land on dashboard after sign-in to avoid stale tab restores.
       router.replace("/(tabs)/dashboard");
     } catch (e) {
-      const message = e instanceof Error ? e.message : t("auth.login.signInFailed");
-      if (message.includes("429")) {
+      if (e instanceof ApiError && e.status === 429) {
         setError(t("errors.tooManyRequests"));
       } else {
+        const message = e instanceof Error ? e.message : t("auth.login.signInFailed");
         setError(message);
       }
     } finally {

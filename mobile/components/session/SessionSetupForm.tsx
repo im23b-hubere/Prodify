@@ -228,6 +228,7 @@ export function SessionSetupForm({
   const [tagInput, setTagInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tagError, setTagError] = useState<string | null>(null);
   const [showOptional, setShowOptional] = useState(false);
 
   useEffect(() => {
@@ -243,19 +244,30 @@ export function SessionSetupForm({
   const addTag = useCallback(
     (raw: string) => {
       const tag = raw.trim().toLowerCase();
-      if (!tag || tag.length > 32) return;
-      if (tags.length >= 20) return;
-      if (tags.includes(tag)) return;
+      if (!tag) return;
+      if (tag.length > 32) {
+        setTagError(t("sessionSetup.tagTooLong"));
+        return;
+      }
+      if (tags.length >= 20) {
+        setTagError(t("sessionSetup.tagLimitReached"));
+        return;
+      }
+      if (tags.includes(tag)) {
+        setTagError(t("sessionSetup.tagAlreadyAdded"));
+        return;
+      }
       setTags((prev) => [...prev, tag]);
       setTagInput("");
+      setTagError(null);
     },
-    [tags],
+    [tags, t],
   );
 
   const onSubmit = useCallback(async () => {
     if (!hydrated || !token?.trim() || !selectedType || busy || startRequestInFlight.current) {
       if (hydrated && !token?.trim()) {
-        setError("Not signed in. Please log in again.");
+        setError(t("sessionSetup.notSignedIn"));
       }
       return;
     }
@@ -322,9 +334,9 @@ export function SessionSetupForm({
             const existing = tryParseSessionDto(activeRaw);
             if (existing) {
               Alert.alert(
-                "Session already active",
-                "You already have an active session. We'll continue with it.",
-                [{ text: "Continue" }],
+                t("sessionSetup.activeSessionTitle"),
+                t("sessionSetup.activeSessionBody"),
+                [{ text: t("common.continue") }],
               );
               onStarted(existing);
               onActiveSessionConflict?.(existingSessionId);
@@ -337,7 +349,7 @@ export function SessionSetupForm({
         } else {
           onActiveSessionConflict?.();
         }
-        if (mounted.current) setError("You already have an active session.");
+        if (mounted.current) setError(t("sessionSetup.activeSessionError"));
         return;
       }
       if (mounted.current) setError(msg);
@@ -407,7 +419,9 @@ export function SessionSetupForm({
           }}
         >
           <Text style={styles.optionalToggleText}>
-            {showOptional ? "Hide optional details" : "Add optional details"}
+            {showOptional
+              ? t("sessionSetup.hideOptionalDetails")
+              : t("sessionSetup.addOptionalDetails")}
           </Text>
           <Text style={styles.optionalToggleChevron}>{showOptional ? "−" : "+"}</Text>
         </Pressable>
@@ -500,6 +514,7 @@ export function SessionSetupForm({
                   </Pressable>
                 ))}
               </View>
+              {tagError ? <Text style={styles.tagError}>{tagError}</Text> : null}
             </AppCard>
           </Animated.View>
         ) : null}
@@ -807,6 +822,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
     ...typography.meta,
+  },
+  tagError: {
+    color: colors.danger,
+    ...typography.caption,
+    marginTop: spacing.xs,
   },
   error: { color: colors.danger, marginTop: spacing.md, ...typography.meta },
   footer: {

@@ -107,6 +107,31 @@ def test_delete_me_purges_related_rows_and_profile_picture_file(client):
     assert not (PROFILE_UPLOAD_DIR / file_name).exists()
 
 
+def test_delete_me_does_not_delete_files_outside_profile_picture_dir(client):
+    token = _register(client, "delete-guard@example.com", "deleteguard")
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    user_id = me.json()["id"]
+
+    from app.routers.users import PROFILE_UPLOAD_DIR
+
+    sentinel = PROFILE_UPLOAD_DIR.parent / "sentinel-guard.txt"
+    sentinel.write_text("keep-me", encoding="utf-8")
+    try:
+        with SessionLocal() as db:
+            user = db.query(User).filter(User.id == user_id).one()
+            user.profile_picture_url = "/uploads/profile_pictures/../sentinel-guard.txt"
+            db.add(user)
+            db.commit()
+
+        deleted = client.delete("/users/me", headers={"Authorization": f"Bearer {token}"})
+        assert deleted.status_code == 204
+        assert sentinel.exists()
+    finally:
+        if sentinel.exists():
+            sentinel.unlink()
+
+
 def test_friend_status_and_user_profile(client):
     t_a = _register(client, "g1@example.com", "galuser")
     t_b = _register(client, "g2@example.com", "haluser")

@@ -237,6 +237,7 @@ jest.mock("../../lib/forecastEngine", () => ({
 
 jest.mock("../../lib/notificationInbox", () => ({
   getUnreadCount: jest.fn().mockResolvedValue(0),
+  syncServerInbox: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("../../lib/pushToken", () => ({

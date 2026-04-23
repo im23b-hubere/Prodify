@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,8 @@ from app.achievementsutil import (
     grant_achievements_after_completed_session,
     session_focus_metrics,
 )
-from app.models import CheckinLog, Friendship, FriendshipStatus, ProductionSession, SessionType, Streak, User, UserGoal, utcnow
+from app.models import CheckinLog, ProductionSession, SessionType, Streak, User, UserGoal, utcnow
+from app.services.friend_graph import friend_user_ids as _friend_user_ids
 from app.services.push_dispatch import schedule_notify_session_complete
 from app.services.social_consequence import maybe_notify_streak_break_on_transition
 from app.services.streak_reconcile_service import reconcile_streak_row_for_user
@@ -62,20 +63,6 @@ def _mark_auto_checkin_done(db: Session, user_id: int) -> None:
         row.state = "done"
         if not row.note:
             row.note = "Auto session activity"
-
-
-def _friend_user_ids(db: Session, user_id: int) -> list[int]:
-    """Same logic as friends activity feed — use this for 'can view friend session' checks."""
-    rows = db.scalars(
-        select(Friendship).where(
-            Friendship.status == FriendshipStatus.accepted,
-            or_(Friendship.user_id == user_id, Friendship.friend_id == user_id),
-        )
-    ).all()
-    out: list[int] = []
-    for r in rows:
-        out.append(r.friend_id if r.user_id == user_id else r.user_id)
-    return out
 
 
 def _can_view_session(db: Session, viewer_id: int, row: ProductionSession) -> bool:
@@ -343,6 +330,8 @@ def quick_start_session(
             detail={"message": "Active session already exists", "session_id": existing.id if existing else None},
         )
     db.refresh(row)
+    track_event(db, "session_started", current.id, {"session_id": row.id, "session_type": row.session_type})
+    db.commit()
     return row
 
 

@@ -226,7 +226,18 @@ class UserProgression(Base):
 
 class XpLedger(Base):
     __tablename__ = "xp_ledger"
-    __table_args__ = (Index("idx_xp_ledger_user_created", "user_id", "created_at"),)
+    __table_args__ = (
+        Index("idx_xp_ledger_user_created", "user_id", "created_at"),
+        Index(
+            "uq_xp_ledger_idempotent_source",
+            "user_id",
+            "source_type",
+            "source_id",
+            unique=True,
+            sqlite_where=text("source_id IS NOT NULL AND source_type != 'inactivity_decay'"),
+            postgresql_where=text("source_id IS NOT NULL AND source_type != 'inactivity_decay'"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)

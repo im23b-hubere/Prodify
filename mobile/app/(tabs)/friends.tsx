@@ -98,6 +98,15 @@ export default function FriendsScreen() {
     },
     [router],
   );
+  const openActiveSession = useCallback(
+    (sessionId: number) => {
+      router.push({
+        pathname: "/session/active",
+        params: { id: String(sessionId), source: "dashboard" },
+      } as Href);
+    },
+    [router],
+  );
 
   const actions = useFriendsScreenActions({
     token,
@@ -106,6 +115,7 @@ export default function FriendsScreen() {
     load,
     state,
     openSession,
+    openActiveSession,
   });
 
   const visibleActivity = useMemo(

@@ -10,7 +10,8 @@ import {
   fetchCommitment,
   fetchIdentityState,
 } from "../../../lib/social";
-import { tryParseGoalForecastDto, tryParseProgressionDto } from "../../../lib/outcomesDto";
+import { syncProgression } from "../../../lib/progressionSync";
+import { tryParseGoalForecastDto } from "../../../lib/outcomesDto";
 import { parseMotivationalMessage, type MotivationalMessageDto } from "../../../lib/motivationApi";
 import { parseSessionList, tryParseSessionDto } from "../../../lib/sessionDto";
 import { syncStreakRiskNotifications } from "../../../lib/streakNotifications";
@@ -85,7 +86,8 @@ export function useDashboardData(token: string | null) {
     }
   }, [token, t]);
 
-  const loadSocial = useCallback(async () => {
+  const loadSocial = useCallback(async (opts: { forceProgressionSync?: boolean } = {}) => {
+    const forceProgressionSync = Boolean(opts.forceProgressionSync);
     if (!token) return;
     setSocialLoading(true);
     try {
@@ -131,31 +133,19 @@ export function useDashboardData(token: string | null) {
       setIdentityState(identityRaw);
       const [forecastRaw, progRaw] = await Promise.all([
         apiJson<unknown>("/outcomes/goal-forecast/current", { token }).catch(() => null),
-        apiJson<unknown>("/progression/sync", { token, method: "POST", body: {} }).catch(
-          () => null,
-        ),
+        syncProgression(token, { force: forceProgressionSync }).catch(() => null),
       ]);
       setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
-      setProgression(progRaw ? tryParseProgressionDto(progRaw) : null);
+      setProgression(progRaw);
       const ent = await fetchEntitlement(token).catch(() => null);
       setEntitlement(ent);
     } catch {
-      setFriendLeaderboard(null);
-      setFriendActivity([]);
-      setForecast(null);
-      setProgression(null);
-      setEntitlement(null);
-      setWeeklyGoalTarget(null);
-      setWeekSessionsCount(0);
-      setBuddyRisk(null);
-      setCheckinStatus(null);
-      setCommitmentStatus(null);
-      setSocialChallenges([]);
-      setIdentityState(null);
+      // Preserve last known social snapshot and surface a clear partial-load error.
+      setError(t("dashboard.socialLoadFailed"));
     } finally {
       setSocialLoading(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   const loadStreakOverview = useCallback(async () => {
     if (!token) return;
@@ -204,7 +194,7 @@ export function useDashboardData(token: string | null) {
         await Promise.all([
           loadSessions(),
           loadStreakOverview(),
-          loadSocial(),
+          loadSocial({ forceProgressionSync: force }),
           loadServerMotivation(),
         ]);
         lastDashboardFetchRef.current = Date.now();

@@ -6,6 +6,7 @@ import { Alert } from "react-native";
 
 import { type ApiError, apiJson } from "../../../lib/client";
 import { recordMomentumAction } from "../../../lib/momentum";
+import { tryParseSessionDto } from "../../../lib/sessionDto";
 import {
   createChallenge,
   fetchSessionReactionUsers,
@@ -22,9 +23,18 @@ type Params = {
   load: () => Promise<void>;
   state: FriendsScreenState;
   openSession: (sessionId: number, ownerName: string) => void;
+  openActiveSession: (sessionId: number) => void;
 };
 
-export function useFriendsScreenActions({ token, userId, t, load, state, openSession }: Params) {
+export function useFriendsScreenActions({
+  token,
+  userId,
+  t,
+  load,
+  state,
+  openSession,
+  openActiveSession,
+}: Params) {
   const entries = state.leaderboard?.entries ?? [];
   const hasOtherFriends = entries.some((entry) => entry.user_id !== userId);
   const friendCandidates = entries.filter((entry) => entry.user_id !== userId);
@@ -427,11 +437,15 @@ export function useFriendsScreenActions({ token, userId, t, load, state, openSes
             method: "POST",
             body: { session_type: "beat_making" },
           })
-            .then(async () => {
+            .then(async (raw: unknown) => {
+              const created = tryParseSessionDto(raw);
               if (userId) {
                 await recordMomentumAction(userId, "session");
               }
               state.showToast(t("friendsScreen.toastLockedIn"));
+              if (created) {
+                openActiveSession(created.id);
+              }
             })
             .catch((e: unknown) => {
               Alert.alert(
@@ -489,7 +503,7 @@ export function useFriendsScreenActions({ token, userId, t, load, state, openSes
       });
     }
     return cards;
-  }, [challengeCards, load, openSession, state, t, token, userId]);
+  }, [challengeCards, load, openSession, openActiveSession, state, t, token, userId]);
 
   useEffect(() => {
     state.setTriggerIndex(0);

@@ -58,6 +58,8 @@ from app.schemas import (
     SocialWeeklyRecapPublic,
     StreakRescueBody,
 )
+from app.services.friend_graph import friend_user_ids as _friend_user_ids
+from app.services.identity_tags import social_identity_tags
 from app.streakutil import dump_frozen_json, parse_frozen_json
 from app.services.kpi_tracker import track_event
 from app.services.push_dispatch import send_ping
@@ -69,19 +71,6 @@ router = APIRouter(prefix="/social", tags=["social"])
 def _week_start_key() -> str:
     d = utcnow().date()
     return (d - timedelta(days=d.weekday())).isoformat()
-
-
-def _friend_user_ids(db: Session, user_id: int) -> list[int]:
-    rows = db.scalars(
-        select(Friendship).where(
-            Friendship.status == FriendshipStatus.accepted,
-            or_(Friendship.user_id == user_id, Friendship.friend_id == user_id),
-        )
-    ).all()
-    out: list[int] = []
-    for row in rows:
-        out.append(row.friend_id if row.user_id == user_id else row.user_id)
-    return out
 
 
 def _session_count_for_week(db: Session, user_id: int, week_start: str) -> int:
@@ -161,78 +150,6 @@ def _current_buddy_row(db: Session, user_id: int) -> BuddyRelationship | None:
 
     rows.sort(key=lambda row: (row.created_at, row.id), reverse=True)
     return rows[0]
-
-
-def _identity_tags(db: Session, user: User) -> list[str]:
-    wk = _week_start_key()
-    tags: list[str] = []
-    sessions_this_week = _session_count_for_week(db, user.id, wk)
-    if sessions_this_week >= 4:
-        tags.append("consistent_creator")
-    checkins_week_count = int(
-        db.scalar(
-            select(func.count())
-            .select_from(CheckinLog)
-            .where(CheckinLog.user_id == user.id, CheckinLog.day_key >= wk)
-        )
-        or 0
-    )
-    if checkins_week_count >= 3 and "consistent_creator" not in tags:
-        tags.append("consistent_creator")
-    comment_count = int(
-        db.scalar(select(func.count()).select_from(SocialComment).where(SocialComment.author_id == user.id)) or 0
-    )
-    rescue_count = int(
-        db.scalar(
-            select(func.count()).select_from(StreakRescue).where(StreakRescue.rescuer_user_id == user.id)
-        )
-        or 0
-    )
-    supportive_score = comment_count + rescue_count * 2
-    if supportive_score >= 2:
-        tags.append("collaborative")
-    challenge_count = int(
-        db.scalar(
-            select(func.count()).select_from(SocialChallengeMember).where(SocialChallengeMember.user_id == user.id)
-        )
-        or 0
-    )
-    if challenge_count > 0:
-        tags.append("competitive")
-    momentum_like = sessions_this_week + checkins_week_count + min(3, challenge_count)
-    if momentum_like >= 6:
-        tags.append("locked_in")
-    now = utcnow()
-    recent_7_count = int(
-        db.scalar(
-            select(func.count())
-            .select_from(ProductionSession)
-            .where(
-                ProductionSession.user_id == user.id,
-                ProductionSession.deleted_at.is_(None),
-                ProductionSession.duration_seconds.is_not(None),
-                ProductionSession.started_at >= now - timedelta(days=7),
-            )
-        )
-        or 0
-    )
-    prior_30_to_7_count = int(
-        db.scalar(
-            select(func.count())
-            .select_from(ProductionSession)
-            .where(
-                ProductionSession.user_id == user.id,
-                ProductionSession.deleted_at.is_(None),
-                ProductionSession.duration_seconds.is_not(None),
-                ProductionSession.started_at < now - timedelta(days=7),
-                ProductionSession.started_at >= now - timedelta(days=30),
-            )
-        )
-        or 0
-    )
-    if recent_7_count >= 2 and prior_30_to_7_count == 0:
-        tags.append("building_momentum")
-    return tags[:2] if tags else ["creator"]
 
 
 def _is_premium(db: Session, user: User) -> bool:
@@ -849,6 +766,12 @@ def join_social_challenge(
         )
     )
     if member is None:
+        if row.status != "active":
+            raise HTTPException(status_code=400, detail="Challenge is no longer active")
+        if row.owner_id != current.id:
+            friend_ids = set(_friend_user_ids(db, current.id))
+            if row.owner_id not in friend_ids:
+                raise HTTPException(status_code=403, detail="You are not allowed to join this challenge")
         db.add(SocialChallengeMember(challenge_id=row.id, user_id=current.id, progress_sessions=0))
         grant_xp(
             db,
@@ -1130,7 +1053,7 @@ def weekly_social_recap(
     trend_pct = None
     if prev > 0:
         trend_pct = round(((my_count - prev) / prev) * 100, 1)
-    identity_tags = _identity_tags(db, current)
+    identity_tags = social_identity_tags(db, current.id, week_start=wk)
     return SocialWeeklyRecapPublic(
         week_start=wk,
         your_sessions=my_count,
@@ -1239,7 +1162,8 @@ def identity_state(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    tags = _identity_tags(db, current)
+    wk = _week_start_key()
+    tags = social_identity_tags(db, current.id, week_start=wk)
     primary = tags[0]
     secondary = tags[1] if len(tags) > 1 else None
     lines = {

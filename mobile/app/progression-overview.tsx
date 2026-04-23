@@ -11,7 +11,7 @@ import { ScreenHeader } from "../components/ui/ScreenHeader";
 import { colors, radii, spacing, typography, ui } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import { apiJson } from "../lib/client";
-import { tryParseProgressionDto } from "../lib/outcomesDto";
+import { syncProgression } from "../lib/progressionSync";
 import type { ProgressionDto } from "../types/outcomes";
 
 type ProgressionLevelItem = {
@@ -38,10 +38,10 @@ export default function ProgressionOverviewScreen() {
     setLoading(true);
     try {
       const [raw, catalogRaw] = await Promise.all([
-        apiJson<unknown>("/progression/sync", { token, method: "POST", body: {} }),
+        syncProgression(token),
         apiJson<unknown>("/progression/levels", { token }).catch(() => []),
       ]);
-      setProgression(tryParseProgressionDto(raw));
+      setProgression(raw);
       const levels = Array.isArray(catalogRaw)
         ? catalogRaw
             .map((item) => {

@@ -37,6 +37,15 @@ from app.services.push_links import push_data_dashboard
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
+def _parse_epoch_ms(value: int | None, *, field_name: str) -> datetime | None:
+    if not isinstance(value, int) or value <= 0:
+        return None
+    try:
+        return datetime.fromtimestamp(value / 1000.0, tz=timezone.utc)
+    except (OverflowError, OSError, ValueError):
+        raise HTTPException(status_code=422, detail=f"Invalid timestamp for {field_name}")
+
+
 @router.get("/inbox", response_model=list[NotificationInboxItemPublic])
 def inbox_feed(
     current: Annotated[User, Depends(get_current_user)],
@@ -46,13 +55,11 @@ def inbox_feed(
 ):
     now = utcnow()
     safe_limit = max(1, min(limit, 100))
-    since_dt = (
-        datetime.fromtimestamp(since_ms / 1000.0, tz=timezone.utc)
-        if isinstance(since_ms, int) and since_ms > 0
-        else None
-    )
+    since_dt = _parse_epoch_ms(since_ms, field_name="since_ms")
     read_state = db.scalar(select(NotificationReadState).where(NotificationReadState.user_id == current.id))
     last_read_at = read_state.last_read_at if read_state and read_state.last_read_at else None
+    if last_read_at is not None and last_read_at.tzinfo is None:
+        last_read_at = last_read_at.replace(tzinfo=timezone.utc)
     items: list[NotificationInboxItemPublic] = []
     by_id: set[str] = set()
 
@@ -197,17 +204,15 @@ def mark_notifications_read(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    target = (
-        datetime.fromtimestamp(body.up_to_ms / 1000.0, tz=timezone.utc)
-        if isinstance(body.up_to_ms, int) and body.up_to_ms > 0
-        else utcnow()
-    )
+    target = _parse_epoch_ms(body.up_to_ms, field_name="up_to_ms") or utcnow()
     row = db.scalar(select(NotificationReadState).where(NotificationReadState.user_id == current.id))
     if row is None:
         row = NotificationReadState(user_id=current.id, last_read_at=target, updated_at=utcnow())
         db.add(row)
     else:
         previous = row.last_read_at or target
+        if previous.tzinfo is None:
+            previous = previous.replace(tzinfo=timezone.utc)
         row.last_read_at = max(previous, target)
         row.updated_at = utcnow()
         db.add(row)

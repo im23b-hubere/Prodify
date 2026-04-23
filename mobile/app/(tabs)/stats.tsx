@@ -34,10 +34,10 @@ import { debugLog } from "../../lib/debugLog";
 import { formatSessionListDate, weekdayLetterFromIsoDay } from "../../lib/sessionTime";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
+import { syncProgression } from "../../lib/progressionSync";
 import {
   tryParseGoalForecastDto,
   tryParseOutputMetricsDto,
-  tryParseProgressionDto,
 } from "../../lib/outcomesDto";
 import {
   tryParseHeatmapDays,
@@ -286,7 +286,8 @@ export default function StatsScreen() {
   const periodParam =
     filter.period === "week" ? "week" : filter.period === "month" ? "month" : "all";
 
-  const loadStats = useCallback(async () => {
+  const loadStats = useCallback(async (opts: { forceProgressionSync?: boolean } = {}) => {
+    const forceProgressionSync = Boolean(opts.forceProgressionSync);
     if (!token) return;
     const seq = ++loadSeq.current;
     if (mounted.current) setLoading(true);
@@ -297,9 +298,7 @@ export default function StatsScreen() {
         apiJson<unknown>(`/sessions/stats?period=${periodParam}`, { token }),
         apiJson<unknown>(`/stats/heatmap`, { token }),
         apiJson<unknown>(`/stats/records`, { token }),
-        apiJson<unknown>("/progression/sync", { token, method: "POST", body: {} }).catch(
-          () => null,
-        ),
+        syncProgression(token, { force: forceProgressionSync }).catch(() => null),
         apiJson<unknown>("/outcomes/output-metrics/current", { token }).catch(() => null),
         apiJson<unknown>("/sessions/active", { token }).catch(() => null),
       ]);
@@ -327,7 +326,7 @@ export default function StatsScreen() {
         setRecords(tryParsePersonalRecords(rawRec));
         setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
         setOutputMetrics(outputMetricsRaw ? tryParseOutputMetricsDto(outputMetricsRaw) : null);
-        setProgression(progressionRaw ? tryParseProgressionDto(progressionRaw) : null);
+        setProgression(progressionRaw);
         const parsedActiveSessionId =
           activeSessionRaw &&
           typeof activeSessionRaw === "object" &&
@@ -364,7 +363,7 @@ export default function StatsScreen() {
   const onRefresh = useCallback(async () => {
     if (mounted.current) setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    await loadStats().catch((e) => {
+    await loadStats({ forceProgressionSync: true }).catch((e) => {
       if (mounted.current) setError(e instanceof Error ? e.message : t("stats.loadFailed"));
     });
     if (mounted.current) setRefreshing(false);
@@ -657,7 +656,7 @@ export default function StatsScreen() {
             title={t("common.oops")}
             message={error}
             retryLabel={t("common.tryAgain")}
-            onRetry={() => loadStats().catch(() => undefined)}
+            onRetry={() => loadStats({ forceProgressionSync: true }).catch(() => undefined)}
           />
         ) : null}
         {!showInitialLoading ? (

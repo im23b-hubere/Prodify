@@ -56,6 +56,7 @@ from app.schemas import (
     UserPublicSessionItem,
 )
 from app.services.reliability_service import ReliabilityScoreService
+from app.services.identity_tags import profile_identity_tags
 from app.services.streak_reconcile_service import compute_streak_counts_for_display
 from app.services.streak_status_service import streak_status_for_days
 from app.timeutil import as_utc_aware
@@ -91,7 +92,10 @@ def _delete_profile_picture_file(profile_picture_url: str | None) -> None:
     file_name = profile_picture_url.split("/uploads/profile_pictures/", 1)[1].strip("/")
     if not file_name:
         return
-    file_path = PROFILE_UPLOAD_DIR / file_name
+    base_dir = PROFILE_UPLOAD_DIR.resolve()
+    file_path = (PROFILE_UPLOAD_DIR / file_name).resolve()
+    if base_dir not in file_path.parents:
+        return
     if file_path.exists():
         file_path.unlink(missing_ok=True)
 
@@ -221,31 +225,6 @@ def _detect_image_mime(content: bytes) -> str | None:
     return None
 
 
-def _identity_tags_for_profile(db: Session, user_id: int) -> list[str]:
-    wk = (utcnow().date() - timedelta(days=utcnow().date().weekday())).isoformat()
-    sessions_week = len(
-        db.scalars(
-            select(ProductionSession).where(
-                ProductionSession.user_id == user_id,
-                ProductionSession.deleted_at.is_(None),
-                ProductionSession.duration_seconds.is_not(None),
-                ProductionSession.started_at >= datetime.combine(
-                    datetime.fromisoformat(wk).date(), time.min, tzinfo=timezone.utc
-                ),
-            )
-        ).all()
-    )
-    tags: list[str] = []
-    if sessions_week >= 4:
-        tags.append("consistent_creator")
-    challenge_rows = db.scalars(select(SocialChallengeMember).where(SocialChallengeMember.user_id == user_id)).all()
-    if challenge_rows:
-        tags.append("competitive")
-    if sessions_week >= 6:
-        tags.append("locked_in")
-    return tags[:2] if tags else ["creator"]
-
-
 @router.post("/me/profile-picture", response_model=UserAccountPublic)
 async def upload_profile_picture(
     request: Request,
@@ -351,7 +330,7 @@ def get_user_profile(
         longest_streak=longest,
         friends_count=_friends_count(db, user_id),
         is_premium=bool(int(user.is_premium or 0)),
-        identity_tags=_identity_tags_for_profile(db, user_id),
+        identity_tags=profile_identity_tags(db, user_id),
         created_at=user.created_at,
         reliability_score=reliability.score,
         reliability_trend=reliability.trend,

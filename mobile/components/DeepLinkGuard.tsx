@@ -1,6 +1,6 @@
 import * as Linking from "expo-linking";
 import { type Href, useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { useAuth } from "../context/AuthContext";
 import { deepLinkRequiresAuth, isAllowedDeepLinkPath, toRoutableHref } from "../lib/deepLinkGuard";
@@ -8,6 +8,7 @@ import { deepLinkRequiresAuth, isAllowedDeepLinkPath, toRoutableHref } from "../
 export function DeepLinkGuard() {
   const router = useRouter();
   const { token } = useAuth();
+  const initialUrlHandled = useRef(false);
 
   useEffect(() => {
     const handleDeepLink = ({ url }: { url: string }) => {
@@ -26,6 +27,17 @@ export function DeepLinkGuard() {
 
       router.push(toRoutableHref(targetPath) as Href);
     };
+
+    if (!initialUrlHandled.current) {
+      initialUrlHandled.current = true;
+      void Linking.getInitialURL()
+        .then((initialUrl) => {
+          if (typeof initialUrl === "string" && initialUrl.trim()) {
+            handleDeepLink({ url: initialUrl });
+          }
+        })
+        .catch(() => undefined);
+    }
 
     const sub = Linking.addEventListener("url", handleDeepLink);
     return () => sub.remove();

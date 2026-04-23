@@ -114,6 +114,7 @@ export default function DashboardScreen() {
     socialChallenges,
     identityState,
     weeklyGoalTarget,
+    weekSessionsCount,
     serverMotivationDto,
     forecast,
     progression,
@@ -142,6 +143,7 @@ export default function DashboardScreen() {
     : MILESTONE_CELEBRATED_MAX_KEY;
 
   const stopSessionInFlight = useRef(false);
+  const quickStartInFlight = useRef(false);
 
   const weekProgress = useMemo(() => getLast7DaysProgress(sessions), [sessions]);
   const clientStreak = useMemo(() => getStreak(sessions), [sessions]);
@@ -225,15 +227,40 @@ export default function DashboardScreen() {
     registerPushTokenWithBackend(token).catch(() => undefined);
   }, [token]);
 
-  const openSetup = useCallback(() => {
+  const openSetup = useCallback(async () => {
     if (active) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
       return;
     }
+    if (!token || quickStartInFlight.current) {
+      router.push("/session/setup");
+      return;
+    }
+    quickStartInFlight.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-    // Emergency fallback: avoid modal path and open dedicated setup screen.
-    router.push("/session/setup");
-  }, [active, router]);
+    try {
+      const createdRaw = await apiJson<unknown>("/sessions/quick-start", {
+        token,
+        method: "POST",
+        body: { session_type: "beat_making" },
+      });
+      const created = tryParseSessionDto(createdRaw);
+      if (!created) throw new Error(t("dashboard.couldNotReadSession"));
+      setActive(created);
+      setSessions((prev) => {
+        const rest = prev.filter((s) => s.id !== created.id);
+        return [created, ...rest];
+      });
+      router.push({
+        pathname: "/session/active",
+        params: { id: String(created.id), source: "dashboard" },
+      });
+    } catch {
+      router.push("/session/setup");
+    } finally {
+      quickStartInFlight.current = false;
+    }
+  }, [active, token, router, setActive, setSessions, t]);
 
   const openFullscreenActive = useCallback(() => {
     if (!active || typeof active.id !== "number" || !Number.isFinite(active.id)) return;
@@ -289,6 +316,13 @@ export default function DashboardScreen() {
     }
     return qualified;
   }, [visibleSessions]);
+  const weekSessionsForGoal = useMemo(() => {
+    if (weeklyGoalTarget != null) {
+      const safeCount = Number.isFinite(weekSessionsCount) ? weekSessionsCount : 0;
+      return Math.max(0, safeCount);
+    }
+    return effectiveWeekSessionsCount;
+  }, [weeklyGoalTarget, weekSessionsCount, effectiveWeekSessionsCount]);
   const effectiveWeeklyGoalTarget = useMemo(
     () =>
       adjustedWeeklyTargetForSignupWeek({
@@ -345,7 +379,7 @@ export default function DashboardScreen() {
     return generateMotivationMessage({
       streak: streakVal,
       todayCount: todayStats.count,
-      weekCount: effectiveWeekSessionsCount,
+      weekCount: weekSessionsForGoal,
       friends: { activeNow, topThisWeek: top },
       timeOfDay: getTimeOfDay(),
       lastSessionFocus: last?.focus_score ?? null,
@@ -358,13 +392,13 @@ export default function DashboardScreen() {
     friendActivity,
     user?.id,
     todayStats.count,
-    effectiveWeekSessionsCount,
+    weekSessionsForGoal,
   ]);
   const todayPlan = useMemo(
     () =>
       buildTodayPlanRecommendation({
         weeklyGoalTarget: effectiveWeeklyGoalTarget,
-        weekSessionsCount: effectiveWeekSessionsCount,
+        weekSessionsCount: weekSessionsForGoal,
         currentStreak: streakOverview?.current_streak ?? clientStreak,
         streakAtRisk: streakOverview?.streak_at_risk ?? false,
         lastSessionAt: visibleSessions[0]?.started_at ?? null,
@@ -375,7 +409,7 @@ export default function DashboardScreen() {
       }),
     [
       effectiveWeeklyGoalTarget,
-      effectiveWeekSessionsCount,
+      weekSessionsForGoal,
       streakOverview,
       clientStreak,
       visibleSessions,
@@ -389,10 +423,10 @@ export default function DashboardScreen() {
       hasAnyCompletedSessions && effectiveWeeklyGoalTarget != null && effectiveWeeklyGoalTarget > 0
         ? buildWeeklyForecast({
             weeklyGoalTarget: effectiveWeeklyGoalTarget,
-            completedThisWeek: effectiveWeekSessionsCount,
+            completedThisWeek: weekSessionsForGoal,
           })
         : null,
-    [hasAnyCompletedSessions, effectiveWeeklyGoalTarget, effectiveWeekSessionsCount],
+    [hasAnyCompletedSessions, effectiveWeeklyGoalTarget, weekSessionsForGoal],
   );
 
   const displayOverview = useMemo((): StreakOverviewDto | null => {
@@ -671,7 +705,7 @@ export default function DashboardScreen() {
             <TodayProgressCard
               todaySessions={todayStats.count}
               todayMinutes={todayStats.minutes}
-              weekSessions={effectiveWeekSessionsCount}
+              weekSessions={weekSessionsForGoal}
               weekGoalTarget={effectiveWeeklyGoalTarget}
               goalForecast={hasAnyCompletedSessions ? forecast : null}
             />

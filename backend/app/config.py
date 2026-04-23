@@ -59,6 +59,16 @@ class Settings(BaseSettings):
     kpi_admin_user_ids: list[int] = []
     # Comma-separated trusted reverse-proxy IPs/CIDRs for x-forwarded-for.
     trusted_proxy_ips: list[str] = []
+    # Push async dispatch backend:
+    # - threadpool: bounded in-process worker pool (default)
+    # - inline: execute in request process (debug/fallback)
+    # - arq: reserved for external queue rollout; currently falls back to threadpool with warning
+    push_async_backend: Literal["threadpool", "inline", "arq"] = "threadpool"
+    push_async_max_workers: int = 4
+    # Startup schema validation behavior:
+    # - strict (default): fail-fast on schema drift / alembic head mismatch.
+    # - non-strict: warn for column/head mismatches to support rolling deploy windows.
+    startup_schema_strict: bool = True
 
     @field_validator("secret_key")
     @classmethod

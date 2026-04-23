@@ -66,6 +66,7 @@ export async function resolvePostAuthRouteFromStorage(
 }
 
 export function resolvePaywallExitRoute(source: PaywallSource, hasToken: boolean): HrefPath | null {
+  if (source === "onboarding" && hasToken) return "/(tabs)/dashboard";
   if (source === "onboarding" && !hasToken) return "/(auth)/register";
   if (source === "post_auth") return "/(tabs)/dashboard";
   return null;

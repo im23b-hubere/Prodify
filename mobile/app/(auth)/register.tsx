@@ -16,6 +16,8 @@ import { useAuth } from "../../context/AuthContext";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { ApiError } from "../../lib/client";
+import { readOnboardingComplete } from "../../lib/postAuthNavigation";
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
@@ -28,14 +30,41 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   async function onSubmit() {
+    if (loading) return;
+    const trimmedEmail = email.trim();
+    const trimmedUsername = username.trim();
+    if (!trimmedEmail) {
+      setError(t("errors.validation.emailRequired"));
+      return;
+    }
+    if (!trimmedUsername) {
+      setError(t("errors.validation.usernameRequired"));
+      return;
+    }
+    if (trimmedUsername.length < 2) {
+      setError(t("errors.validation.usernameShort"));
+      return;
+    }
+    if (!password.trim()) {
+      setError(t("errors.validation.passwordRequired"));
+      return;
+    }
+    if (password.length < 8) {
+      setError(t("errors.validation.passwordShort"));
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
-      await signUp(email.trim(), username.trim(), password);
-      // New signups should always go through onboarding, even if a stale local flag exists.
-      router.replace("/onboarding");
+      await signUp(trimmedEmail, trimmedUsername, password);
+      const onboardingComplete = await readOnboardingComplete();
+      router.replace(onboardingComplete ? "/(tabs)/dashboard" : "/onboarding");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("auth.register.registerFailed"));
+      if (e instanceof ApiError && e.status === 429) {
+        setError(t("errors.tooManyRequests"));
+      } else {
+        setError(e instanceof Error ? e.message : t("auth.register.registerFailed"));
+      }
     } finally {
       setLoading(false);
     }

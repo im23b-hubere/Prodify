@@ -173,6 +173,29 @@ def test_social_challenge_comment_recap_and_leaderboard_context(client):
     assert isinstance(context.json()["entries"], list)
 
 
+def test_social_challenge_join_requires_owner_friendship(client):
+    owner = _auth_headers(client, "social-join-owner@example.com", "social-join-owner")
+    friend = _auth_headers(client, "social-join-friend@example.com", "social-join-friend")
+    stranger = _auth_headers(client, "social-join-stranger@example.com", "social-join-stranger")
+    _make_friends(client, owner, friend, "social-join-friend")
+
+    ch = client.post(
+        "/social/challenges",
+        headers=owner,
+        json={
+            "challenge_kind": "duel",
+            "title": "Friends Only Join",
+            "target_sessions": 4,
+            "member_user_ids": [2],
+        },
+    )
+    assert ch.status_code == 200
+    challenge_id = ch.json()["id"]
+
+    blocked = client.post("/social/challenges/join", headers=stranger, json={"challenge_id": challenge_id})
+    assert blocked.status_code == 403
+
+
 def test_free_challenge_limit_and_premium_unlock(client):
     a = _auth_headers(client, "social-i@example.com", "social-i")
     b = _auth_headers(client, "social-j@example.com", "social-j")

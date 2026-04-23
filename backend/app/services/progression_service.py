@@ -164,29 +164,31 @@ def grant_xp(
                 _recompute_progression_fields(row)
             return row
 
-    row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
-    if row is None:
-        row = UserProgression(user_id=user_id)
-        db.add(row)
-        db.flush()
-    # Ensure inactivity decay cannot be bypassed by returning after a long break.
-    if int(xp_delta) > 0:
-        apply_inactivity_decay(db, user_id)
-    row.xp_total = max(0, int(row.xp_total or 0) + int(xp_delta))
-    _recompute_progression_fields(row)
-    row.updated_at = utcnow()
-    ledger = XpLedger(
-        user_id=user_id,
-        source_type=source_type,
-        source_id=source_id,
-        xp_delta=xp_delta,
-        meta_json=json.dumps(meta or {}),
-    )
-    db.add(ledger)
+    row: UserProgression | None = None
     try:
-        db.flush()
+        with db.begin_nested():
+            row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
+            if row is None:
+                row = UserProgression(user_id=user_id)
+                db.add(row)
+                db.flush()
+            # Ensure inactivity decay cannot be bypassed by returning after a long break.
+            if int(xp_delta) > 0:
+                apply_inactivity_decay(db, user_id)
+            row.xp_total = max(0, int(row.xp_total or 0) + int(xp_delta))
+            _recompute_progression_fields(row)
+            row.updated_at = utcnow()
+            db.add(
+                XpLedger(
+                    user_id=user_id,
+                    source_type=source_type,
+                    source_id=source_id,
+                    xp_delta=xp_delta,
+                    meta_json=json.dumps(meta or {}),
+                )
+            )
+            db.flush()
     except IntegrityError:
-        db.expunge(ledger)
         row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
         if row is None:
             row = UserProgression(user_id=user_id)
@@ -194,6 +196,13 @@ def grant_xp(
             db.flush()
             _recompute_progression_fields(row)
         return row
+    if row is None:
+        row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
+        if row is None:
+            row = UserProgression(user_id=user_id)
+            db.add(row)
+            db.flush()
+            _recompute_progression_fields(row)
     return row
 
 

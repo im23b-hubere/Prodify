@@ -1,15 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Asset } from "expo-asset";
 import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
+  FadeIn,
   FadeInDown,
   FadeInUp,
+  FadeOut,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -19,11 +20,12 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
-import { ONBOARDING_COMPLETE_KEY } from "../../constants/storageKeys";
+import { ONBOARDING_COMPLETE_KEY, PENDING_WEEKLY_GOAL_KEY } from "../../constants/storageKeys";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { savePendingWeeklyGoal } from "../../lib/onboardingGoalSync";
 
 const GOALS = [3, 5, 7, 10, 14] as const;
 const ONBOARDING_VISUALS = [
@@ -39,7 +41,6 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [goal, setGoal] = useState<number>(7);
   const [busy, setBusy] = useState(false);
-  const [visualsReady, setVisualsReady] = useState(false);
   const floatY = useSharedValue(0);
   const parallaxX = useSharedValue(0);
 
@@ -94,22 +95,14 @@ export default function OnboardingScreen() {
     parallaxX.value = withTiming(0, { duration: 320, easing: Easing.out(Easing.cubic) });
   }, [parallaxX, step]);
 
-  useEffect(() => {
-    // Preload local onboarding visuals to reduce first-render image delay.
-    let cancelled = false;
-    void Asset.loadAsync(ONBOARDING_VISUALS as unknown as number[])
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setVisualsReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const finish = useCallback(async () => {
     setBusy(true);
     try {
+      try {
+        await savePendingWeeklyGoal(goal);
+      } catch {
+        /* continue; goal can still be selected in-app later */
+      }
       if (token) {
         try {
           await apiJson("/goals/set", {
@@ -117,6 +110,7 @@ export default function OnboardingScreen() {
             method: "POST",
             body: { goal_type: "weekly_sessions", target_value: goal },
           });
+          await AsyncStorage.removeItem(PENDING_WEEKLY_GOAL_KEY).catch(() => undefined);
         } catch {
           /* goal sync is best-effort */
         }
@@ -162,13 +156,15 @@ export default function OnboardingScreen() {
         </View>
         <Animated.View key={`hero-${step}`} entering={FadeInDown.duration(320)} style={styles.slide}>
           <Animated.View style={[styles.visualWrap, visualFloat]} entering={FadeInUp.duration(360)}>
-            {!visualsReady ? (
-              <View style={styles.visualLoadingState}>
-                <ActivityIndicator size="small" color={colors.primary} />
-              </View>
-            ) : (
-              <Image source={s.image} style={styles.visualImage} resizeMode="cover" fadeDuration={0} />
-            )}
+            <Animated.Image
+              key={`visual-${step}`}
+              source={s.image}
+              style={styles.visualImage}
+              resizeMode="cover"
+              fadeDuration={0}
+              entering={FadeIn.duration(220)}
+              exiting={FadeOut.duration(180)}
+            />
             {step < slides.length - 1 ? (
               <Image source={slides[step + 1].image} style={styles.hiddenPreloadImage} fadeDuration={0} />
             ) : null}
@@ -350,13 +346,6 @@ const styles = StyleSheet.create({
   visualImage: {
     width: "100%",
     height: "100%",
-  },
-  visualLoadingState: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surface,
   },
   hiddenPreloadImage: {
     width: 1,

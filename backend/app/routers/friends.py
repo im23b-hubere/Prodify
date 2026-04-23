@@ -23,6 +23,7 @@ from app.schemas import (
     FriendStatusPublic,
     FriendshipPublic,
 )
+from app.services.friend_graph import friend_user_ids as _friend_user_ids
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp
 from app.services.streak_reconcile_service import compute_streak_counts_for_display
@@ -40,19 +41,6 @@ def _any_pair_row(db: Session, a: int, b: int) -> Friendship | None:
             )
         )
     )
-
-
-def _friend_user_ids(db: Session, user_id: int) -> list[int]:
-    rows = db.scalars(
-        select(Friendship).where(
-            Friendship.status == FriendshipStatus.accepted,
-            or_(Friendship.user_id == user_id, Friendship.friend_id == user_id),
-        )
-    ).all()
-    out: list[int] = []
-    for r in rows:
-        out.append(r.friend_id if r.user_id == user_id else r.user_id)
-    return out
 
 
 def _session_count_in_period(db: Session, user_id: int, period_days: int | None) -> int:

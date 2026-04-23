@@ -7,6 +7,7 @@ import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } fr
 import i18n from "../lib/i18n";
 import { syncEntitlement } from "../lib/billing";
 import { clearNotificationInbox, setNotificationUserContext } from "../lib/notificationInbox";
+import { syncPendingWeeklyGoal } from "../lib/onboardingGoalSync";
 import {
   activeEntitlementExpiration,
   configureRevenueCat,
@@ -128,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(i18n.t("errors.unexpectedResponse"));
       }
       await persistTokenPair({ access_token: access, refresh_token: refresh });
+      await syncPendingWeeklyGoal(access).catch(() => undefined);
       try {
         const me = await apiJson<UserMe>("/auth/me", { token: access });
         await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
@@ -159,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(i18n.t("errors.unexpectedResponse"));
       }
       await persistTokenPair({ access_token: access, refresh_token: refresh });
+      await syncPendingWeeklyGoal(access).catch(() => undefined);
       try {
         const me = await apiJson<UserMe>("/auth/me", { token: access });
         await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);

@@ -41,6 +41,12 @@ from app.routers import (
 logger = logging.getLogger(__name__)
 
 
+def _schema_guard(message: str) -> None:
+    if settings.startup_schema_strict:
+        raise RuntimeError(message)
+    logger.warning("startup schema check downgraded to warning: %s", message)
+
+
 def validate_runtime_config() -> None:
     required_values = {
         "DATABASE_URL": settings.database_url,
@@ -112,7 +118,7 @@ def validate_schema() -> None:
     missing_streak = required_streak.difference(streak_cols)
     if missing_streak:
         miss = ", ".join(sorted(missing_streak))
-        raise RuntimeError(
+        _schema_guard(
             f"Database schema is missing columns for 'streaks': {miss}. Run Alembic migrations before starting the API."
         )
 
@@ -131,7 +137,7 @@ def validate_schema() -> None:
     missing_columns = required_columns.difference(column_names)
     if missing_columns:
         missing = ", ".join(sorted(missing_columns))
-        raise RuntimeError(
+        _schema_guard(
             f"Database schema is missing columns for 'sessions': {missing}. "
             "Run Alembic migrations before starting the API."
         )
@@ -142,7 +148,7 @@ def validate_schema() -> None:
     required_push_cols = {"is_active", "last_used_at"}
     missing_push = required_push_cols.difference(push_cols)
     if missing_push:
-        raise RuntimeError(
+        _schema_guard(
             f"Database schema is missing columns on 'push_tokens': {', '.join(sorted(missing_push))}. Run Alembic migrations."
         )
 
@@ -157,7 +163,7 @@ def validate_schema() -> None:
     }
     missing_user = required_user_cols.difference(user_cols)
     if missing_user:
-        raise RuntimeError(
+        _schema_guard(
             f"Database schema is missing columns on 'users': {', '.join(sorted(missing_user))}. Run Alembic migrations."
         )
 
@@ -187,7 +193,7 @@ def validate_alembic_head_matches() -> None:
     with engine.connect() as conn:
         rev = conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).scalar_one_or_none()
     if rev and head and rev != head:
-        raise RuntimeError(
+        _schema_guard(
             f"Alembic database revision is '{rev}' but code expects '{head}'. Run `alembic upgrade head` before starting."
         )
 

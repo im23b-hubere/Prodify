@@ -1,14 +1,30 @@
 name: E2E Tests
 
-# Manual-only until simulator + build steps are verified on CI.
-# Enable pull_request / push after a green run.
 on:
   workflow_dispatch: {}
-  # pull_request:
-  #   branches: [main]
+  pull_request:
+    branches:
+      - main
+      - "release/**"
+    paths:
+      - "mobile/**"
+      - ".github/workflows/e2e.yml"
+  schedule:
+    # Nightly iOS E2E smoke.
+    - cron: "30 2 * * *"
+  push:
+    branches:
+      - "release/**"
+    paths:
+      - "mobile/**"
+      - ".github/workflows/e2e.yml"
 
 permissions:
   contents: read
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   e2e-ios:

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.database import SessionLocal
 from app.models import PushToken
-from app.services.push_dispatch import dispatch_to_user
+from app.services.push_dispatch import dispatch_to_user, schedule_notify_session_complete
 from app.config import settings
 
 
@@ -65,3 +65,50 @@ def test_dispatch_deactivates_invalid_tokens_and_tracks_last_used(client, monkey
         assert invalid.is_active == 0
         assert valid.is_active == 1
         assert valid.last_used_at != old_dt
+
+
+def test_schedule_notify_session_complete_uses_shared_executor(monkeypatch):
+    submitted = {"count": 0}
+
+    class _FakeExecutor:
+        def submit(self, fn):
+            submitted["count"] += 1
+            fn()
+            return None
+
+    calls = {"count": 0}
+
+    def _fake_notify(*_args, **_kwargs):
+        calls["count"] += 1
+
+    monkeypatch.setattr("app.services.push_dispatch._get_push_executor", lambda _settings: _FakeExecutor())
+    monkeypatch.setattr(settings, "push_async_backend", "threadpool")
+    monkeypatch.setattr("app.services.push_dispatch.notify_session_complete", _fake_notify)
+
+    schedule_notify_session_complete(settings, user_id=1, session_type="beat_making", duration_seconds=1200)
+
+    assert submitted["count"] == 1
+    assert calls["count"] == 1
+
+
+def test_schedule_notify_session_complete_handles_executor_unavailable(monkeypatch):
+    class _BrokenExecutor:
+        def submit(self, _fn):
+            raise RuntimeError("executor is shut down")
+
+    monkeypatch.setattr("app.services.push_dispatch._get_push_executor", lambda _settings: _BrokenExecutor())
+    monkeypatch.setattr(settings, "push_async_backend", "threadpool")
+    # Should not raise.
+    schedule_notify_session_complete(settings, user_id=1, session_type="beat_making", duration_seconds=900)
+
+
+def test_schedule_notify_session_complete_inline_backend_executes_immediately(monkeypatch):
+    calls = {"count": 0}
+
+    def _fake_notify(*_args, **_kwargs):
+        calls["count"] += 1
+
+    monkeypatch.setattr(settings, "push_async_backend", "inline")
+    monkeypatch.setattr("app.services.push_dispatch.notify_session_complete", _fake_notify)
+    schedule_notify_session_complete(settings, user_id=1, session_type="beat_making", duration_seconds=300)
+    assert calls["count"] == 1

@@ -1,6 +1,8 @@
 from datetime import timedelta
 
+import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.database import SessionLocal
 from app.models import UserProgression, XpLedger, utcnow
@@ -109,3 +111,74 @@ def test_xp_for_completed_session_not_too_fast_for_short_medium_sessions():
     # Guardrails against very fast leveling from only a couple of normal sessions.
     assert xp_for_completed_session(30 * 60) <= 20
     assert xp_for_completed_session(60 * 60) <= 40
+
+
+def test_xp_ledger_unique_index_blocks_duplicate_idempotent_source(client):
+    token = _register_token(client, "xp-unique@example.com", "xp-unique")
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    user_id = me.json()["id"]
+
+    with SessionLocal() as db:
+        db.add(
+            XpLedger(
+                user_id=user_id,
+                source_type="session_complete",
+                source_id="same-source",
+                xp_delta=10,
+                meta_json="{}",
+            )
+        )
+        db.commit()
+        with pytest.raises(IntegrityError):
+            db.add(
+                XpLedger(
+                    user_id=user_id,
+                    source_type="session_complete",
+                    source_id="same-source",
+                    xp_delta=10,
+                    meta_json="{}",
+                )
+            )
+            db.commit()
+        db.rollback()
+
+
+def test_xp_ledger_unique_index_allows_multiple_inactivity_decay_entries(client):
+    token = _register_token(client, "xp-decay-dup@example.com", "xp-decay-dup")
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    user_id = me.json()["id"]
+
+    with SessionLocal() as db:
+        db.add(
+            XpLedger(
+                user_id=user_id,
+                source_type="inactivity_decay",
+                source_id="since:2026-01-01",
+                xp_delta=-12,
+                meta_json="{}",
+            )
+        )
+        db.add(
+            XpLedger(
+                user_id=user_id,
+                source_type="inactivity_decay",
+                source_id="since:2026-01-01",
+                xp_delta=-24,
+                meta_json="{}",
+            )
+        )
+        db.commit()
+
+        count = int(
+            db.scalar(
+                select(func.count()).select_from(XpLedger).where(
+                    XpLedger.user_id == user_id,
+                    XpLedger.source_type == "inactivity_decay",
+                    XpLedger.source_id == "since:2026-01-01",
+                )
+            )
+            or 0
+        )
+        assert count == 2
