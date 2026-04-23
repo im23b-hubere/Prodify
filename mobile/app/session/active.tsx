@@ -76,13 +76,39 @@ export default function SessionActiveScreen() {
   }));
 
   const load = useCallback(async () => {
-    if (!token || !id) return;
-    if (!Number.isFinite(Number(id))) {
-      setError(t("sessionActive.invalidSession"));
-      return;
+    if (!token) return;
+    let sessionId: number | null = null;
+    if (id != null && id !== "") {
+      const parsedId = Number(id);
+      if (!Number.isFinite(parsedId) || parsedId <= 0) {
+        setError(t("sessionActive.invalidSession"));
+        return;
+      }
+      sessionId = parsedId;
+    } else {
+      try {
+        const activeRaw = await apiJson<unknown>("/sessions/active", { token });
+        if (
+          activeRaw &&
+          typeof activeRaw === "object" &&
+          !Array.isArray(activeRaw) &&
+          typeof (activeRaw as { id?: unknown }).id === "number" &&
+          Number.isFinite((activeRaw as { id: number }).id) &&
+          (activeRaw as { id: number }).id > 0
+        ) {
+          sessionId = (activeRaw as { id: number }).id;
+        }
+      } catch {
+        sessionId = null;
+      }
+      if (sessionId == null) {
+        setError(t("sessionActive.invalidSession"));
+        setSession(null);
+        return;
+      }
     }
     try {
-      const raw = await apiJson<unknown>(`/sessions/item/${id}`, { token });
+      const raw = await apiJson<unknown>(`/sessions/item/${sessionId}`, { token });
       const data = tryParseSessionDto(raw);
       if (!data) {
         setError(t("sessionActive.invalidData"));

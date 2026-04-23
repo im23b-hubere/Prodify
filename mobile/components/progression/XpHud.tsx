@@ -10,7 +10,7 @@ import { colors, spacing } from "../../constants/theme";
 import { fontFamily } from "../../constants/fonts";
 
 export function XpHud() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -33,6 +33,16 @@ export function XpHud() {
     ];
     return !allowed.some((p) => pathname.startsWith(p));
   }, [pathname]);
+
+  useEffect(() => {
+    // Prevent showing stale XP while switching accounts/routes.
+    if (!token || hidden) {
+      setXp(null);
+      setLevel(null);
+      setProgressPercent(0);
+      setXpToNext(null);
+    }
+  }, [hidden, token, user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +73,7 @@ export function XpHud() {
     return () => {
       cancelled = true;
     };
-  }, [token, pathname, hidden]);
+  }, [token, pathname, hidden, user?.id]);
 
   if (!token || hidden || xp == null || level == null) return null;
 

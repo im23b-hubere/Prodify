@@ -65,7 +65,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         sceneStyle: { backgroundColor: colors.background },
-        animation: "fade",
+        animation: "none",
       }}
     >
       <Tabs.Screen

@@ -1,6 +1,6 @@
 import { type Href, useRouter } from "expo-router";
 import { UserPlus } from "lucide-react-native";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, RefreshControl, Text, View, type ListRenderItem } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,6 +21,8 @@ import { useFriendsDashboardData } from "../../features/friends/hooks/useFriends
 import { useFriendsScreenActions } from "../../features/friends/hooks/useFriendsScreenActions";
 import { useFriendsScreenState } from "../../features/friends/hooks/useFriendsScreenState";
 import { friendsScreenStyles as styles } from "../../features/friends/styles/friendsScreen.styles";
+import { prependNotification } from "../../lib/notificationInbox";
+import { sendLocalSocialNotification } from "../../lib/socialNotifications";
 import type { FriendActivityDto } from "../../types/friends";
 
 export default function FriendsScreen() {
@@ -106,6 +108,68 @@ export default function FriendsScreen() {
     openSession,
   });
 
+  const visibleActivity = useMemo(
+    () => activity.filter((item) => item.user_id !== user?.id),
+    [activity, user?.id],
+  );
+
+  useEffect(() => {
+    for (const request of incoming) {
+      prependNotification({
+        id: `social-friend-request-${request.id}`,
+        category: "social",
+        priority: "normal",
+        title: t("notificationsUi.friendRequestTitle"),
+        body: t("notificationsUi.friendRequestBody", { username: request.username }),
+        actionLabel: t("notificationsUi.openFriends"),
+        actionRoute: "/(tabs)/friends",
+        ttlMs: 7 * 24 * 60 * 60 * 1000,
+        dedupeWindowMs: 5 * 60 * 1000,
+      })
+        .then((inserted) => {
+          if (!inserted) return;
+          return sendLocalSocialNotification({
+            title: t("notificationsUi.friendRequestTitle"),
+            body: t("notificationsUi.friendRequestBody", { username: request.username }),
+            path: "/(tabs)/friends",
+            throttleKey: `friend-request-${request.id}`,
+            throttleMs: 30_000,
+          });
+        })
+        .catch(() => undefined);
+    }
+  }, [incoming, t]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    for (const item of activity) {
+      const commentsCount = item.comments_count ?? 0;
+      if (item.user_id !== user.id || item.session_id <= 0 || commentsCount <= 0) continue;
+      prependNotification({
+        id: `social-comment-${item.session_id}-${commentsCount}`,
+        category: "social",
+        priority: "normal",
+        title: t("notificationsUi.newCommentTitle"),
+        body: t("notificationsUi.newCommentBody", { count: commentsCount }),
+        actionLabel: t("notificationsUi.openSession"),
+        actionRoute: `/session/${item.session_id}`,
+        ttlMs: 5 * 24 * 60 * 60 * 1000,
+        dedupeWindowMs: 2 * 60 * 1000,
+      })
+        .then((inserted) => {
+          if (!inserted) return;
+          return sendLocalSocialNotification({
+            title: t("notificationsUi.newCommentTitle"),
+            body: t("notificationsUi.newCommentBody", { count: commentsCount }),
+            path: `/session/${item.session_id}`,
+            throttleKey: `comment-session-${item.session_id}`,
+            throttleMs: 60_000,
+          });
+        })
+        .catch(() => undefined);
+    }
+  }, [activity, t, user?.id]);
+
   const renderActivityItem = useCallback<ListRenderItem<FriendActivityDto>>(
     ({ item, index }) => {
       const isSessionItem =
@@ -140,7 +204,7 @@ export default function FriendsScreen() {
             }
           }}
           onSupportStreakBreak={() => {
-            if (item.status === "streak_broken") {
+            if (item.status === "streak_broken" && item.user_id !== user?.id) {
               void actions.supportStreakBreak(item);
             }
           }}
@@ -149,7 +213,11 @@ export default function FriendsScreen() {
               setSectionTab("tools");
             }
           }}
-          supportBusy={item.status === "streak_broken" && busyActionKey === "streak_support"}
+          supportBusy={
+            item.status === "streak_broken" &&
+            item.user_id !== user?.id &&
+            busyActionKey === "streak_support"
+          }
         />
       );
     },
@@ -245,7 +313,7 @@ export default function FriendsScreen() {
                     loading={loading}
                     entries={actions.entries}
                     currentUserId={user?.id}
-                    activity={activity}
+                    activity={visibleActivity}
                     renderActivityItem={renderActivityItem}
                     activeTriggerCard={actions.activeTriggerCard}
                     onCompleteTriggerAction={actions.completeTriggerAction}

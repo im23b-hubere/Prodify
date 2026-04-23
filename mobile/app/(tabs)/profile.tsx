@@ -4,7 +4,6 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -19,6 +18,7 @@ import * as Haptics from "expo-haptics";
 
 import { BadgeIcon } from "../../components/ui/BadgeIcon";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { StatCard } from "../../components/ui/StatCard";
 import { API_BASE_URL } from "../../constants/api";
 import { fontFamily } from "../../constants/fonts";
@@ -36,9 +36,34 @@ function formatHours(totalSeconds: number): string {
   return Math.round(h).toString();
 }
 
+function ProfileSkeleton() {
+  return (
+    <View style={styles.skeletonWrap}>
+      <View style={styles.skeletonHero}>
+        <View style={styles.skeletonAvatar} />
+        <View style={[styles.skeletonLine, { width: 140, height: 18 }]} />
+        <View style={[styles.skeletonLine, { width: 180, height: 12 }]} />
+      </View>
+      <View style={styles.skeletonGrid}>
+        {[0, 1, 2, 3].map((idx) => (
+          <View key={`profile-sk-${idx}`} style={styles.skeletonStat}>
+            <View style={[styles.skeletonLine, { width: "55%", height: 12 }]} />
+            <View style={[styles.skeletonLine, { width: "70%", height: 22 }]} />
+          </View>
+        ))}
+      </View>
+      <View style={styles.skeletonCard}>
+        <View style={[styles.skeletonLine, { width: "36%", height: 14 }]} />
+        <View style={[styles.skeletonLine, { width: "92%", height: 12 }]} />
+        <View style={[styles.skeletonLine, { width: "84%", height: 12 }]} />
+      </View>
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
   const { t } = useTranslation();
-  const { user, signOut, deleteAccount, token } = useAuth();
+  const { user, signOut, deleteAccount, token, refreshUser } = useAuth();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,6 +74,7 @@ export default function ProfileScreen() {
   const [pictureBusy, setPictureBusy] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pingTemplate, setPingTemplate] = useState<"test" | "session_demo" | "streak_demo">("test");
+  const [avatarVersion, setAvatarVersion] = useState(0);
   const loadSeq = useRef(0);
   const mounted = useRef(true);
 
@@ -173,10 +199,14 @@ export default function ProfileScreen() {
   }, [pingTemplate, token, t]);
 
   const summary = stats?.summary;
+  const showInitialLoading = loading && !refreshing && !summary && !error;
   const avatarUri = user?.profile_picture_url?.trim()
     ? user.profile_picture_url.startsWith("http")
       ? user.profile_picture_url
       : `${API_BASE_URL}${user.profile_picture_url}`
+    : null;
+  const avatarUriWithVersion = avatarUri
+    ? `${avatarUri}${avatarUri.includes("?") ? "&" : "?"}v=${avatarVersion}`
     : null;
 
   const pickProfilePicture = useCallback(async () => {
@@ -215,6 +245,8 @@ export default function ProfileScreen() {
         const txt = await res.text();
         throw new Error(txt || t("profile.pictureUploadFailed"));
       }
+      await refreshUser().catch(() => undefined);
+      setAvatarVersion((prev) => prev + 1);
       await load();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (e) {
@@ -225,7 +257,7 @@ export default function ProfileScreen() {
     } finally {
       setPictureBusy(false);
     }
-  }, [load, pictureBusy, t, token]);
+  }, [load, pictureBusy, refreshUser, t, token]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -239,6 +271,12 @@ export default function ProfileScreen() {
           />
         }
       >
+        <ScreenHeader
+          title={t("tabs.profile")}
+          subtitle={t("profile.settingsTitle")}
+          actionLabel={t("common.back")}
+          onActionPress={() => router.push("/(tabs)/dashboard")}
+        />
         <View style={styles.profileHero}>
           <Pressable
             style={({ pressed }) => [styles.avatarPressable, pressed && styles.pressed]}
@@ -247,7 +285,7 @@ export default function ProfileScreen() {
           >
             <View style={styles.avatar}>
               {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                <Image source={{ uri: avatarUriWithVersion ?? avatarUri }} style={styles.avatarImage} />
               ) : (
                 <Text style={styles.avatarText}>
                   {user?.username?.slice(0, 2).toUpperCase() ?? t("profile.defaultInitials")}
@@ -262,12 +300,7 @@ export default function ProfileScreen() {
           <Text style={styles.email}>{user?.email ?? t("profile.loadingEmail")}</Text>
         </View>
 
-        {loading && !refreshing ? (
-          <View style={styles.loadingBlock}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingHint}>{t("profile.loadingHint")}</Text>
-          </View>
-        ) : null}
+        {showInitialLoading ? <ProfileSkeleton /> : null}
 
         {error ? (
           <View style={styles.errorBox}>
@@ -278,7 +311,7 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {!loading && summary ? (
+        {!showInitialLoading && summary ? (
           <View style={styles.statsGrid}>
             <StatCard label={t("profile.totalSessions")} value={summary.total_sessions} />
             <StatCard
@@ -293,7 +326,7 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {!loading && reliability ? (
+        {!showInitialLoading && reliability ? (
           <View style={styles.reliabilityCard}>
             <View style={styles.reliabilityHead}>
               <Text style={styles.reliabilityLabel}>{t("profile.reliabilityTitle")}</Text>
@@ -307,7 +340,9 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.reliabilityScore}>{reliability.score.toFixed(1)}/10</Text>
             <Text style={styles.reliabilityMeta}>
-              {t("profile.reliabilityRank", { rank: reliability.rank_percent })}
+              {typeof reliability.rank_percent === "number"
+                ? t("profile.reliabilityRank", { rank: reliability.rank_percent })
+                : t("profile.reliabilityRankUnavailable")}
             </Text>
             <Text style={styles.reliabilityHint}>
               {t("profile.reliabilityHint", {
@@ -325,7 +360,7 @@ export default function ProfileScreen() {
           </Text>
         ) : null}
 
-        {!loading && milestones ? (
+        {!showInitialLoading && milestones ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -337,7 +372,7 @@ export default function ProfileScreen() {
           </ScrollView>
         ) : null}
 
-        {!loading && !milestones && !error ? (
+        {!showInitialLoading && !milestones && !error ? (
           <Text style={styles.muted}>{t("profile.milestonesUnavailable")}</Text>
         ) : null}
 
@@ -377,6 +412,16 @@ export default function ProfileScreen() {
 
         <Text style={styles.sectionTitle}>{t("profile.settingsTitle")}</Text>
         <View style={styles.settingsCard}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("profile.manageNotifications")}
+            style={({ pressed }) => [styles.legalRow, pressed && styles.pressed]}
+            onPress={() => router.push({ pathname: "/notifications", params: { source: "profile" } })}
+          >
+            <Text style={styles.legalRowText}>{t("profile.manageNotifications")}</Text>
+            <Text style={styles.legalRowChevron}>›</Text>
+          </Pressable>
+          <View style={styles.legalDivider} />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("legal.linksPrivacy")}
@@ -429,6 +474,36 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: spacing.xxl },
+  skeletonWrap: { gap: spacing.md, marginBottom: spacing.md },
+  skeletonHero: { alignItems: "center", gap: spacing.xs, marginBottom: spacing.sm },
+  skeletonAvatar: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  skeletonGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  skeletonStat: {
+    width: "48%",
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.sm,
+    gap: spacing.sm,
+  },
+  skeletonCard: {
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  skeletonLine: {
+    borderRadius: radii.round,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
   profileHero: { alignItems: "center", marginBottom: spacing.lg },
   avatarPressable: {
     alignItems: "center",
@@ -475,6 +550,19 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   loadingHint: { color: colors.textSecondary, ...typography.caption },
+  inlineLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.03)",
+  },
+  inlineLoadingText: { color: colors.textSecondary, ...typography.caption },
   errorBox: {
     padding: spacing.md,
     borderRadius: radii.lg,

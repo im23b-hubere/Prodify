@@ -1,6 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -19,13 +18,13 @@ import { TextButton } from "../../components/ui/TextButton";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { AppCard } from "../../components/ui/AppCard";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
-import { PENDING_SESSION_SETUP_KEY } from "../../constants/sessionUi";
 import { fontFamily } from "../../constants/fonts";
 import { colors, motion, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { fetchEntitlement } from "../../lib/billing";
 import { buildWeeklyForecast } from "../../lib/forecastEngine";
+import { adjustedWeeklyTargetForSignupWeek } from "../../lib/goalPace";
 import { buildSessionFeedback } from "../../lib/sessionFeedbackEngine";
 import { tryParseSessionDto } from "../../lib/sessionDto";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
@@ -51,7 +50,7 @@ function estimateSessionXpGain(durationSeconds: number): number {
 
 export default function SessionCompleteScreen() {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const raw = useLocalSearchParams<{ id: string | string[] }>().id;
   const id = Array.isArray(raw) ? raw[0] : raw;
@@ -124,7 +123,11 @@ export default function SessionCompleteScreen() {
       if (goalRaw && typeof goalRaw === "object") {
         const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
         setWeeklyGoalTarget(typeof g.target_value === "number" ? g.target_value : null);
-        setWeekSessionsCount(typeof g.current_sessions === "number" ? g.current_sessions : 0);
+        let counted = typeof g.current_sessions === "number" ? g.current_sessions : 0;
+        if ((s.duration_seconds ?? 0) < SESSION_XP_MINUTES_FLOOR * 60 && counted > 0) {
+          counted -= 1;
+        }
+        setWeekSessionsCount(Math.max(0, counted));
       } else {
         setWeeklyGoalTarget(null);
         setWeekSessionsCount(0);
@@ -171,6 +174,14 @@ export default function SessionCompleteScreen() {
   }, [autoReturnEnabled, loadState, router, secondsLeft]);
 
   const dur = session?.duration_seconds ?? 0;
+  const effectiveWeeklyGoalTarget = useMemo(
+    () =>
+      adjustedWeeklyTargetForSignupWeek({
+        weeklyGoalTarget,
+        accountCreatedAtIso: user?.created_at ?? null,
+      }),
+    [weeklyGoalTarget, user?.created_at],
+  );
   const xpGainEstimate = estimateSessionXpGain(dur);
   const autoReturnProgress = useMemo(() => {
     const elapsed = AUTO_RETURN_SECONDS - secondsLeft;
@@ -196,22 +207,22 @@ export default function SessionCompleteScreen() {
   const feedback = useMemo(
     () =>
       buildSessionFeedback({
-        weeklyGoalTarget,
+        weeklyGoalTarget: effectiveWeeklyGoalTarget,
         weekSessionsCount,
         currentStreak: streak ?? 0,
         sessionDurationSeconds: dur,
       }),
-    [weeklyGoalTarget, weekSessionsCount, streak, dur],
+    [effectiveWeeklyGoalTarget, weekSessionsCount, streak, dur],
   );
   const paceForecast = useMemo(
     () =>
-      weeklyGoalTarget != null && weeklyGoalTarget > 0
+      effectiveWeeklyGoalTarget != null && effectiveWeeklyGoalTarget > 0
         ? buildWeeklyForecast({
-            weeklyGoalTarget,
+            weeklyGoalTarget: effectiveWeeklyGoalTarget,
             completedThisWeek: weekSessionsCount,
           })
         : null,
-    [weeklyGoalTarget, weekSessionsCount],
+    [effectiveWeeklyGoalTarget, weekSessionsCount],
   );
   const weekdayLabels = useMemo(
     () =>
@@ -339,10 +350,12 @@ export default function SessionCompleteScreen() {
                 ]}
                 onPress={() => {
                   setTrackOutcome(option);
+                  setTrackSaved(false);
                   if (option !== "finished") {
                     setTrackTitle("");
+                    void persistTrackOutcome(option, "");
+                    return;
                   }
-                  void persistTrackOutcome(option, option === "finished" ? trackTitle : "");
                 }}
               >
                 <Text
@@ -388,6 +401,11 @@ export default function SessionCompleteScreen() {
           <Text style={styles.xpTitle}>
             {t("sessionComplete.xpEarned", { xp: xpGainEstimate })}
           </Text>
+          {xpGainEstimate === 0 ? (
+            <Text style={styles.xpHint}>
+              {t("sessionComplete.xpMinDurationHint", { min: SESSION_XP_MINUTES_FLOOR })}
+            </Text>
+          ) : null}
           <Text style={styles.xpMeta}>
             {progression
               ? t("sessionComplete.levelProgress", {
@@ -496,14 +514,9 @@ export default function SessionCompleteScreen() {
         <View style={styles.actions}>
           <PrimaryButton
             label={t("sessionFeedback.planNextSession")}
-            onPress={async () => {
-              try {
-                await SecureStore.setItemAsync(PENDING_SESSION_SETUP_KEY, "1");
-              } catch {
-                /* still navigate */
-              }
-              router.replace("/(tabs)/dashboard");
-            }}
+            onPress={() =>
+              router.replace({ pathname: "/session/setup", params: { source: "plan_next" } })
+            }
           />
           <SecondaryButton
             label={t("sessionComplete.viewDetails")}
@@ -711,6 +724,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   xpTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  xpHint: { color: "#f59e0b", ...typography.meta, fontFamily: fontFamily.bodyMedium },
   xpMeta: { color: colors.textSecondary, ...typography.meta },
   auto: { color: colors.textSecondary, ...typography.meta, marginTop: spacing.md },
   supportingCard: {

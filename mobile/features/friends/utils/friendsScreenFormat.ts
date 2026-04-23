@@ -46,3 +46,17 @@ export function formatSessionTypeLabel(type: string, t: TFunction): string {
   if (label !== key) return label;
   return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+export function formatStreakStatusLabel(
+  key: string | null | undefined,
+  label: string | null | undefined,
+  t: TFunction,
+): string {
+  const normalizedKey = (key ?? "").trim().toLowerCase();
+  const normalizedLabel = (label ?? "").trim().toLowerCase();
+  if (normalizedKey === "starting" || normalizedLabel === "starting") {
+    return t("friendsScreen.streakStatusStarting");
+  }
+  if (label?.trim()) return label.trim();
+  return t("friendsScreen.streakStatusDefault");
+}

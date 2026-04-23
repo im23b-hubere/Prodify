@@ -119,7 +119,6 @@ def dispatch_to_user(
         for row in touched_rows:
             row.last_used_at = now
 
-    db.commit()
     summary = " · ".join(parts) if parts else None
     return total_attempted, total_ok, summary
 
@@ -129,9 +128,11 @@ def notify_session_complete(settings: Settings, db: DBSession, user_id: int, ses
     payload = {**push_data_dashboard(), "kind": "session_complete"}
     try:
         attempted, ok, msg = dispatch_to_user(settings, db, user_id, title, body, data=payload)
+        db.commit()
         if msg and ok < attempted:
             logger.info("push session-complete: ok=%s/%s %s", ok, attempted, msg)
     except Exception:
+        db.rollback()
         logger.exception("push session-complete failed")
 
 

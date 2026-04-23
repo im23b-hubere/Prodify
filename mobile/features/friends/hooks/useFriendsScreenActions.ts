@@ -145,7 +145,7 @@ export function useFriendsScreenActions({ token, userId, t, load, state, openSes
       await apiJson("/social/checkins/done", {
         token,
         method: "POST",
-        body: { note: "Shipped this week." },
+        body: { note: t("friendsScreen.shippedThisWeekNote", { defaultValue: "Shipped this week." }) },
       });
       await load();
       state.showToast(t("friendsScreen.toastMomentum"));
@@ -374,6 +374,10 @@ export function useFriendsScreenActions({ token, userId, t, load, state, openSes
   const supportStreakBreak = useCallback(
     async (item: FriendActivityDto) => {
       if (!token || !item.user_id || item.user_id <= 0) return;
+      if (typeof userId === "number" && item.user_id === userId) {
+        state.showToast(t("friendsScreen.supportSelfNotAllowed"));
+        return;
+      }
       state.setBusyActionKey("streak_support");
       try {
         const canRescue =
@@ -403,7 +407,7 @@ export function useFriendsScreenActions({ token, userId, t, load, state, openSes
         state.setBusyActionKey(null);
       }
     },
-    [load, state, t, token],
+    [load, state, t, token, userId],
   );
 
   const triggerCards = useMemo<FriendsTriggerCard[]>(() => {

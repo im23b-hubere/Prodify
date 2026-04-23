@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 
 from app.database import SessionLocal
 from app.models import UserProgression, XpLedger, utcnow
-from app.services.progression_service import grant_xp
+from app.services.progression_service import grant_xp, xp_for_completed_session
 
 
 def _register_token(client, email: str, username: str) -> str:
@@ -89,3 +89,23 @@ def test_progression_levels_catalog(client):
     assert levels[0]["level"] == 1
     assert levels[0]["xp_start"] == 0
     assert levels[0]["xp_end_exclusive"] > levels[0]["xp_start"]
+
+
+def test_xp_for_completed_session_respects_floor_and_rewards_duration():
+    assert xp_for_completed_session(4 * 60) == 0
+    assert xp_for_completed_session(5 * 60) > 0
+
+    xp_10 = xp_for_completed_session(10 * 60)
+    xp_25 = xp_for_completed_session(25 * 60)
+    xp_45 = xp_for_completed_session(45 * 60)
+    xp_75 = xp_for_completed_session(75 * 60)
+
+    assert xp_25 > xp_10
+    assert xp_45 > xp_25
+    assert xp_75 > xp_45
+
+
+def test_xp_for_completed_session_not_too_fast_for_short_medium_sessions():
+    # Guardrails against very fast leveling from only a couple of normal sessions.
+    assert xp_for_completed_session(30 * 60) <= 20
+    assert xp_for_completed_session(60 * 60) <= 40

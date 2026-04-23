@@ -8,6 +8,7 @@ import { prependNotification } from "../../../lib/notificationInbox";
 import type { StreakOverviewDto } from "../../../types/streak";
 
 type Params = {
+  userId?: number;
   streakOverview: StreakOverviewDto | null;
   userScopedMilestoneKey: string;
   userScopedStreakKey: string;
@@ -16,6 +17,7 @@ type Params = {
 };
 
 export function useDashboardStreakEvents({
+  userId,
   streakOverview,
   userScopedMilestoneKey,
   userScopedStreakKey,
@@ -27,6 +29,8 @@ export function useDashboardStreakEvents({
   const [breakModalStreak, setBreakModalStreak] = useState(0);
   const clearToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doubleHapticTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initializedUserRef = useRef<number | null>(null);
+  const initializedMilestoneUserRef = useRef<number | null>(null);
 
   const dismissBreakModal = useCallback(() => {
     setBreakModalOpen(false);
@@ -44,10 +48,22 @@ export function useDashboardStreakEvents({
   }, []);
 
   useEffect(() => {
-    if (!streakOverview) return;
+    // Reset transient UI when account context changes to avoid stale modals.
+    setBreakModalOpen(false);
+    setBreakModalStreak(0);
+    setMilestoneToast(null);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!streakOverview || typeof userId !== "number") return;
     const cur = streakOverview.current_streak;
     void (async () => {
       try {
+        if (initializedMilestoneUserRef.current !== userId) {
+          initializedMilestoneUserRef.current = userId;
+          await SecureStore.setItemAsync(userScopedMilestoneKey, String(cur));
+          return;
+        }
         const raw = await SecureStore.getItemAsync(userScopedMilestoneKey);
         const maxSeen = raw ? parseInt(raw, 10) : 0;
         const newlyPassed = STREAK_MILESTONES.filter((m) => cur >= m.days && m.days > maxSeen);
@@ -58,8 +74,12 @@ export function useDashboardStreakEvents({
         setMilestoneToast(`${best.title} — ${best.reward}`);
         prependNotification({
           category: "achievement",
+          priority: "high",
           title: t("dashboard.milestoneNotifTitle"),
           body: `${best.title} — ${best.reward}`,
+          ttlMs: 30 * 24 * 60 * 60 * 1000,
+          dedupeWindowMs: 12 * 60 * 60 * 1000,
+          bypassFirstWeekQuietMode: true,
         }).catch(() => undefined);
         refreshUnread();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
@@ -81,13 +101,18 @@ export function useDashboardStreakEvents({
         /* ignore */
       }
     })();
-  }, [streakOverview, userScopedMilestoneKey, t, refreshUnread]);
+  }, [streakOverview, userId, userScopedMilestoneKey, t, refreshUnread]);
 
   useEffect(() => {
-    if (!streakOverview) return;
+    if (!streakOverview || typeof userId !== "number") return;
     const cur = streakOverview.current_streak;
     void (async () => {
       try {
+        if (initializedUserRef.current !== userId) {
+          initializedUserRef.current = userId;
+          await SecureStore.setItemAsync(userScopedStreakKey, String(cur));
+          return;
+        }
         const raw = await SecureStore.getItemAsync(userScopedStreakKey);
         const prev = raw ? parseInt(raw, 10) : 0;
         if (prev > 0 && cur === 0) {
@@ -99,7 +124,7 @@ export function useDashboardStreakEvents({
         /* ignore */
       }
     })();
-  }, [streakOverview, userScopedStreakKey]);
+  }, [streakOverview, userId, userScopedStreakKey]);
 
   return {
     milestoneToast,

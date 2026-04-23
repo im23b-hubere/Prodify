@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,6 +13,7 @@ import { parseSessionList } from "../../lib/sessionDto";
 import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import type { SessionDto } from "../../types/session";
 
 function formatDate(iso: string) {
@@ -24,6 +26,7 @@ function formatDate(iso: string) {
 export default function SessionTrashScreen() {
   const { t } = useTranslation();
   const { token } = useAuth();
+  const router = useRouter();
   const [sessions, setSessions] = useState<SessionDto[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -45,6 +48,12 @@ export default function SessionTrashScreen() {
     load().catch((e) => setError(e instanceof Error ? e.message : t("sessionTrash.loadFailed")));
   }, [load, t]);
 
+  useFocusEffect(
+    useCallback(() => {
+      load().catch(() => undefined);
+    }, [load]),
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load().catch((e) =>
@@ -57,11 +66,14 @@ export default function SessionTrashScreen() {
     async (id: number) => {
       if (!token) return;
       setBusyId(id);
+      // Optimistic update for snappy UX.
+      setSessions((prev) => prev.filter((s) => s.id !== id));
       try {
         await apiJson(`/sessions/item/${id}/restore`, { token, method: "POST" });
         await load();
       } catch (e) {
         setError(e instanceof Error ? e.message : t("sessionTrash.restoreFailed"));
+        await load().catch(() => undefined);
       } finally {
         setBusyId(null);
       }
@@ -81,9 +93,12 @@ export default function SessionTrashScreen() {
           />
         }
       >
-        <Text style={styles.title}>{t("sessionTrash.title")}</Text>
-        <Text style={styles.subtitle}>{t("sessionTrash.subtitle")}</Text>
-
+        <ScreenHeader
+          title={t("sessionTrash.title")}
+          subtitle={t("sessionTrash.subtitle")}
+          actionLabel={t("sessionFeedback.backToDashboard")}
+          onActionPress={() => router.replace("/(tabs)/dashboard")}
+        />
         {loading && !refreshing ? <LoadingState message={t("sessionTrash.loading")} /> : null}
 
         {error ? (

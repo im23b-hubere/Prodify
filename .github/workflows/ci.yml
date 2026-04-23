@@ -5,6 +5,9 @@ on:
     branches: ["**"]
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -13,6 +16,7 @@ jobs:
   backend:
     name: Backend checks
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: backend
@@ -36,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Install security tooling
+        run: pip install pip-audit
+
       - name: Apply database migrations
         run: python -m alembic upgrade head
 
@@ -45,12 +52,16 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall -q app
 
-      - name: Run backend tests
-        run: pytest -q
+      - name: Run backend tests with coverage
+        run: pytest --cov=app --cov-report=term-missing --cov-report=xml -q
+
+      - name: Python dependency vulnerability scan
+        run: pip-audit -r requirements.txt
 
   mobile:
     name: Mobile checks
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: mobile
@@ -64,6 +75,16 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: mobile/package-lock.json
+
+      - name: Validate production public env defaults
+        run: >
+          node -e "const fs=require('fs');
+          const eas=JSON.parse(fs.readFileSync('eas.json','utf8'));
+          const env=eas?.build?.production?.env||{};
+          const required=['EXPO_PUBLIC_APP_ENV','EXPO_PUBLIC_ENV','EXPO_PUBLIC_API_URL'];
+          const missing=required.filter((k)=>!String(env[k]||'').trim());
+          if(missing.length){console.error('Missing production env values in eas.json: '+missing.join(', '));process.exit(1);}
+          console.log('Production env defaults configured in eas.json.');"
 
       - name: Install dependencies
         run: npm ci
@@ -79,3 +100,6 @@ jobs:
 
       - name: Unit tests
         run: npm test -- --ci --coverage=false
+
+      - name: npm production dependency audit
+        run: npm audit --omit=dev --audit-level=high

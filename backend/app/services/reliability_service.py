@@ -14,7 +14,7 @@ from app.timeutil import as_utc_aware
 class ReliabilityScoreResult:
     score: float
     trend: str
-    rank_percent: int
+    rank_percent: int | None
     consistency_90d: float
     completion_rate_90d: float
 
@@ -79,16 +79,64 @@ class ReliabilityScoreService:
             trend = "stable"
 
         all_user_ids = db.scalars(select(User.id)).all()
-        scores: list[float] = []
-        for uid in all_user_ids:
-            if uid == user_id:
-                scores.append(score)
-                continue
-            scores.append(ReliabilityScoreService._fast_score_for_user(uid, db, start_90d))
-        scores.sort(reverse=True)
-        total = max(len(scores), 1)
-        rank_position = scores.index(score) + 1 if score in scores else total
-        rank_percent = max(1, int((rank_position / total) * 100))
+        rank_percent: int | None = None
+        # Avoid misleading percentile messaging with tiny cohorts.
+        if len(all_user_ids) >= 5:
+            streak_map = {
+                row.user_id: int(row.current_streak or 0)
+                for row in db.scalars(select(Streak)).all()
+            }
+            session_rows = db.execute(
+                select(
+                    ProductionSession.user_id,
+                    ProductionSession.started_at,
+                    ProductionSession.duration_seconds,
+                ).where(
+                    ProductionSession.deleted_at.is_(None),
+                    ProductionSession.duration_seconds.is_not(None),
+                    ProductionSession.started_at >= start_90d,
+                )
+            ).all()
+            by_user_days: dict[int, set[str]] = {}
+            by_user_total_sessions: dict[int, int] = {}
+            by_user_completed_sessions: dict[int, int] = {}
+            for uid, started_at, duration_seconds in session_rows:
+                if uid not in by_user_days:
+                    by_user_days[uid] = set()
+                    by_user_total_sessions[uid] = 0
+                    by_user_completed_sessions[uid] = 0
+                by_user_days[uid].add(as_utc_aware(started_at).date().isoformat())
+                by_user_total_sessions[uid] += 1
+                if int(duration_seconds or 0) >= 1500:
+                    by_user_completed_sessions[uid] += 1
+
+            scores: list[float] = []
+            for uid in all_user_ids:
+                if uid == user_id:
+                    scores.append(score)
+                    continue
+                consistency = min(len(by_user_days.get(uid, set())) / 90.0, 1.0)
+                total_sessions = by_user_total_sessions.get(uid, 0)
+                completion = (
+                    by_user_completed_sessions.get(uid, 0) / total_sessions if total_sessions else 0.0
+                )
+                streak_component = min(streak_map.get(uid, 0) / 30.0, 1.0)
+                scores.append(
+                    round(
+                        max(
+                            0.0,
+                            min(
+                                (consistency * 0.45 + completion * 0.35 + streak_component * 0.20) * 10.0,
+                                10.0,
+                            ),
+                        ),
+                        1,
+                    )
+                )
+            scores.sort(reverse=True)
+            total = max(len(scores), 1)
+            rank_position = scores.index(score) + 1 if score in scores else total
+            rank_percent = max(1, int((rank_position / total) * 100))
 
         return ReliabilityScoreResult(
             score=score,
@@ -98,19 +146,3 @@ class ReliabilityScoreService:
             completion_rate_90d=round(completion_rate_90d * 100.0, 1),
         )
 
-    @staticmethod
-    def _fast_score_for_user(user_id: int, db: Session, start_90d: datetime) -> float:
-        sessions = db.scalars(
-            select(ProductionSession).where(
-                ProductionSession.user_id == user_id,
-                ProductionSession.deleted_at.is_(None),
-                ProductionSession.duration_seconds.is_not(None),
-                ProductionSession.started_at >= start_90d,
-            )
-        ).all()
-        day_keys = {as_utc_aware(s.started_at).date().isoformat() for s in sessions}
-        consistency = min(len(day_keys) / 90.0, 1.0)
-        completion = len([s for s in sessions if int(s.duration_seconds or 0) >= 1500]) / len(sessions) if sessions else 0.0
-        streak_row = db.scalar(select(Streak).where(Streak.user_id == user_id))
-        streak_component = min(int(streak_row.current_streak or 0) / 30.0, 1.0) if streak_row else 0.0
-        return round(max(0.0, min((consistency * 0.45 + completion * 0.35 + streak_component * 0.20) * 10.0, 10.0)), 1)

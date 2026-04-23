@@ -1,9 +1,11 @@
 import { useTranslation } from "react-i18next";
+import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { ScreenHeader } from "../ui/ScreenHeader";
 
 type LegalDoc = "privacy" | "terms";
 
@@ -11,13 +13,21 @@ type Block = { heading: string; body: string };
 
 export function LegalDocumentScreen({ doc }: { doc: LegalDoc }) {
   const { t } = useTranslation();
+  const router = useRouter();
   const prefix = `legal.${doc}` as const;
   const blocks = t(`${prefix}.blocks`, { returnObjects: true }) as Block[];
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <View style={styles.headerWrap}>
+        <ScreenHeader
+          title={t(`${prefix}.screenTitle`)}
+          subtitle={t(`${prefix}.updated`)}
+          actionLabel={t("common.back")}
+          onActionPress={() => router.replace("/(tabs)/profile")}
+        />
+      </View>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.updated}>{t(`${prefix}.updated`)}</Text>
         <Text style={styles.intro}>{t(`${prefix}.intro`)}</Text>
         {Array.isArray(blocks)
           ? blocks.map((b, i) => (
@@ -34,6 +44,10 @@ export function LegalDocumentScreen({ doc }: { doc: LegalDoc }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
+  headerWrap: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+  },
   scroll: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

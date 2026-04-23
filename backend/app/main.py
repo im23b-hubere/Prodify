@@ -100,6 +100,7 @@ def validate_schema() -> None:
         "streak_rescues",
         "streak_break_notify_dedupe",
         "analytics_event_dedupe",
+        "notification_read_states",
     }
     missing_tables = required_tables.difference(table_names)
     if missing_tables:

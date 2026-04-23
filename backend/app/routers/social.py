@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 import json
 from typing import Annotated
 
@@ -59,7 +59,6 @@ from app.schemas import (
     StreakRescueBody,
 )
 from app.streakutil import dump_frozen_json, parse_frozen_json
-from app.timeutil import as_utc_aware
 from app.services.kpi_tracker import track_event
 from app.services.push_dispatch import send_ping
 from app.services.progression_service import grant_xp
@@ -86,21 +85,50 @@ def _friend_user_ids(db: Session, user_id: int) -> list[int]:
 
 
 def _session_count_for_week(db: Session, user_id: int, week_start: str) -> int:
-    rows = db.scalars(
-        select(ProductionSession).where(
-            ProductionSession.user_id == user_id,
+    try:
+        week_start_dt = datetime.fromisoformat(week_start).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return 0
+    week_end_dt = week_start_dt + timedelta(days=7)
+    return int(
+        db.scalar(
+            select(func.count())
+            .select_from(ProductionSession)
+            .where(
+                ProductionSession.user_id == user_id,
+                ProductionSession.deleted_at.is_(None),
+                ProductionSession.duration_seconds.is_not(None),
+                ProductionSession.started_at >= week_start_dt,
+                ProductionSession.started_at < week_end_dt,
+            )
+        )
+        or 0
+    )
+
+
+def _session_counts_for_week(db: Session, user_ids: list[int], week_start: str) -> dict[int, int]:
+    if not user_ids:
+        return {}
+    try:
+        week_start_dt = datetime.fromisoformat(week_start).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return {uid: 0 for uid in user_ids}
+    week_end_dt = week_start_dt + timedelta(days=7)
+    rows = db.execute(
+        select(ProductionSession.user_id, func.count())
+        .where(
+            ProductionSession.user_id.in_(user_ids),
             ProductionSession.deleted_at.is_(None),
             ProductionSession.duration_seconds.is_not(None),
+            ProductionSession.started_at >= week_start_dt,
+            ProductionSession.started_at < week_end_dt,
         )
+        .group_by(ProductionSession.user_id)
     ).all()
-    return sum(
-        1
-        for r in rows
-        if (
-            as_utc_aware(r.started_at).date() - timedelta(days=as_utc_aware(r.started_at).date().weekday())
-        ).isoformat()
-        == week_start
-    )
+    counts = {int(uid): int(count) for uid, count in rows}
+    for uid in user_ids:
+        counts.setdefault(uid, 0)
+    return counts
 
 
 def _current_buddy_row(db: Session, user_id: int) -> BuddyRelationship | None:
@@ -261,7 +289,7 @@ def _save_commitment_witness_config(
             "witness_user_ids": witness_user_ids,
         },
     )
-    db.commit()
+    # Intentionally no commit here; caller controls transaction boundaries.
 
 
 def _witness_user_ids(
@@ -891,24 +919,12 @@ def set_commitment(
     row.visibility = body.visibility
     row.commitment_key = body.commitment_key
     row.period_days = body.period_days
-    db.commit()
     _save_commitment_witness_config(
         db,
         user_id=current.id,
         week_start=wk,
         commitment_key=row.commitment_key,
         witness_user_ids=requested_witnesses,
-    )
-    _notify_commitment_witnesses(
-        db,
-        actor=current,
-        week_start=wk,
-        commitment_key=row.commitment_key,
-        target_sessions=row.target_sessions,
-        current_sessions=0,
-        status="on_track",
-        notify_kind="started",
-        marker=f"target:{row.target_sessions}",
     )
     track_event(
         db,
@@ -923,6 +939,17 @@ def set_commitment(
         },
     )
     db.commit()
+    _notify_commitment_witnesses(
+        db,
+        actor=current,
+        week_start=wk,
+        commitment_key=row.commitment_key,
+        target_sessions=row.target_sessions,
+        current_sessions=0,
+        status="on_track",
+        notify_kind="started",
+        marker=f"target:{row.target_sessions}",
+    )
     return commitment_status(current, db)
 
 
@@ -930,6 +957,7 @@ def set_commitment(
 def commitment_status(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    commitment_key: str = "sessions",
 ):
     wk = _week_start_key()
     premium = _is_premium(db, current)
@@ -937,7 +965,7 @@ def commitment_status(
         select(SocialCommitment).where(
             SocialCommitment.user_id == current.id,
             SocialCommitment.week_start == wk,
-            SocialCommitment.commitment_key == "sessions",
+            SocialCommitment.commitment_key == commitment_key,
         )
     )
     if row is None:
@@ -949,22 +977,6 @@ def commitment_status(
         status = "on_track"
     else:
         status = "behind"
-    notify_kind = "progress"
-    if status == "completed":
-        notify_kind = "completed"
-    elif status == "behind":
-        notify_kind = "behind"
-    _notify_commitment_witnesses(
-        db,
-        actor=current,
-        week_start=wk,
-        commitment_key=row.commitment_key,
-        target_sessions=row.target_sessions,
-        current_sessions=cur,
-        status=status,
-        notify_kind=notify_kind,
-        marker=f"{status}:{cur}",
-    )
     witness_ids = _witness_user_ids(db, current.id, wk, row.commitment_key, limit=3)
     witness_names = _witness_usernames(db, witness_ids)
     return CommitmentPublic(
@@ -990,14 +1002,15 @@ def list_commitments(
     premium = _is_premium(db, current)
     rows = db.scalars(select(SocialCommitment).where(SocialCommitment.user_id == current.id, SocialCommitment.week_start == wk)).all()
     out: list[CommitmentPublic] = []
+    cur = _session_count_for_week(db, current.id, wk)
     for row in rows:
-        cur = _session_count_for_week(db, current.id, wk)
         if cur >= row.target_sessions:
             status = "completed"
         elif cur + 1 >= max(1, (utcnow().date().weekday() + 1) * row.target_sessions // 7):
             status = "on_track"
         else:
             status = "behind"
+        witnesses = _witness_user_ids(db, current.id, wk, row.commitment_key, limit=3)
         out.append(
             CommitmentPublic(
                 week_start=wk,
@@ -1008,11 +1021,8 @@ def list_commitments(
                 status=status,
                 visibility=row.visibility,
                 upsell_hint=None if premium else "Track more goals with Premium.",
-                witness_user_ids=_witness_user_ids(db, current.id, wk, row.commitment_key, limit=3),
-                witness_usernames=_witness_usernames(
-                    db,
-                    _witness_user_ids(db, current.id, wk, row.commitment_key, limit=3),
-                ),
+                witness_user_ids=witnesses,
+                witness_usernames=_witness_usernames(db, witnesses),
             )
         )
     return out
@@ -1112,7 +1122,8 @@ def weekly_social_recap(
     buddy = buddy_status(current, db)
     buddy_count = buddy.buddy_week_sessions if buddy.status == "active" else 0
     friend_ids = _friend_user_ids(db, current.id)
-    team_total = sum(_session_count_for_week(db, fid, wk) for fid in friend_ids)
+    team_counts = _session_counts_for_week(db, friend_ids, wk)
+    team_total = sum(team_counts.values())
     prev_wk = (utcnow().date() - timedelta(days=7) - timedelta(days=(utcnow().date() - timedelta(days=7)).weekday())).isoformat()
     prev = _session_count_for_week(db, current.id, prev_wk)
     wow = my_count - prev
@@ -1187,8 +1198,10 @@ def leaderboard_context(
     users = {u.id: u.username for u in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
     rows: list[tuple[int, str, int, int]] = []
     prev_wk = (utcnow().date() - timedelta(days=7) - timedelta(days=(utcnow().date() - timedelta(days=7)).weekday())).isoformat()
+    cur_counts = _session_counts_for_week(db, user_ids, wk)
+    prev_counts = _session_counts_for_week(db, user_ids, prev_wk)
     for uid in user_ids:
-        rows.append((uid, users.get(uid, "?"), _session_count_for_week(db, uid, wk), _session_count_for_week(db, uid, prev_wk)))
+        rows.append((uid, users.get(uid, "?"), cur_counts.get(uid, 0), prev_counts.get(uid, 0)))
     rows.sort(key=lambda r: r[2], reverse=True)
     entries = []
     my_rank = None

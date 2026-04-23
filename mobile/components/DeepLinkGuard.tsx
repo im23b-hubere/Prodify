@@ -15,12 +15,12 @@ export function DeepLinkGuard() {
       const targetPath = typeof parsed.path === "string" ? parsed.path : "";
 
       if (!isAllowedDeepLinkPath(targetPath)) {
-        router.replace((token ? "/dashboard" : "/login") as Href);
+        router.replace((token ? "/dashboard" : "/(auth)/login") as Href);
         return;
       }
 
       if (deepLinkRequiresAuth(targetPath) && !token) {
-        router.replace("/login");
+        router.replace("/(auth)/login");
         return;
       }
 

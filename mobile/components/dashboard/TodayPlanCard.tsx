@@ -12,12 +12,16 @@ import { PrimaryButton } from "../ui/PrimaryButton";
 type Props = {
   plan: TodayPlanRecommendation;
   forecast: ForecastComputed | null;
+  shortSessionsHint?: string | null;
+  adjustedTargetHint?: string | null;
   onStartSuggested: () => void;
 };
 
 export const TodayPlanCard = memo(function TodayPlanCard({
   plan,
   forecast,
+  shortSessionsHint,
+  adjustedTargetHint,
   onStartSuggested,
 }: Props) {
   const { t } = useTranslation();
@@ -54,6 +58,8 @@ export const TodayPlanCard = memo(function TodayPlanCard({
           })}
         </Text>
       ) : null}
+      {shortSessionsHint ? <Text style={styles.shortHint}>{shortSessionsHint}</Text> : null}
+      {adjustedTargetHint ? <Text style={styles.adjustedHint}>{adjustedTargetHint}</Text> : null}
       {forecast ? (
         <View style={styles.forecastCard}>
           <Text
@@ -134,6 +140,16 @@ const styles = StyleSheet.create({
   preview: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
+    ...typography.meta,
+  },
+  shortHint: {
+    color: "#f59e0b",
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.meta,
+  },
+  adjustedHint: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
     ...typography.meta,
   },
   forecastCard: {

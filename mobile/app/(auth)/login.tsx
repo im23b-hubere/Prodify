@@ -13,7 +13,6 @@ import {
 } from "react-native";
 
 import { useAuth } from "../../context/AuthContext";
-import { resolvePostAuthRouteFromStorage, toHref } from "../../lib/postAuthNavigation";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -28,17 +27,20 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   async function onSubmit() {
+    if (loading) return;
     setError(null);
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      const next = await resolvePostAuthRouteFromStorage({
-        hasToken: true,
-        entryPoint: "login",
-      });
-      router.replace(toHref(next));
+      // Always land on dashboard after sign-in to avoid stale tab restores.
+      router.replace("/(tabs)/dashboard");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("auth.login.signInFailed"));
+      const message = e instanceof Error ? e.message : t("auth.login.signInFailed");
+      if (message.includes("429")) {
+        setError(t("errors.tooManyRequests"));
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }

@@ -54,8 +54,9 @@ import {
 } from "../../lib/motivationEngine";
 import { buildTodayPlanRecommendation } from "../../lib/todayPlanEngine";
 import { buildWeeklyForecast } from "../../lib/forecastEngine";
+import { adjustedWeeklyTargetForSignupWeek } from "../../lib/goalPace";
 import { STREAK_MILESTONES } from "../../lib/streakMilestones";
-import { getUnreadCount } from "../../lib/notificationInbox";
+import { getUnreadCount, syncServerInbox } from "../../lib/notificationInbox";
 import { registerPushTokenWithBackend } from "../../lib/pushToken";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../lib/sessionTime";
 import {
@@ -72,6 +73,21 @@ import {
 } from "../../features/dashboard/utils";
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
+
+const GOAL_QUALIFY_MIN_SECONDS = 5 * 60;
+
+function isSameOrAfterMonday(date: Date, mondayStart: Date): boolean {
+  return date.getTime() >= mondayStart.getTime();
+}
+
+function startOfCurrentWeekMonday(now: Date): Date {
+  const start = new Date(now);
+  const day = now.getDay();
+  const offsetToMonday = day === 0 ? 6 : day - 1;
+  start.setHours(0, 0, 0, 0);
+  start.setDate(now.getDate() - offsetToMonday);
+  return start;
+}
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
@@ -98,7 +114,6 @@ export default function DashboardScreen() {
     socialChallenges,
     identityState,
     weeklyGoalTarget,
-    weekSessionsCount,
     serverMotivationDto,
     forecast,
     progression,
@@ -174,6 +189,7 @@ export default function DashboardScreen() {
   }, []);
   const { milestoneToast, breakModalOpen, breakModalStreak, dismissBreakModal } =
     useDashboardStreakEvents({
+      userId: user?.id,
       streakOverview,
       userScopedMilestoneKey,
       userScopedStreakKey,
@@ -183,6 +199,11 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (token) {
+        syncServerInbox(token, 30)
+          .then(() => refreshUnreadCount())
+          .catch(() => undefined);
+      }
       refreshDashboard({ force: true, withLoading: false }).catch(() => null);
       refreshUnreadCount();
       (async () => {
@@ -196,7 +217,7 @@ export default function DashboardScreen() {
           /* ignore */
         }
       })();
-    }, [refreshDashboard, presentSessionSetupModalFresh, refreshUnreadCount]),
+    }, [refreshDashboard, presentSessionSetupModalFresh, refreshUnreadCount, token]),
   );
 
   useEffect(() => {
@@ -255,6 +276,49 @@ export default function DashboardScreen() {
     const mins = Math.round(today.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60);
     return { count: today.length, minutes: mins };
   }, [visibleSessions]);
+  const effectiveWeekSessionsCount = useMemo(() => {
+    const monday = startOfCurrentWeekMonday(new Date());
+    let qualified = 0;
+    for (const s of visibleSessions) {
+      if (!s.started_at || s.stopped_at == null) continue;
+      const startedAt = parseApiDate(s.started_at);
+      if (!Number.isFinite(startedAt.getTime())) continue;
+      if (!isSameOrAfterMonday(startedAt, monday)) continue;
+      if ((s.duration_seconds ?? 0) < GOAL_QUALIFY_MIN_SECONDS) continue;
+      qualified += 1;
+    }
+    return qualified;
+  }, [visibleSessions]);
+  const effectiveWeeklyGoalTarget = useMemo(
+    () =>
+      adjustedWeeklyTargetForSignupWeek({
+        weeklyGoalTarget,
+        accountCreatedAtIso: user?.created_at ?? null,
+      }),
+    [weeklyGoalTarget, user?.created_at],
+  );
+  const firstWeekTargetAdjusted = useMemo(
+    () =>
+      weeklyGoalTarget != null &&
+      effectiveWeeklyGoalTarget != null &&
+      effectiveWeeklyGoalTarget !== weeklyGoalTarget,
+    [weeklyGoalTarget, effectiveWeeklyGoalTarget],
+  );
+  const shortWeekSessionsCount = useMemo(() => {
+    const monday = startOfCurrentWeekMonday(new Date());
+    let shortCount = 0;
+    for (const s of visibleSessions) {
+      if (!s.started_at || s.stopped_at == null) continue;
+      const startedAt = parseApiDate(s.started_at);
+      if (!Number.isFinite(startedAt.getTime())) continue;
+      if (!isSameOrAfterMonday(startedAt, monday)) continue;
+      const duration = s.duration_seconds ?? 0;
+      if (duration > 0 && duration < GOAL_QUALIFY_MIN_SECONDS) {
+        shortCount += 1;
+      }
+    }
+    return shortCount;
+  }, [visibleSessions]);
 
   const serverMotivationLine = useMemo(() => {
     if (!serverMotivationDto) return null;
@@ -281,7 +345,7 @@ export default function DashboardScreen() {
     return generateMotivationMessage({
       streak: streakVal,
       todayCount: todayStats.count,
-      weekCount: weekSessionsCount,
+      weekCount: effectiveWeekSessionsCount,
       friends: { activeNow, topThisWeek: top },
       timeOfDay: getTimeOfDay(),
       lastSessionFocus: last?.focus_score ?? null,
@@ -294,13 +358,13 @@ export default function DashboardScreen() {
     friendActivity,
     user?.id,
     todayStats.count,
-    weekSessionsCount,
+    effectiveWeekSessionsCount,
   ]);
   const todayPlan = useMemo(
     () =>
       buildTodayPlanRecommendation({
-        weeklyGoalTarget,
-        weekSessionsCount,
+        weeklyGoalTarget: effectiveWeeklyGoalTarget,
+        weekSessionsCount: effectiveWeekSessionsCount,
         currentStreak: streakOverview?.current_streak ?? clientStreak,
         streakAtRisk: streakOverview?.streak_at_risk ?? false,
         lastSessionAt: visibleSessions[0]?.started_at ?? null,
@@ -309,20 +373,26 @@ export default function DashboardScreen() {
             ? visibleSessions[0].session_type
             : null,
       }),
-    [weeklyGoalTarget, weekSessionsCount, streakOverview, clientStreak, visibleSessions],
+    [
+      effectiveWeeklyGoalTarget,
+      effectiveWeekSessionsCount,
+      streakOverview,
+      clientStreak,
+      visibleSessions,
+    ],
   );
   const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
   const completedCount = useMemo(() => completedSessionsCount(visibleSessions), [visibleSessions]);
   const hasAnyCompletedSessions = completedCount > 0;
   const paceForecast = useMemo(
     () =>
-      hasAnyCompletedSessions && weeklyGoalTarget != null && weeklyGoalTarget > 0
+      hasAnyCompletedSessions && effectiveWeeklyGoalTarget != null && effectiveWeeklyGoalTarget > 0
         ? buildWeeklyForecast({
-            weeklyGoalTarget,
-            completedThisWeek: weekSessionsCount,
+            weeklyGoalTarget: effectiveWeeklyGoalTarget,
+            completedThisWeek: effectiveWeekSessionsCount,
           })
         : null,
-    [hasAnyCompletedSessions, weeklyGoalTarget, weekSessionsCount],
+    [hasAnyCompletedSessions, effectiveWeeklyGoalTarget, effectiveWeekSessionsCount],
   );
 
   const displayOverview = useMemo((): StreakOverviewDto | null => {
@@ -560,20 +630,6 @@ export default function DashboardScreen() {
               }}
             />
 
-            <TodayPlanCard
-              plan={todayPlan}
-              forecast={paceForecast}
-              onStartSuggested={() =>
-                router.push({
-                  pathname: "/session/setup",
-                  params: {
-                    suggestedType: todayPlan.suggestedSessionType,
-                    source: "today_plan",
-                  },
-                })
-              }
-            />
-
             {active ? (
               <ActiveSessionTimerBlock
                 active={active}
@@ -585,12 +641,72 @@ export default function DashboardScreen() {
               <DashboardSessionStarter onQuickStart={openSetup} />
             )}
 
+            <TodayPlanCard
+              plan={todayPlan}
+              forecast={paceForecast}
+              shortSessionsHint={
+                shortWeekSessionsCount > 0
+                  ? t("todayPlan.shortSessionsHint", { count: shortWeekSessionsCount, min: 5 })
+                  : null
+              }
+              adjustedTargetHint={
+                firstWeekTargetAdjusted
+                  ? t("todayPlan.adjustedTargetHint", {
+                      adjusted: effectiveWeeklyGoalTarget,
+                      original: weeklyGoalTarget,
+                    })
+                  : null
+              }
+              onStartSuggested={() =>
+                router.push({
+                  pathname: "/session/setup",
+                  params: {
+                    suggestedType: todayPlan.suggestedSessionType,
+                    source: "today_plan",
+                  },
+                })
+              }
+            />
+
             <TodayProgressCard
               todaySessions={todayStats.count}
               todayMinutes={todayStats.minutes}
-              weekSessions={weekSessionsCount}
-              weekGoalTarget={weeklyGoalTarget}
+              weekSessions={effectiveWeekSessionsCount}
+              weekGoalTarget={effectiveWeeklyGoalTarget}
               goalForecast={hasAnyCompletedSessions ? forecast : null}
+            />
+
+            <ProgressionBarCard
+              progression={progression}
+              onPress={() => router.push("/progression-overview")}
+            />
+
+            <FriendsActivityWidget
+              currentUserId={user?.id ?? 0}
+              activity={friendActivity}
+              leaderboard={friendLeaderboard?.entries ?? []}
+              loading={socialLoading}
+              primaryAction={
+                primaryNudge
+                  ? {
+                      message: identityState?.line
+                        ? `${primaryNudge.message} ${identityState.line}`
+                        : primaryNudge.message,
+                      ctaLabel: primaryNudge.ctaLabel,
+                      hint:
+                        primaryNudge.actionKey === "checkin"
+                          ? t("dashboard.nudgeLogActivityHint")
+                          : undefined,
+                      busy:
+                        (primaryNudge.actionKey === "rescue" && socialActionBusy === "rescue") ||
+                        (primaryNudge.actionKey === "checkin" && socialActionBusy === "checkin") ||
+                        (primaryNudge.actionKey === "start_session" &&
+                          socialActionBusy === "commitment"),
+                      onPress: runPrimaryAction,
+                    }
+                  : null
+              }
+              secondaryHint={secondaryNudge ?? identityState?.line ?? null}
             />
 
             <DashboardMotivationCard
@@ -607,30 +723,6 @@ export default function DashboardScreen() {
               momentumScore={momentumScore}
             />
 
-            <FriendsActivityWidget
-              currentUserId={user?.id ?? 0}
-              activity={friendActivity}
-              leaderboard={friendLeaderboard?.entries ?? []}
-              loading={socialLoading}
-              primaryAction={
-                primaryNudge
-                  ? {
-                      message: identityState?.line
-                        ? `${primaryNudge.message} ${identityState.line}`
-                        : primaryNudge.message,
-                      ctaLabel: primaryNudge.ctaLabel,
-                      busy:
-                        (primaryNudge.actionKey === "rescue" && socialActionBusy === "rescue") ||
-                        (primaryNudge.actionKey === "checkin" && socialActionBusy === "checkin") ||
-                        (primaryNudge.actionKey === "start_session" &&
-                          socialActionBusy === "commitment"),
-                      onPress: runPrimaryAction,
-                    }
-                  : null
-              }
-              secondaryHint={secondaryNudge ?? identityState?.line ?? null}
-            />
-
             {entitlement?.entitlement !== "premium" ? (
               <View style={styles.premiumCtaCard}>
                 <Text style={styles.premiumCtaTitle}>{t("dashboard.premiumUpsellTitle")}</Text>
@@ -641,10 +733,6 @@ export default function DashboardScreen() {
                 />
               </View>
             ) : null}
-            <ProgressionBarCard
-              progression={progression}
-              onPress={() => router.push("/progression-overview")}
-            />
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{t("dashboard.recentSessions")}</Text>

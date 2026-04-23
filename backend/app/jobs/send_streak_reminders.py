@@ -78,7 +78,9 @@ def run_streak_reminder_job(db: DBSession, settings: Settings) -> dict:
         data = {**push_data_dashboard(), "kind": slot}
         try:
             attempted, ok, msg = dispatch_to_user(settings, db, uid, title, body, data=data)
+            db.commit()
         except Exception:
+            db.rollback()
             logger.exception("streak reminder push failed user_id=%s", uid)
             continue
 

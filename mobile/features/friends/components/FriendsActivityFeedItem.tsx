@@ -3,11 +3,16 @@ import { MessageCircle, ThumbsUp } from "lucide-react-native";
 import { Image, Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
+import { API_BASE_URL } from "../../../constants/api";
 import { colors } from "../../../constants/theme";
 import { formatTimeAgo } from "../../../lib/timeAgo";
 import type { FriendActivityDto } from "../../../types/friends";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
-import { formatDuration, formatSessionTypeLabel } from "../utils/friendsScreenFormat";
+import {
+  formatDuration,
+  formatSessionTypeLabel,
+  formatStreakStatusLabel,
+} from "../utils/friendsScreenFormat";
 
 type Props = {
   item: FriendActivityDto;
@@ -42,7 +47,13 @@ export function FriendsActivityFeedItem({
   onViewCommitment,
   supportBusy = false,
 }: Props) {
+  const avatarUri = item.profile_picture_url?.trim()
+    ? item.profile_picture_url.startsWith("http")
+      ? item.profile_picture_url
+      : `${API_BASE_URL}${item.profile_picture_url}`
+    : null;
   const typeLabel = formatSessionTypeLabel(item.session_type, t);
+  const streakStatus = formatStreakStatusLabel(item.streak_status_key, item.streak_status_label, t);
   const isStreakBroken = item.status === "streak_broken";
   const isCommitmentPublished = item.status === "commitment_published";
   const isEventCard = isStreakBroken || isCommitmentPublished;
@@ -60,8 +71,8 @@ export function FriendsActivityFeedItem({
           style={styles.feedHeaderRow}
           onPress={onOpenSession}
         >
-          {item.profile_picture_url ? (
-            <Image source={{ uri: item.profile_picture_url }} style={styles.feedAvatarImage} />
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.feedAvatarImage} />
           ) : (
             <View style={styles.feedAvatar}>
               <Text style={styles.feedAvatarText}>{item.username.slice(0, 2).toUpperCase()}</Text>
@@ -73,7 +84,7 @@ export function FriendsActivityFeedItem({
                 {item.username}
               </Text>
               <Text style={styles.feedSessionMeta}>
-                {item.streak_status_emoji ?? "🌱"} {item.streak_status_label ?? "STARTING"}
+                {streakStatus}
               </Text>
               {isCommitmentPublished ? (
                 <Animated.View entering={FadeIn.duration(220)} style={styles.commitmentEventBadge}>
@@ -170,37 +181,31 @@ export function FriendsActivityFeedItem({
                 onPress={onOpenSession}
               >
                 <Text style={styles.feedReplyChipText}>
-                  {t("friendsScreen.openSessionComments")}
+                  {commentCount > 0
+                    ? t("friendsScreen.viewCommentsCount", { count: commentCount })
+                    : t("friendsScreen.beFirstToComment")}
                 </Text>
               </Pressable>
             </View>
-
-            <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.feedThreadLink, pressed && { opacity: 0.85 }]}
-              onPress={onOpenSession}
-            >
-              <Text style={styles.viewAllComments}>
-                {commentCount > 0
-                  ? t("friendsScreen.viewCommentsCount", { count: commentCount })
-                  : t("friendsScreen.beFirstToComment")}
-              </Text>
-            </Pressable>
           </>
         ) : isStreakBroken ? (
           <View style={styles.feedActionsRow}>
-            <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.triggerActionPrimary, pressed && { opacity: 0.88 }]}
-              onPress={onSupportStreakBreak}
-              disabled={supportBusy}
-            >
-              <Text style={styles.triggerActionTextPrimary}>
-                {supportBusy
-                  ? t("friendsScreen.loading")
-                  : t("friendsScreen.supportStreakBreakCta")}
-              </Text>
-            </Pressable>
+            {currentUserId === item.user_id ? (
+              <Text style={styles.feedSessionMeta}>{t("friendsScreen.supportSelfNotAllowed")}</Text>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.triggerActionPrimary, pressed && { opacity: 0.88 }]}
+                onPress={onSupportStreakBreak}
+                disabled={supportBusy}
+              >
+                <Text style={styles.triggerActionTextPrimary}>
+                  {supportBusy
+                    ? t("friendsScreen.loading")
+                    : t("friendsScreen.supportStreakBreakCta")}
+                </Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           <View style={styles.feedActionsRow}>

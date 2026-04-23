@@ -4,12 +4,13 @@ import { Activity, Trophy } from "lucide-react-native";
 import type { TFunction } from "i18next";
 import { useMemo } from "react";
 import { FlatList, Image, Pressable, Text, View, type ListRenderItem } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
+import { API_BASE_URL } from "../../../constants/api";
 import { EmptyState } from "../../../components/states/EmptyState";
 import { colors, spacing } from "../../../constants/theme";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../../types/friends";
-import { rankColor } from "../utils/friendsScreenFormat";
+import { formatStreakStatusLabel } from "../utils/friendsScreenFormat";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 
@@ -48,6 +49,10 @@ export function FriendsOverviewSection({
   onAddFriendFromEmptyFeed,
 }: Props) {
   const router = useRouter();
+  const avatarUri = (uri?: string | null) =>
+    uri?.trim() ? (uri.startsWith("http") ? uri : `${API_BASE_URL}${uri}`) : null;
+  const visibleEntries = useMemo(() => entries.slice(0, 8), [entries]);
+  const showSoloState = !loading && visibleEntries.length === 1 && currentUserId === visibleEntries[0]?.user_id;
 
   const modeOptions = useMemo(
     () => [
@@ -87,27 +92,39 @@ export function FriendsOverviewSection({
             </View>
           }
         />
-        <View style={styles.cardElevated}>
-          {!loading && entries.length === 1 && currentUserId === entries[0]?.user_id ? (
+        <Animated.View key={`leaderboard-${mode}`} entering={FadeIn.duration(220)} style={styles.cardElevated}>
+          {showSoloState ? (
             <Text style={styles.emptyLeader}>{t("friendsScreen.soloLeader")}</Text>
           ) : null}
-          {entries.map((entry, idx) => (
+          {visibleEntries.map((entry, idx) => (
             <Animated.View
               key={`${entry.user_id}-${entry.rank}`}
               entering={FadeInDown.delay(idx * 35).duration(320)}
             >
               <Pressable
-                style={[styles.leaderItem, idx > 0 && styles.leaderDivider]}
+                style={[
+                  styles.leaderItem,
+                  idx > 0 && styles.leaderDivider,
+                  entry.rank <= 3 && styles.leaderTopRow,
+                ]}
                 onPress={() => {
                   Haptics.selectionAsync().catch(() => undefined);
                   router.push(`/profile/${entry.user_id}`);
                 }}
               >
-                <View style={[styles.rankBadge, { backgroundColor: rankColor(entry.rank) }]}>
-                  <Text style={styles.rankText}>#{entry.rank}</Text>
-                </View>
-                {entry.profile_picture_url ? (
-                  <Image source={{ uri: entry.profile_picture_url }} style={styles.avatarImage} />
+                <Text
+                  style={[
+                    styles.rankNumber,
+                    entry.rank <= 3 ? styles.rankNumberTop : styles.rankNumberRegular,
+                    entry.rank === 1 && styles.rankNumberGold,
+                    entry.rank === 2 && styles.rankNumberSilver,
+                    entry.rank === 3 && styles.rankNumberBronze,
+                  ]}
+                >
+                  {entry.rank}
+                </Text>
+                {avatarUri(entry.profile_picture_url) ? (
+                  <Image source={{ uri: avatarUri(entry.profile_picture_url) as string }} style={styles.avatarImage} />
                 ) : (
                   <View style={styles.avatar}>
                     <Text style={styles.avatarLabel}>
@@ -118,10 +135,6 @@ export function FriendsOverviewSection({
                 <View style={styles.userCopy}>
                   <View style={styles.nameRow}>
                     <Text style={styles.userName}>{entry.username}</Text>
-                    <Text style={styles.userMeta}>
-                      {" "}
-                      {entry.streak_status_emoji ?? "🌱"} {entry.streak_status_label ?? "STARTING"}
-                    </Text>
                     {entry.is_premium ? <Text style={styles.premiumTag}>PRO</Text> : null}
                     {currentUserId === entry.user_id ? (
                       <View style={styles.youPill}>
@@ -141,26 +154,13 @@ export function FriendsOverviewSection({
                         })}
                   </Text>
                   <Text style={styles.userMeta}>
-                    {entry.trend === "up"
-                      ? t("friendsScreen.trendUp")
-                      : entry.trend === "down"
-                        ? t("friendsScreen.trendDown")
-                        : t("friendsScreen.trendStable")}{" "}
-                    ·{" "}
-                    {entry.is_chasing_you
-                      ? t("friendsScreen.statusChasingYou")
-                      : entry.is_threatening_you
-                        ? t("friendsScreen.statusCloseBehind")
-                        : t("friendsScreen.statusDelta", {
-                            sign: (entry.sessions_delta_vs_prior ?? 0) >= 0 ? "+" : "",
-                            delta: entry.sessions_delta_vs_prior ?? 0,
-                          })}
+                    {formatStreakStatusLabel(entry.streak_status_key, entry.streak_status_label, t)}
                   </Text>
                 </View>
               </Pressable>
             </Animated.View>
           ))}
-        </View>
+        </Animated.View>
       </View>
 
       <View style={styles.sectionWrap}>
@@ -176,6 +176,7 @@ export function FriendsOverviewSection({
             ) : null
           }
         />
+        <Text style={styles.activityFeedHeaderHint}>{t("friendsScreen.activityTitle")}</Text>
         {activeTriggerCard ? (
           <View style={styles.cardElevated}>
             <View key={activeTriggerCard.key} style={styles.triggerCardPrimary}>
@@ -193,9 +194,14 @@ export function FriendsOverviewSection({
           </View>
         ) : null}
         <View style={styles.activityFeedStack}>
+          {loading ? (
+            <View style={styles.cardElevated}>
+              <Text style={styles.feedEmpty}>{t("friendsScreen.loading")}</Text>
+            </View>
+          ) : null}
           {activity.length === 0 && !loading ? (
             <EmptyState
-              icon="🎛️"
+              icon="•"
               title={t("friendsScreen.feedEmptyTitle")}
               message={t("friendsScreen.feedEmptyMessage")}
               actionLabel={t("friendsScreen.feedEmptyCta")}
@@ -208,13 +214,13 @@ export function FriendsOverviewSection({
           {activity.length > 0 ? (
             <FlatList
               data={activity}
-              keyExtractor={(item) => String(item.session_id)}
+              keyExtractor={(item) => `${item.user_id}-${item.session_id}-${item.activity_at}`}
               renderItem={renderActivityItem}
               scrollEnabled={false}
               initialNumToRender={6}
               windowSize={7}
               removeClippedSubviews={false}
-              ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+              ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
             />
           ) : null}
         </View>

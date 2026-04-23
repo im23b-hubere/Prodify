@@ -30,6 +30,7 @@ import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { SessionTypeChip } from "../../components/ui/SessionTypeChip";
+import { API_BASE_URL } from "../../constants/api";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -47,6 +48,13 @@ import {
   type SessionDto,
   type SessionType,
 } from "../../types/session";
+
+const INSIGHTS_MIN_SECONDS = 5 * 60;
+
+function resolveAvatarUri(uri?: string | null): string | null {
+  if (!uri?.trim()) return null;
+  return uri.startsWith("http") ? uri : `${API_BASE_URL}${uri}`;
+}
 
 function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highlighted: boolean }) {
   const pulse = useSharedValue(highlighted ? 1 : 0);
@@ -71,9 +79,9 @@ function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highl
 
   return (
     <Animated.View style={[styles.commentItem, animatedStyle]}>
-      {comment.author_profile_picture_url ? (
+      {resolveAvatarUri(comment.author_profile_picture_url) ? (
         <Image
-          source={{ uri: comment.author_profile_picture_url }}
+          source={{ uri: resolveAvatarUri(comment.author_profile_picture_url) as string }}
           style={styles.commentAvatarImage}
         />
       ) : (
@@ -136,6 +144,15 @@ export default function SessionDetailScreen() {
   const [newCommentId, setNewCommentId] = useState<number | null>(null);
   const [commentSentPulse, setCommentSentPulse] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+      if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current);
+    };
+  }, []);
 
   const loadComments = useCallback(async () => {
     if (!token || !id || !Number.isFinite(Number(id))) return;
@@ -168,7 +185,11 @@ export default function SessionDetailScreen() {
     setSession(data);
     setSelectedType((data.session_type as SessionType) || DEFAULT_SESSION_TYPE);
     setNote(data.notes ?? "");
-    if (data.stopped_at != null && data.duration_seconds != null) {
+    if (
+      data.stopped_at != null &&
+      data.duration_seconds != null &&
+      data.duration_seconds >= INSIGHTS_MIN_SECONDS
+    ) {
       try {
         const ins = await apiJson<SessionDetailInsightsDto>(`/sessions/item/${id}/insights`, {
           token,
@@ -210,10 +231,12 @@ export default function SessionDetailScreen() {
       await loadComments();
       setNewCommentId(created.id);
       setCommentSentPulse(true);
-      setTimeout(() => {
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+      if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current);
+      highlightTimeoutRef.current = setTimeout(() => {
         setNewCommentId(null);
       }, 1800);
-      setTimeout(() => {
+      pulseTimeoutRef.current = setTimeout(() => {
         setCommentSentPulse(false);
       }, 900);
       Haptics.selectionAsync().catch(() => undefined);
@@ -248,12 +271,13 @@ export default function SessionDetailScreen() {
       setSession(updated);
       setNote(updated.notes ?? "");
       setSelectedType((updated.session_type as SessionType) || DEFAULT_SESSION_TYPE);
+      router.replace("/(tabs)/dashboard");
     } catch (e) {
       setError(e instanceof Error ? e.message : t("sessionDetail.saveFailed"));
     } finally {
       setBusy(false);
     }
-  }, [id, note, selectedType, token, t]);
+  }, [id, note, router, selectedType, token, t]);
 
   const confirmDelete = useCallback(() => {
     if (!token || !id) return;
@@ -320,9 +344,11 @@ export default function SessionDetailScreen() {
       ? formatDurationWords(session.duration_seconds)
       : t("sessionDetail.inProgress");
   const tagList = sessionTagsList(session.tags);
+  const pauseSeconds = session.paused_duration_seconds ?? 0;
+  const hasMeaningfulPause = pauseSeconds >= 60;
   const pauseCountRaw =
     insights?.timeline?.filter((segment) => segment.kind === "paused").length ?? 0;
-  const pauseCount = session.paused_duration_seconds ? Math.max(1, pauseCountRaw) : 0;
+  const pauseCount = hasMeaningfulPause ? Math.max(1, pauseCountRaw) : 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -390,6 +416,13 @@ export default function SessionDetailScreen() {
               insights={insights}
               producerName={isOwnSession ? user?.username : producerDisplayName}
             />
+          ) : session.duration_seconds != null && session.duration_seconds < INSIGHTS_MIN_SECONDS ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t("sessionInsights.productivity")}</Text>
+              <Text style={styles.mutedNote}>
+                {t("sessionInsights.availableAfterMinSession", { min: 5 })}
+              </Text>
+            </View>
           ) : null}
 
           <View style={styles.grid}>
@@ -418,10 +451,10 @@ export default function SessionDetailScreen() {
             <View style={styles.gridCell}>
               <Text style={styles.gridLabel}>{t("sessionDetail.pauses")}</Text>
               <Text style={styles.gridVal}>
-                {session.paused_duration_seconds
+                {hasMeaningfulPause
                   ? t("sessionDetail.pauseSummary", {
                       count: pauseCount,
-                      m: Math.round((session.paused_duration_seconds || 0) / 60),
+                      m: Math.round(pauseSeconds / 60),
                     })
                   : "—"}
               </Text>
@@ -503,7 +536,6 @@ export default function SessionDetailScreen() {
                 placeholder={t("friendsScreen.commentPlaceholder")}
                 placeholderTextColor={colors.textSecondary}
                 style={styles.commentInput}
-                multiline
                 maxLength={400}
                 onFocus={() => {
                   setTimeout(() => {
@@ -744,15 +776,15 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     flex: 1,
-    minHeight: 42,
+    height: 44,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
     color: colors.textPrimary,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    textAlignVertical: "top",
+    paddingVertical: 0,
+    textAlignVertical: "center",
     ...typography.caption,
     fontFamily: fontFamily.body,
   },

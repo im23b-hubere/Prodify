@@ -19,7 +19,9 @@
       "buildNumber": "1",
       "bundleIdentifier": "com.prodify.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Prodify uses your photo library so you can choose a profile picture.",
+        "NSUserNotificationsUsageDescription": "Prodify sends reminders to help you keep your studio streak."
       }
     },
     "android": {
@@ -42,7 +44,8 @@
       "expo-font",
       "expo-notifications",
       "@sentry/react-native",
-      "expo-localization"
+      "expo-localization",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

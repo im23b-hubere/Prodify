@@ -134,6 +134,17 @@ class PushToken(Base):
     last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class NotificationReadState(Base):
+    __tablename__ = "notification_read_states"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True, nullable=False
+    )
+    last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class StreakReminderDispatchLog(Base):
     """One row per (user, UTC calendar day, reminder slot) to avoid duplicate server pushes."""
 

@@ -7,10 +7,16 @@ on:
   # pull_request:
   #   branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   e2e-ios:
     runs-on: macos-14
     timeout-minutes: 45
+    env:
+      MAESTRO_VERSION: "1.39.13"
+      MAESTRO_INSTALLER_SHA256: "40115b628eb491f29d02275bc7e3db5334024ba4fdff7210a334fd3cf4a8f306"
     defaults:
       run:
         shell: bash
@@ -31,8 +37,20 @@ jobs:
       - name: Install Maestro
         run: |
           set -euo pipefail
-          curl -Ls "https://get.maestro.mobile.dev" | bash
+          curl -fsSL "https://get.maestro.mobile.dev" -o /tmp/maestro-installer.sh
+          echo "${MAESTRO_INSTALLER_SHA256}  /tmp/maestro-installer.sh" | shasum -a 256 -c -
+          chmod +x /tmp/maestro-installer.sh
+          MAESTRO_VERSION="${MAESTRO_VERSION}" /tmp/maestro-installer.sh
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Maestro version
+        run: |
+          set -euo pipefail
+          INSTALLED_VERSION=$("$HOME/.maestro/bin/maestro" --version | tr -d '\r')
+          if [[ "$INSTALLED_VERSION" != "$MAESTRO_VERSION" ]]; then
+            echo "Expected Maestro version $MAESTRO_VERSION but found $INSTALLED_VERSION"
+            exit 1
+          fi
 
       - name: Prebuild iOS
         working-directory: mobile

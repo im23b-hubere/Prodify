@@ -9,9 +9,9 @@ from app.models import UserProgression, XpLedger, utcnow
 from app.schemas import ProgressionPublic
 
 SESSION_XP_MINUTES_FLOOR = 5
-BASE_SESSION_XP = 8
-SESSION_XP_PER_MINUTE_AFTER_FLOOR = 0.8
-SESSION_XP_MAX = 110
+BASE_SESSION_XP = 5
+SESSION_XP_PER_MINUTE_AFTER_FLOOR = 0.5
+SESSION_XP_MAX = 85
 XP_DECAY_GRACE_DAYS = 2
 XP_DECAY_PER_DAY = 12
 XP_LEVEL_CATALOG_MAX = 20
@@ -114,13 +114,28 @@ def level_catalog(max_level: int = XP_LEVEL_CATALOG_MAX) -> list[dict[str, int |
 
 
 def xp_for_completed_session(duration_seconds: int) -> int:
-    """Session XP based on meaningful duration with anti-tap exploitation."""
+    """Session XP based on meaningful duration with anti-tap exploitation.
+
+    Design goals:
+    - Keep very short sessions from being exploitable.
+    - Slow down early leveling by reducing base burst XP.
+    - Reward longer sessions with milestone bonuses.
+    """
     minutes = max(0, int(duration_seconds // 60))
     # Avoid abuse from extremely short sessions (start/stop spam).
     if minutes < SESSION_XP_MINUTES_FLOOR:
         return 0
     scaled_minutes = minutes - SESSION_XP_MINUTES_FLOOR
     raw = BASE_SESSION_XP + int(scaled_minutes * SESSION_XP_PER_MINUTE_AFTER_FLOOR)
+
+    # Progressive milestones keep longer sessions meaningfully ahead.
+    if minutes >= 25:
+        raw += 3
+    if minutes >= 45:
+        raw += 5
+    if minutes >= 75:
+        raw += 7
+
     return max(0, min(SESSION_XP_MAX, raw))
 
 

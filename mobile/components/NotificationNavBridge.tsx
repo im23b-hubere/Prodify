@@ -2,6 +2,8 @@ import * as Notifications from "expo-notifications";
 import { type Href, useRouter } from "expo-router";
 import { useEffect } from "react";
 
+import { deepLinkRequiresAuth, isAllowedDeepLinkPath, toRoutableHref } from "../lib/deepLinkGuard";
+import { useAuth } from "../context/AuthContext";
 import { debugNav } from "../lib/debugLog";
 
 function parsePathFromNotificationData(data: Record<string, unknown> | undefined): string | null {
@@ -24,6 +26,7 @@ function parsePathFromNotificationData(data: Record<string, unknown> | undefined
  */
 export function NotificationNavBridge() {
   const router = useRouter();
+  const { token } = useAuth();
 
   useEffect(() => {
     const navigateFromResponse = (
@@ -38,8 +41,17 @@ export function NotificationNavBridge() {
           : undefined;
       const path = parsePathFromNotificationData(data);
       if (!path) return;
+      const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+      if (!isAllowedDeepLinkPath(normalizedPath)) {
+        debugNav("push_path_blocked", { path: normalizedPath });
+        return;
+      }
+      if (deepLinkRequiresAuth(normalizedPath) && !token) {
+        router.replace("/(auth)/login");
+        return;
+      }
       try {
-        router.push(path as Href);
+        router.push(toRoutableHref(normalizedPath) as Href);
         void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "navigation_failed";
@@ -55,7 +67,7 @@ export function NotificationNavBridge() {
       navigateFromResponse(response);
     });
     return () => sub.remove();
-  }, [router]);
+  }, [router, token]);
 
   return null;
 }

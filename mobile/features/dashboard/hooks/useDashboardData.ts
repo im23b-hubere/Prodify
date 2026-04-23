@@ -143,6 +143,10 @@ export function useDashboardData(token: string | null) {
       setFriendLeaderboard(null);
       setFriendActivity([]);
       setForecast(null);
+      setProgression(null);
+      setEntitlement(null);
+      setWeeklyGoalTarget(null);
+      setWeekSessionsCount(0);
       setBuddyRisk(null);
       setCheckinStatus(null);
       setCommitmentStatus(null);

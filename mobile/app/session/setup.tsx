@@ -13,13 +13,18 @@ import { colors, spacing, ui } from "../../constants/theme";
 export default function SessionSetupScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ suggestedType?: string }>();
+  const params = useLocalSearchParams<{ suggestedType?: string; source?: string }>();
   const suggestedType = useMemo<SessionType | null>(() => {
     const rawParam = params.suggestedType;
     const raw = Array.isArray(rawParam) ? rawParam[0] : rawParam;
     if (!raw) return null;
     return SESSION_TYPE_IDS.includes(raw as SessionType) ? (raw as SessionType) : null;
   }, [params.suggestedType]);
+  const source = useMemo(() => {
+    const rawParam = params.source;
+    return Array.isArray(rawParam) ? rawParam[0] : rawParam;
+  }, [params.source]);
+  const planningMode = source === "plan_next";
 
   const closeSetup = () => {
     if (router.canGoBack()) {
@@ -40,13 +45,18 @@ export default function SessionSetupScreen() {
         <>
           <ScreenHeader
             title={t("dashboard.newSessionTitle")}
-            subtitle={t("sessionSetup.startCta")}
+            subtitle={
+              planningMode ? t("sessionSetup.planSubtitle") : t("sessionSetup.startCta")
+            }
             actionLabel={t("common.cancel")}
             onActionPress={closeSetup}
           />
           <SessionSetupForm
             hideTitleRow
             initialSessionType={suggestedType}
+            submitLabel={
+              planningMode ? t("sessionSetup.startWhenReadyCta") : t("sessionSetup.startCta")
+            }
             onStarted={() => router.replace("/(tabs)/dashboard")}
             onRequestClose={closeSetup}
           />

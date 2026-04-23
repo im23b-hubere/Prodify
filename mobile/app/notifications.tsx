@@ -1,4 +1,4 @@
-import { type Href, useFocusEffect, useRouter } from "expo-router";
+import { type Href, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
 import { Bell, Flame, Lightbulb, Trophy, Users } from "lucide-react-native";
@@ -9,24 +9,28 @@ import { Swipeable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fontFamily } from "../constants/fonts";
+import { useAuth } from "../context/AuthContext";
 import { debugNav } from "../lib/debugLog";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import {
   loadInbox,
   loadSettings,
   markAllRead,
+  markServerInboxRead,
   removeItem,
   saveSettings,
+  syncServerInbox,
   type InboxItem,
   type NotificationCategory,
+  type NotificationPriority,
   type NotificationSettings,
 } from "../lib/notificationInbox";
 
-const CAT_META: Record<NotificationCategory, { icon: typeof Flame; emoji: string }> = {
-  streak: { icon: Flame, emoji: "🔥" },
-  achievement: { icon: Trophy, emoji: "🏆" },
-  social: { icon: Users, emoji: "👥" },
-  tips: { icon: Lightbulb, emoji: "💡" },
+const CAT_META: Record<NotificationCategory, { icon: typeof Flame }> = {
+  streak: { icon: Flame },
+  achievement: { icon: Trophy },
+  social: { icon: Users },
+  tips: { icon: Lightbulb },
 };
 
 const FILTER_LABEL_KEY: Record<NotificationCategory | "all", string> = {
@@ -35,6 +39,13 @@ const FILTER_LABEL_KEY: Record<NotificationCategory | "all", string> = {
   achievement: "notificationsUi.catAchievement",
   social: "notificationsUi.catSocial",
   tips: "notificationsUi.catTips",
+};
+
+const PRIORITY_LABEL_KEY: Record<NotificationPriority, string> = {
+  low: "notificationsUi.priorityLow",
+  normal: "notificationsUi.priorityNormal",
+  high: "notificationsUi.priorityHigh",
+  critical: "notificationsUi.priorityCritical",
 };
 
 function formatRelativeTime(ts: number, tr: TFunction) {
@@ -56,18 +67,31 @@ function safeCategory(cat: string): NotificationCategory {
 
 export default function NotificationsScreen() {
   const { t } = useTranslation();
+  const { token } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{ source?: string }>();
   const [items, setItems] = useState<InboxItem[]>([]);
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<NotificationCategory | "all">("all");
 
   const load = useCallback(async () => {
+    if (token) {
+      await syncServerInbox(token, 60).catch(() => undefined);
+    }
     const [inbox, s] = await Promise.all([loadInbox(), loadSettings()]);
     setItems(inbox);
     setSettings(s);
     await markAllRead();
-  }, []);
+    setItems((prev) => prev.map((item) => ({ ...item, read: true })));
+    if (token) {
+      const maxVisibleCreatedAt = inbox.reduce(
+        (max, item) => (item.createdAt > max ? item.createdAt : max),
+        0,
+      );
+      await markServerInboxRead(token, maxVisibleCreatedAt || Date.now()).catch(() => undefined);
+    }
+  }, [token]);
 
   useFocusEffect(
     useCallback(() => {
@@ -125,9 +149,12 @@ export default function NotificationsScreen() {
                 <Icon size={18} color={colors.primary} />
               </View>
               <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>
-                  {meta.emoji} {item.title}
-                </Text>
+                <View style={styles.titleRow}>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <View style={styles.priorityChip}>
+                    <Text style={styles.priorityChipText}>{t(PRIORITY_LABEL_KEY[item.priority])}</Text>
+                  </View>
+                </View>
                 <Text style={styles.cardMsg}>{item.body}</Text>
                 <View style={styles.cardFooter}>
                   <Text style={styles.time}>{formatRelativeTime(item.createdAt, t)}</Text>
@@ -165,8 +192,8 @@ export default function NotificationsScreen() {
         <Pressable
           onPress={() => {
             Haptics.selectionAsync().catch(() => undefined);
-            if (router.canGoBack()) {
-              router.back();
+            if (params.source === "profile") {
+              router.replace("/(tabs)/profile");
             } else {
               router.replace("/(tabs)/dashboard");
             }
@@ -255,6 +282,30 @@ export default function NotificationsScreen() {
               thumbColor="#fafafa"
             />
           </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>{t("notificationsUi.deliveryMode")}</Text>
+            <Pressable
+              style={styles.modeChip}
+              onPress={() =>
+                updateSetting({
+                  frequency:
+                    settings.frequency === "all"
+                      ? "important"
+                      : settings.frequency === "important"
+                        ? "off"
+                        : "all",
+                })
+              }
+            >
+              <Text style={styles.modeChipText}>
+                {settings.frequency === "all"
+                  ? t("notificationsUi.modeAll")
+                  : settings.frequency === "important"
+                    ? t("notificationsUi.modeImportant")
+                    : t("notificationsUi.modeOff")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
     </SafeAreaView>
@@ -328,7 +379,27 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   cardBody: { flex: 1, gap: 4 },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.xs,
+  },
   cardTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  priorityChip: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+  },
+  priorityChipText: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontSize: 11,
+    fontFamily: fontFamily.bodyBold,
+  },
   cardMsg: { color: colors.textSecondary, ...typography.caption },
   cardFooter: {
     flexDirection: "row",
@@ -372,4 +443,17 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   rowLabel: { color: colors.textPrimary, ...typography.body },
+  modeChip: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+  },
+  modeChipText: {
+    color: colors.textPrimary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyBold,
+  },
 });

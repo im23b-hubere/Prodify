@@ -37,6 +37,7 @@
     "@react-native-community/netinfo": "11.4.1",
     "@sentry/react-native": "~7.2.0",
     "expo": "~54.0.33",
+    "expo-asset": "~12.0.12",
     "expo-av": "~16.0.8",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",

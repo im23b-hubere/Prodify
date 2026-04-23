@@ -193,6 +193,8 @@ export type SessionSetupFormProps = {
   onRequestClose?: () => void;
   /** Hide top title row (e.g. when embedded in another header). */
   hideTitleRow?: boolean;
+  /** Optional override for the primary CTA label. */
+  submitLabel?: string;
 };
 
 export function SessionSetupForm({
@@ -201,6 +203,7 @@ export function SessionSetupForm({
   onActiveSessionConflict,
   onRequestClose,
   hideTitleRow,
+  submitLabel,
 }: SessionSetupFormProps) {
   const { t } = useTranslation();
   const { token, hydrated } = useAuth();
@@ -506,7 +509,7 @@ export function SessionSetupForm({
 
       <View style={styles.footer}>
         <PrimaryButton
-          label={t("sessionSetup.startCta")}
+          label={submitLabel ?? t("sessionSetup.startCta")}
           onPress={onSubmit}
           loading={busy}
           disabled={!hydrated || !canStart}

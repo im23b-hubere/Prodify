@@ -6,6 +6,7 @@ import { ONBOARDING_COMPLETE_KEY, REFRESH_TOKEN_KEY } from "../constants/storage
 import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } from "../lib/client";
 import i18n from "../lib/i18n";
 import { syncEntitlement } from "../lib/billing";
+import { clearNotificationInbox, setNotificationUserContext } from "../lib/notificationInbox";
 import {
   activeEntitlementExpiration,
   configureRevenueCat,
@@ -21,6 +22,8 @@ type UserMe = {
   email: string;
   username: string;
   profile_picture_url?: string | null;
+  is_premium?: boolean;
+  created_at?: string;
 };
 
 type AuthContextValue = {
@@ -74,6 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiUnauthorizedHandler(async () => {
       await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
+      await clearNotificationInbox().catch(() => undefined);
+      await setNotificationUserContext(null).catch(() => undefined);
       setToken(null);
       setUser(null);
     });
@@ -88,11 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const me = await apiJson<UserMe>("/auth/me", { token });
       setUser(me);
+      await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setUser(null);
         await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
         await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
+        await setNotificationUserContext(null).catch(() => undefined);
         setToken(null);
       }
       /* Transient errors: keep existing user snapshot to avoid blanking the profile UI. */
@@ -110,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(
     async (email: string, password: string) => {
+      await clearNotificationInbox().catch(() => undefined);
       const data = await apiJson<Partial<TokenPair>>("/auth/login", {
         method: "POST",
         body: { email, password },
@@ -122,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await persistTokenPair({ access_token: access, refresh_token: refresh });
       try {
         const me = await apiJson<UserMe>("/auth/me", { token: access });
+        await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
         await configureRevenueCat(String(me.id));
         const info = await getRevenueCatCustomerInfo();
         await syncEntitlement(access, {
@@ -139,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = useCallback(
     async (email: string, username: string, password: string) => {
+      await clearNotificationInbox().catch(() => undefined);
       const data = await apiJson<Partial<TokenPair>>("/auth/register", {
         method: "POST",
         body: { email, username, password },
@@ -151,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await persistTokenPair({ access_token: access, refresh_token: refresh });
       try {
         const me = await apiJson<UserMe>("/auth/me", { token: access });
+        await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
         await configureRevenueCat(String(me.id));
         const info = await getRevenueCatCustomerInfo();
         await syncEntitlement(access, {
@@ -173,6 +184,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
     await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
+    await clearNotificationInbox().catch(() => undefined);
+    await setNotificationUserContext(null).catch(() => undefined);
     setToken(null);
     setUser(null);
   }, []);
@@ -187,6 +200,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
     await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY).catch(() => undefined);
+    await clearNotificationInbox().catch(() => undefined);
+    await setNotificationUserContext(null).catch(() => undefined);
     setToken(null);
     setUser(null);
   }, [token]);

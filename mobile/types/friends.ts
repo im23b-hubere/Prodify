@@ -166,7 +166,7 @@ export type IdentityStateDto = {
 export type ReliabilityScoreDto = {
   score: number;
   trend: "up" | "down" | "stable";
-  rank_percent: number;
+  rank_percent: number | null;
   consistency_90d: number;
   completion_rate_90d: number;
 };

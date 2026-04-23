@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import {
+  Animated,
+  Easing,
   Platform,
   Pressable,
   RefreshControl,
@@ -17,9 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
-import { LoadingState } from "../../components/states/LoadingState";
 import { OutputMetricsShareModal } from "../../components/outcomes/OutputMetricsShareModal";
 import { AppCard } from "../../components/ui/AppCard";
 import { StatCard } from "../../components/ui/StatCard";
@@ -85,6 +85,13 @@ function parseIsoDate(value: string | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function localDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function formatRecordContext(record: PersonalRecord, t: TTranslate) {
   if (!record.context) return null;
   if (record.key === "longest_session") {
@@ -138,6 +145,68 @@ function recordPriorityScore(key: string) {
 const BAR_CHART_HEIGHT = 168;
 
 type BarPoint = { x: string; y: number; label: string };
+
+function SkeletonLine({
+  style,
+  durationMs = 850,
+  minOpacity = 0.5,
+}: {
+  style?: object;
+  durationMs?: number;
+  minOpacity?: number;
+}) {
+  const pulse = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: durationMs,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: minOpacity,
+          duration: durationMs,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [durationMs, minOpacity, pulse]);
+
+  return <Animated.View style={[styles.skeletonLine, { opacity: pulse }, style]} />;
+}
+
+function StatsSkeleton() {
+  return (
+    <View style={styles.skeletonWrap}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.cardRow}
+      >
+        {[0, 1, 2].map((idx) => (
+          <AppCard key={`sk-stat-${idx}`} style={styles.skeletonStatCard}>
+            <SkeletonLine style={styles.skeletonLabel} durationMs={760} minOpacity={0.56} />
+            <SkeletonLine style={styles.skeletonValue} durationMs={760} minOpacity={0.56} />
+            <SkeletonLine style={styles.skeletonSub} durationMs={760} minOpacity={0.56} />
+          </AppCard>
+        ))}
+      </ScrollView>
+      {[0, 1, 2].map((idx) => (
+        <AppCard key={`sk-card-${idx}`} style={styles.skeletonBlockCard}>
+          <SkeletonLine style={styles.skeletonTitle} durationMs={980} minOpacity={0.5} />
+          <SkeletonLine style={styles.skeletonBody} durationMs={980} minOpacity={0.5} />
+          <SkeletonLine style={styles.skeletonBodyShort} durationMs={980} minOpacity={0.5} />
+        </AppCard>
+      ))}
+    </View>
+  );
+}
 
 function SessionsPerDayChart({ data }: { data: BarPoint[] }) {
   const maxY = Math.max(1, ...data.map((d) => d.y));
@@ -196,12 +265,15 @@ export default function StatsScreen() {
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
   const [outputMetrics, setOutputMetrics] = useState<OutputMetricsDto | null>(null);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
   const [outputShareOpen, setOutputShareOpen] = useState(false);
   const loadSeq = useRef(0);
   const mounted = useRef(true);
+  const contentFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     mounted.current = true;
@@ -220,7 +292,8 @@ export default function StatsScreen() {
     if (mounted.current) setLoading(true);
     if (mounted.current) setError(null);
     try {
-      const [rawStats, rawHm, rawRec, progressionRaw, outputMetricsRaw] = await Promise.all([
+      const [rawStats, rawHm, rawRec, progressionRaw, outputMetricsRaw, activeSessionRaw] =
+        await Promise.all([
         apiJson<unknown>(`/sessions/stats?period=${periodParam}`, { token }),
         apiJson<unknown>(`/stats/heatmap`, { token }),
         apiJson<unknown>(`/stats/records`, { token }),
@@ -228,6 +301,7 @@ export default function StatsScreen() {
           () => null,
         ),
         apiJson<unknown>("/outcomes/output-metrics/current", { token }).catch(() => null),
+        apiJson<unknown>("/sessions/active", { token }).catch(() => null),
       ]);
       const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
         token,
@@ -241,6 +315,8 @@ export default function StatsScreen() {
           setHeatmapDays([]);
           setRecords([]);
           setProgression(null);
+          setHasActiveSession(false);
+          setActiveSessionId(null);
           setError(t("stats.invalidResponse"));
         }
         return;
@@ -252,6 +328,17 @@ export default function StatsScreen() {
         setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
         setOutputMetrics(outputMetricsRaw ? tryParseOutputMetricsDto(outputMetricsRaw) : null);
         setProgression(progressionRaw ? tryParseProgressionDto(progressionRaw) : null);
+        const parsedActiveSessionId =
+          activeSessionRaw &&
+          typeof activeSessionRaw === "object" &&
+          !Array.isArray(activeSessionRaw) &&
+          typeof (activeSessionRaw as { id?: unknown }).id === "number" &&
+          Number.isFinite((activeSessionRaw as { id: number }).id) &&
+          (activeSessionRaw as { id: number }).id > 0
+            ? (activeSessionRaw as { id: number }).id
+            : null;
+        setHasActiveSession(parsedActiveSessionId != null);
+        setActiveSessionId(parsedActiveSessionId);
       }
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
@@ -320,7 +407,7 @@ export default function StatsScreen() {
     const start = new Date(end.getTime() - 6 * CALENDAR_DAY_MS);
     return Array.from({ length: 7 }, (_, i) => {
       const date = new Date(start.getTime() + i * CALENDAR_DAY_MS);
-      const key = date.toISOString().slice(0, 10);
+      const key = localDateKey(date);
       const data = heatmapByDate.get(key);
       return {
         key,
@@ -356,7 +443,7 @@ export default function StatsScreen() {
 
     for (let day = 1; day <= daysInMonth; day += 1) {
       const d = new Date(year, month, day);
-      const key = d.toISOString().slice(0, 10);
+      const key = localDateKey(d);
       const info = heatmapByDate.get(key);
       entries.push({
         key,
@@ -396,7 +483,7 @@ export default function StatsScreen() {
         const date = new Date();
         date.setHours(0, 0, 0, 0);
         date.setDate(date.getDate() - (6 - index));
-        const isoLabel = date.toISOString().slice(0, 10);
+        const isoLabel = localDateKey(date);
         return {
           x: weekdayLetterFromIsoDay(isoLabel),
           y: sessionsByDay.get(isoLabel) ?? 0,
@@ -424,6 +511,22 @@ export default function StatsScreen() {
   );
 
   const recent = stats?.recent_sessions ?? [];
+  const showInitialLoading = loading && !refreshing && !stats && !error;
+  const showInlineLoading = loading && !refreshing && !!stats;
+
+  useEffect(() => {
+    if (showInitialLoading) {
+      contentFade.setValue(0);
+      return;
+    }
+    Animated.timing(contentFade, {
+      toValue: 1,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [contentFade, showInitialLoading]);
+
   const decoratedRecords = useMemo<DecoratedRecord[]>(() => {
     const now = Date.now();
     const FRESH_MS = 14 * CALENDAR_DAY_MS;
@@ -526,15 +629,29 @@ export default function StatsScreen() {
         </View>
         <View style={styles.quickActions}>
           <PrimaryButton
-            label={t("dashboard.startSession")}
-            onPress={() => router.push("/session/setup")}
+            label={hasActiveSession ? t("sessionActive.inProgress") : t("dashboard.startSession")}
+            onPress={() => {
+              if (hasActiveSession && activeSessionId != null) {
+                router.push({
+                  pathname: "/session/active",
+                  params: { id: String(activeSessionId), source: "stats" },
+                });
+                return;
+              }
+              router.push("/session/setup");
+            }}
           />
           <SecondaryButton
             label={t("sessionFeedback.backToDashboard")}
             onPress={() => router.push("/(tabs)/dashboard")}
           />
         </View>
-        {loading && !refreshing ? <LoadingState message={t("stats.loading")} /> : null}
+        {showInitialLoading ? <StatsSkeleton /> : null}
+        {showInlineLoading ? (
+          <View style={styles.inlineLoadingRow}>
+            <Text style={styles.inlineLoadingText}>{t("stats.loading")}</Text>
+          </View>
+        ) : null}
         {!loading && error ? (
           <ErrorState
             title={t("common.oops")}
@@ -543,10 +660,9 @@ export default function StatsScreen() {
             onRetry={() => loadStats().catch(() => undefined)}
           />
         ) : null}
-        {!loading && !error && recent.length === 0 ? (
-          <EmptyState icon="📊" title={t("stats.recentTitle")} message={t("stats.recentEmpty")} />
-        ) : null}
-
+        {!showInitialLoading ? (
+          <Animated.View style={[styles.contentFadeWrap, { opacity: contentFade }]}>
+        {!showInitialLoading ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -574,8 +690,9 @@ export default function StatsScreen() {
             sublabel={t("stats.bestStreakSub", { days: summary.bestStreak })}
           />
         </ScrollView>
+        ) : null}
 
-        {outputMetrics ? (
+        {!showInitialLoading && outputMetrics ? (
           <AppCard style={styles.outcomeCard}>
             <Text style={styles.cardTitle}>{t("stats.outputMetricsTitle")}</Text>
             <View style={styles.beforeAfterRow}>
@@ -660,7 +777,7 @@ export default function StatsScreen() {
           </AppCard>
         ) : null}
 
-        {progression ? (
+        {!showInitialLoading && progression ? (
           <AppCard style={styles.progressionCard}>
             <View style={styles.progressionTopRow}>
               <Text style={styles.cardTitle}>
@@ -689,7 +806,7 @@ export default function StatsScreen() {
           </AppCard>
         ) : null}
 
-        {weekGoal || forecast ? (
+        {!showInitialLoading && (weekGoal || forecast) ? (
           <AppCard style={styles.goalCard}>
             {weekGoal ? (
               <>
@@ -710,7 +827,7 @@ export default function StatsScreen() {
           </AppCard>
         ) : null}
 
-        <AppCard style={styles.chartCard}>
+        {!showInitialLoading ? <AppCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.heatmapTitle")}</Text>
           <View style={styles.heatmapGrid}>
             {heatmapDays.map((d) => (
@@ -731,9 +848,9 @@ export default function StatsScreen() {
               />
             ))}
           </View>
-        </AppCard>
+        </AppCard> : null}
 
-        <AppCard style={styles.chartCard}>
+        {!showInitialLoading ? <AppCard style={styles.chartCard}>
           <View style={styles.calendarHeader}>
             <Text style={styles.cardTitle}>{t("stats.activityCalendarTitle")}</Text>
             <View style={styles.calendarModeRow}>
@@ -847,9 +964,9 @@ export default function StatsScreen() {
               ))}
             </View>
           )}
-        </AppCard>
+        </AppCard> : null}
 
-        <AppCard style={styles.chartCard}>
+        {!showInitialLoading ? <AppCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
           {decoratedRecords.length === 0 ? (
             <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
@@ -898,17 +1015,17 @@ export default function StatsScreen() {
               })}
             </View>
           )}
-        </AppCard>
+        </AppCard> : null}
 
-        <AppCard style={styles.chartCard}>
+        {!showInitialLoading ? <AppCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.perDayTitle")}</Text>
           {!loading && error ? <Text style={styles.errorText}>{error}</Text> : null}
           <View style={styles.chartInner}>
             <SessionsPerDayChart data={chartData} />
           </View>
-        </AppCard>
+        </AppCard> : null}
 
-        <AppCard style={styles.chartCard}>
+        {!showInitialLoading ? <AppCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>{t("stats.typeMixTitle")}</Text>
           {breakdownData.length > 0 ? (
             <View style={styles.breakdownWrap}>
@@ -937,18 +1054,18 @@ export default function StatsScreen() {
               <Text style={styles.emptyText}>{t("stats.typeMixEmpty")}</Text>
             </View>
           )}
-        </AppCard>
+        </AppCard> : null}
 
-        {productivityHintText ? (
+        {!showInitialLoading && productivityHintText ? (
           <AppCard style={styles.hintCard}>
             <Text style={styles.hintText}>{productivityHintText}</Text>
           </AppCard>
         ) : null}
 
-        <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
-        {recent.length === 0 ? (
+        {!showInitialLoading ? <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text> : null}
+        {!showInitialLoading && recent.length === 0 ? (
           <Text style={styles.emptyText}>{t("stats.recentEmpty")}</Text>
-        ) : (
+        ) : !showInitialLoading ? (
           <View style={styles.recentList}>
             {recent.map((item) => (
               <View
@@ -959,9 +1076,9 @@ export default function StatsScreen() {
               </View>
             ))}
           </View>
-        )}
+        ) : null}
 
-        {outputMetrics ? (
+        {!showInitialLoading && outputMetrics ? (
           <OutputMetricsShareModal
             visible={outputShareOpen}
             onClose={() => setOutputShareOpen(false)}
@@ -972,6 +1089,8 @@ export default function StatsScreen() {
             closeLabel={t("common.cancel")}
             busyLabel={t("stats.shareProofBusy")}
           />
+        ) : null}
+          </Animated.View>
         ) : null}
       </ScrollView>
     </SafeAreaView>
@@ -985,6 +1104,57 @@ const styles = StyleSheet.create({
   quickActions: {
     marginBottom: spacing.md,
     gap: spacing.sm,
+  },
+  skeletonWrap: {
+    gap: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  skeletonStatCard: {
+    width: 162,
+    gap: spacing.sm,
+  },
+  skeletonBlockCard: {
+    marginBottom: spacing.xs,
+    gap: spacing.sm,
+  },
+  skeletonLine: {
+    height: 12,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  skeletonLabel: {
+    width: "46%",
+  },
+  skeletonValue: {
+    width: "62%",
+    height: 24,
+    backgroundColor: "rgba(255,255,255,0.11)",
+  },
+  skeletonSub: {
+    width: "55%",
+  },
+  skeletonTitle: {
+    width: "40%",
+  },
+  skeletonBody: {
+    width: "100%",
+  },
+  skeletonBodyShort: {
+    width: "72%",
+  },
+  inlineLoadingRow: {
+    marginBottom: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  inlineLoadingText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.meta,
   },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.screenTitle },
   filterRow: { flexDirection: "row", gap: spacing.sm },
@@ -1005,6 +1175,9 @@ const styles = StyleSheet.create({
   },
   filterLabelActive: { color: colors.textPrimary },
   cardRow: { gap: spacing.sm, paddingBottom: spacing.lg },
+  contentFadeWrap: {
+    gap: 0,
+  },
   goalCard: {
     marginBottom: spacing.lg,
   },

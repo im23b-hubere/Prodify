@@ -1,6 +1,6 @@
 import type { Href } from "expo-router";
 import type { TFunction } from "i18next";
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Alert } from "react-native";
 
 import { apiJson } from "../../../lib/client";
@@ -44,10 +44,22 @@ export function useDashboardSocialActions({
   setSocialActionBusy,
 }: Params) {
   const [socialToast, setSocialToast] = useState<string | null>(null);
+  const socialToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (socialToastTimeoutRef.current) {
+        clearTimeout(socialToastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const showSocialToast = useCallback((msg: string) => {
     setSocialToast(msg);
-    setTimeout(() => setSocialToast(null), 1700);
+    if (socialToastTimeoutRef.current) {
+      clearTimeout(socialToastTimeoutRef.current);
+    }
+    socialToastTimeoutRef.current = setTimeout(() => setSocialToast(null), 1700);
   }, []);
 
   const identityFeedback = useMemo(() => {
@@ -119,6 +131,21 @@ export function useDashboardSocialActions({
 
   const runCheckinNow = useCallback(async () => {
     if (!token) return;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        t("dashboard.logActivityConfirmTitle"),
+        t("dashboard.logActivityConfirmBody"),
+        [
+          { text: t("common.cancel"), style: "cancel", onPress: () => resolve(false) },
+          {
+            text: t("dashboard.nudgeCtaLogActivity"),
+            style: "default",
+            onPress: () => resolve(true),
+          },
+        ],
+      );
+    });
+    if (!confirmed) return;
     setSocialActionBusy("checkin");
     try {
       await apiJson("/social/checkins/done", {

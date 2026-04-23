@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -16,6 +16,7 @@ type Props = {
   identityTags?: string[];
   streakStatusLabel?: string;
   streakStatusEmoji?: string;
+  profilePictureUrl?: string | null;
   onAddFriend?: () => void;
 };
 
@@ -36,6 +37,7 @@ export const ProfileHeader = memo(function ProfileHeader({
   identityTags = [],
   streakStatusLabel,
   streakStatusEmoji,
+  profilePictureUrl,
   onAddFriend,
 }: Props) {
   const { t } = useTranslation();
@@ -44,7 +46,11 @@ export const ProfileHeader = memo(function ProfileHeader({
       <LinearGradient colors={["#3d1510", "#141414"]} style={styles.gradient} />
       <View style={styles.content}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarTxt}>{initials(username)}</Text>
+          {profilePictureUrl ? (
+            <Image source={{ uri: profilePictureUrl }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarTxt}>{initials(username)}</Text>
+          )}
         </View>
         <View style={styles.nameRow}>
           <Text style={styles.username}>{username}</Text>
@@ -123,6 +129,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   avatarTxt: { fontSize: 28, fontFamily: fontFamily.heading, color: colors.textPrimary },
+  avatarImage: { width: "100%", height: "100%" },
   username: {
     textAlign: "center",
     color: colors.textPrimary,

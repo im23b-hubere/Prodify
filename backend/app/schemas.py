@@ -466,6 +466,27 @@ class PushBulkResultPublic(BaseModel):
     message: str | None = None
 
 
+class NotificationInboxItemPublic(BaseModel):
+    id: str
+    category: Literal["streak", "achievement", "social", "tips"]
+    priority: Literal["low", "normal", "high", "critical"] = "normal"
+    title: str
+    body: str
+    title_key: str | None = None
+    title_params: dict[str, int | float | str] = Field(default_factory=dict)
+    body_key: str | None = None
+    body_params: dict[str, int | float | str] = Field(default_factory=dict)
+    created_at: datetime
+    expires_at: datetime | None = None
+    read: bool = False
+    action_label: str | None = None
+    action_route: str | None = None
+
+
+class NotificationInboxReadBody(BaseModel):
+    up_to_ms: int | None = Field(default=None, ge=0)
+
+
 class SmartNudgeBody(BaseModel):
     kind: Literal["inactivity", "best_time", "forecast_risk"] = "inactivity"
     hour: int | None = Field(default=None, ge=0, le=23)
@@ -536,7 +557,7 @@ class UserFriendProfilePublic(BaseModel):
     created_at: datetime
     reliability_score: float = 0.0
     reliability_trend: Literal["up", "down", "stable"] = "stable"
-    reliability_rank_percent: int = 100
+    reliability_rank_percent: int | None = None
     streak_status_key: str = "starting"
     streak_status_label: str = "STARTING"
     streak_status_emoji: str = "🌱"
@@ -545,7 +566,7 @@ class UserFriendProfilePublic(BaseModel):
 class ReliabilityScorePublic(BaseModel):
     score: float
     trend: Literal["up", "down", "stable"]
-    rank_percent: int
+    rank_percent: int | None = None
     consistency_90d: float
     completion_rate_90d: float
 

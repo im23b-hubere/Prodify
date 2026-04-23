@@ -106,21 +106,43 @@ def verify_billing_sync(body: BillingSyncBody) -> BillingVerificationResult:
 
 
 def sync_from_webhook_payload(db: Session, payload: dict) -> tuple[int | None, UserSubscription | None]:
-    user_id_raw = payload.get("app_user_id") or payload.get("user_id")
+    event = payload.get("event") if isinstance(payload.get("event"), dict) else payload
+    user_id_raw = event.get("app_user_id") or event.get("user_id")
     if user_id_raw is None:
         return None, None
+    user_id: int | None = None
     try:
         user_id = int(str(user_id_raw))
     except ValueError:
+        existing = db.scalar(
+            select(UserSubscription).where(UserSubscription.rc_app_user_id == str(user_id_raw))
+        )
+        if existing is not None:
+            user_id = int(existing.user_id)
+    if user_id is None:
         return None, None
-    ent = "premium" if bool(payload.get("is_active")) else "free"
-    trial_active = bool(payload.get("is_trial_period"))
-    expires = payload.get("expires_at")
+    event_type = str(event.get("type") or "").strip().upper()
+    trial_active = bool(event.get("is_trial_period"))
+
+    if "CANCELLATION" in event_type or "EXPIRATION" in event_type:
+        ent = "free"
+    elif "PURCHASE" in event_type or "RENEWAL" in event_type or bool(event.get("is_active")):
+        ent = "premium"
+    else:
+        # Safest fallback: do not accidentally grant access for unknown events.
+        ent = "free"
+
+    expires = event.get("expires_at") or event.get("expiration_at_ms")
     expires_at: datetime | None = None
     if isinstance(expires, str):
         try:
             expires_at = datetime.fromisoformat(expires.replace("Z", "+00:00"))
         except ValueError:
+            expires_at = None
+    elif isinstance(expires, (int, float)):
+        try:
+            expires_at = datetime.fromtimestamp(float(expires) / 1000.0, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
             expires_at = None
     body = BillingSyncBody(
         app_user_id=str(user_id_raw),

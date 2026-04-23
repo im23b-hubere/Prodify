@@ -568,7 +568,8 @@ def update_session(
         if updates["track_outcome"] != "finished":
             row.track_title = None
     if "track_title" in updates:
-        row.track_title = updates["track_title"]
+        effective_outcome = row.track_outcome or "none"
+        row.track_title = updates["track_title"] if effective_outcome == "finished" else None
 
     db.commit()
     db.refresh(row)

@@ -16,7 +16,13 @@ type Props = {
   activity: FriendActivityDto[];
   leaderboard: FriendLeaderboardEntryDto[];
   loading: boolean;
-  primaryAction?: { message: string; ctaLabel: string; onPress: () => void; busy?: boolean } | null;
+  primaryAction?: {
+    message: string;
+    ctaLabel: string;
+    hint?: string;
+    onPress: () => void;
+    busy?: boolean;
+  } | null;
   secondaryHint?: string | null;
 };
 
@@ -125,6 +131,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
               key={`${a.session_id}-${a.completed_at}`}
               style={({ pressed }) => [styles.feedRow, pressed && { opacity: 0.88 }]}
               onPress={() => {
+                if (!Number.isFinite(a.session_id) || a.session_id <= 0) return;
                 Haptics.selectionAsync().catch(() => undefined);
                 router.push({
                   pathname: "/session/[id]",
@@ -148,6 +155,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
       {primaryAction ? (
         <View style={styles.primaryWrap}>
           <Text style={styles.primaryMsg}>{primaryAction.message}</Text>
+          {primaryAction.hint ? <Text style={styles.primaryHint}>{primaryAction.hint}</Text> : null}
           <Pressable
             style={styles.primaryBtn}
             onPress={primaryAction.onPress}
@@ -239,6 +247,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   primaryMsg: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyBold },
+  primaryHint: { color: colors.textSecondary, ...typography.caption },
   primaryBtn: {
     borderRadius: radii.md,
     borderWidth: 1,

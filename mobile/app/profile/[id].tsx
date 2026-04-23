@@ -9,6 +9,7 @@ import { ActivityHeatmapCard } from "../../components/profile/ActivityHeatmapCar
 import { ProfileHeader } from "../../components/profile/ProfileHeader";
 import { StreakComparison } from "../../components/profile/StreakComparison";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { API_BASE_URL } from "../../constants/api";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -33,6 +34,7 @@ type FriendStatus = "self" | "none" | "pending" | "accepted";
 type ProfilePayload = {
   id: number;
   username: string;
+  profile_picture_url?: string | null;
   total_sessions: number;
   current_streak: number;
   longest_streak: number;
@@ -42,7 +44,7 @@ type ProfilePayload = {
   created_at: string;
   reliability_score?: number;
   reliability_trend?: "up" | "down" | "stable";
-  reliability_rank_percent?: number;
+  reliability_rank_percent?: number | null;
   streak_status_key?: string;
   streak_status_label?: string;
   streak_status_emoji?: string;
@@ -155,6 +157,11 @@ export default function FriendProfileScreen() {
   }
 
   const locked = status === "none" || status === "pending";
+  const profilePictureUrl = profile?.profile_picture_url?.trim()
+    ? profile.profile_picture_url.startsWith("http")
+      ? profile.profile_picture_url
+      : `${API_BASE_URL}${profile.profile_picture_url}`
+    : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -196,6 +203,7 @@ export default function FriendProfileScreen() {
               identityTags={profile.identity_tags ?? []}
               streakStatusLabel={profile.streak_status_label}
               streakStatusEmoji={profile.streak_status_emoji}
+              profilePictureUrl={profilePictureUrl}
             />
 
             {status !== "self" ? (
@@ -211,9 +219,11 @@ export default function FriendProfileScreen() {
                 /10
               </Text>
               <Text style={styles.line}>
-                {t("friendProfile.reliabilityRank", {
-                  rank: profile.reliability_rank_percent ?? 100,
-                })}
+                {typeof profile.reliability_rank_percent === "number"
+                  ? t("friendProfile.reliabilityRank", {
+                      rank: profile.reliability_rank_percent,
+                    })
+                  : t("friendProfile.reliabilityRankUnavailable")}
               </Text>
               <Text style={styles.line}>
                 {profile.reliability_trend === "up"
