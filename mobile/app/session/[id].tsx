@@ -35,12 +35,17 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
-import { createSessionComment, fetchSessionComments } from "../../lib/social";
+import {
+  createSessionComment,
+  fetchSessionComments,
+  fetchSessionReactions,
+  toggleSessionReaction,
+} from "../../lib/social";
 import { sessionMoodLabel, sessionTypeLabel } from "../../lib/sessionI18n";
 import { sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { formatDurationWords, parseSessionDate } from "../../lib/sessionTime";
 import { formatTimeAgo } from "../../lib/timeAgo";
-import type { SocialCommentDto } from "../../types/friends";
+import type { SocialCommentDto, SocialReactionDto } from "../../types/friends";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import {
   DEFAULT_SESSION_TYPE,
@@ -50,6 +55,8 @@ import {
 } from "../../types/session";
 
 const INSIGHTS_MIN_SECONDS = 5 * 60;
+const SESSION_DETAIL_NOTES_MAX_LENGTH = 2000;
+const DEFAULT_REACTIONS = ["🔥", "👏", "💯", "🎯", "🚀"] as const;
 
 function resolveAvatarUri(uri?: string | null): string | null {
   if (!uri?.trim()) return null;
@@ -140,7 +147,12 @@ export default function SessionDetailScreen() {
   const [comments, setComments] = useState<SocialCommentDto[]>([]);
   const [commentInput, setCommentInput] = useState("");
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
   const [commentSending, setCommentSending] = useState(false);
+  const [reactions, setReactions] = useState<SocialReactionDto[]>([]);
+  const [reactionsLoading, setReactionsLoading] = useState(false);
+  const [reactionsError, setReactionsError] = useState<string | null>(null);
+  const [reactionBusyEmoji, setReactionBusyEmoji] = useState<string | null>(null);
   const [newCommentId, setNewCommentId] = useState<number | null>(null);
   const [commentSentPulse, setCommentSentPulse] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -157,18 +169,39 @@ export default function SessionDetailScreen() {
   const loadComments = useCallback(async () => {
     if (!token || !id || !Number.isFinite(Number(id))) return;
     setCommentsLoading(true);
+    setCommentsError(null);
     try {
       const rows = await fetchSessionComments(token, Number(id));
       setComments(Array.isArray(rows) ? rows : []);
     } catch {
       setComments([]);
+      setCommentsError(t("sessionDetail.commentsLoadFailed"));
     } finally {
       setCommentsLoading(false);
     }
-  }, [id, token]);
+  }, [id, t, token]);
+
+  const loadReactions = useCallback(async () => {
+    if (!token || !id || !Number.isFinite(Number(id))) return;
+    setReactionsLoading(true);
+    setReactionsError(null);
+    try {
+      const rows = await fetchSessionReactions(token, Number(id));
+      setReactions(Array.isArray(rows) ? rows : []);
+    } catch {
+      setReactions([]);
+      setReactionsError(t("sessionDetail.reactionsLoadFailed"));
+    } finally {
+      setReactionsLoading(false);
+    }
+  }, [id, t, token]);
 
   const load = useCallback(async () => {
-    if (!token || !id) return;
+    if (!token || !id) {
+      setError(!token ? t("sessionDetail.notSignedIn") : t("sessionDetail.missingSessionId"));
+      setSession(null);
+      return;
+    }
     if (!Number.isFinite(Number(id))) {
       setError(t("sessionDetail.invalidId"));
       setSession(null);
@@ -211,14 +244,19 @@ export default function SessionDetailScreen() {
     loadComments().catch(() => undefined);
   }, [loadComments]);
 
+  useEffect(() => {
+    loadReactions().catch(() => undefined);
+  }, [loadReactions]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load().catch((e) =>
       setError(e instanceof Error ? e.message : t("sessionDetail.refreshFailed")),
     );
     await loadComments().catch(() => undefined);
+    await loadReactions().catch(() => undefined);
     setRefreshing(false);
-  }, [load, loadComments, t]);
+  }, [load, loadComments, loadReactions, t]);
 
   const submitComment = useCallback(async () => {
     if (!token || !id) return;
@@ -249,6 +287,24 @@ export default function SessionDetailScreen() {
       setCommentSending(false);
     }
   }, [commentInput, id, loadComments, t, token]);
+
+  const onToggleReaction = useCallback(
+    async (emoji: string) => {
+      if (!token || !id || reactionBusyEmoji) return;
+      setReactionBusyEmoji(emoji);
+      setReactionsError(null);
+      try {
+        const updated = await toggleSessionReaction(token, Number(id), emoji);
+        setReactions(updated);
+        Haptics.selectionAsync().catch(() => undefined);
+      } catch (e) {
+        setReactionsError(e instanceof Error ? e.message : t("sessionDetail.reactionToggleFailed"));
+      } finally {
+        setReactionBusyEmoji(null);
+      }
+    },
+    [id, reactionBusyEmoji, t, token],
+  );
 
   const save = useCallback(async () => {
     if (!token || !id) return;
@@ -485,14 +541,20 @@ export default function SessionDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t("sessionDetail.notes")}</Text>
             {isOwnSession ? (
-              <TextInput
-                style={styles.noteInput}
-                value={note}
-                onChangeText={setNote}
-                placeholder={t("sessionDetail.notesPlaceholder")}
-                placeholderTextColor={colors.textSecondary}
-                multiline
-              />
+              <>
+                <TextInput
+                  style={styles.noteInput}
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder={t("sessionDetail.notesPlaceholder")}
+                  placeholderTextColor={colors.textSecondary}
+                  multiline
+                  maxLength={SESSION_DETAIL_NOTES_MAX_LENGTH}
+                />
+                <Text style={styles.noteCounter}>
+                  {note.length}/{SESSION_DETAIL_NOTES_MAX_LENGTH}
+                </Text>
+              </>
             ) : note.trim() ? (
               <Text style={styles.noteReadOnly}>{note}</Text>
             ) : (
@@ -512,6 +574,42 @@ export default function SessionDetailScreen() {
               </View>
             </View>
           ) : null}
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t("friendsScreen.reactionsTitle")}</Text>
+            {reactionsLoading ? (
+              <Text style={styles.mutedNote}>{t("friendsScreen.loading")}</Text>
+            ) : (
+              <View style={styles.reactionRow}>
+                {DEFAULT_REACTIONS.map((emoji) => {
+                  const row = reactions.find((item) => item.emoji === emoji);
+                  const count = row?.count ?? 0;
+                  const active = Boolean(row?.reacted_by_me);
+                  return (
+                    <Pressable
+                      key={emoji}
+                      style={({ pressed }) => [
+                        styles.reactionChip,
+                        active && styles.reactionChipActive,
+                        pressed && { opacity: 0.9 },
+                      ]}
+                      disabled={Boolean(reactionBusyEmoji)}
+                      onPress={() => void onToggleReaction(emoji)}
+                    >
+                      <Text style={styles.reactionEmoji}>{emoji}</Text>
+                      <Text style={[styles.reactionCount, active && styles.reactionCountActive]}>
+                        {count}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+            {reactionsError ? <Text style={styles.errorText}>{reactionsError}</Text> : null}
+            {!reactionsLoading && reactions.length === 0 ? (
+              <Text style={styles.mutedNote}>{t("friendsScreen.noReactionsYet")}</Text>
+            ) : null}
+          </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t("friendsScreen.commentsTitle")}</Text>
@@ -563,6 +661,7 @@ export default function SessionDetailScreen() {
                 )}
               </Pressable>
             </View>
+            {commentsError ? <Text style={styles.errorText}>{commentsError}</Text> : null}
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -683,6 +782,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     ...typography.caption,
   },
+  noteCounter: {
+    marginTop: spacing.xs,
+    color: colors.textSecondary,
+    textAlign: "right",
+    ...typography.caption,
+  },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: {
     paddingHorizontal: spacing.sm,
@@ -773,6 +878,37 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: spacing.xs,
     marginTop: spacing.sm,
+  },
+  reactionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  reactionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.round,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+  },
+  reactionChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.14)",
+  },
+  reactionEmoji: {
+    fontSize: 16,
+  },
+  reactionCount: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  reactionCountActive: {
+    color: colors.textPrimary,
   },
   commentInput: {
     flex: 1,

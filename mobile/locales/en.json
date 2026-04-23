@@ -83,6 +83,7 @@
   "common": {
     "back": "Back",
     "cancel": "Cancel",
+    "continue": "Continue",
     "ok": "OK",
     "oops": "Oops!",
     "tryAgain": "Try again",
@@ -478,6 +479,15 @@
     "moodSection": "How are you feeling?",
     "tagsSection": "Tags (optional)",
     "tagPlaceholder": "Add tag",
+    "tagTooLong": "Tags can be up to 32 characters.",
+    "tagLimitReached": "You can add up to 20 tags.",
+    "tagAlreadyAdded": "This tag is already added.",
+    "addOptionalDetails": "Add optional details",
+    "hideOptionalDetails": "Hide optional details",
+    "notSignedIn": "Not signed in. Please log in again.",
+    "activeSessionTitle": "Session already active",
+    "activeSessionBody": "You already have an active session. We'll continue with it.",
+    "activeSessionError": "You already have an active session.",
     "startCta": "START SESSION",
     "planSubtitle": "Plan the next one now, start when ready.",
     "startWhenReadyCta": "START WHEN READY"
@@ -542,7 +552,8 @@
     "trackTitlePlaceholder": "Track name (optional)",
     "trackSaveCta": "Save track result",
     "trackSaveBusy": "Saving...",
-    "trackSaved": "Saved to your outcome timeline."
+    "trackSaved": "Saved to your outcome timeline.",
+    "trackSaveErrorFallback": "Could not save outcome. Please try again."
   },
   "sessionFeedback": {
     "progressTitle": "Session impact",
@@ -575,6 +586,8 @@
   },
   "sessionDetail": {
     "loading": "Loading session...",
+    "notSignedIn": "You are not signed in.",
+    "missingSessionId": "Missing session id.",
     "invalidId": "Invalid session id",
     "invalidData": "Invalid session data from server.",
     "loadFailed": "Failed to load session",
@@ -611,7 +624,10 @@
     "viewProfile": "View profile",
     "viewProfileA11y": "Open {{name}}'s profile",
     "friendSessionReadOnly": "Friend session — view only.",
-    "noNotes": "No notes for this session."
+    "noNotes": "No notes for this session.",
+    "commentsLoadFailed": "Comments are temporarily unavailable.",
+    "reactionsLoadFailed": "Reactions are temporarily unavailable.",
+    "reactionToggleFailed": "Could not update reaction. Please try again."
   },
   "sessionTrash": {
     "title": "Session trash",
@@ -691,6 +707,7 @@
     "milestoneNotifTitle": "Milestone reached",
     "loadSessionsFailed": "Failed to load sessions.",
     "loadFailed": "Failed to load",
+    "socialLoadFailed": "Social insights are temporarily unavailable. Showing your last known data.",
     "deleteFailed": "Delete failed",
     "stopFailed": "Stop failed",
     "couldNotReadSession": "Could not read the new session. Pull down to refresh.",
@@ -1146,8 +1163,11 @@
   },
   "errors": {
     "validation": {
+      "emailRequired": "Please enter your email address.",
       "email": "Please enter a valid email address.",
+      "passwordRequired": "Please enter your password.",
       "passwordShort": "Password is too short (at least 8 characters).",
+      "usernameRequired": "Please enter a username.",
       "usernameShort": "Username is too short (at least 2 characters)."
     },
     "requestTimeout": "Request timed out. The server may be down. Check connection and restart backend if needed.",

@@ -25,10 +25,11 @@ import { apiJson } from "../../lib/client";
 import { fetchEntitlement } from "../../lib/billing";
 import { buildWeeklyForecast } from "../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../lib/goalPace";
+import { syncProgression } from "../../lib/progressionSync";
 import { buildSessionFeedback } from "../../lib/sessionFeedbackEngine";
 import { tryParseSessionDto } from "../../lib/sessionDto";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
-import { tryParseCoachDebriefDto, tryParseProgressionDto } from "../../lib/outcomesDto";
+import { tryParseCoachDebriefDto } from "../../lib/outcomesDto";
 import { generateMotivationMessage, getTimeOfDay } from "../../lib/motivationEngine";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDto } from "../../types/session";
@@ -36,15 +37,20 @@ import type { CoachDebriefDto, ProgressionDto } from "../../types/outcomes";
 
 const AUTO_RETURN_SECONDS = 10;
 const SESSION_XP_MINUTES_FLOOR = 5;
-const BASE_SESSION_XP = 8;
-const SESSION_XP_PER_MINUTE_AFTER_FLOOR = 0.8;
-const SESSION_XP_MAX = 110;
+const BASE_SESSION_XP = 5;
+const SESSION_XP_PER_MINUTE_AFTER_FLOOR = 0.5;
+const SESSION_XP_MAX = 85;
+const TRACK_TITLE_MAX_LENGTH = 160;
 
 function estimateSessionXpGain(durationSeconds: number): number {
   const minutes = Math.max(0, Math.floor(durationSeconds / 60));
   if (minutes < SESSION_XP_MINUTES_FLOOR) return 0;
   const scaledMinutes = minutes - SESSION_XP_MINUTES_FLOOR;
-  const raw = BASE_SESSION_XP + Math.floor(scaledMinutes * SESSION_XP_PER_MINUTE_AFTER_FLOOR);
+  let raw = BASE_SESSION_XP + Math.floor(scaledMinutes * SESSION_XP_PER_MINUTE_AFTER_FLOOR);
+  // Keep this mirrored with backend/app/services/progression_service.py::xp_for_completed_session.
+  if (minutes >= 25) raw += 3;
+  if (minutes >= 45) raw += 5;
+  if (minutes >= 75) raw += 7;
   return Math.max(0, Math.min(SESSION_XP_MAX, raw));
 }
 
@@ -67,6 +73,7 @@ export default function SessionCompleteScreen() {
   const [trackTitle, setTrackTitle] = useState("");
   const [trackSaveBusy, setTrackSaveBusy] = useState(false);
   const [trackSaved, setTrackSaved] = useState(false);
+  const [trackSaveError, setTrackSaveError] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
   const cancelled = useRef(false);
@@ -108,18 +115,17 @@ export default function SessionCompleteScreen() {
       );
       setTrackTitle(s.track_title ?? "");
       setTrackSaved(false);
+      setTrackSaveError(null);
       const [statsRaw, progressionRaw, goalRaw, ent] = await Promise.all([
         apiJson<unknown>("/sessions/stats?period=all", { token }).catch(() => null),
-        apiJson<unknown>("/progression/sync", { token, method: "POST", body: {} }).catch(
-          () => null,
-        ),
+        syncProgression(token).catch(() => null),
         apiJson<unknown>("/goals/current", { token }).catch(() => null),
         fetchEntitlement(token).catch(() => null),
       ]);
       if (cancelled.current) return;
       const stats = statsRaw ? tryParseSessionStatsDto(statsRaw) : null;
       setStreak(stats?.summary.current_streak_days ?? null);
-      setProgression(progressionRaw ? tryParseProgressionDto(progressionRaw) : null);
+      setProgression(progressionRaw);
       if (goalRaw && typeof goalRaw === "object") {
         const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
         setWeeklyGoalTarget(typeof g.target_value === "number" ? g.target_value : null);
@@ -240,7 +246,9 @@ export default function SessionCompleteScreen() {
   const persistTrackOutcome = useCallback(
     async (nextOutcome: "none" | "wip" | "finished", nextTitle: string) => {
       if (!token || !session?.id) return;
+      setAutoReturnEnabled(false);
       setTrackSaveBusy(true);
+      setTrackSaveError(null);
       try {
         await apiJson<SessionDto>(`/sessions/item/${session.id}`, {
           token,
@@ -251,13 +259,16 @@ export default function SessionCompleteScreen() {
           },
         });
         setTrackSaved(true);
-      } catch {
+      } catch (e) {
         setTrackSaved(false);
+        setTrackSaveError(
+          e instanceof Error ? e.message : t("sessionComplete.trackSaveErrorFallback"),
+        );
       } finally {
         setTrackSaveBusy(false);
       }
     },
-    [session?.id, token],
+    [session?.id, token, t],
   );
 
   if (loadState === "loading") {
@@ -349,8 +360,10 @@ export default function SessionCompleteScreen() {
                   pressed && { opacity: 0.9 },
                 ]}
                 onPress={() => {
+                  setAutoReturnEnabled(false);
                   setTrackOutcome(option);
                   setTrackSaved(false);
+                  setTrackSaveError(null);
                   if (option !== "finished") {
                     setTrackTitle("");
                     void persistTrackOutcome(option, "");
@@ -377,11 +390,21 @@ export default function SessionCompleteScreen() {
             <View style={styles.trackTitleWrap}>
               <TextInput
                 value={trackTitle}
-                onChangeText={setTrackTitle}
+                onChangeText={(value) => {
+                  setTrackTitle(value);
+                  setTrackSaved(false);
+                  setTrackSaveError(null);
+                  setAutoReturnEnabled(false);
+                }}
+                onFocus={() => setAutoReturnEnabled(false)}
                 placeholder={t("sessionComplete.trackTitlePlaceholder")}
                 placeholderTextColor={colors.textSecondary}
                 style={styles.trackTitleInput}
+                maxLength={TRACK_TITLE_MAX_LENGTH}
               />
+              <Text style={styles.trackCounter}>
+                {trackTitle.length}/{TRACK_TITLE_MAX_LENGTH}
+              </Text>
               <PrimaryButton
                 label={
                   trackSaveBusy
@@ -395,6 +418,7 @@ export default function SessionCompleteScreen() {
           {trackSaved ? (
             <Text style={styles.trackSaved}>{t("sessionComplete.trackSaved")}</Text>
           ) : null}
+          {trackSaveError ? <Text style={styles.trackError}>{trackSaveError}</Text> : null}
         </AppCard>
 
         <AppCard style={styles.xpCard}>
@@ -706,10 +730,21 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     ...typography.body,
   },
+  trackCounter: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    textAlign: "right",
+    marginTop: -4,
+  },
   trackSaved: {
     color: colors.success,
     ...typography.meta,
     fontFamily: fontFamily.bodyBold,
+  },
+  trackError: {
+    color: colors.danger,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyMedium,
   },
   coachCard: {
     marginTop: spacing.sm,

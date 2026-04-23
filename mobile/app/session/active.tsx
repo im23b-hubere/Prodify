@@ -49,6 +49,7 @@ const MOOD_EMOJI: Record<number, string> = {
   4: "😊",
   5: "🔥",
 };
+const ACTIVE_NOTES_MAX_LENGTH = 2000;
 
 export default function SessionActiveScreen() {
   useKeepAwake();
@@ -226,7 +227,7 @@ export default function SessionActiveScreen() {
 
   const saveNotes = useCallback(async () => {
     if (!token || !session) return;
-    const trimmed = draftNotes.trim().slice(0, 200);
+    const trimmed = draftNotes.trim().slice(0, ACTIVE_NOTES_MAX_LENGTH);
     if (trimmed === (session.notes ?? "").trim()) return;
     setSavingNotes(true);
     try {
@@ -327,7 +328,13 @@ export default function SessionActiveScreen() {
   if (!session) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.muted}>{error ?? t("sessionActive.loadingSession")}</Text>
+        <View style={styles.errorState}>
+          <Text style={styles.muted}>{error ?? t("sessionActive.loadingSession")}</Text>
+          <PrimaryButton label={t("common.tryAgain")} onPress={() => void load()} />
+          <Pressable onPress={() => router.replace("/(tabs)/dashboard")} style={styles.errorBackBtn}>
+            <Text style={styles.errorBackTxt}>{t("common.back")}</Text>
+          </Pressable>
+        </View>
       </SafeAreaView>
     );
   }
@@ -400,13 +407,15 @@ export default function SessionActiveScreen() {
               placeholderTextColor={colors.textSecondary}
               multiline
               textAlignVertical="top"
-              maxLength={200}
+              maxLength={ACTIVE_NOTES_MAX_LENGTH}
               value={draftNotes}
               onChangeText={setDraftNotes}
               onBlur={() => saveNotes().catch(() => undefined)}
             />
             <View style={styles.notesFooter}>
-              <Text style={styles.counter}>{draftNotes.length}/200</Text>
+              <Text style={styles.counter}>
+                {draftNotes.length}/{ACTIVE_NOTES_MAX_LENGTH}
+              </Text>
               <Pressable
                 onPress={() => saveNotes().catch(() => undefined)}
                 disabled={savingNotes}
@@ -453,7 +462,23 @@ export default function SessionActiveScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  muted: { color: colors.textSecondary, textAlign: "center", marginTop: 40 },
+  errorState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  muted: { color: colors.textSecondary, textAlign: "center", ...typography.body },
+  errorBackBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  errorBackTxt: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyBold,
+  },
   minimizeStrip: {
     alignItems: "center",
     paddingTop: spacing.xs,
