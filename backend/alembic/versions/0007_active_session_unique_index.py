@@ -1,7 +1,7 @@
 """add partial unique index for active sessions
 
 Revision ID: 0007_active_session_unique_index
-Revises: 0006_streak_reminder_dispatch_log
+Revises: 0006_streak_reminder_dispatch
 Create Date: 2026-04-19 00:00:00
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "0007_active_session_unique_index"
-down_revision: Union[str, None] = "0006_streak_reminder_dispatch_log"
+down_revision: Union[str, None] = "0006_streak_reminder_dispatch"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

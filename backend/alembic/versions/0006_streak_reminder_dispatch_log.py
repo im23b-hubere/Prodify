@@ -1,6 +1,6 @@
 """streak_reminder_dispatch_log for server streak push dedupe
 
-Revision ID: 0006_streak_reminder_dispatch_log
+Revision ID: 0006_streak_reminder_dispatch
 Revises: 0005_push_token_channel
 Create Date: 2026-04-18 20:00:00
 
@@ -11,7 +11,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0006_streak_reminder_dispatch_log"
+revision: str = "0006_streak_reminder_dispatch"
 down_revision: Union[str, None] = "0005_push_token_channel"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
