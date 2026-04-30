@@ -141,15 +141,6 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def validate_sentry_in_production(self):
-        if self.environment != "production":
-            return self
-        dsn = (self.sentry_dsn or "").strip()
-        if not dsn:
-            raise ValueError("SENTRY_DSN must be set when ENVIRONMENT=production.")
-        return self
-
-    @model_validator(mode="after")
     def validate_internal_job_key_in_production(self):
         if self.environment != "production":
             return self
