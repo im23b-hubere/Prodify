@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -36,9 +37,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    profile_picture_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    profile_picture_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     is_premium: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    premium_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    premium_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     bonus_rescues: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     bonus_challenge_slots: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # Incremented on logout (and similar events) to invalidate outstanding access JWTs (`tv` claim).
@@ -85,18 +86,18 @@ class ProductionSession(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    stopped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    duration_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     session_type: Mapped[str] = mapped_column(String(64), nullable=False, default=SessionType.beat_making.value)
-    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    mood_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    tags: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    mood_level: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    tags: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     paused_duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    pause_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    focus_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    track_outcome: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    track_title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    pause_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    focus_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    track_outcome: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    track_title: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="sessions")
 
@@ -110,7 +111,7 @@ class Streak(Base):
     )
     current_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     longest_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    last_session_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_session_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # JSON array of UTC date keys (YYYY-MM-DD) counting as "activity" for streak via freeze
     frozen_day_keys: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     freezes_remaining: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -141,7 +142,7 @@ class NotificationReadState(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True, nullable=False
     )
-    last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_read_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -205,8 +206,8 @@ class UserSubscription(Base):
     provider: Mapped[str] = mapped_column(String(32), nullable=False, default="revenuecat")
     entitlement: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
     trial_active: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    rc_app_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    rc_app_user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -242,7 +243,7 @@ class XpLedger(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     source_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    source_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    source_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     xp_delta: Mapped[int] = mapped_column(Integer, nullable=False)
     meta_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -256,7 +257,7 @@ class GrowthEvent(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True)
     event_name: Mapped[str] = mapped_column(String(96), nullable=False)
     event_props_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -300,7 +301,7 @@ class WeeklyReviewSnapshot(Base):
     blockers_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     suggestions_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     ai_feedback: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
-    share_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    share_image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -351,7 +352,7 @@ class WeeklyCheckin(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     week_start: Mapped[str] = mapped_column(String(10), nullable=False)
     did_ship: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    shipped_note: Mapped[str | None] = mapped_column(String(280), nullable=True)
+    shipped_note: Mapped[Optional[str]] = mapped_column(String(280), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -376,7 +377,7 @@ class BuddyRelationship(Base):
         nullable=False,
         default=BuddyStatus.pending,
     )
-    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -399,7 +400,7 @@ class CheckinLog(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     day_key: Mapped[str] = mapped_column(String(10), nullable=False)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="done")
-    note: Mapped[str | None] = mapped_column(String(280), nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(String(280), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -458,7 +459,7 @@ class SocialChallengeMember(Base):
     )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
     progress_sessions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    team_label: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    team_label: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
