@@ -48,7 +48,7 @@ class User(Base):
     sessions: Mapped[list["ProductionSession"]] = relationship(
         "ProductionSession", back_populates="user", cascade="all, delete-orphan"
     )
-    streak: Mapped["Streak | None"] = relationship(
+    streak: Mapped["Streak"] = relationship(
         "Streak", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
