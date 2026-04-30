@@ -75,6 +75,7 @@ export default function NotificationsScreen() {
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<NotificationCategory | "all">("all");
+  const [serverSyncError, setServerSyncError] = useState<string | null>(null);
 
   const pushInboxActionRoute = useCallback(
     (rawPath: string) => {
@@ -92,8 +93,13 @@ export default function NotificationsScreen() {
   );
 
   const load = useCallback(async () => {
+    const serverErrors: string[] = [];
     if (token) {
-      await syncServerInbox(token, 60).catch(() => undefined);
+      try {
+        await syncServerInbox(token, 60);
+      } catch (e) {
+        serverErrors.push(e instanceof Error ? e.message : t("notificationsUi.syncFailed"));
+      }
     }
     const [inbox, s] = await Promise.all([loadInbox(), loadSettings()]);
     setItems(inbox);
@@ -105,9 +111,14 @@ export default function NotificationsScreen() {
         (max, item) => (item.createdAt > max ? item.createdAt : max),
         0,
       );
-      await markServerInboxRead(token, maxVisibleCreatedAt || Date.now()).catch(() => undefined);
+      try {
+        await markServerInboxRead(token, maxVisibleCreatedAt || Date.now());
+      } catch (e) {
+        serverErrors.push(e instanceof Error ? e.message : t("notificationsUi.readSyncFailed"));
+      }
     }
-  }, [token]);
+    setServerSyncError(serverErrors.length > 0 ? serverErrors.join("\n") : null);
+  }, [token, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -168,7 +179,9 @@ export default function NotificationsScreen() {
                 <View style={styles.titleRow}>
                   <Text style={styles.cardTitle}>{item.title}</Text>
                   <View style={styles.priorityChip}>
-                    <Text style={styles.priorityChipText}>{t(PRIORITY_LABEL_KEY[item.priority])}</Text>
+                    <Text style={styles.priorityChipText}>
+                      {t(PRIORITY_LABEL_KEY[item.priority])}
+                    </Text>
                   </View>
                 </View>
                 <Text style={styles.cardMsg}>{item.body}</Text>
@@ -210,11 +223,11 @@ export default function NotificationsScreen() {
         <Pressable
           onPress={() => {
             Haptics.selectionAsync().catch(() => undefined);
-            if (params.source === "profile") {
-              router.replace("/(tabs)/profile");
-            } else {
-              router.replace("/(tabs)/dashboard");
+            if (router.canGoBack()) {
+              router.back();
+              return;
             }
+            router.replace(params.source === "profile" ? "/(tabs)/profile" : "/(tabs)/dashboard");
           }}
           hitSlop={12}
         >
@@ -243,9 +256,27 @@ export default function NotificationsScreen() {
         ))}
       </View>
 
+      {token && serverSyncError ? (
+        <View style={styles.serverErrorBanner}>
+          <Text style={styles.serverErrorText}>{serverSyncError}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("common.tryAgain")}
+            style={styles.serverErrorRetry}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => undefined);
+              void load();
+            }}
+          >
+            <Text style={styles.serverErrorRetryText}>{t("common.tryAgain")}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <FlatList
         data={filtered}
         keyExtractor={(i) => i.id}
+        style={styles.listFlex}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl
@@ -270,8 +301,13 @@ export default function NotificationsScreen() {
           <View style={styles.row}>
             <Text style={styles.rowLabel}>{t("notificationsUi.streakReminders")}</Text>
             <Switch
-              value={settings.streak && settings.frequency !== "off"}
-              onValueChange={(v) => updateSetting({ streak: v })}
+              value={settings.streak}
+              onValueChange={(v) =>
+                void updateSetting({
+                  streak: v,
+                  ...(v && settings.frequency === "off" ? { frequency: "all" as const } : {}),
+                })
+              }
               trackColor={{ false: "#333", true: "rgba(255,61,0,0.45)" }}
               thumbColor="#fafafa"
             />
@@ -279,9 +315,42 @@ export default function NotificationsScreen() {
           <View style={styles.row}>
             <Text style={styles.rowLabel}>{t("notificationsUi.achievements")}</Text>
             <Switch
-              value={settings.achievements && settings.frequency !== "off"}
-              onValueChange={(v) => updateSetting({ achievements: v })}
+              value={settings.achievements}
+              onValueChange={(v) =>
+                void updateSetting({
+                  achievements: v,
+                  ...(v && settings.frequency === "off" ? { frequency: "all" as const } : {}),
+                })
+              }
               trackColor={{ false: "#333", true: "rgba(162,89,255,0.45)" }}
+              thumbColor="#fafafa"
+            />
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>{t("notificationsUi.socialUpdates")}</Text>
+            <Switch
+              value={settings.social}
+              onValueChange={(v) =>
+                void updateSetting({
+                  social: v,
+                  ...(v && settings.frequency === "off" ? { frequency: "all" as const } : {}),
+                })
+              }
+              trackColor={{ false: "#333", true: "rgba(59,130,246,0.45)" }}
+              thumbColor="#fafafa"
+            />
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>{t("notificationsUi.tipsAndNudges")}</Text>
+            <Switch
+              value={settings.tips}
+              onValueChange={(v) =>
+                void updateSetting({
+                  tips: v,
+                  ...(v && settings.frequency === "off" ? { frequency: "all" as const } : {}),
+                })
+              }
+              trackColor={{ false: "#333", true: "rgba(234,179,8,0.45)" }}
               thumbColor="#fafafa"
             />
           </View>
@@ -375,6 +444,28 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
   },
   filterTxtOn: { color: colors.textPrimary },
+  serverErrorBanner: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.45)",
+    backgroundColor: "rgba(251,191,36,0.1)",
+    gap: spacing.xs,
+  },
+  serverErrorText: {
+    color: colors.textPrimary,
+    ...typography.caption,
+    fontFamily: fontFamily.body,
+  },
+  serverErrorRetry: { alignSelf: "flex-start" },
+  serverErrorRetryText: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  listFlex: { flex: 1 },
   list: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
   card: {
     borderRadius: radii.md,

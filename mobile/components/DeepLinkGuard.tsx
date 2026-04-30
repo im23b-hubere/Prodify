@@ -3,7 +3,13 @@ import { type Href, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 
 import { useAuth } from "../context/AuthContext";
-import { deepLinkRequiresAuth, isAllowedDeepLinkPath, toRoutableHref } from "../lib/deepLinkGuard";
+import {
+  deepLinkRequiresAuth,
+  extractDeepLinkPath,
+  isAllowedDeepLinkPath,
+  toRoutableHref,
+} from "../lib/deepLinkGuard";
+import { setPendingDeepLinkPath } from "../lib/pendingDeepLink";
 
 export function DeepLinkGuard() {
   const router = useRouter();
@@ -13,7 +19,8 @@ export function DeepLinkGuard() {
   useEffect(() => {
     const handleDeepLink = ({ url }: { url: string }) => {
       const parsed = Linking.parse(url);
-      const targetPath = typeof parsed.path === "string" ? parsed.path : "";
+      const fromParsed = typeof parsed.path === "string" ? parsed.path : "";
+      const targetPath = extractDeepLinkPath(url) || fromParsed;
 
       if (!isAllowedDeepLinkPath(targetPath)) {
         router.replace((token ? "/dashboard" : "/(auth)/login") as Href);
@@ -21,6 +28,7 @@ export function DeepLinkGuard() {
       }
 
       if (deepLinkRequiresAuth(targetPath) && !token) {
+        void setPendingDeepLinkPath(targetPath);
         router.replace("/(auth)/login");
         return;
       }

@@ -52,7 +52,8 @@ export function FriendsOverviewSection({
   const avatarUri = (uri?: string | null) =>
     uri?.trim() ? (uri.startsWith("http") ? uri : `${API_BASE_URL}${uri}`) : null;
   const visibleEntries = useMemo(() => entries.slice(0, 8), [entries]);
-  const showSoloState = !loading && visibleEntries.length === 1 && currentUserId === visibleEntries[0]?.user_id;
+  const showSoloState =
+    !loading && visibleEntries.length === 1 && currentUserId === visibleEntries[0]?.user_id;
 
   const modeOptions = useMemo(
     () => [
@@ -92,9 +93,21 @@ export function FriendsOverviewSection({
             </View>
           }
         />
-        <Animated.View key={`leaderboard-${mode}`} entering={FadeIn.duration(220)} style={styles.cardElevated}>
+        <Animated.View
+          key={`leaderboard-${mode}`}
+          entering={FadeIn.duration(220)}
+          style={styles.cardElevated}
+        >
           {showSoloState ? (
             <Text style={styles.emptyLeader}>{t("friendsScreen.soloLeader")}</Text>
+          ) : null}
+          {!loading && visibleEntries.length === 0 ? (
+            <View style={styles.leaderboardEmptyBlock}>
+              <Text style={styles.emptyLeader}>{t("friendsScreen.leaderboardEmptyTitle")}</Text>
+              <Text style={styles.leaderboardEmptySubtitle}>
+                {t("friendsScreen.leaderboardEmptyMessage")}
+              </Text>
+            </View>
           ) : null}
           {visibleEntries.map((entry, idx) => (
             <Animated.View
@@ -124,7 +137,10 @@ export function FriendsOverviewSection({
                   {entry.rank}
                 </Text>
                 {avatarUri(entry.profile_picture_url) ? (
-                  <Image source={{ uri: avatarUri(entry.profile_picture_url) as string }} style={styles.avatarImage} />
+                  <Image
+                    source={{ uri: avatarUri(entry.profile_picture_url) as string }}
+                    style={styles.avatarImage}
+                  />
                 ) : (
                   <View style={styles.avatar}>
                     <Text style={styles.avatarLabel}>

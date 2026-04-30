@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "../constants/api";
 import NetInfo from "@react-native-community/netinfo";
+import Constants from "expo-constants";
 import i18n from "./i18n";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -47,9 +48,24 @@ export type ApiOptions = {
   body?: unknown;
   timeoutMs?: number;
   retries?: number;
+  signal?: AbortSignal;
   /** Internal: do not attempt refresh (avoids recursion). */
   _skipRefresh?: boolean;
+  /** Internal: force a specific base URL (used by dev fallback). */
+  _baseUrl?: string;
 };
+
+function inferDevFallbackBaseUrl(): string | null {
+  const uri =
+    Constants.expoConfig?.hostUri ??
+    (Constants.expoGoConfig as { debuggerHost?: string } | undefined)?.debuggerHost ??
+    (Constants.manifest as { debuggerHost?: string } | null)?.debuggerHost;
+
+  if (!uri || typeof uri !== "string") return null;
+  const host = uri.split(":")[0]?.trim();
+  if (!host || host === "localhost" || host === "127.0.0.1") return null;
+  return `http://${host}:8000`;
+}
 
 /** FastAPI/Pydantic validation errors use `detail` as an array of `{ loc, msg, ... }`. */
 function formatApiErrorDetail(detail: unknown): string {
@@ -139,7 +155,8 @@ async function tryRefreshAccessToken(): Promise<TokenPair | null> {
 }
 
 export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
-  if (!API_BASE_URL) {
+  const baseUrl = opts._baseUrl ?? API_BASE_URL;
+  if (!baseUrl) {
     throw new Error(i18n.t("errors.serviceUnavailable"));
   }
   const connection = await NetInfo.fetch();
@@ -163,28 +180,48 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
   let res: Response | null = null;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const controller = new AbortController();
+    const externalSignal = opts.signal;
+    const onExternalAbort = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+    }
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      res = await fetch(`${API_BASE_URL}${path}`, {
+      res = await fetch(`${baseUrl}${path}`, {
         method,
         headers,
         body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
         signal: controller.signal,
       });
     } catch (e) {
+      if (externalSignal) externalSignal.removeEventListener("abort", onExternalAbort);
       clearTimeout(timeoutId);
       if (attempt < retries) {
         await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * 2 ** attempt));
         continue;
       }
       if (e instanceof Error && e.name === "AbortError") {
+        if (externalSignal?.aborted) {
+          const aborted = new Error("Request aborted by caller");
+          aborted.name = "AbortError";
+          throw aborted;
+        }
         throw new Error(i18n.t("errors.requestTimeout"));
       }
       if (e instanceof TypeError) {
+        if (__DEV__ && !opts._baseUrl) {
+          const fallbackBaseUrl = inferDevFallbackBaseUrl();
+          if (fallbackBaseUrl && fallbackBaseUrl !== baseUrl) {
+            console.warn(`[api] Primary API unreachable (${baseUrl}), retrying via ${fallbackBaseUrl}`);
+            return apiJson<T>(path, { ...opts, _baseUrl: fallbackBaseUrl });
+          }
+        }
         throw new Error(i18n.t("errors.network"));
       }
       throw e;
     }
+    if (externalSignal) externalSignal.removeEventListener("abort", onExternalAbort);
     clearTimeout(timeoutId);
     if (res.status >= 500 && res.status < 600 && attempt < retries) {
       await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * 2 ** attempt));

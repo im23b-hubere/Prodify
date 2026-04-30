@@ -17,7 +17,10 @@ def test_billing_entitlement_sync_and_get(client):
     headers = _auth_headers(client, "bill@example.com", "bill-user")
     r = client.get("/billing/entitlement", headers=headers)
     assert r.status_code == 200
-    assert r.json()["entitlement"] == "free"
+    data = r.json()
+    assert data["entitlement"] == "free"
+    # Server-side onboarding trial until Store / RevenueCat sync (see ONBOARDING_TRIAL_DAYS).
+    assert data["trial_active"] is True
 
     synced = client.post(
         "/billing/sync",

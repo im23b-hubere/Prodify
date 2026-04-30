@@ -2,6 +2,12 @@ import { apiJson } from "./client";
 import { tryParseEntitlementDto } from "./outcomesDto";
 import type { EntitlementDto } from "../types/outcomes";
 
+/** True when the user may use premium-gated APIs (paid, store trial, or server onboarding trial). */
+export function hasPremiumAccess(ent: EntitlementDto | null | undefined): boolean {
+  if (!ent) return false;
+  return ent.entitlement === "premium" || Boolean(ent.trial_active);
+}
+
 export async function fetchEntitlement(token: string): Promise<EntitlementDto> {
   const raw = await apiJson<unknown>("/billing/entitlement", { token });
   const parsed = tryParseEntitlementDto(raw);

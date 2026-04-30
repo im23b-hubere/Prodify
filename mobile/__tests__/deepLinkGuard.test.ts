@@ -1,5 +1,6 @@
 import {
   deepLinkRequiresAuth,
+  extractDeepLinkPath,
   isAllowedDeepLinkPath,
   normalizeIncomingPath,
   toRoutableHref,
@@ -12,9 +13,18 @@ describe("deepLinkGuard", () => {
     expect(normalizeIncomingPath(undefined)).toBe("");
   });
 
+  it("extracts path from prodify:// host-style and host/path URLs", () => {
+    expect(extractDeepLinkPath("prodify://dashboard")).toBe("dashboard");
+    expect(extractDeepLinkPath("prodify://session/42")).toBe("session/42");
+    expect(extractDeepLinkPath("prodify:///dashboard")).toBe("dashboard");
+    expect(extractDeepLinkPath("https://example.com/stats")).toBe("stats");
+  });
+
   it("allows only whitelisted deep-link paths", () => {
     expect(isAllowedDeepLinkPath("session/42")).toBe(true);
     expect(isAllowedDeepLinkPath("dashboard")).toBe(true);
+    expect(isAllowedDeepLinkPath("session-trash")).toBe(true);
+    expect(isAllowedDeepLinkPath("progression-overview")).toBe(true);
     expect(isAllowedDeepLinkPath("admin/root-shell")).toBe(false);
   });
 

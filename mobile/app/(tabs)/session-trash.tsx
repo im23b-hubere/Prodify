@@ -16,6 +16,8 @@ import { LoadingState } from "../../components/states/LoadingState";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import type { SessionDto } from "../../types/session";
 
+const TRASH_PAGE_SIZE = 50;
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
     dateStyle: "medium",
@@ -32,53 +34,95 @@ export default function SessionTrashScreen() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!token) return;
-    setError(null);
-    try {
-      const raw = await apiJson<unknown>("/sessions/trash", { token });
-      setSessions(parseSessionList(raw));
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  const load = useCallback(
+    async (options?: { reset?: boolean }) => {
+      const reset = options?.reset ?? true;
+      if (!token) {
+        const notSignedInMessage = t("sessionTrash.notSignedIn");
+        setSessions((prev) => (prev.length > 0 ? [] : prev));
+        setError((prev) => (prev === notSignedInMessage ? prev : notSignedInMessage));
+        setLoading((prev) => (prev ? false : prev));
+        setHasMore(false);
+        setOffset(0);
+        setLoadingMore(false);
+        return;
+      }
+      setError(null);
+      const requestOffset = reset ? 0 : offset;
+      try {
+        const raw = await apiJson<unknown>(
+          `/sessions/trash?limit=${TRASH_PAGE_SIZE}&offset=${requestOffset}`,
+          { token },
+        );
+        const parsed = parseSessionList(raw);
+        setSessions((prev) => {
+          if (reset) return parsed;
+          const seen = new Set(prev.map((session) => session.id));
+          const next = parsed.filter((session) => !seen.has(session.id));
+          return next.length > 0 ? [...prev, ...next] : prev;
+        });
+        setHasMore(parsed.length >= TRASH_PAGE_SIZE);
+        setOffset(requestOffset + parsed.length);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [offset, t, token],
+  );
 
   useEffect(() => {
-    load().catch((e) => setError(e instanceof Error ? e.message : t("sessionTrash.loadFailed")));
+    load({ reset: true }).catch((e) =>
+      setError(e instanceof Error ? e.message : t("sessionTrash.loadFailed")),
+    );
   }, [load, t]);
 
   useFocusEffect(
     useCallback(() => {
-      load().catch(() => undefined);
-    }, [load]),
+      load({ reset: true }).catch((e) =>
+        setError(e instanceof Error ? e.message : t("sessionTrash.refreshFailed")),
+      );
+    }, [load, t]),
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load().catch((e) =>
+    await load({ reset: true }).catch((e) =>
       setError(e instanceof Error ? e.message : t("sessionTrash.refreshFailed")),
     );
     setRefreshing(false);
   }, [load, t]);
 
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loading || loadingMore) return;
+    setLoadingMore(true);
+    await load({ reset: false }).catch((e) =>
+      setError(e instanceof Error ? e.message : t("sessionTrash.loadMoreFailed")),
+    );
+  }, [hasMore, load, loading, loadingMore, t]);
+
   const restore = useCallback(
     async (id: number) => {
       if (!token) return;
       setBusyId(id);
+      const before = sessions;
       // Optimistic update for snappy UX.
       setSessions((prev) => prev.filter((s) => s.id !== id));
       try {
         await apiJson(`/sessions/item/${id}/restore`, { token, method: "POST" });
-        await load();
+        await load({ reset: true });
       } catch (e) {
         setError(e instanceof Error ? e.message : t("sessionTrash.restoreFailed"));
-        await load().catch(() => undefined);
+        setSessions(before);
       } finally {
         setBusyId(null);
       }
     },
-    [load, token, t],
+    [load, sessions, token, t],
   );
 
   return (
@@ -108,7 +152,7 @@ export default function SessionTrashScreen() {
             retryLabel={t("common.tryAgain")}
             onRetry={() => {
               setLoading(true);
-              load().catch(() => undefined);
+              load({ reset: true }).catch(() => undefined);
             }}
           />
         ) : null}
@@ -116,29 +160,48 @@ export default function SessionTrashScreen() {
         {!loading && !error && sessions.length === 0 ? (
           <EmptyState icon="🗑️" title={t("sessionTrash.title")} message={t("sessionTrash.empty")} />
         ) : (
-          sessions.map((session) => (
-            <View key={session.id} style={styles.row}>
-              <View style={styles.rowCopy}>
-                <Text style={styles.rowTitle}>
-                  {sessionTypeLabel(String(session.session_type), t)}
-                </Text>
-                <Text style={styles.rowMeta}>{formatDate(session.started_at)}</Text>
+          <>
+            {sessions.map((session) => (
+              <View key={session.id} style={styles.row}>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.rowTitle}>
+                    {sessionTypeLabel(String(session.session_type), t)}
+                  </Text>
+                  <Text style={styles.rowMeta}>{formatDate(session.started_at)}</Text>
+                </View>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.restoreBtn,
+                    pressed && styles.pressed,
+                    busyId === session.id && styles.disabled,
+                  ]}
+                  onPress={() => restore(session.id).catch(() => undefined)}
+                  disabled={busyId === session.id}
+                >
+                  <Text style={styles.restoreLabel}>
+                    {busyId === session.id
+                      ? t("sessionTrash.restoring")
+                      : t("sessionTrash.restore")}
+                  </Text>
+                </Pressable>
               </View>
+            ))}
+            {hasMore ? (
               <Pressable
                 style={({ pressed }) => [
-                  styles.restoreBtn,
+                  styles.loadMoreBtn,
                   pressed && styles.pressed,
-                  busyId === session.id && styles.disabled,
+                  loadingMore && styles.disabled,
                 ]}
-                onPress={() => restore(session.id).catch(() => undefined)}
-                disabled={busyId === session.id}
+                onPress={() => void loadMore()}
+                disabled={loadingMore}
               >
-                <Text style={styles.restoreLabel}>
-                  {busyId === session.id ? t("sessionTrash.restoring") : t("sessionTrash.restore")}
+                <Text style={styles.loadMoreLabel}>
+                  {loadingMore ? t("sessionTrash.loadingMore") : t("sessionTrash.loadMore")}
                 </Text>
               </Pressable>
-            </View>
-          ))
+            ) : null}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -180,4 +243,19 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.9 },
   disabled: { opacity: 0.5 },
   restoreLabel: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  loadMoreBtn: {
+    alignSelf: "center",
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  loadMoreLabel: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
 });

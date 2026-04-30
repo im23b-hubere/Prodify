@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,7 +9,20 @@ import { syncProgression } from "../../lib/progressionSync";
 import { colors, spacing } from "../../constants/theme";
 import { fontFamily } from "../../constants/fonts";
 
+/** Main tab routes where the HUD is useful; hidden elsewhere (auth, sessions, modals, …). */
+const HUD_TAB_PREFIXES = [
+  "/dashboard",
+  "/stats",
+  "/friends",
+  "/profile",
+  "/(tabs)/dashboard",
+  "/(tabs)/stats",
+  "/(tabs)/friends",
+  "/(tabs)/profile",
+] as const;
+
 export function XpHud() {
+  const { t } = useTranslation();
   const { token, user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
@@ -21,16 +35,7 @@ export function XpHud() {
   const hidden = useMemo(() => {
     if (!pathname) return false;
     if (pathname.startsWith("/(auth)")) return true;
-    // Expo Router may expose grouped routes with or without "(tabs)" in pathname.
-    const allowed = [
-      "/dashboard",
-      "/stats",
-      "/friends",
-      "/(tabs)/dashboard",
-      "/(tabs)/stats",
-      "/(tabs)/friends",
-    ];
-    return !allowed.some((p) => pathname.startsWith(p));
+    return !HUD_TAB_PREFIXES.some((p) => pathname.startsWith(p));
   }, [pathname]);
 
   useEffect(() => {
@@ -75,7 +80,7 @@ export function XpHud() {
     <View pointerEvents="box-none" style={[styles.wrap, { top: insets.top + 6 }]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Open progression"
+        accessibilityLabel={t("progression.xpHudA11y")}
         style={styles.badge}
         onPress={() => router.push("/(tabs)/stats")}
       >
@@ -89,7 +94,9 @@ export function XpHud() {
             <View style={[styles.fill, { width: `${progressPercent}%` }]} />
           </View>
           <Text style={styles.nextLevelHint}>
-            {xpToNext != null ? `${xpToNext} XP to next` : `${Math.round(progressPercent)}%`}
+            {xpToNext != null
+              ? t("progression.xpHudToNext", { xp: xpToNext })
+              : t("progression.xpHudPercent", { percent: Math.round(progressPercent) })}
           </Text>
         </View>
       </Pressable>

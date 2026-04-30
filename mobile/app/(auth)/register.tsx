@@ -17,7 +17,6 @@ import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { ApiError } from "../../lib/client";
-import { readOnboardingComplete } from "../../lib/postAuthNavigation";
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
@@ -57,8 +56,8 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await signUp(trimmedEmail, trimmedUsername, password);
-      const onboardingComplete = await readOnboardingComplete();
-      router.replace(onboardingComplete ? "/(tabs)/dashboard" : "/onboarding");
+      // New registrations must always complete onboarding for account setup.
+      router.replace("/onboarding");
     } catch (e) {
       if (e instanceof ApiError && e.status === 429) {
         setError(t("errors.tooManyRequests"));

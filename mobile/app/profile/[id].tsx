@@ -1,8 +1,16 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ActivityHeatmapCard } from "../../components/profile/ActivityHeatmapCard";
@@ -16,7 +24,7 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { fetchBuddyStatus, fetchWeeklyRecap } from "../../lib/social";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
-import { formatDurationWords } from "../../lib/sessionTime";
+import { formatDurationWords, formatSessionListDate } from "../../lib/sessionTime";
 import type { StreakOverviewDto } from "../../types/streak";
 import type { BuddyStatusDto, SocialRecapDto } from "../../types/friends";
 
@@ -30,6 +38,12 @@ const ACHIEVEMENT_EMOJI: Record<string, string> = {
 };
 
 type FriendStatus = "self" | "none" | "pending" | "accepted";
+
+type FriendStatusPayload = {
+  status: FriendStatus;
+  username?: string | null;
+  pending_direction?: "outgoing" | "incoming" | null;
+};
 
 type ProfilePayload = {
   id: number;
@@ -78,6 +92,8 @@ export default function FriendProfileScreen() {
   const userId = idStr ? parseInt(idStr, 10) : NaN;
 
   const [status, setStatus] = useState<FriendStatus | null>(null);
+  const [targetUsername, setTargetUsername] = useState<string | null>(null);
+  const [pendingDirection, setPendingDirection] = useState<"outgoing" | "incoming" | null>(null);
   const [profile, setProfile] = useState<ProfilePayload | null>(null);
   const [stats, setStats] = useState<StatsPayload | null>(null);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
@@ -86,52 +102,78 @@ export default function FriendProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [buddyStatus, setBuddyStatus] = useState<BuddyStatusDto | null>(null);
   const [socialRecap, setSocialRecap] = useState<SocialRecapDto | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!token || !Number.isFinite(userId) || userId <= 0) {
-      setLoadState("error");
-      setError(t("friendProfile.invalidProfile"));
-      return;
-    }
-    setLoadState("loading");
-    setError(null);
-    try {
-      const [st, ov, buddy, recap] = await Promise.all([
-        apiJson<{ status: FriendStatus }>(`/friends/status/${userId}`, { token }),
-        apiJson<StreakOverviewDto>("/streak/overview", { token }).catch(() => null),
-        fetchBuddyStatus(token).catch(() => null),
-        fetchWeeklyRecap(token).catch(() => null),
-      ]);
-      setStatus(st.status);
-      setYourStreak(ov?.current_streak ?? 0);
-      setBuddyStatus(buddy);
-      setSocialRecap(recap);
-
-      if (st.status !== "self" && st.status !== "accepted") {
-        setProfile(null);
-        setStats(null);
-        setSessions([]);
-        setLoadState("ready");
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = opts?.silent ?? false;
+      if (!token || !Number.isFinite(userId) || userId <= 0) {
+        setLoadState("error");
+        setError(t("friendProfile.invalidProfile"));
+        setRefreshing(false);
         return;
       }
+      if (!silent) {
+        setLoadState("loading");
+      }
+      setError(null);
+      try {
+        const [st, ov, buddy, recap] = await Promise.all([
+          apiJson<FriendStatusPayload>(`/friends/status/${userId}`, { token }),
+          apiJson<StreakOverviewDto>("/streak/overview", { token }).catch(() => null),
+          fetchBuddyStatus(token).catch(() => null),
+          fetchWeeklyRecap(token).catch(() => null),
+        ]);
+        setStatus(st.status);
+        setTargetUsername(st.username ?? null);
+        setPendingDirection(st.pending_direction ?? null);
+        setYourStreak(ov?.current_streak ?? 0);
+        setBuddyStatus(buddy);
+        setSocialRecap(recap);
 
-      const [p, s, sess] = await Promise.all([
-        apiJson<ProfilePayload>(`/users/${userId}/profile`, { token }),
-        apiJson<StatsPayload>(`/users/${userId}/stats`, { token }),
-        apiJson<SessionItem[]>(`/users/${userId}/sessions?limit=10`, { token }),
-      ]);
-      setProfile(p);
-      setStats(s);
-      setSessions(Array.isArray(sess) ? sess : []);
-      setLoadState("ready");
-    } catch (e) {
-      setLoadState("error");
-      setError(e instanceof Error ? e.message : t("friendProfile.loadError"));
-    }
-  }, [token, userId, t]);
+        if (st.status !== "self" && st.status !== "accepted") {
+          setProfile(null);
+          setStats(null);
+          setSessions([]);
+          setLoadState("ready");
+          return;
+        }
+
+        const [p, s, sess] = await Promise.all([
+          apiJson<ProfilePayload>(`/users/${userId}/profile`, { token }),
+          apiJson<StatsPayload>(`/users/${userId}/stats`, { token }),
+          apiJson<SessionItem[]>(`/users/${userId}/sessions?limit=10`, { token }),
+        ]);
+        setProfile(p);
+        setStats(s);
+        setSessions(Array.isArray(sess) ? sess : []);
+        setLoadState("ready");
+      } catch (e) {
+        setLoadState("error");
+        setError(e instanceof Error ? e.message : t("friendProfile.loadError"));
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    [token, userId, t],
+  );
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  const bestDayLabel = useMemo(() => {
+    const day = stats?.best_day;
+    if (!day?.trim()) return null;
+    const key = `friendProfile.weekdays.${day.trim().toLowerCase()}`;
+    const translated = t(key, { defaultValue: "" });
+    if (translated && translated !== key) return translated;
+    return day;
+  }, [stats?.best_day, t]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    void load({ silent: true });
   }, [load]);
 
   if (loadState === "loading") {
@@ -150,6 +192,7 @@ export default function FriendProfileScreen() {
         <View style={styles.centered}>
           <Text style={styles.errTitle}>{t("friendProfile.couldNotLoadTitle")}</Text>
           <Text style={styles.errSub}>{error}</Text>
+          <PrimaryButton label={t("friendProfile.retry")} onPress={() => void load()} />
           <PrimaryButton label={t("friendProfile.back")} onPress={() => router.back()} />
         </View>
       </SafeAreaView>
@@ -163,10 +206,19 @@ export default function FriendProfileScreen() {
       : `${API_BASE_URL}${profile.profile_picture_url}`
     : null;
 
+  const lockedSub =
+    status === "pending"
+      ? pendingDirection === "incoming"
+        ? t("friendProfile.lockedPendingIncoming")
+        : t("friendProfile.lockedPendingOutgoing")
+      : t("friendProfile.lockedNone");
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.topRow}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("friendProfile.backA11y")}
           onPress={() => {
             Haptics.selectionAsync().catch(() => undefined);
             router.back();
@@ -177,15 +229,25 @@ export default function FriendProfileScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
         {locked ? (
           <View style={styles.locked}>
-            <Text style={styles.lockedTitle}>{t("friendProfile.lockedTitle")}</Text>
-            <Text style={styles.lockedSub}>
-              {status === "pending"
-                ? t("friendProfile.lockedPending")
-                : t("friendProfile.lockedNone")}
+            <Text style={styles.lockedMainTitle}>
+              {targetUsername
+                ? t("friendProfile.lockedUserHeading", { name: targetUsername })
+                : t("friendProfile.lockedTitle")}
             </Text>
+            <Text style={styles.lockedSub}>{lockedSub}</Text>
             <PrimaryButton
               label={t("friendProfile.friendsTab")}
               onPress={() => router.push("/(tabs)/friends")}
@@ -242,9 +304,9 @@ export default function FriendProfileScreen() {
               <Text style={styles.line}>
                 {t("friendProfile.sessionsLine", { count: stats.total_sessions })}
               </Text>
-              {stats.best_day ? (
+              {stats.best_day && bestDayLabel ? (
                 <Text style={styles.line}>
-                  {t("friendProfile.bestDay", { date: stats.best_day })}
+                  {t("friendProfile.bestDay", { date: bestDayLabel })}
                 </Text>
               ) : null}
               <Text style={styles.line}>
@@ -262,20 +324,31 @@ export default function FriendProfileScreen() {
                   theirs: stats.current_streak,
                 })}
               </Text>
-              <Text style={styles.line}>
-                {socialRecap
-                  ? t("friendProfile.teamSessionsLine", {
-                      sessions: socialRecap.team_sessions,
-                      sign: socialRecap.wow_delta_sessions >= 0 ? "+" : "",
-                      wow: socialRecap.wow_delta_sessions,
-                    })
-                  : t("friendProfile.comparisonHint")}
-              </Text>
-              {socialRecap?.identity_tag ? (
-                <Text style={styles.lineStrong}>
-                  {t(`friendsScreen.identityTag.${socialRecap.identity_tag}`)}
-                </Text>
-              ) : null}
+              {status === "self" ? (
+                <>
+                  <Text style={styles.line}>
+                    {socialRecap
+                      ? t("friendProfile.teamSessionsLine", {
+                          sessions: socialRecap.team_sessions,
+                          sign: socialRecap.wow_delta_sessions >= 0 ? "+" : "",
+                          wow: socialRecap.wow_delta_sessions,
+                        })
+                      : t("friendProfile.comparisonHint")}
+                  </Text>
+                  {socialRecap?.identity_tag ? (
+                    <Text style={styles.lineStrong}>
+                      {t(`friendsScreen.identityTag.${socialRecap.identity_tag}`)}
+                    </Text>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <Text style={styles.lineMuted}>
+                    {t("friendProfile.sharedMomentumFriendHint")}
+                  </Text>
+                  <Text style={styles.line}>{t("friendProfile.comparisonHint")}</Text>
+                </>
+              )}
             </View>
 
             <View style={styles.block}>
@@ -305,10 +378,27 @@ export default function FriendProfileScreen() {
                 <Text style={styles.muted}>{t("friendProfile.noSessionsYet")}</Text>
               ) : (
                 sessions.map((s) => (
-                  <View key={s.id} style={styles.sessRow}>
-                    <Text style={styles.sessType}>{sessionTypeLabel(s.session_type, t)}</Text>
+                  <Pressable
+                    key={s.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("friendProfile.openSessionA11y", {
+                      type: sessionTypeLabel(s.session_type, t),
+                    })}
+                    style={({ pressed }) => [styles.sessRow, pressed && styles.sessRowPressed]}
+                    onPress={() => {
+                      Haptics.selectionAsync().catch(() => undefined);
+                      router.push({
+                        pathname: "/session/[id]",
+                        params: { id: String(s.id), ownerName: profile.username },
+                      } as Href);
+                    }}
+                  >
+                    <View style={styles.sessCol}>
+                      <Text style={styles.sessType}>{sessionTypeLabel(s.session_type, t)}</Text>
+                      <Text style={styles.sessDate}>{formatSessionListDate(s.started_at)}</Text>
+                    </View>
                     <Text style={styles.sessMeta}>{formatDurationWords(s.duration_seconds)}</Text>
-                  </View>
+                  </Pressable>
                 ))
               )}
             </View>
@@ -341,10 +431,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: spacing.md,
   },
-  lockedTitle: {
+  lockedMainTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     ...typography.headline,
+    textAlign: "center",
   },
   lockedSub: { color: colors.textSecondary, ...typography.body },
   block: { marginBottom: spacing.sm },
@@ -363,16 +454,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   line: { color: colors.textPrimary, ...typography.body },
+  lineMuted: { color: colors.textSecondary, ...typography.body },
   lineStrong: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
   muted: { color: colors.textSecondary, ...typography.caption },
   ach: { color: colors.textPrimary, ...typography.body },
   sessRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  sessRowPressed: { opacity: 0.85 },
+  sessCol: { flex: 1, gap: 2, paddingRight: spacing.sm },
   sessType: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  sessDate: { color: colors.textSecondary, ...typography.caption },
   sessMeta: { color: colors.textSecondary, ...typography.caption },
 });

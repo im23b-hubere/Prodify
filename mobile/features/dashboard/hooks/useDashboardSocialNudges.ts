@@ -21,7 +21,7 @@ export type DashboardPrimaryNudge = {
   category: string;
   message: string;
   ctaLabel: string;
-  actionKey: "rescue" | "start_session" | "checkin" | "open_friends";
+  actionKey: "rescue" | "start_session" | "open_friends";
 };
 
 type Params = {
@@ -70,16 +70,11 @@ export function useDashboardSocialNudges({
   const nudgeCandidates = useMemo(() => {
     const out: {
       key: string;
-      category:
-        | "buddy_risk"
-        | "challenge_close"
-        | "commitment_behind"
-        | "checkin_missing"
-        | "streak_psych";
+      category: "buddy_risk" | "challenge_close" | "commitment_behind" | "streak_psych";
       message: string;
       priority: number;
       ctaLabel: string;
-      actionKey: "rescue" | "start_session" | "checkin" | "open_friends";
+      actionKey: "rescue" | "start_session" | "open_friends";
     }[] = [];
     if (buddyRisk?.buddy_streak_at_risk && buddyRisk.buddy_username) {
       out.push({
@@ -125,16 +120,6 @@ export function useDashboardSocialNudges({
         actionKey: "start_session",
       });
     }
-    if (checkinStatus && !checkinStatus.on_track) {
-      out.push({
-        key: "checkin_missing",
-        category: "checkin_missing",
-        message: t("dashboard.nudgeNoActivityYet"),
-        priority: 4,
-        ctaLabel: t("dashboard.nudgeCtaLogActivity"),
-        actionKey: "checkin",
-      });
-    }
     if (effectiveStreak >= 3) {
       out.push({
         key: "streak_psych",
@@ -142,17 +127,17 @@ export function useDashboardSocialNudges({
         message: t("dashboard.nudgeStreakRun", {
           days: effectiveStreak,
         }),
-        priority: 5,
+        priority: 4,
         ctaLabel: t("dashboard.nudgeCtaJumpTrack"),
         actionKey: "start_session",
       });
     }
     return out.sort((a, b) => a.priority - b.priority);
-  }, [buddyRisk, socialChallenges, commitmentStatus, checkinStatus, effectiveStreak, userId, t]);
+  }, [buddyRisk, socialChallenges, commitmentStatus, effectiveStreak, userId, t]);
 
   const weightedNudgeCandidates = useMemo(() => {
     const preferredByState: Record<MomentumState, string[]> = {
-      low: ["checkin_missing", "commitment_behind", "buddy_risk"],
+      low: ["commitment_behind", "buddy_risk"],
       mid: ["challenge_close", "commitment_behind", "buddy_risk"],
       high: ["buddy_risk", "challenge_close", "streak_psych"],
     };
@@ -226,8 +211,7 @@ export function useDashboardSocialNudges({
           const now = Date.now();
           const chainPreference: Record<string, string[]> = {
             rescue: ["challenge_close", "commitment_behind"],
-            social: ["commitment_behind", "checkin_missing"],
-            checkin: ["challenge_close", "buddy_risk"],
+            social: ["commitment_behind", "challenge_close"],
             session: ["buddy_risk", "challenge_close"],
             challenge: ["buddy_risk", "commitment_behind"],
           };

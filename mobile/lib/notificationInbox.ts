@@ -139,7 +139,9 @@ export async function prependNotification(
   return runSerializedInboxMutation(async () => {
     const now = Date.now();
     const baseCreatedAt =
-      typeof item.createdAtMs === "number" && Number.isFinite(item.createdAtMs) ? item.createdAtMs : now;
+      typeof item.createdAtMs === "number" && Number.isFinite(item.createdAtMs)
+        ? item.createdAtMs
+        : now;
     const settings = await loadSettings();
     const priority = item.priority ?? "normal";
     const categoryEnabled =
@@ -153,10 +155,17 @@ export async function prependNotification(
     if (!categoryEnabled) return false;
     if (settings.frequency === "off") return false;
     if (settings.frequency === "important" && !isImportantPriority(priority)) return false;
-    if ((item.respectQuietHours ?? true) && isWithinQuietHours(settings) && priority !== "critical") {
+    if (
+      (item.respectQuietHours ?? true) &&
+      isWithinQuietHours(settings) &&
+      priority !== "critical"
+    ) {
       return false;
     }
-    if (!(item.bypassFirstWeekQuietMode ?? false) && (await shouldSuppressForFirstWeek(item.category, priority))) {
+    if (
+      !(item.bypassFirstWeekQuietMode ?? false) &&
+      (await shouldSuppressForFirstWeek(item.category, priority))
+    ) {
       return false;
     }
 
@@ -238,7 +247,9 @@ export async function clearNotificationInbox(): Promise<void> {
   });
 }
 
-export async function setNotificationUserContext(createdAtIso: string | null | undefined): Promise<void> {
+export async function setNotificationUserContext(
+  createdAtIso: string | null | undefined,
+): Promise<void> {
   const normalized = (createdAtIso ?? "").trim();
   if (!normalized) {
     await AsyncStorage.removeItem(NOTIFICATION_USER_CREATED_AT_KEY);
@@ -269,16 +280,36 @@ export async function syncServerInbox(token: string, limit = 40): Promise<number
   const lastSyncRaw = await AsyncStorage.getItem(NOTIFICATION_SERVER_SYNC_MS_KEY);
   const lastSyncMs = lastSyncRaw ? parseInt(lastSyncRaw, 10) : 0;
   const sinceQuery = Number.isFinite(lastSyncMs) && lastSyncMs > 0 ? `&since_ms=${lastSyncMs}` : "";
-  const rows = await apiJson<ServerInboxItem[]>(`/notifications/inbox?limit=${safeLimit}${sinceQuery}`, {
-    token,
-  });
+  const rows = await apiJson<ServerInboxItem[]>(
+    `/notifications/inbox?limit=${safeLimit}${sinceQuery}`,
+    {
+      token,
+    },
+  );
   const syncNowMs = Date.now();
-  if (!Array.isArray(rows) || rows.length === 0) return 0;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    await AsyncStorage.setItem(NOTIFICATION_SERVER_SYNC_MS_KEY, String(syncNowMs));
+    return 0;
+  }
+
   let insertedCount = 0;
+  let anySoftSkip = false;
+  let sawProcessableRow = false;
   const ordered = [...rows].reverse();
+  let snapshot = await loadInbox();
+
   for (const row of ordered) {
     const createdAtMs = Date.parse(row.created_at);
     if (!Number.isFinite(createdAtMs)) continue;
+    sawProcessableRow = true;
+
+    if (snapshot.some((i) => i.id === row.id)) {
+      if (row.read) {
+        await markRead(row.id);
+      }
+      continue;
+    }
+
     const expiresAtMs = row.expires_at ? Date.parse(row.expires_at) : undefined;
     const title = resolveServerText(row.title_key, row.title_params, row.title);
     const body = resolveServerText(row.body_key, row.body_params, row.body);
@@ -295,18 +326,33 @@ export async function syncServerInbox(token: string, limit = 40): Promise<number
       expiresAtMs: Number.isFinite(expiresAtMs as number) ? (expiresAtMs as number) : undefined,
       dedupeWindowMs: 60_000,
       respectQuietHours: true,
-      bypassFirstWeekQuietMode: false,
+      // Social requests/invites should never be silently dropped for new users.
+      bypassFirstWeekQuietMode:
+        row.category === "social" &&
+        typeof row.id === "string" &&
+        row.id.startsWith("friend-request-"),
     });
-    if (inserted && row.read) {
-      await markRead(row.id);
+    if (inserted) {
+      insertedCount += 1;
+      if (row.read) {
+        await markRead(row.id);
+      }
+      snapshot = await loadInbox();
+    } else {
+      anySoftSkip = true;
     }
-    if (inserted) insertedCount += 1;
   }
-  await AsyncStorage.setItem(NOTIFICATION_SERVER_SYNC_MS_KEY, String(syncNowMs));
+
+  if (!sawProcessableRow || !anySoftSkip) {
+    await AsyncStorage.setItem(NOTIFICATION_SERVER_SYNC_MS_KEY, String(syncNowMs));
+  }
   return insertedCount;
 }
 
-export async function markServerInboxRead(token: string, upToMs: number = Date.now()): Promise<void> {
+export async function markServerInboxRead(
+  token: string,
+  upToMs: number = Date.now(),
+): Promise<void> {
   await apiJson("/notifications/read", {
     token,
     method: "POST",

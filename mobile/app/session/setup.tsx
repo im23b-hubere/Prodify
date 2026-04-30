@@ -45,9 +45,7 @@ export default function SessionSetupScreen() {
         <>
           <ScreenHeader
             title={t("dashboard.newSessionTitle")}
-            subtitle={
-              planningMode ? t("sessionSetup.planSubtitle") : t("sessionSetup.startCta")
-            }
+            subtitle={planningMode ? t("sessionSetup.planSubtitle") : t("sessionSetup.startCta")}
             actionLabel={t("common.cancel")}
             onActionPress={closeSetup}
           />

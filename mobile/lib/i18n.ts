@@ -20,6 +20,8 @@ function detectLocale(): string {
   return locale === "en" ? "en" : "en";
 }
 
+// i18next intentionally uses default export instance methods here.
+// eslint-disable-next-line import/no-named-as-default-member
 void i18n.use(initReactI18next).init({
   resources,
   lng: detectLocale(),

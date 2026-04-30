@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import ProductionSession, UserGoal, WeeklyReviewSnapshot, utcnow
 from app.schemas import WeeklyReviewPublic
+from app.services.ollama_client import generate_weekly_coach_note
 from app.timeutil import as_utc_aware
 
 
@@ -15,6 +16,40 @@ def _week_range():
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
     return week_start.isoformat(), week_end.isoformat()
+
+
+def _default_coach_note() -> str:
+    return (
+        "Strong producers win by consistency. Protect your best time slot, reduce restart friction, "
+        "and keep sessions outcome-focused rather than time-focused."
+    )
+
+
+def _weekly_coach_prompt(
+    *,
+    total_sessions: int,
+    total_seconds: int,
+    target_sessions: int,
+    top_day: int | None,
+    top_hour: int | None,
+    insights: list[str],
+    blockers: list[str],
+) -> str:
+    return "\n".join(
+        [
+            "You are a concise production coach for a music creator app.",
+            "Write exactly 2 short sentences (max 45 words total).",
+            "Tone: motivating, practical, no hype, no emojis.",
+            "Do not use bullet points or labels.",
+            f"Weekly sessions: {total_sessions}",
+            f"Weekly seconds: {total_seconds}",
+            f"Weekly target sessions: {target_sessions}",
+            f"Best weekday index (Mon=0): {top_day if top_day is not None else 'unknown'}",
+            f"Best hour (24h): {top_hour if top_hour is not None else 'unknown'}",
+            f"Insights: {' | '.join(insights) if insights else 'none'}",
+            f"Blockers: {' | '.join(blockers) if blockers else 'none'}",
+        ]
+    )
 
 
 def generate_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic:
@@ -73,10 +108,19 @@ def generate_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic:
         "Define one weekly outcome and attach each session to that outcome.",
         "End every session with a 2-line debrief so restart friction stays low.",
     ]
-    ai_feedback = (
-        "Strong producers win by consistency. Protect your best time slot, reduce restart friction, "
-        "and keep sessions outcome-focused rather than time-focused."
+    ai_feedback = _default_coach_note()
+    prompt = _weekly_coach_prompt(
+        total_sessions=total_sessions,
+        total_seconds=total_seconds,
+        target_sessions=target,
+        top_day=top_day,
+        top_hour=top_hour,
+        insights=insights,
+        blockers=blockers,
     )
+    generated = generate_weekly_coach_note(prompt)
+    if generated:
+        ai_feedback = generated
     row = db.scalar(
         select(WeeklyReviewSnapshot).where(
             WeeklyReviewSnapshot.user_id == user_id,

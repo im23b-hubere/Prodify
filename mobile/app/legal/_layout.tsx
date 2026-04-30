@@ -9,11 +9,8 @@ export default function LegalLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.textPrimary,
-        headerTitleStyle: { fontWeight: "700", fontSize: 17 },
-        headerShadowVisible: false,
+        /* In-screen `LegalDocumentScreen` provides title, subtitle, and back — avoid duplicate native headers. */
+        headerShown: false,
         contentStyle: { backgroundColor: colors.background },
       }}
     >

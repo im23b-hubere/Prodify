@@ -331,7 +331,10 @@ export default function SessionActiveScreen() {
         <View style={styles.errorState}>
           <Text style={styles.muted}>{error ?? t("sessionActive.loadingSession")}</Text>
           <PrimaryButton label={t("common.tryAgain")} onPress={() => void load()} />
-          <Pressable onPress={() => router.replace("/(tabs)/dashboard")} style={styles.errorBackBtn}>
+          <Pressable
+            onPress={() => router.replace("/(tabs)/dashboard")}
+            style={styles.errorBackBtn}
+          >
             <Text style={styles.errorBackTxt}>{t("common.back")}</Text>
           </Pressable>
         </View>

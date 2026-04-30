@@ -8,6 +8,12 @@ module.exports = defineConfig([
   expoConfig,
   eslintConfigPrettier,
   {
+    files: ["__tests__/**/*.{ts,tsx}", "jest.setup.ts"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
     files: ["babel.config.js"],
     languageOptions: {
       globals: globals.node,

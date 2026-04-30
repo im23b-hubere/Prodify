@@ -86,66 +86,69 @@ export function useDashboardData(token: string | null) {
     }
   }, [token, t]);
 
-  const loadSocial = useCallback(async (opts: { forceProgressionSync?: boolean } = {}) => {
-    const forceProgressionSync = Boolean(opts.forceProgressionSync);
-    if (!token) return;
-    setSocialLoading(true);
-    try {
-      const [
-        lbRaw,
-        actRaw,
-        goalRaw,
-        buddyRiskRaw,
-        checkinRaw,
-        commitmentRaw,
-        challengesRaw,
-        identityRaw,
-      ] = await Promise.all([
-        apiJson<unknown>("/friends/leaderboard?period=week", { token }),
-        apiJson<unknown>("/friends/activity?limit=8", { token }),
-        apiJson<unknown>("/goals/current", { token }),
-        fetchBuddyRisk(token).catch(() => null),
-        fetchCheckinStatus(token).catch(() => null),
-        fetchCommitment(token).catch(() => null),
-        fetchChallenges(token).catch(() => []),
-        fetchIdentityState(token).catch(() => null),
-      ]);
-      const lb =
-        lbRaw && typeof lbRaw === "object" && "entries" in lbRaw
-          ? (lbRaw as FriendLeaderboardDto)
-          : null;
-      setFriendLeaderboard(lb);
-      setFriendActivity(Array.isArray(actRaw) ? (actRaw as FriendActivityDto[]) : []);
-      if (goalRaw && typeof goalRaw === "object") {
-        const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
-        const tv = typeof g.target_value === "number" ? g.target_value : null;
-        const cs = typeof g.current_sessions === "number" ? g.current_sessions : 0;
-        setWeeklyGoalTarget(tv);
-        setWeekSessionsCount(cs);
-      } else {
-        setWeeklyGoalTarget(null);
-        setWeekSessionsCount(0);
+  const loadSocial = useCallback(
+    async (opts: { forceProgressionSync?: boolean } = {}) => {
+      const forceProgressionSync = Boolean(opts.forceProgressionSync);
+      if (!token) return;
+      setSocialLoading(true);
+      try {
+        const [
+          lbRaw,
+          actRaw,
+          goalRaw,
+          buddyRiskRaw,
+          checkinRaw,
+          commitmentRaw,
+          challengesRaw,
+          identityRaw,
+        ] = await Promise.all([
+          apiJson<unknown>("/friends/leaderboard?period=week", { token }),
+          apiJson<unknown>("/friends/activity?limit=8", { token }),
+          apiJson<unknown>("/goals/current", { token }),
+          fetchBuddyRisk(token).catch(() => null),
+          fetchCheckinStatus(token).catch(() => null),
+          fetchCommitment(token).catch(() => null),
+          fetchChallenges(token).catch(() => []),
+          fetchIdentityState(token).catch(() => null),
+        ]);
+        const lb =
+          lbRaw && typeof lbRaw === "object" && "entries" in lbRaw
+            ? (lbRaw as FriendLeaderboardDto)
+            : null;
+        setFriendLeaderboard(lb);
+        setFriendActivity(Array.isArray(actRaw) ? (actRaw as FriendActivityDto[]) : []);
+        if (goalRaw && typeof goalRaw === "object") {
+          const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
+          const tv = typeof g.target_value === "number" ? g.target_value : null;
+          const cs = typeof g.current_sessions === "number" ? g.current_sessions : 0;
+          setWeeklyGoalTarget(tv);
+          setWeekSessionsCount(cs);
+        } else {
+          setWeeklyGoalTarget(null);
+          setWeekSessionsCount(0);
+        }
+        setBuddyRisk(buddyRiskRaw);
+        setCheckinStatus(checkinRaw);
+        setCommitmentStatus(commitmentRaw);
+        setSocialChallenges(Array.isArray(challengesRaw) ? challengesRaw : []);
+        setIdentityState(identityRaw);
+        const [forecastRaw, progRaw] = await Promise.all([
+          apiJson<unknown>("/outcomes/goal-forecast/current", { token }).catch(() => null),
+          syncProgression(token, { force: forceProgressionSync }).catch(() => null),
+        ]);
+        setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+        setProgression(progRaw);
+        const ent = await fetchEntitlement(token).catch(() => null);
+        setEntitlement(ent);
+      } catch {
+        // Preserve last known social snapshot and surface a clear partial-load error.
+        setError(t("dashboard.socialLoadFailed"));
+      } finally {
+        setSocialLoading(false);
       }
-      setBuddyRisk(buddyRiskRaw);
-      setCheckinStatus(checkinRaw);
-      setCommitmentStatus(commitmentRaw);
-      setSocialChallenges(Array.isArray(challengesRaw) ? challengesRaw : []);
-      setIdentityState(identityRaw);
-      const [forecastRaw, progRaw] = await Promise.all([
-        apiJson<unknown>("/outcomes/goal-forecast/current", { token }).catch(() => null),
-        syncProgression(token, { force: forceProgressionSync }).catch(() => null),
-      ]);
-      setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
-      setProgression(progRaw);
-      const ent = await fetchEntitlement(token).catch(() => null);
-      setEntitlement(ent);
-    } catch {
-      // Preserve last known social snapshot and surface a clear partial-load error.
-      setError(t("dashboard.socialLoadFailed"));
-    } finally {
-      setSocialLoading(false);
-    }
-  }, [token, t]);
+    },
+    [token, t],
+  );
 
   const loadStreakOverview = useCallback(async () => {
     if (!token) return;

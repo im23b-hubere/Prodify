@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useRouter } from "expo-router";
+import { Href, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ChevronLeft } from "lucide-react-native";
 import { useCallback, useState } from "react";
@@ -16,11 +16,34 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
+import { AppCard } from "../../components/ui/AppCard";
+import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, shadows, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
-import type { StreakRunDto } from "../../types/streak";
+import type { StreakOverviewDto, StreakRunDto } from "../../types/streak";
+
+const HISTORY_FETCH_LIMIT = 120;
+
+/** Calendar YYYY-MM-DD in UTC (matches server `utcnow().date().isoformat()`). */
+function utcCalendarDateIso(dayOffset = 0): string {
+  const d = new Date();
+  const ms = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + dayOffset);
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+function isActiveStreakRun(
+  run: StreakRunDto,
+  index: number,
+  currentStreak: number | null,
+): boolean {
+  if (currentStreak == null || currentStreak < 1 || index !== 0) return false;
+  if (run.length_days !== currentStreak) return false;
+  const today = utcCalendarDateIso(0);
+  const yesterday = utcCalendarDateIso(-1);
+  return run.end_date === today || run.end_date === yesterday;
+}
 
 function formatRange(startIso: string, endIso: string): string {
   try {
@@ -40,6 +63,7 @@ export default function StreakHistoryScreen() {
   const router = useRouter();
   const { token } = useAuth();
   const [runs, setRuns] = useState<StreakRunDto[]>([]);
+  const [currentStreakSnapshot, setCurrentStreakSnapshot] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,16 +71,38 @@ export default function StreakHistoryScreen() {
   const load = useCallback(async () => {
     if (!token) {
       setRuns([]);
+      setCurrentStreakSnapshot(null);
+      setError(null);
+      setRefreshing(false);
       setLoading(false);
       return;
     }
     try {
       setError(null);
-      const data = await apiJson<StreakRunDto[]>("/streak/history", { token });
-      setRuns(Array.isArray(data) ? data : []);
+      const [histRes, ovRes] = await Promise.allSettled([
+        apiJson<StreakRunDto[]>(`/streak/history?limit=${HISTORY_FETCH_LIMIT}`, { token }),
+        apiJson<StreakOverviewDto>("/streak/overview", { token }),
+      ]);
+
+      if (ovRes.status === "fulfilled" && typeof ovRes.value.current_streak === "number") {
+        setCurrentStreakSnapshot(ovRes.value.current_streak);
+      } else {
+        setCurrentStreakSnapshot(null);
+      }
+
+      if (histRes.status === "fulfilled") {
+        const data = histRes.value;
+        setRuns(Array.isArray(data) ? data : []);
+      } else {
+        const e = histRes.reason;
+        setRuns([]);
+        setCurrentStreakSnapshot(null);
+        throw e instanceof Error ? e : new Error(t("streakHistory.loadError"));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("streakHistory.loadError"));
       setRuns([]);
+      setCurrentStreakSnapshot(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -70,9 +116,12 @@ export default function StreakHistoryScreen() {
   );
 
   const onRefresh = useCallback(() => {
+    if (!token) return;
     setRefreshing(true);
     load().catch(() => undefined);
-  }, [load]);
+  }, [load, token]);
+
+  const showSignIn = !token && !loading;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -96,11 +145,13 @@ export default function StreakHistoryScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
+          token ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          ) : undefined
         }
       >
         {loading && !refreshing ? (
@@ -110,7 +161,18 @@ export default function StreakHistoryScreen() {
           </View>
         ) : null}
 
-        {error ? (
+        {showSignIn ? (
+          <AppCard>
+            <Text style={styles.cardTitle}>{t("streakHistory.needSignInTitle")}</Text>
+            <Text style={styles.cardBody}>{t("streakHistory.needSignInBody")}</Text>
+            <PrimaryButton
+              label={t("streakHistory.signInCta")}
+              onPress={() => router.replace("/(auth)/login" as Href)}
+            />
+          </AppCard>
+        ) : null}
+
+        {token && error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retry} onPress={() => load().catch(() => undefined)}>
@@ -119,7 +181,7 @@ export default function StreakHistoryScreen() {
           </View>
         ) : null}
 
-        {!loading && !error && runs.length === 0 ? (
+        {token && !loading && !error && runs.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>📅</Text>
             <Text style={styles.emptyTitle}>{t("streakHistory.emptyTitle")}</Text>
@@ -127,22 +189,54 @@ export default function StreakHistoryScreen() {
           </View>
         ) : null}
 
-        {runs.map((run, i) => (
-          <Animated.View
-            key={`${run.start_date}-${run.end_date}-${i}`}
-            entering={FadeInDown.delay(i * 40).duration(360)}
-          >
-            <View style={styles.card}>
-              <View style={styles.cardTop}>
-                <Text style={styles.days}>{run.length_days}</Text>
-                <Text style={styles.daysLabel}>
-                  {t("streakHistory.dayUnit", { count: run.length_days })}
-                </Text>
+        {runs.map((run, i) => {
+          const isCurrent = isActiveStreakRun(run, i, currentStreakSnapshot);
+          return (
+            <Animated.View
+              key={`${run.start_date}-${run.end_date}-${i}`}
+              entering={FadeInDown.delay(i * 40).duration(360)}
+            >
+              <View
+                style={[styles.card, isCurrent && styles.cardCurrent]}
+                accessibilityRole="summary"
+                accessibilityLabel={
+                  isCurrent
+                    ? t("streakHistory.runA11yCurrent", {
+                        count: run.length_days,
+                        start: run.start_date,
+                        end: run.end_date,
+                      })
+                    : t("streakHistory.runA11y", {
+                        count: run.length_days,
+                        start: run.start_date,
+                        end: run.end_date,
+                      })
+                }
+              >
+                <View style={styles.cardTop}>
+                  <View style={styles.cardTopLeft}>
+                    <Text style={styles.days}>{run.length_days}</Text>
+                    <Text style={styles.daysLabel}>
+                      {t("streakHistory.dayUnit", { count: run.length_days })}
+                    </Text>
+                  </View>
+                  {isCurrent ? (
+                    <View style={styles.currentBadge} accessibilityElementsHidden>
+                      <Text style={styles.currentBadgeText}>{t("streakHistory.currentBadge")}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.range}>{formatRange(run.start_date, run.end_date)}</Text>
               </View>
-              <Text style={styles.range}>{formatRange(run.start_date, run.end_date)}</Text>
-            </View>
-          </Animated.View>
-        ))}
+            </Animated.View>
+          );
+        })}
+
+        {token && !error && runs.length > 0 ? (
+          <Text style={styles.footnote}>
+            {t("streakHistory.footnote", { limit: HISTORY_FETCH_LIMIT })}
+          </Text>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -174,6 +268,14 @@ const styles = StyleSheet.create({
     ...typography.subheadline,
   },
   scroll: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
+  cardTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
+    marginBottom: spacing.xs,
+  },
+  cardBody: { color: colors.textSecondary, ...typography.body, marginBottom: spacing.md },
+  footnote: { color: colors.textSecondary, ...typography.caption, marginTop: spacing.sm },
   center: { paddingVertical: spacing.xl, alignItems: "center", gap: spacing.sm },
   muted: { color: colors.textSecondary, ...typography.caption },
   errorBox: {
@@ -204,11 +306,32 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadows.card,
   },
+  cardCurrent: {
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+  },
   cardTop: {
     flexDirection: "row",
-    alignItems: "baseline",
-    gap: spacing.xs,
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
     marginBottom: spacing.xs,
+  },
+  cardTopLeft: { flexDirection: "row", alignItems: "baseline", gap: spacing.xs, flexShrink: 1 },
+  currentBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.round,
+    backgroundColor: "rgba(255, 90, 31, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 90, 31, 0.35)",
+  },
+  currentBadgeText: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
   days: {
     fontSize: 36,

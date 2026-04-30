@@ -17,6 +17,7 @@ import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { ApiError } from "../../lib/client";
+import { replaceWithPendingDeepLinkOrDashboard } from "../../lib/pendingDeepLink";
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -42,8 +43,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(trimmedEmail, password);
-      // Always land on dashboard after sign-in to avoid stale tab restores.
-      router.replace("/(tabs)/dashboard");
+      await replaceWithPendingDeepLinkOrDashboard(router);
     } catch (e) {
       if (e instanceof ApiError && e.status === 429) {
         setError(t("errors.tooManyRequests"));

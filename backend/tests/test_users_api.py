@@ -146,6 +146,8 @@ def test_friend_status_and_user_profile(client):
     st = client.get(f"/friends/status/{id_b}", headers={"Authorization": f"Bearer {t_a}"})
     assert st.status_code == 200
     assert st.json()["status"] == "none"
+    assert st.json()["username"] == "haluser"
+    assert st.json().get("pending_direction") is None
 
     req = client.post(
         "/friends/request",
@@ -157,12 +159,21 @@ def test_friend_status_and_user_profile(client):
 
     st2 = client.get(f"/friends/status/{id_b}", headers={"Authorization": f"Bearer {t_a}"})
     assert st2.json()["status"] == "pending"
+    assert st2.json()["username"] == "haluser"
+    assert st2.json()["pending_direction"] == "outgoing"
+
+    st_incoming = client.get(f"/friends/status/{id_a}", headers={"Authorization": f"Bearer {t_b}"})
+    assert st_incoming.json()["status"] == "pending"
+    assert st_incoming.json()["username"] == "galuser"
+    assert st_incoming.json()["pending_direction"] == "incoming"
 
     acc = client.post(f"/friends/{fid}/accept", headers={"Authorization": f"Bearer {t_b}"})
     assert acc.status_code == 200
 
     st3 = client.get(f"/friends/status/{id_b}", headers={"Authorization": f"Bearer {t_a}"})
     assert st3.json()["status"] == "accepted"
+    assert st3.json()["username"] == "haluser"
+    assert st3.json().get("pending_direction") is None
 
     prof = client.get(f"/users/{id_a}/profile", headers={"Authorization": f"Bearer {t_b}"})
     assert prof.status_code == 200

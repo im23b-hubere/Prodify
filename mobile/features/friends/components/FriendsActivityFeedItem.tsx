@@ -57,6 +57,15 @@ export function FriendsActivityFeedItem({
   const isStreakBroken = item.status === "streak_broken";
   const isCommitmentPublished = item.status === "commitment_published";
   const isEventCard = isStreakBroken || isCommitmentPublished;
+  const isOpenableSession =
+    item.session_id > 0 && (item.status === "live" || item.status === "completed");
+  const headerA11y = isStreakBroken
+    ? t("friendsScreen.activityStreakEventA11y", { name: item.username })
+    : isCommitmentPublished
+      ? t("friendsScreen.activityCommitmentEventA11y", { name: item.username })
+      : isOpenableSession
+        ? t("friendsScreen.activityOpenSessionA11y", { name: item.username })
+        : t("friendsScreen.activityCardA11y", { name: item.username });
 
   return (
     <Animated.View
@@ -67,7 +76,7 @@ export function FriendsActivityFeedItem({
       <View style={styles.feedItemInner}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t("friendsScreen.activityOpenSessionA11y", { name: item.username })}
+          accessibilityLabel={headerA11y}
           style={styles.feedHeaderRow}
           onPress={onOpenSession}
         >
@@ -83,9 +92,7 @@ export function FriendsActivityFeedItem({
               <Text style={[styles.feedUserName, styles.feedUserNameFlex]} numberOfLines={1}>
                 {item.username}
               </Text>
-              <Text style={styles.feedSessionMeta}>
-                {streakStatus}
-              </Text>
+              <Text style={styles.feedSessionMeta}>{streakStatus}</Text>
               {isCommitmentPublished ? (
                 <Animated.View entering={FadeIn.duration(220)} style={styles.commitmentEventBadge}>
                   <Text style={styles.commitmentEventBadgeText}>

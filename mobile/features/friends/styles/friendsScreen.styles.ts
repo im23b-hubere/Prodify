@@ -260,6 +260,18 @@ export const friendsScreenStyles = StyleSheet.create({
     textAlign: "center",
     paddingVertical: spacing.md,
   },
+  leaderboardEmptyBlock: {
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
+    gap: spacing.xs,
+    alignItems: "center",
+  },
+  leaderboardEmptySubtitle: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+    textAlign: "center",
+  },
   leaderItem: {
     flexDirection: "row",
     alignItems: "center",

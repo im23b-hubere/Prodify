@@ -35,6 +35,7 @@ export function useFriendsScreenActions({
   openSession,
   openActiveSession,
 }: Params) {
+  const { setTriggerIndex } = state;
   const entries = state.leaderboard?.entries ?? [];
   const hasOtherFriends = entries.some((entry) => entry.user_id !== userId);
   const friendCandidates = entries.filter((entry) => entry.user_id !== userId);
@@ -155,7 +156,9 @@ export function useFriendsScreenActions({
       await apiJson("/social/checkins/done", {
         token,
         method: "POST",
-        body: { note: t("friendsScreen.shippedThisWeekNote", { defaultValue: "Shipped this week." }) },
+        body: {
+          note: t("friendsScreen.shippedThisWeekNote", { defaultValue: "Shipped this week." }),
+        },
       });
       await load();
       state.showToast(t("friendsScreen.toastMomentum"));
@@ -458,9 +461,16 @@ export function useFriendsScreenActions({
     }
     const closeBattle = challengeCards.find((c) => {
       const mine = c.members.find((m) => m.user_id === userId);
-      const lead = Math.max(...c.members.map((m) => m.progress_sessions), 0);
+      const lead =
+        c.members.length > 0 ? Math.max(...c.members.map((m) => m.progress_sessions), 0) : 0;
       return mine && lead - mine.progress_sessions <= 1 && lead - mine.progress_sessions > 0;
     });
+    const firstFriendOpenSession = state.activity.find(
+      (a) =>
+        a.session_id > 0 &&
+        (a.status === "live" || a.status === "completed") &&
+        (typeof userId !== "number" || a.user_id !== userId),
+    );
     if (closeBattle) {
       cards.push({
         key: "close_battle",
@@ -468,8 +478,8 @@ export function useFriendsScreenActions({
         actionLabel: t("friendsScreen.triggerComment"),
         onPress: () => {
           if (userId) void recordMomentumAction(userId, "social");
-          if (state.activity[0]) {
-            openSession(state.activity[0].session_id, state.activity[0].username);
+          if (firstFriendOpenSession) {
+            openSession(firstFriendOpenSession.session_id, firstFriendOpenSession.username);
           }
         },
       });
@@ -506,8 +516,8 @@ export function useFriendsScreenActions({
   }, [challengeCards, load, openSession, openActiveSession, state, t, token, userId]);
 
   useEffect(() => {
-    state.setTriggerIndex(0);
-  }, [state.setTriggerIndex, triggerCards.length]);
+    setTriggerIndex(0);
+  }, [setTriggerIndex, triggerCards.length]);
 
   const activeTriggerCard = triggerCards[state.triggerIndex] ?? null;
   const pendingBuddyInviteId =
@@ -516,8 +526,8 @@ export function useFriendsScreenActions({
       : null;
 
   const completeTriggerAction = useCallback(() => {
-    state.setTriggerIndex((prev) => (prev + 1 < triggerCards.length ? prev + 1 : prev));
-  }, [state, triggerCards.length]);
+    setTriggerIndex((prev) => (prev + 1 < triggerCards.length ? prev + 1 : prev));
+  }, [setTriggerIndex, triggerCards.length]);
 
   const openSessionHref = useCallback(
     (sessionId: number, ownerName: string): Href => ({

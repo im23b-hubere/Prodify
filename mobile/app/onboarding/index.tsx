@@ -77,7 +77,10 @@ export default function OnboardingScreen() {
     () => (Number.isInteger(dailyTarget) ? String(dailyTarget) : dailyTarget.toFixed(1)),
     [dailyTarget],
   );
-  const dailyTargetUnit = useMemo(() => (dailyTarget === 1 ? "session" : "sessions"), [dailyTarget]);
+  const dailyTargetUnit = useMemo(
+    () => (dailyTarget === 1 ? "session" : "sessions"),
+    [dailyTarget],
+  );
 
   useEffect(() => {
     floatY.value = withRepeat(
@@ -154,7 +157,11 @@ export default function OnboardingScreen() {
             {step + 1}/{slides.length}
           </Text>
         </View>
-        <Animated.View key={`hero-${step}`} entering={FadeInDown.duration(320)} style={styles.slide}>
+        <Animated.View
+          key={`hero-${step}`}
+          entering={FadeInDown.duration(320)}
+          style={styles.slide}
+        >
           <Animated.View style={[styles.visualWrap, visualFloat]} entering={FadeInUp.duration(360)}>
             <Animated.Image
               key={`visual-${step}`}
@@ -166,7 +173,11 @@ export default function OnboardingScreen() {
               exiting={FadeOut.duration(180)}
             />
             {step < slides.length - 1 ? (
-              <Image source={slides[step + 1].image} style={styles.hiddenPreloadImage} fadeDuration={0} />
+              <Image
+                source={slides[step + 1].image}
+                style={styles.hiddenPreloadImage}
+                fadeDuration={0}
+              />
             ) : null}
           </Animated.View>
           <Animated.View style={[styles.copyWrap, copyParallax]}>
@@ -177,7 +188,10 @@ export default function OnboardingScreen() {
         <View style={styles.bottomStack}>
           <View style={styles.paginationRow}>
             {slides.map((_, idx) => (
-              <View key={`dot-${idx}`} style={[styles.pageDot, idx === step && styles.pageDotActive]} />
+              <View
+                key={`dot-${idx}`}
+                style={[styles.pageDot, idx === step && styles.pageDotActive]}
+              />
             ))}
           </View>
           <PrimaryButton
@@ -228,7 +242,9 @@ export default function OnboardingScreen() {
                   setGoal(g);
                 }}
               >
-                <Text style={[styles.goalCardValue, goal === g && styles.goalCardValueOn]}>{g}</Text>
+                <Text style={[styles.goalCardValue, goal === g && styles.goalCardValueOn]}>
+                  {g}
+                </Text>
                 <Text style={[styles.goalCardLabel, goal === g && styles.goalCardLabelOn]}>
                   {t("onboarding.goal.sessionsPerWeek")}
                 </Text>
@@ -245,9 +261,7 @@ export default function OnboardingScreen() {
             ))}
           </View>
           <View style={styles.goalInfoCard}>
-            <Text style={styles.goalInfoTitle}>
-              {t("onboarding.goal.previewTitle", { goal })}
-            </Text>
+            <Text style={styles.goalInfoTitle}>{t("onboarding.goal.previewTitle", { goal })}</Text>
             <Text style={styles.goalInfoBody}>
               {t("onboarding.goal.previewBody", {
                 daily: dailyTargetDisplay,
@@ -287,11 +301,19 @@ export default function OnboardingScreen() {
           </Text>
           <Text style={styles.heroBody}>{t("onboarding.notifications.body")}</Text>
           <View style={styles.notificationsVisualCard}>
-            <Text style={styles.notificationsVisualTitle}>{t("onboarding.notifications.visualTitle")}</Text>
+            <Text style={styles.notificationsVisualTitle}>
+              {t("onboarding.notifications.visualTitle")}
+            </Text>
             <View style={styles.notificationsBenefitList}>
-              <Text style={styles.notificationsBenefitText}>{t("onboarding.notifications.benefit1")}</Text>
-              <Text style={styles.notificationsBenefitText}>{t("onboarding.notifications.benefit2")}</Text>
-              <Text style={styles.notificationsBenefitText}>{t("onboarding.notifications.benefit3")}</Text>
+              <Text style={styles.notificationsBenefitText}>
+                {t("onboarding.notifications.benefit1")}
+              </Text>
+              <Text style={styles.notificationsBenefitText}>
+                {t("onboarding.notifications.benefit2")}
+              </Text>
+              <Text style={styles.notificationsBenefitText}>
+                {t("onboarding.notifications.benefit3")}
+              </Text>
             </View>
           </View>
         </View>
@@ -420,7 +442,11 @@ const styles = StyleSheet.create({
     lineHeight: 30,
   },
   goalCardValueOn: { color: colors.primary },
-  goalCardLabel: { color: colors.textSecondary, ...typography.caption, fontFamily: fontFamily.bodyMedium },
+  goalCardLabel: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+  },
   goalCardLabelOn: { color: colors.textPrimary },
   goalCardHint: { color: colors.textSecondary, ...typography.caption },
   goalCardHintOn: { color: colors.secondary, fontFamily: fontFamily.bodyBold },

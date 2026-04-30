@@ -17,6 +17,7 @@ type StreakHeroSectionProps = {
   loading: boolean;
   freezeBusy: boolean;
   onUseFreeze: () => void;
+  onFreezeUnavailable?: () => void;
   onOpenHistory?: () => void;
 };
 
@@ -25,6 +26,7 @@ export function StreakHeroSection({
   loading,
   freezeBusy,
   onUseFreeze,
+  onFreezeUnavailable,
   onOpenHistory,
 }: StreakHeroSectionProps) {
   const { t } = useTranslation();
@@ -128,12 +130,12 @@ export function StreakHeroSection({
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
                 () => undefined,
               );
+              onFreezeUnavailable?.();
               return;
             }
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
             onUseFreeze();
           }}
-          disabled={!overview.can_use_freeze || freezeBusy}
         >
           <Shield
             color={overview.can_use_freeze ? colors.secondary : colors.textSecondary}

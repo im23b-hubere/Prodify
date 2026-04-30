@@ -50,4 +50,11 @@ describe("initSentry", () => {
     expect(() => initSentry()).not.toThrow();
     expect(Sentry.init).not.toHaveBeenCalled();
   });
+
+  it("skips init when dsn is placeholder/invalid", () => {
+    mockGetExpoPublicSentryDsn.mockReturnValue("https://...");
+
+    expect(() => initSentry()).not.toThrow();
+    expect(Sentry.init).not.toHaveBeenCalled();
+  });
 });

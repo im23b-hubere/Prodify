@@ -42,6 +42,7 @@ import {
 import { fontFamily } from "../../constants/fonts";
 import { colors, motion, radii, shadows, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
+import { hasPremiumAccess } from "../../lib/billing";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
 import { translateMotivationalMessage } from "../../lib/motivationApi";
@@ -407,13 +408,7 @@ export default function DashboardScreen() {
             ? visibleSessions[0].session_type
             : null,
       }),
-    [
-      effectiveWeeklyGoalTarget,
-      weekSessionsForGoal,
-      streakOverview,
-      clientStreak,
-      visibleSessions,
-    ],
+    [effectiveWeeklyGoalTarget, weekSessionsForGoal, streakOverview, clientStreak, visibleSessions],
   );
   const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
   const completedCount = useMemo(() => completedSessionsCount(visibleSessions), [visibleSessions]);
@@ -471,6 +466,20 @@ export default function DashboardScreen() {
       setFreezeBusy(false);
     }
   }, [token, loadStreakOverview, loadSessions, t]);
+
+  const onFreezeUnavailable = useCallback(() => {
+    const overview = displayOverview;
+    if (!overview) return;
+    if (overview.freezes_remaining < 1) {
+      Alert.alert(t("dashboard.freezeUnavailableTitle"), t("dashboard.freezeReasonNoneLeft"));
+      return;
+    }
+    if (!overview.streak_at_risk) {
+      Alert.alert(t("dashboard.freezeUnavailableTitle"), t("dashboard.freezeReasonNotAtRisk"));
+      return;
+    }
+    Alert.alert(t("dashboard.freezeUnavailableTitle"), t("dashboard.freezeReasonAlreadySafeToday"));
+  }, [displayOverview, t]);
 
   const confirmStop = useCallback(() => {
     if (!active || !token || stopSessionInFlight.current) return;
@@ -658,6 +667,7 @@ export default function DashboardScreen() {
               loading={loading}
               freezeBusy={freezeBusy}
               onUseFreeze={onUseFreeze}
+              onFreezeUnavailable={onFreezeUnavailable}
               onOpenHistory={() => {
                 Haptics.selectionAsync().catch(() => undefined);
                 router.push("/streak/history");
@@ -727,13 +737,8 @@ export default function DashboardScreen() {
                         ? `${primaryNudge.message} ${identityState.line}`
                         : primaryNudge.message,
                       ctaLabel: primaryNudge.ctaLabel,
-                      hint:
-                        primaryNudge.actionKey === "checkin"
-                          ? t("dashboard.nudgeLogActivityHint")
-                          : undefined,
                       busy:
                         (primaryNudge.actionKey === "rescue" && socialActionBusy === "rescue") ||
-                        (primaryNudge.actionKey === "checkin" && socialActionBusy === "checkin") ||
                         (primaryNudge.actionKey === "start_session" &&
                           socialActionBusy === "commitment"),
                       onPress: runPrimaryAction,
@@ -757,7 +762,7 @@ export default function DashboardScreen() {
               momentumScore={momentumScore}
             />
 
-            {entitlement?.entitlement !== "premium" ? (
+            {!hasPremiumAccess(entitlement) ? (
               <View style={styles.premiumCtaCard}>
                 <Text style={styles.premiumCtaTitle}>{t("dashboard.premiumUpsellTitle")}</Text>
                 <Text style={styles.premiumCtaBody}>{t("dashboard.premiumUpsellBody")}</Text>
@@ -798,7 +803,7 @@ export default function DashboardScreen() {
                 />
               </View>
             ) : null}
-            {entitlement?.entitlement !== "premium" &&
+            {!hasPremiumAccess(entitlement) &&
             shouldTriggerPaywall({
               completedSessionsCount: completedCount,
               sawFirstWeeklyReview: false,

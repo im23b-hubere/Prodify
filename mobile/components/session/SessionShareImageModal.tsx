@@ -21,7 +21,8 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   session: SessionDto;
-  insights: SessionDetailInsightsDto;
+  insights?: SessionDetailInsightsDto | null;
+  focusScore?: number | null;
   producerName?: string;
 };
 
@@ -38,6 +39,7 @@ export function SessionShareImageModal({
   onClose,
   session,
   insights,
+  focusScore,
   producerName,
 }: Props) {
   const shotRef = useRef<ViewShot | null>(null);
@@ -45,6 +47,10 @@ export function SessionShareImageModal({
   const [busy, setBusy] = useState(false);
 
   const durationLabel = formatDurationWords(session.duration_seconds ?? 0);
+  const safeFocusScore = Math.max(
+    0,
+    Math.min(100, Math.round(insights?.focus_score ?? focusScore ?? session.focus_score ?? 0)),
+  );
 
   const captureAndShare = useCallback(async () => {
     setBusy(true);
@@ -119,7 +125,7 @@ export function SessionShareImageModal({
                   template={template}
                   sessionType={String(session.session_type)}
                   durationLabel={durationLabel}
-                  focusScore={insights.focus_score}
+                  focusScore={safeFocusScore}
                   producerName={producerName}
                 />
               </View>
@@ -146,7 +152,7 @@ export function SessionShareImageModal({
                 template={template}
                 sessionType={String(session.session_type)}
                 durationLabel={durationLabel}
-                focusScore={insights.focus_score}
+                focusScore={safeFocusScore}
                 producerName={producerName}
               />
             </ViewShot>

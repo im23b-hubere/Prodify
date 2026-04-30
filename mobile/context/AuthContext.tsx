@@ -7,6 +7,7 @@ import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } fr
 import i18n from "../lib/i18n";
 import { syncEntitlement } from "../lib/billing";
 import { clearNotificationInbox, setNotificationUserContext } from "../lib/notificationInbox";
+import { clearPendingDeepLinkPath } from "../lib/pendingDeepLink";
 import { syncPendingWeeklyGoal } from "../lib/onboardingGoalSync";
 import {
   activeEntitlementExpiration,
@@ -189,6 +190,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
     await clearNotificationInbox().catch(() => undefined);
     await setNotificationUserContext(null).catch(() => undefined);
+    await clearPendingDeepLinkPath();
+    await configureRevenueCat(undefined).catch(() => undefined);
     setToken(null);
     setUser(null);
   }, []);
@@ -205,6 +208,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY).catch(() => undefined);
     await clearNotificationInbox().catch(() => undefined);
     await setNotificationUserContext(null).catch(() => undefined);
+    await clearPendingDeepLinkPath();
+    await configureRevenueCat(undefined).catch(() => undefined);
     setToken(null);
     setUser(null);
   }, [token]);

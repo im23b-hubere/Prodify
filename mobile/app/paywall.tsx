@@ -9,13 +9,13 @@ import Purchases from "react-native-purchases";
 
 import { ErrorState } from "../components/states/ErrorState";
 import { LoadingState } from "../components/states/LoadingState";
-import { IconButton } from "../components/ui/IconButton";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { getExpoPublicRevenueCatApiKey } from "../constants/env";
 import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import { syncEntitlement } from "../lib/billing";
+import { replaceWithPendingDeepLinkOrDashboard } from "../lib/pendingDeepLink";
 import { resolvePaywallExitRoute, type PaywallSource } from "../lib/postAuthNavigation";
 import {
   activeEntitlementExpiration,
@@ -28,6 +28,12 @@ import {
 } from "../lib/revenuecat";
 
 type Variant = "value" | "outcome" | "social_proof";
+const WEEKLY_PRODUCT_ID = "prodify_premium_weekly";
+const SIX_MONTH_PRODUCT_ID = "prodify_premium_6months";
+
+function packageMatchesProductId(pkg: PurchasesPackage, productId: string): boolean {
+  return pkg.product.identifier === productId;
+}
 
 export default function PaywallScreen() {
   const { t } = useTranslation();
@@ -44,8 +50,8 @@ export default function PaywallScreen() {
   };
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [monthlyPkg, setMonthlyPkg] = useState<PurchasesPackage | null>(null);
-  const [yearlyPkg, setYearlyPkg] = useState<PurchasesPackage | null>(null);
+  const [weeklyPkg, setWeeklyPkg] = useState<PurchasesPackage | null>(null);
+  const [sixMonthPkg, setSixMonthPkg] = useState<PurchasesPackage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [purchaseEnabled, setPurchaseEnabled] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -73,8 +79,14 @@ export default function PaywallScreen() {
         const offering = await getDefaultOffering();
         if (cancelled) return;
         const pkgs = offering?.availablePackages ?? [];
-        setMonthlyPkg(pkgs.find((p) => p.packageType === "MONTHLY") ?? pkgs[0] ?? null);
-        setYearlyPkg(pkgs.find((p) => p.packageType === "ANNUAL") ?? null);
+        const weekly = pkgs.find((p) => p.packageType === "WEEKLY");
+        const sixMonth = pkgs.find((p) => p.packageType === "SIX_MONTH");
+        const weeklyById = pkgs.find((p) => packageMatchesProductId(p, WEEKLY_PRODUCT_ID));
+        const sixMonthById = pkgs.find((p) => packageMatchesProductId(p, SIX_MONTH_PRODUCT_ID));
+        const resolvedWeekly = weekly ?? weeklyById ?? pkgs[0] ?? null;
+        const resolvedSixMonth = sixMonth ?? sixMonthById ?? null;
+        setWeeklyPkg(resolvedWeekly);
+        setSixMonthPkg(resolvedSixMonth);
         setPurchaseEnabled(pkgs.length > 0);
         if (!pkgs.length) {
           setError(t("paywall.errors.storeUnavailable"));
@@ -131,7 +143,11 @@ export default function PaywallScreen() {
       );
       const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
       if (exitRoute) {
-        router.replace(exitRoute);
+        if (exitRoute === "/(tabs)/dashboard") {
+          await replaceWithPendingDeepLinkOrDashboard(router);
+        } else {
+          router.replace(exitRoute);
+        }
         return;
       }
       router.back();
@@ -172,29 +188,9 @@ export default function PaywallScreen() {
     }
   }
 
-  const handleClose = () => {
-    const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
-    if (exitRoute) {
-      router.replace(exitRoute);
-      return;
-    }
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace(token ? "/(tabs)/dashboard" : "/(auth)/login");
-  };
-
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.card}>
-        <View style={styles.closeButton}>
-          <IconButton
-            icon="×"
-            onPress={handleClose}
-            accessibilityLabel={t("paywall.a11y.skipSubscription")}
-          />
-        </View>
         <Text style={styles.badge}>{t("paywall.badge")}</Text>
         <Text style={styles.title}>{copy.title}</Text>
         <Text style={styles.body}>{copy.body}</Text>
@@ -211,22 +207,22 @@ export default function PaywallScreen() {
         ) : null}
         <PrimaryButton
           label={
-            yearlyPkg
+            sixMonthPkg
               ? t("paywall.cta.startTrialWithPrice", {
-                  price: `${yearlyPkg.product.priceString}/year`,
+                  price: sixMonthPkg.product.priceString,
                 })
               : t("paywall.cta.startTrial")
           }
-          onPress={() => void purchasePackage(yearlyPkg ?? monthlyPkg)}
+          onPress={() => void purchasePackage(sixMonthPkg ?? weeklyPkg)}
           disabled={!purchaseEnabled || busy}
         />
         <PrimaryButton
           label={
-            monthlyPkg
-              ? t("paywall.cta.monthlyWithPrice", { price: monthlyPkg.product.priceString })
-              : t("paywall.cta.monthly")
+            weeklyPkg
+              ? t("paywall.cta.weeklyWithPrice", { price: weeklyPkg.product.priceString })
+              : t("paywall.cta.weekly")
           }
-          onPress={() => void purchasePackage(monthlyPkg)}
+          onPress={() => void purchasePackage(weeklyPkg)}
           disabled={!purchaseEnabled || busy}
         />
         <Pressable
@@ -240,7 +236,6 @@ export default function PaywallScreen() {
             {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore")}
           </Text>
         </Pressable>
-        <PrimaryButton label={t("paywall.cta.notNow")} onPress={handleClose} />
       </View>
     </SafeAreaView>
   );
@@ -260,12 +255,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.lg,
     gap: spacing.md,
-  },
-  closeButton: {
-    position: "absolute",
-    top: spacing.sm,
-    right: spacing.sm,
-    zIndex: 1,
   },
   badge: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },

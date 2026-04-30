@@ -32,9 +32,8 @@ export function OutputMetricsShareCard({ metrics, template }: Props) {
         <Text style={styles.brand}>PRODIFY</Text>
         <Text style={styles.title}>{t("stats.shareProofCardMinimalTitle")}</Text>
         <Text style={styles.minimalLine}>
-          {t("stats.shareProofCardMinimalLine1", {
-            baseline: metrics.baseline_tracks_30d,
-            current: metrics.tracks_finished_30d,
+          {t("stats.shareProofCardGradientAvgCompletion", {
+            days: metrics.avg_completion_time_days,
           })}
         </Text>
         <Text style={styles.minimalLine}>
@@ -64,12 +63,7 @@ export function OutputMetricsShareCard({ metrics, template }: Props) {
         </View>
         <View style={[styles.glassCard, styles.boldCard]}>
           <Text style={styles.title}>{t("stats.shareProofCardBoldTitle")}</Text>
-          <Text style={styles.boldHuge}>
-            {t("stats.shareProofCardBoldNumbers", {
-              baseline: metrics.baseline_tracks_30d,
-              current: metrics.tracks_finished_30d,
-            })}
-          </Text>
+          <Text style={styles.boldHuge}>{metrics.tracks_finished_30d}</Text>
           <Text style={styles.metricLine}>
             {t("stats.shareProofCardBoldLine", {
               outputSign,
@@ -94,18 +88,7 @@ export function OutputMetricsShareCard({ metrics, template }: Props) {
       <View style={styles.glassCard}>
         <Text style={styles.brand}>PRODIFY</Text>
         <Text style={styles.title}>{t("stats.shareProofCardGradientTitle")}</Text>
-
-        <View style={styles.beforeAfterRow}>
-          <View style={styles.beforeAfterCell}>
-            <Text style={styles.kicker}>{t("stats.shareProofBeforeLabel")}</Text>
-            <Text style={styles.big}>{metrics.baseline_tracks_30d}</Text>
-          </View>
-          <Text style={styles.arrow}>→</Text>
-          <View style={[styles.beforeAfterCell, styles.beforeAfterNow]}>
-            <Text style={styles.kicker}>{t("stats.shareProofNowLabel")}</Text>
-            <Text style={styles.big}>{metrics.tracks_finished_30d}</Text>
-          </View>
-        </View>
+        <Text style={styles.big}>{metrics.tracks_finished_30d}</Text>
 
         <View style={styles.metricBlock}>
           <Text style={styles.metricLine}>
@@ -201,39 +184,11 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 34,
   },
-  beforeAfterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  beforeAfterCell: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-    borderRadius: radii.md,
-    padding: spacing.sm,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    alignItems: "center",
-  },
-  beforeAfterNow: {
-    borderColor: "rgba(255,61,0,0.8)",
-    backgroundColor: "rgba(255,61,0,0.2)",
-  },
-  kicker: {
-    color: "rgba(255,255,255,0.75)",
-    ...typography.caption,
-    fontFamily: fontFamily.bodyMedium,
-  },
   big: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     fontSize: 34,
     lineHeight: 38,
-  },
-  arrow: {
-    color: colors.primary,
-    fontFamily: fontFamily.heading,
-    fontSize: 20,
   },
   metricBlock: {
     marginTop: spacing.xs,

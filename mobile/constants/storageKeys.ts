@@ -22,6 +22,9 @@ export function userScopedMilestoneCelebratedKey(userId: number): string {
   return withUserScope(MILESTONE_CELEBRATED_MAX_KEY, userId);
 }
 
+/** Normalized path (e.g. `session/42`) to open after sign-in when a deep link required auth. */
+export const PENDING_DEEP_LINK_PATH_KEY = "prodify_pending_deep_link_path_v1";
+
 export const ONBOARDING_COMPLETE_KEY = "prodify_onboarding_done_v1";
 export const PENDING_WEEKLY_GOAL_KEY = "prodify_pending_weekly_goal_v1";
 export const NOTIFICATION_INBOX_KEY = "prodify_notification_inbox_v1";

@@ -35,16 +35,16 @@ export type SessionStatsDto = {
     current_streak_days: number;
     hours_delta_vs_prior_period: number | null;
   };
-  trend: Array<{
+  trend: {
     label: string;
     sessions: number;
     seconds: number;
-  }>;
-  breakdown: Array<{
+  }[];
+  breakdown: {
     session_type: SessionType | string;
     sessions: number;
     percent: number;
-  }>;
+  }[];
   recent_sessions: SessionDto[];
   productivity_hint: string | null;
   productivity_hint_item?: {

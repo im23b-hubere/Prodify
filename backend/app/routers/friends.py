@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, or_, select
@@ -150,16 +150,20 @@ def friendship_status(
     db: Annotated[Session, Depends(get_db)],
 ):
     if user_id == current.id:
-        return FriendStatusPublic(status="self")
+        return FriendStatusPublic(status="self", username=current.username)
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    uname = target.username
     row = _any_pair_row(db, current.id, user_id)
     if row is None:
-        return FriendStatusPublic(status="none")
+        return FriendStatusPublic(status="none", username=uname)
     if row.status == FriendshipStatus.accepted:
-        return FriendStatusPublic(status="accepted")
-    return FriendStatusPublic(status="pending")
+        return FriendStatusPublic(status="accepted", username=uname)
+    direction: Literal["outgoing", "incoming"] = (
+        "outgoing" if row.user_id == current.id else "incoming"
+    )
+    return FriendStatusPublic(status="pending", username=uname, pending_direction=direction)
 
 
 @router.get("/incoming", response_model=list[FriendIncomingPublic])

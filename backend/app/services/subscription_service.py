@@ -11,6 +11,20 @@ from app.models import UserSubscription, utcnow
 from app.schemas import BillingSyncBody, EntitlementPublic
 
 
+def is_revenuecat_secret_configured(secret: str | None) -> bool:
+    candidate = (secret or "").strip()
+    if not candidate:
+        return False
+    lowered = candidate.lower()
+    if lowered in {"your-rc-api-key", "changeme", "change-me"}:
+        return False
+    if lowered.startswith("your-"):
+        return False
+    if "..." in candidate:
+        return False
+    return True
+
+
 def upsert_subscription(db: Session, user_id: int, body: BillingSyncBody) -> UserSubscription:
     row = db.scalar(select(UserSubscription).where(UserSubscription.user_id == user_id))
     if row is None:
@@ -57,7 +71,7 @@ def _verification_from_client_body(body: BillingSyncBody) -> BillingVerification
 
 
 def _verification_from_revenuecat(body: BillingSyncBody) -> BillingVerificationResult:
-    if not settings.revenuecat_secret_key:
+    if not is_revenuecat_secret_configured(settings.revenuecat_secret_key):
         # Never trust client-asserted entitlements on public / staging hosts.
         if settings.environment != "development":
             raise ValueError("RevenueCat secret is required when ENVIRONMENT is not development")

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,11 +8,22 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.dependencies_subscription import require_premium_or_trial
 from app.models import ProductionSession, User, utcnow
-from app.schemas import CoachDebriefPublic, GoalForecastPublic, OutputMetricsPublic, WeeklyReviewPublic
+from app.rate_limit import limiter
+from app.schemas import (
+    CoachDebriefPublic,
+    EntitlementPublic,
+    GoalForecastPublic,
+    OutputMetricsPublic,
+    StatsCoachChatBody,
+    StatsCoachChatPublic,
+    StatsCoachPublic,
+    WeeklyReviewPublic,
+)
 from app.services.ai_coach_service import build_session_coach_debrief
 from app.services.goal_forecast_service import build_goal_forecast
 from app.services.kpi_tracker import track_event, track_event_deduped
 from app.services.outcome_metrics_service import OutcomeMetricsService
+from app.services.stats_coach_service import build_stats_chat_reply, build_stats_coach
 from app.services.weekly_review_service import generate_weekly_review, get_current_weekly_review
 
 router = APIRouter(prefix="/outcomes", tags=["outcomes"])
@@ -20,7 +31,6 @@ router = APIRouter(prefix="/outcomes", tags=["outcomes"])
 
 @router.get("/weekly-review/current", response_model=WeeklyReviewPublic | None)
 def weekly_review_current(
-    _: Annotated[object, Depends(require_premium_or_trial)],
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -39,7 +49,6 @@ def weekly_review_current(
 
 @router.post("/weekly-review/generate", response_model=WeeklyReviewPublic)
 def weekly_review_generate(
-    _: Annotated[object, Depends(require_premium_or_trial)],
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -51,9 +60,9 @@ def weekly_review_generate(
 
 @router.get("/goal-forecast/current", response_model=GoalForecastPublic)
 def goal_forecast_current(
-    _: Annotated[object, Depends(require_premium_or_trial)],
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    _entitlement: Annotated[EntitlementPublic, Depends(require_premium_or_trial)],
 ):
     out = build_goal_forecast(db, current.id)
     day = utcnow().date().isoformat()
@@ -70,7 +79,6 @@ def goal_forecast_current(
 
 @router.get("/coach/session/{session_id}", response_model=CoachDebriefPublic)
 def coach_for_session(
-    _: Annotated[object, Depends(require_premium_or_trial)],
     session_id: int,
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -95,7 +103,6 @@ def coach_for_session(
 
 @router.get("/output-metrics/current", response_model=OutputMetricsPublic)
 def output_metrics_current(
-    _: Annotated[object, Depends(require_premium_or_trial)],
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -121,3 +128,49 @@ def output_metrics_current(
         output_increase=out.output_increase,
         baseline_tracks_30d=out.baseline_tracks_30d,
     )
+
+
+@router.get("/stats-coach/current", response_model=StatsCoachPublic)
+def stats_coach_current(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    out = build_stats_coach(db, current.id)
+    day = utcnow().date().isoformat()
+    if track_event_deduped(
+        db,
+        user_id=current.id,
+        bucket_key=f"stats_coach_seen:{day}",
+        event_name="stats_coach_seen",
+        props={"eligible": out.eligible},
+    ):
+        db.commit()
+    return out
+
+
+@router.post("/stats-coach/chat", response_model=StatsCoachChatPublic)
+@limiter.limit("20/minute")
+def stats_coach_chat(
+    request: Request,
+    body: StatsCoachChatBody,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    out = build_stats_chat_reply(
+        db,
+        current.id,
+        message=body.message,
+        preset_key=body.preset_key,
+        focus_area=body.focus_area,
+        plan_horizon=body.plan_horizon,
+        intensity=body.intensity,
+        history=body.history,
+    )
+    track_event(
+        db,
+        "stats_coach_chat",
+        current.id,
+        {"eligible": out.eligible, "preset_key": body.preset_key or "", "reason": out.reason or ""},
+    )
+    db.commit()
+    return out

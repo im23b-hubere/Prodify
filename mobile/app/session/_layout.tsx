@@ -15,7 +15,14 @@ export default function SessionStackLayout() {
         name="setup"
         options={{ presentation: "modal", animation: "slide_from_bottom" }}
       />
-      <Stack.Screen name="active" />
+      <Stack.Screen
+        name="active"
+        options={{
+          presentation: "fullScreenModal",
+          animation: "slide_from_bottom",
+          gestureDirection: "vertical",
+        }}
+      />
       <Stack.Screen name="complete" />
       <Stack.Screen name="[id]" />
     </Stack>

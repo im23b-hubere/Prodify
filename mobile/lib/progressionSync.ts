@@ -19,12 +19,7 @@ export async function syncProgression(
   const ttlMs = Math.max(0, opts.ttlMs ?? 15_000);
   const now = Date.now();
 
-  if (
-    !force &&
-    cached &&
-    cached.token === token &&
-    now - cached.atMs <= ttlMs
-  ) {
+  if (!force && cached && cached.token === token && now - cached.atMs <= ttlMs) {
     return cached.value;
   }
 

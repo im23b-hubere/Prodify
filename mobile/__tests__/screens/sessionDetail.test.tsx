@@ -47,7 +47,10 @@ jest.mock("react-i18next", () => ({
 }));
 
 jest.mock("../../context/AuthContext", () => ({
-  useAuth: () => ({ token: mockToken, user: { id: 1, username: "eric", created_at: "2026-04-20T00:00:00Z" } }),
+  useAuth: () => ({
+    token: mockToken,
+    user: { id: 1, username: "eric", created_at: "2026-04-20T00:00:00Z" },
+  }),
 }));
 
 jest.mock("../../lib/client", () => ({
@@ -123,4 +126,3 @@ describe("SessionDetailScreen", () => {
     expect(await findByText("sessionDetail.reactionsLoadFailed")).toBeTruthy();
   });
 });
-

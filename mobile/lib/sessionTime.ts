@@ -40,7 +40,7 @@ export function formatSessionListDate(iso: string | null | undefined): string {
   if (!iso?.trim()) return "—";
   const d = parseSessionDate(iso);
   if (!Number.isFinite(d.getTime())) return "—";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 /** Weekday letter for trend chart axis; safe for bad ISO day keys. */
@@ -49,4 +49,13 @@ export function weekdayLetterFromIsoDay(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`);
   if (!Number.isFinite(d.getTime())) return "?";
   return d.toLocaleDateString("en-US", { weekday: "short" });
+}
+
+/** Calendar day key YYYY-MM-DD → short local date for chart axis (e.g. 4/23). */
+export function formatIsoDateShortLocal(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "?";
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  if (!Number.isFinite(dt.getTime())) return "?";
+  return dt.toLocaleDateString("en-US", { month: "numeric", day: "numeric" });
 }

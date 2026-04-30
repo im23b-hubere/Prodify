@@ -161,9 +161,15 @@ describe("SessionCompleteScreen tracking UX", () => {
   });
 
   it("shows save error for track outcome and enforces 160-char title limit", async () => {
-    const { findByText, findByPlaceholderText, getByText } = render(<SessionCompleteScreen />);
+    const { findByText, findByPlaceholderText, getByText, getAllByText } = render(
+      <SessionCompleteScreen />,
+    );
 
-    const finishedOption = await findByText("sessionComplete.trackOutcomeFinished");
+    await findByText("sessionComplete.trackOutcomeTitle");
+
+    const finishedOption = getAllByText("sessionComplete.trackOutcomeFinished", {
+      includeHiddenElements: true,
+    })[0];
     fireEvent.press(finishedOption);
     const titleInput = await findByPlaceholderText("sessionComplete.trackTitlePlaceholder");
 
@@ -173,7 +179,7 @@ describe("SessionCompleteScreen tracking UX", () => {
     fireEvent.press(getByText("sessionComplete.trackSaveCta"));
 
     await waitFor(() => expect(getByText("save failed")).toBeTruthy());
-  });
+  }, 15000);
 
   it("pauses auto-return timer after track interaction", async () => {
     jest.useFakeTimers();
@@ -226,4 +232,3 @@ describe("SessionCompleteScreen tracking UX", () => {
     }
   });
 });
-

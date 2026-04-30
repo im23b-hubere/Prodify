@@ -1,5 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -11,11 +12,31 @@ type LegalDoc = "privacy" | "terms";
 
 type Block = { heading: string; body: string };
 
+function parseLegalBlocks(raw: unknown): Block[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((item): item is Block => {
+    if (!item || typeof item !== "object") return false;
+    const o = item as Record<string, unknown>;
+    return typeof o.heading === "string" && typeof o.body === "string";
+  });
+}
+
 export function LegalDocumentScreen({ doc }: { doc: LegalDoc }) {
   const { t } = useTranslation();
   const router = useRouter();
   const prefix = `legal.${doc}` as const;
-  const blocks = t(`${prefix}.blocks`, { returnObjects: true }) as Block[];
+  const blocks = useMemo(
+    () => parseLegalBlocks(t(`${prefix}.blocks`, { returnObjects: true })),
+    [t, prefix],
+  );
+
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/(tabs)/profile");
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -24,19 +45,23 @@ export function LegalDocumentScreen({ doc }: { doc: LegalDoc }) {
           title={t(`${prefix}.screenTitle`)}
           subtitle={t(`${prefix}.updated`)}
           actionLabel={t("common.back")}
-          onActionPress={() => router.replace("/(tabs)/profile")}
+          onActionPress={goBack}
         />
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.intro}>{t(`${prefix}.intro`)}</Text>
-        {Array.isArray(blocks)
-          ? blocks.map((b, i) => (
-              <View key={`${doc}-${i}`} style={styles.section}>
-                <Text style={styles.heading}>{b.heading}</Text>
-                <Text style={styles.body}>{b.body}</Text>
-              </View>
-            ))
-          : null}
+        {blocks.length > 0 ? (
+          blocks.map((b, i) => (
+            <View key={`${doc}-${i}`} style={styles.section}>
+              <Text accessibilityRole="header" style={styles.heading}>
+                {b.heading}
+              </Text>
+              <Text style={styles.body}>{b.body}</Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.missing}>{t("legal.documentBodyMissing")}</Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -51,12 +76,6 @@ const styles = StyleSheet.create({
   scroll: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
-  },
-  updated: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.caption,
-    marginBottom: spacing.md,
   },
   intro: {
     color: colors.textPrimary,
@@ -84,5 +103,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     ...typography.body,
     lineHeight: 22,
+  },
+  missing: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.body,
+    lineHeight: 22,
+    paddingVertical: spacing.md,
   },
 });

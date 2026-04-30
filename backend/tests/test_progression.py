@@ -76,6 +76,8 @@ def test_progression_me_applies_inactivity_decay_once(client):
     body = first.json()
     # 5 inactive days with 2 grace days => 3 * 12 XP decay = 36.
     assert body["xp_total"] == 214
+    assert body["decay_grace_days"] == 2
+    assert body["decay_xp_per_day"] == 12
 
     second = client.post("/progression/sync", headers={"Authorization": f"Bearer {token}"})
     assert second.status_code == 200
@@ -91,6 +93,12 @@ def test_progression_levels_catalog(client):
     assert levels[0]["level"] == 1
     assert levels[0]["xp_start"] == 0
     assert levels[0]["xp_end_exclusive"] > levels[0]["xp_start"]
+
+    deep = client.get("/progression/levels?max_level=25", headers={"Authorization": f"Bearer {token}"})
+    assert deep.status_code == 200
+    deep_levels = deep.json()
+    assert len(deep_levels) == 25
+    assert deep_levels[-1]["level"] == 25
 
 
 def test_xp_for_completed_session_respects_floor_and_rewards_duration():

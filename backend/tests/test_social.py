@@ -3,7 +3,7 @@ from datetime import timedelta
 from sqlalchemy import select
 
 from app.database import SessionLocal
-from app.models import BuddyRelationship, BuddyStatus, GrowthEvent, Streak, User, utcnow
+from app.models import BuddyRelationship, BuddyStatus, CheckinLog, GrowthEvent, Streak, User, utcnow
 
 
 def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
@@ -60,6 +60,27 @@ def test_checkin_plan_done_and_states(client):
     states = {s["state"] for s in d["day_states"]}
     assert "done" in states
     assert "open" in states or "missed" in states
+
+
+def test_session_stop_marks_daily_checkin_done(client):
+    a = _auth_headers(client, "social-checkin-auto@example.com", "social-checkin-auto")
+
+    started = client.post("/sessions/quick-start", headers=a, json={"session_type": "beat_making"})
+    assert started.status_code == 201
+    sid = started.json()["id"]
+
+    today_key = utcnow().date().isoformat()
+    with SessionLocal() as db:
+        before = db.scalar(select(CheckinLog).where(CheckinLog.user_id == 1, CheckinLog.day_key == today_key))
+        assert before is None
+
+    stopped = client.post("/sessions/stop", headers=a, json={"session_id": sid})
+    assert stopped.status_code == 200
+
+    with SessionLocal() as db:
+        after = db.scalar(select(CheckinLog).where(CheckinLog.user_id == 1, CheckinLog.day_key == today_key))
+        assert after is not None
+        assert after.state == "done"
 
 
 def test_commitment_status_behind_and_completed(client):

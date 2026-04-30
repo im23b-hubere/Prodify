@@ -360,7 +360,18 @@ export function SessionSetupForm({
       }, 800);
       if (mounted.current) setBusy(false);
     }
-  }, [busy, hydrated, mood, notes, onActiveSessionConflict, onStarted, selectedType, tags, token]);
+  }, [
+    busy,
+    hydrated,
+    mood,
+    notes,
+    onActiveSessionConflict,
+    onStarted,
+    selectedType,
+    t,
+    tags,
+    token,
+  ]);
 
   const suggested = useMemo(() => SUGGESTED_TAGS.filter((s) => !tags.includes(s)), [tags]);
 

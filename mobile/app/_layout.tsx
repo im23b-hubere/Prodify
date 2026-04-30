@@ -67,7 +67,16 @@ export default function RootLayout() {
               headerShown: false,
               contentStyle: { backgroundColor: colors.background },
             }}
-          />
+          >
+            <Stack.Screen
+              name="session/active"
+              options={{
+                presentation: "fullScreenModal",
+                animation: "slide_from_bottom",
+                gestureDirection: "vertical",
+              }}
+            />
+          </Stack>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

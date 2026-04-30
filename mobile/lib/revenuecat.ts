@@ -19,7 +19,7 @@ function getRevenueCatApiKey(): string | null {
 
 function configuredEntitlementId(): string {
   const raw = getExpoPublicRevenueCatEntitlementId();
-  if (!raw) return "premium";
+  if (!raw) return "app_access";
   return raw;
 }
 
@@ -65,12 +65,12 @@ export function getActiveEntitlement(info: CustomerInfo): PurchasesEntitlementIn
   const exact = info.entitlements.active[configured];
   if (exact) return exact;
 
-  // Fallback for projects that used a display/identifier like "Prodify Premium".
+  // Fallback for projects that used older entitlement identifiers.
   const entries = Object.entries(info.entitlements.active);
   const normalizedTarget = configured.toLowerCase().replace(/\s+/g, "");
   for (const [identifier, ent] of entries) {
     const norm = identifier.toLowerCase().replace(/\s+/g, "");
-    if (norm === normalizedTarget || norm.includes("premium")) {
+    if (norm === normalizedTarget || norm.includes("premium") || norm.includes("appaccess")) {
       return ent;
     }
   }

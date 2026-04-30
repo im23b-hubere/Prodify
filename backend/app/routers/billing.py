@@ -4,16 +4,17 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import User, UserSubscription
+from app.models import User
 from app.schemas import BillingSyncBody, EntitlementPublic
 from app.services.kpi_tracker import track_event
+from app.dependencies_subscription import resolve_effective_entitlement
 from app.services.subscription_service import (
+    is_revenuecat_secret_configured,
     sync_from_webhook_payload,
     to_entitlement_public,
     upsert_subscription,
@@ -37,8 +38,7 @@ def get_entitlement(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    row = db.scalar(select(UserSubscription).where(UserSubscription.user_id == current.id))
-    return to_entitlement_public(row)
+    return resolve_effective_entitlement(current, db)
 
 
 @router.post("/sync", response_model=EntitlementPublic)
@@ -51,7 +51,7 @@ def sync_entitlement(
         raise HTTPException(status_code=503, detail="Billing sync is temporarily disabled")
     if body.app_user_id != str(current.id):
         raise HTTPException(status_code=403, detail="app_user_id does not match authenticated user")
-    if settings.environment == "production" and not settings.revenuecat_secret_key:
+    if settings.environment == "production" and not is_revenuecat_secret_configured(settings.revenuecat_secret_key):
         raise HTTPException(status_code=503, detail="Billing verification is not configured")
 
     try:

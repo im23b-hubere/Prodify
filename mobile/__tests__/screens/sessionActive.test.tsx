@@ -110,4 +110,3 @@ describe("SessionActiveScreen error recovery", () => {
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
   });
 });
-

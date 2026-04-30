@@ -21,6 +21,7 @@ import { useFriendsDashboardData } from "../../features/friends/hooks/useFriends
 import { useFriendsScreenActions } from "../../features/friends/hooks/useFriendsScreenActions";
 import { useFriendsScreenState } from "../../features/friends/hooks/useFriendsScreenState";
 import { friendsScreenStyles as styles } from "../../features/friends/styles/friendsScreen.styles";
+import { hasPremiumAccess } from "../../lib/billing";
 import { prependNotification } from "../../lib/notificationInbox";
 import { sendLocalSocialNotification } from "../../lib/socialNotifications";
 import type { FriendActivityDto } from "../../types/friends";
@@ -284,7 +285,7 @@ export default function FriendsScreen() {
                 />
               </View>
             ) : null}
-            {entitlement?.entitlement !== "premium" && upsellMessage ? (
+            {!hasPremiumAccess(entitlement) && upsellMessage ? (
               <View style={styles.upsellCard}>
                 <Text style={styles.upsellTitle}>{t("friendsScreen.premiumBoost")}</Text>
                 <Text style={styles.userMeta}>{upsellMessage}</Text>

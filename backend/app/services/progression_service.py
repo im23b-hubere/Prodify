@@ -208,7 +208,14 @@ def grant_xp(
 
 def to_progression_public(row: UserProgression | None) -> ProgressionPublic:
     if row is None:
-        return ProgressionPublic(xp_total=0, current_level=1, xp_to_next_level=50, progress_percent=0.0)
+        return ProgressionPublic(
+            xp_total=0,
+            current_level=1,
+            xp_to_next_level=50,
+            progress_percent=0.0,
+            decay_grace_days=XP_DECAY_GRACE_DAYS,
+            decay_xp_per_day=XP_DECAY_PER_DAY,
+        )
     current_level_floor = _level_floor_xp(row.current_level)
     next_level_floor = _level_floor_xp(row.current_level + 1)
     progress_span = max(1, next_level_floor - current_level_floor)
@@ -219,4 +226,6 @@ def to_progression_public(row: UserProgression | None) -> ProgressionPublic:
         current_level=row.current_level,
         xp_to_next_level=row.xp_to_next_level,
         progress_percent=progress_percent,
+        decay_grace_days=XP_DECAY_GRACE_DAYS,
+        decay_xp_per_day=XP_DECAY_PER_DAY,
     )

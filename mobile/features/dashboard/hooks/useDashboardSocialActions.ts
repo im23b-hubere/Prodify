@@ -1,6 +1,14 @@
 import type { Href } from "expo-router";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { Alert } from "react-native";
 
 import { apiJson } from "../../../lib/client";
@@ -69,10 +77,6 @@ export function useDashboardSocialActions({
         tag === "collaborative"
           ? t("dashboard.identityRescueCollaborative")
           : t("dashboard.identityRescueDefault"),
-      checkin:
-        tag === "consistent_creator"
-          ? t("dashboard.identityCheckinConsistent")
-          : t("dashboard.identityCheckinDefault"),
       session:
         tag === "locked_in"
           ? t("dashboard.identitySessionLockedIn")
@@ -129,56 +133,6 @@ export function useDashboardSocialActions({
     setSocialActionBusy,
   ]);
 
-  const runCheckinNow = useCallback(async () => {
-    if (!token) return;
-    const confirmed = await new Promise<boolean>((resolve) => {
-      Alert.alert(
-        t("dashboard.logActivityConfirmTitle"),
-        t("dashboard.logActivityConfirmBody"),
-        [
-          { text: t("common.cancel"), style: "cancel", onPress: () => resolve(false) },
-          {
-            text: t("dashboard.nudgeCtaLogActivity"),
-            style: "default",
-            onPress: () => resolve(true),
-          },
-        ],
-      );
-    });
-    if (!confirmed) return;
-    setSocialActionBusy("checkin");
-    try {
-      await apiJson("/social/checkins/done", {
-        token,
-        method: "POST",
-        body: { note: t("dashboard.quickStudioUpdateNote") },
-      });
-      await loadSocial();
-      if (userId) {
-        await applyMomentumAction(userId, "checkin");
-      }
-      showSocialToast(identityFeedback.checkin);
-      await advancePrimaryNudge("checkin_missing");
-    } catch (e) {
-      Alert.alert(
-        t("dashboard.couldNotLogActivity"),
-        e instanceof Error ? e.message : t("common.tryAgain"),
-      );
-    } finally {
-      setSocialActionBusy(null);
-    }
-  }, [
-    token,
-    loadSocial,
-    showSocialToast,
-    advancePrimaryNudge,
-    userId,
-    identityFeedback.checkin,
-    t,
-    applyMomentumAction,
-    setSocialActionBusy,
-  ]);
-
   const runStartSessionNow = useCallback(
     async (category: string) => {
       if (!token) return;
@@ -223,21 +177,16 @@ export function useDashboardSocialActions({
       void runRescueNow();
       return;
     }
-    if (primaryNudge.actionKey === "checkin") {
-      void runCheckinNow();
-      return;
-    }
     if (primaryNudge.actionKey === "start_session") {
       void runStartSessionNow(primaryNudge.category);
       return;
     }
     router.push("/(tabs)/friends");
-  }, [primaryNudge, runRescueNow, runCheckinNow, runStartSessionNow, router]);
+  }, [primaryNudge, runRescueNow, runStartSessionNow, router]);
 
   return {
     socialToast,
     runRescueNow,
-    runCheckinNow,
     runStartSessionNow,
     runPrimaryAction,
   };

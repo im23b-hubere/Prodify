@@ -83,7 +83,28 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, periodParam, t]);
+  }, [
+    token,
+    periodParam,
+    t,
+    loadSeq,
+    mounted,
+    setLoading,
+    setError,
+    setLeaderboard,
+    setActivity,
+    setIncoming,
+    setBuddy,
+    setCheckin,
+    setChallenges,
+    setCommitment,
+    setRecap,
+    setEntitlement,
+    setFeedMetricsBySession,
+    setChallengeId,
+    setUpsellMessage,
+    setRefreshing,
+  ]);
 
   useFocusEffect(
     useCallback(() => {

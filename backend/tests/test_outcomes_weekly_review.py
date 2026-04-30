@@ -10,12 +10,6 @@ def _auth_headers(client, email: str, username: str, password: str = "strong-pas
 
 def test_weekly_review_generate_and_fetch(client):
     headers = _auth_headers(client, "review@example.com", "review-user")
-    sync = client.post(
-        "/billing/sync",
-        headers=headers,
-        json={"app_user_id": "1", "entitlement": "premium", "trial_active": True, "expires_at": None},
-    )
-    assert sync.status_code == 200
     generated = client.post("/outcomes/weekly-review/generate", headers=headers)
     assert generated.status_code == 200
     body = generated.json()
@@ -25,23 +19,26 @@ def test_weekly_review_generate_and_fetch(client):
     assert current.status_code == 200
 
 
+def test_weekly_review_generate_uses_ollama_when_available(client, monkeypatch):
+    from app.services import weekly_review_service
+
+    monkeypatch.setattr(
+        weekly_review_service,
+        "generate_weekly_coach_note",
+        lambda _prompt: "Stay consistent and protect your best hour this week.",
+    )
+
+    headers = _auth_headers(client, "review-ollama@example.com", "review-ollama-user")
+    generated = client.post("/outcomes/weekly-review/generate", headers=headers)
+    assert generated.status_code == 200
+    body = generated.json()
+    assert body["ai_feedback"] == "Stay consistent and protect your best hour this week."
+
+
 def test_output_metrics_current_returns_shape(client):
     headers = _auth_headers(client, "metrics@example.com", "metrics-user")
     me = client.get("/auth/me", headers=headers)
     assert me.status_code == 200
-    app_user_id = str(me.json()["id"])
-    sync = client.post(
-        "/billing/sync",
-        headers=headers,
-        json={
-            "app_user_id": app_user_id,
-            "entitlement": "premium",
-            "trial_active": True,
-            "expires_at": None,
-        },
-    )
-    assert sync.status_code == 200
-
     started = client.post("/sessions/start", headers=headers, json={"session_type": "beat_making"})
     assert started.status_code == 201
     sid = started.json()["id"]
@@ -62,3 +59,49 @@ def test_output_metrics_current_returns_shape(client):
     assert "avg_completion_time_days" in body
     assert "output_increase" in body
     assert "baseline_tracks_30d" in body
+
+
+def test_stats_coach_current_returns_shape(client):
+    headers = _auth_headers(client, "coach-stats@example.com", "coach-stats-user")
+    out = client.get("/outcomes/stats-coach/current", headers=headers)
+    assert out.status_code == 200
+    body = out.json()
+    assert "eligible" in body
+    assert "wins" in body
+    assert "risks" in body
+    assert "next_actions" in body
+    assert "coach_note" in body
+
+
+def test_stats_coach_chat_returns_reply_shape(client):
+    headers = _auth_headers(client, "coach-chat@example.com", "coach-chat-user")
+    out = client.post(
+        "/outcomes/stats-coach/chat",
+        headers=headers,
+        json={"message": "How should I improve this week?", "preset_key": "quick_1"},
+    )
+    assert out.status_code == 200
+    body = out.json()
+    assert "eligible" in body
+    assert "reply" in body
+    assert "suggested_prompts" in body
+
+
+def test_stats_coach_chat_rejects_blank_message(client):
+    headers = _auth_headers(client, "coach-chat-blank@example.com", "coach-chat-blank-user")
+    out = client.post(
+        "/outcomes/stats-coach/chat",
+        headers=headers,
+        json={"message": "   ", "preset_key": "quick_1"},
+    )
+    assert out.status_code == 422
+
+
+def test_stats_coach_chat_rejects_oversized_history_item(client):
+    headers = _auth_headers(client, "coach-chat-history@example.com", "coach-chat-history-user")
+    out = client.post(
+        "/outcomes/stats-coach/chat",
+        headers=headers,
+        json={"message": "Give me a plan", "history": ["x" * 241]},
+    )
+    assert out.status_code == 422

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,7 +8,12 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User, UserProgression
 from app.schemas import ProgressionLevelPublic, ProgressionPublic
-from app.services.progression_service import apply_inactivity_decay, level_catalog, to_progression_public
+from app.services.progression_service import (
+    XP_LEVEL_CATALOG_MAX,
+    apply_inactivity_decay,
+    level_catalog,
+    to_progression_public,
+)
 
 router = APIRouter(prefix="/progression", tags=["progression"])
 
@@ -40,8 +45,12 @@ def progression_unlocks(
 
 
 @router.get("/levels", response_model=list[ProgressionLevelPublic])
-def progression_levels():
-    return level_catalog()
+def progression_levels(
+    max_level: Annotated[int | None, Query(description="Last level row (>= default catalog).", ge=1, le=200)] = None,
+):
+    top = XP_LEVEL_CATALOG_MAX if max_level is None else int(max_level)
+    top = max(XP_LEVEL_CATALOG_MAX, min(200, top))
+    return level_catalog(top)
 
 
 @router.post("/sync", response_model=ProgressionPublic)

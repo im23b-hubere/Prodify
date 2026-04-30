@@ -25,4 +25,3 @@ export async function syncPendingWeeklyGoal(accessToken: string): Promise<boolea
   await AsyncStorage.removeItem(PENDING_WEEKLY_GOAL_KEY);
   return true;
 }
-

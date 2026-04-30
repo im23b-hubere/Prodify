@@ -110,4 +110,3 @@ describe("SessionSetupForm tag validation", () => {
     });
   });
 });
-

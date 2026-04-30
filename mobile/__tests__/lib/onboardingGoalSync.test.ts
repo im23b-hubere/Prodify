@@ -48,4 +48,3 @@ describe("onboardingGoalSync", () => {
     expect(AsyncStorage.removeItem).not.toHaveBeenCalled();
   });
 });
-

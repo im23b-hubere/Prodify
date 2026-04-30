@@ -4,6 +4,8 @@ import type {
   GoalForecastDto,
   OutputMetricsDto,
   ProgressionDto,
+  StatsCoachChatDto,
+  StatsCoachDto,
   WeeklyReviewDto,
 } from "../types/outcomes";
 
@@ -72,6 +74,8 @@ export function tryParseProgressionDto(raw: unknown): ProgressionDto | null {
     current_level: Number(raw.current_level ?? 1),
     xp_to_next_level: Number(raw.xp_to_next_level ?? 50),
     progress_percent: Number(raw.progress_percent ?? 0),
+    decay_grace_days: Number(raw.decay_grace_days ?? 2),
+    decay_xp_per_day: Number(raw.decay_xp_per_day ?? 12),
   };
 }
 
@@ -90,5 +94,32 @@ export function tryParseOutputMetricsDto(raw: unknown): OutputMetricsDto | null 
     consistency_improvement: Number(raw.consistency_improvement ?? 0),
     output_increase: Number(raw.output_increase ?? 0),
     baseline_tracks_30d: Number(raw.baseline_tracks_30d ?? 0),
+  };
+}
+
+export function tryParseStatsCoachDto(raw: unknown): StatsCoachDto | null {
+  if (!isObj(raw) || typeof raw.eligible !== "boolean") return null;
+  return {
+    eligible: raw.eligible,
+    reason: typeof raw.reason === "string" ? raw.reason : null,
+    days_active: Number(raw.days_active ?? 0),
+    sessions_completed: Number(raw.sessions_completed ?? 0),
+    total_seconds: Number(raw.total_seconds ?? 0),
+    wins: Array.isArray(raw.wins) ? raw.wins.map(String) : [],
+    risks: Array.isArray(raw.risks) ? raw.risks.map(String) : [],
+    next_actions: Array.isArray(raw.next_actions) ? raw.next_actions.map(String) : [],
+    coach_note: typeof raw.coach_note === "string" ? raw.coach_note : "",
+  };
+}
+
+export function tryParseStatsCoachChatDto(raw: unknown): StatsCoachChatDto | null {
+  if (!isObj(raw) || typeof raw.eligible !== "boolean") return null;
+  return {
+    eligible: raw.eligible,
+    reason: typeof raw.reason === "string" ? raw.reason : null,
+    reply: typeof raw.reply === "string" ? raw.reply : "",
+    suggested_prompts: Array.isArray(raw.suggested_prompts)
+      ? raw.suggested_prompts.map(String)
+      : [],
   };
 }

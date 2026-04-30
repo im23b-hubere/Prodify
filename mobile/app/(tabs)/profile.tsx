@@ -1,5 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
+import { manipulateAsync, SaveFormat, type Action } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
+import type { ImagePickerAsset } from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -34,6 +36,99 @@ function formatHours(totalSeconds: number): string {
   const h = totalSeconds / 3600;
   if (h < 10) return h.toFixed(1);
   return Math.round(h).toString();
+}
+
+function isHeicLikeAsset(uri: string, mimeType?: string | null): boolean {
+  const u = uri.toLowerCase();
+  if (u.includes(".heic") || u.includes(".heif")) return true;
+  const m = mimeType?.toLowerCase() ?? "";
+  return m.includes("heic") || m.includes("heif");
+}
+
+function extractProfilePictureErrorDetail(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  try {
+    const j = JSON.parse(trimmed) as { detail?: unknown };
+    if (typeof j.detail === "string") return j.detail;
+    if (Array.isArray(j.detail) && j.detail.length > 0) {
+      const first = j.detail[0] as { msg?: unknown } | undefined;
+      if (first && typeof first.msg === "string") return first.msg;
+    }
+  } catch {
+    /* plain text */
+  }
+  return trimmed;
+}
+
+function shouldOfferPictureFormatHint(detail: string): boolean {
+  const d = detail.toLowerCase();
+  return (
+    d.includes("unsupported") ||
+    d.includes("only image") ||
+    d.includes("empty") ||
+    d.includes("5mb") ||
+    d.includes("exceeds") ||
+    d.includes("too large") ||
+    d.includes("format")
+  );
+}
+
+const PROFILE_UPLOAD_MAX_SIDE = 1600;
+
+function pickedMimeType(asset: ImagePickerAsset): string | null {
+  if ("mimeType" in asset && typeof (asset as { mimeType?: unknown }).mimeType === "string") {
+    return (asset as { mimeType: string }).mimeType;
+  }
+  return null;
+}
+
+/** HEIC/WEBP → JPEG; very large images downscaled so uploads stay under server limits. */
+async function resolveProfilePictureUploadFile(
+  asset: ImagePickerAsset,
+  t: (key: string) => string,
+): Promise<{ uri: string; name: string; type: string }> {
+  const uri = asset.uri;
+  const mimeType = pickedMimeType(asset);
+  const maxSide =
+    typeof asset.width === "number" && typeof asset.height === "number"
+      ? Math.max(asset.width, asset.height)
+      : 0;
+
+  const heic = isHeicLikeAsset(uri, mimeType);
+  const webp =
+    Boolean(mimeType?.toLowerCase().includes("webp")) || uri.toLowerCase().includes(".webp");
+
+  const needsResize = maxSide > PROFILE_UPLOAD_MAX_SIDE;
+  const needsReencode = heic || webp;
+
+  if (!needsResize && !needsReencode) {
+    const ext = uri.toLowerCase().endsWith(".png") ? "png" : "jpg";
+    return {
+      uri,
+      name: `profile.${ext}`,
+      type: ext === "png" ? "image/png" : "image/jpeg",
+    };
+  }
+
+  const actions: Action[] = [];
+  if (needsResize && asset.width && asset.height) {
+    actions.push(
+      asset.width >= asset.height
+        ? { resize: { width: PROFILE_UPLOAD_MAX_SIDE } }
+        : { resize: { height: PROFILE_UPLOAD_MAX_SIDE } },
+    );
+  }
+
+  try {
+    const out = await manipulateAsync(uri, actions, {
+      compress: 0.85,
+      format: SaveFormat.JPEG,
+    });
+    return { uri: out.uri, name: "profile.jpg", type: "image/jpeg" };
+  } catch {
+    throw new Error(t("profile.pictureConvertFailed"));
+  }
 }
 
 function ProfileSkeleton() {
@@ -97,15 +192,38 @@ export default function ProfileScreen() {
       setError(null);
     }
     try {
-      const [rawS, m, rel] = await Promise.all([
+      const [sr, mr, relPr] = await Promise.allSettled([
         apiJson<unknown>("/sessions/stats?period=all", { token }),
         apiJson<StreakMilestonesDto>("/streak/milestones", { token }),
         apiJson<ReliabilityScoreDto>("/users/me/reliability", { token }).catch(() => null),
       ]);
       if (!mounted.current || seq !== loadSeq.current) return;
-      setStats(tryParseSessionStatsDto(rawS));
-      setMilestones(m);
+
+      if (sr.status === "fulfilled") {
+        setStats(tryParseSessionStatsDto(sr.value));
+      } else {
+        setStats(null);
+      }
+      if (mr.status === "fulfilled") {
+        setMilestones(mr.value);
+      } else {
+        setMilestones(null);
+      }
+      const rel = relPr.status === "fulfilled" ? relPr.value : null;
       setReliability(rel);
+
+      const errParts: string[] = [];
+      if (sr.status === "rejected") {
+        errParts.push(
+          sr.reason instanceof Error ? sr.reason.message : t("profile.errorLoadProfile"),
+        );
+      }
+      if (mr.status === "rejected") {
+        errParts.push(
+          mr.reason instanceof Error ? mr.reason.message : t("profile.errorLoadMilestones"),
+        );
+      }
+      setError(errParts.length ? errParts.join("\n") : null);
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
       setError(e instanceof Error ? e.message : t("profile.errorLoadProfile"));
@@ -125,12 +243,27 @@ export default function ProfileScreen() {
     }, [load]),
   );
 
-  async function logout() {
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-      () => undefined,
-    );
-    await signOut();
-    router.replace("/(auth)/login");
+  function confirmLogout() {
+    Alert.alert(t("profile.signOutConfirmTitle"), t("profile.signOutConfirmMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("profile.signOutConfirmButton"),
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+              () => undefined,
+            );
+            try {
+              await signOut();
+              router.replace("/(auth)/login");
+            } catch {
+              router.replace("/(auth)/login");
+            }
+          })();
+        },
+      },
+    ]);
   }
 
   function confirmDeleteAccount() {
@@ -228,12 +361,13 @@ export default function ProfileScreen() {
       if (result.canceled || !result.assets?.[0]?.uri) return;
 
       const asset = result.assets[0];
-      const ext = asset.uri.toLowerCase().endsWith(".png") ? "png" : "jpg";
+      const file = await resolveProfilePictureUploadFile(asset, t);
+
       const formData = new FormData();
       formData.append("file", {
-        uri: asset.uri,
-        name: `profile.${ext}`,
-        type: ext === "png" ? "image/png" : "image/jpeg",
+        uri: file.uri,
+        name: file.name,
+        type: file.type,
       } as unknown as Blob);
 
       const res = await fetch(`${API_BASE_URL}/users/me/profile-picture`, {
@@ -243,7 +377,14 @@ export default function ProfileScreen() {
       });
       if (!res.ok) {
         const txt = await res.text();
-        throw new Error(txt || t("profile.pictureUploadFailed"));
+        const detail = extractProfilePictureErrorDetail(txt) || t("profile.pictureUploadFailed");
+        const userMsg = shouldOfferPictureFormatHint(detail)
+          ? t("profile.pictureUploadDetailWithHint", {
+              detail,
+              hint: t("profile.pictureFormatHelp"),
+            })
+          : detail;
+        throw new Error(userMsg);
       }
       await refreshUser().catch(() => undefined);
       setAvatarVersion((prev) => prev + 1);
@@ -274,7 +415,7 @@ export default function ProfileScreen() {
         <ScreenHeader
           title={t("tabs.profile")}
           subtitle={t("profile.settingsTitle")}
-          actionLabel={t("common.back")}
+          actionLabel={t("tabs.dashboard")}
           onActionPress={() => router.push("/(tabs)/dashboard")}
         />
         <View style={styles.profileHero}>
@@ -285,7 +426,10 @@ export default function ProfileScreen() {
           >
             <View style={styles.avatar}>
               {avatarUri ? (
-                <Image source={{ uri: avatarUriWithVersion ?? avatarUri }} style={styles.avatarImage} />
+                <Image
+                  source={{ uri: avatarUriWithVersion ?? avatarUri }}
+                  style={styles.avatarImage}
+                />
               ) : (
                 <Text style={styles.avatarText}>
                   {user?.username?.slice(0, 2).toUpperCase() ?? t("profile.defaultInitials")}
@@ -346,8 +490,8 @@ export default function ProfileScreen() {
             </Text>
             <Text style={styles.reliabilityHint}>
               {t("profile.reliabilityHint", {
-                consistency: reliability.consistency_90d,
-                completion: reliability.completion_rate_90d,
+                consistency: Math.round(Number(reliability.consistency_90d) || 0),
+                completion: Math.round(Number(reliability.completion_rate_90d) || 0),
               })}
             </Text>
           </View>
@@ -363,6 +507,7 @@ export default function ProfileScreen() {
         {!showInitialLoading && milestones ? (
           <ScrollView
             horizontal
+            nestedScrollEnabled
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.badgesRow}
           >
@@ -372,7 +517,7 @@ export default function ProfileScreen() {
           </ScrollView>
         ) : null}
 
-        {!showInitialLoading && !milestones && !error ? (
+        {!showInitialLoading && !milestones && (!error || summary) ? (
           <Text style={styles.muted}>{t("profile.milestonesUnavailable")}</Text>
         ) : null}
 
@@ -416,7 +561,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={t("profile.manageNotifications")}
             style={({ pressed }) => [styles.legalRow, pressed && styles.pressed]}
-            onPress={() => router.push({ pathname: "/notifications", params: { source: "profile" } })}
+            onPress={() =>
+              router.push({ pathname: "/notifications", params: { source: "profile" } })
+            }
           >
             <Text style={styles.legalRowText}>{t("profile.manageNotifications")}</Text>
             <Text style={styles.legalRowChevron}>›</Text>
@@ -461,7 +608,7 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={t("profile.signOut")}
             style={({ pressed }) => [styles.outlineBtn, pressed && styles.pressed]}
-            onPress={logout}
+            onPress={confirmLogout}
           >
             <Text style={styles.outlineBtnText}>{t("profile.signOut")}</Text>
           </Pressable>

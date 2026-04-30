@@ -18,6 +18,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -26,6 +27,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionInsightSections } from "../../components/session/SessionInsightSections";
+import { SessionShareImageModal } from "../../components/session/SessionShareImageModal";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
@@ -155,6 +157,7 @@ export default function SessionDetailScreen() {
   const [reactionBusyEmoji, setReactionBusyEmoji] = useState<string | null>(null);
   const [newCommentId, setNewCommentId] = useState<number | null>(null);
   const [commentSentPulse, setCommentSentPulse] = useState(false);
+  const [sessionImageShareOpen, setSessionImageShareOpen] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -408,6 +411,14 @@ export default function SessionDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      <SessionShareImageModal
+        visible={sessionImageShareOpen}
+        onClose={() => setSessionImageShareOpen(false)}
+        session={session}
+        insights={insights}
+        focusScore={session.focus_score ?? null}
+        producerName={isOwnSession ? user?.username : producerDisplayName}
+      />
       <KeyboardAvoidingView
         style={styles.keyboardWrap}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -441,6 +452,30 @@ export default function SessionDetailScreen() {
                 ? ` – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
                 : ""}
             </Text>
+            <Pressable
+              style={styles.shareSessionBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t("sessionDetail.shareSessionImage")}
+              onPress={() => {
+                setSessionImageShareOpen(true);
+              }}
+            >
+              <Text style={styles.shareSessionBtnText}>{t("sessionDetail.shareSessionImage")}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.shareSessionBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t("sessionDetail.shareSession")}
+              onPress={() => {
+                const message = t("sessionDetail.shareSessionMessage", {
+                  type: sessionTypeLabel(session.session_type, t),
+                  duration: durationLabel,
+                });
+                Share.share({ message }).catch(() => undefined);
+              }}
+            >
+              <Text style={styles.shareSessionBtnText}>{t("sessionDetail.shareSession")}</Text>
+            </Pressable>
             {!isOwnSession ? (
               <>
                 <Text style={styles.friendReadOnlyHint}>
@@ -472,7 +507,8 @@ export default function SessionDetailScreen() {
               insights={insights}
               producerName={isOwnSession ? user?.username : producerDisplayName}
             />
-          ) : session.duration_seconds != null && session.duration_seconds < INSIGHTS_MIN_SECONDS ? (
+          ) : session.duration_seconds != null &&
+            session.duration_seconds < INSIGHTS_MIN_SECONDS ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t("sessionInsights.productivity")}</Text>
               <Text style={styles.mutedNote}>
@@ -698,6 +734,21 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   heroMeta: { color: colors.textSecondary, marginTop: spacing.sm, ...typography.caption },
+  shareSessionBtn: {
+    marginTop: spacing.sm,
+    alignSelf: "flex-start",
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  shareSessionBtnText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   friendReadOnlyHint: {
     marginTop: spacing.sm,
     color: colors.textSecondary,

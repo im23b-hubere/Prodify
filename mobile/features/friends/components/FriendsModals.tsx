@@ -1,9 +1,11 @@
+import type { TFunction } from "i18next";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
 import { fontFamily } from "../../../constants/fonts";
 import type { FriendLeaderboardEntryDto, SocialReactionUserDto } from "../../../types/friends";
+import { challengeKindLabel } from "../utils/friendsScreenFormat";
 
 type Props = {
   t: (key: string, options?: Record<string, unknown>) => string;
@@ -261,7 +263,7 @@ export function FriendsModals({
                   <Text
                     style={[styles.toggleText, challengeKind === kind && styles.toggleTextActive]}
                   >
-                    {kind}
+                    {challengeKindLabel(kind, t as TFunction)}
                   </Text>
                 </Pressable>
               ))}

@@ -46,7 +46,10 @@ class Settings(BaseSettings):
     revenuecat_webhook_auth: str | None = None
     webhook_secret: str = "change_me_in_production"
     revenuecat_default_offering: str = "default"
-    premium_entitlement_name: str = "premium"
+    premium_entitlement_name: str = "app_access"
+    # Optional emergency fallback trial before RevenueCat rows exist: grant access for N days after signup.
+    # Keep at 0 for strict paid-access behavior (recommended for production).
+    onboarding_trial_days: int = 0
     legal_privacy_url: str = "https://prodify.app/privacy"
     legal_terms_url: str = "https://prodify.app/terms"
     legal_effective_date: str = "2026-04-20"
@@ -55,6 +58,10 @@ class Settings(BaseSettings):
     feature_flag_billing_sync_enabled: bool = True
     feature_flag_push_notifications_enabled: bool = True
     feature_flag_smart_nudges_enabled: bool = True
+    # Local Ollama text generation for premium coaching surfaces (optional).
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "llama3.1:8b"
+    ollama_timeout_seconds: float = 20.0
     # Comma-separated user IDs allowed to read internal KPI endpoints.
     kpi_admin_user_ids: list[int] = []
     # Comma-separated trusted reverse-proxy IPs/CIDRs for x-forwarded-for.

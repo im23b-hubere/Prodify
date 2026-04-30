@@ -8,11 +8,11 @@ import { useTranslation } from "react-i18next";
 import {
   Animated,
   Easing,
+  FlatList,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -20,10 +20,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ErrorState } from "../../components/states/ErrorState";
-import { OutputMetricsShareModal } from "../../components/outcomes/OutputMetricsShareModal";
 import { AppCard } from "../../components/ui/AppCard";
 import { StatCard } from "../../components/ui/StatCard";
-import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { fontFamily } from "../../constants/fonts";
@@ -31,21 +29,22 @@ import { colors, motion, radii, spacing, typography, ui } from "../../constants/
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
-import { formatSessionListDate, weekdayLetterFromIsoDay } from "../../lib/sessionTime";
+import {
+  formatIsoDateShortLocal,
+  formatSessionListDate,
+  weekdayLetterFromIsoDay,
+} from "../../lib/sessionTime";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
 import { syncProgression } from "../../lib/progressionSync";
-import {
-  tryParseGoalForecastDto,
-  tryParseOutputMetricsDto,
-} from "../../lib/outcomesDto";
+import { tryParseGoalForecastDto, tryParseStatsCoachDto } from "../../lib/outcomesDto";
 import {
   tryParseHeatmapDays,
   tryParsePersonalRecords,
   tryParseSessionStatsDto,
 } from "../../lib/statsDto";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
-import type { GoalForecastDto, OutputMetricsDto, ProgressionDto } from "../../types/outcomes";
+import type { GoalForecastDto, ProgressionDto, StatsCoachDto } from "../../types/outcomes";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 type PersonalRecord = {
@@ -58,8 +57,6 @@ type PersonalRecord = {
 
 const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
 const CALENDAR_DAY_MS = 24 * 60 * 60 * 1000;
-
-type CalendarMode = "week" | "month";
 type TTranslate = TFunction;
 type DecoratedRecord = PersonalRecord & { score: number; isFresh: boolean };
 
@@ -209,21 +206,23 @@ function StatsSkeleton() {
 }
 
 function SessionsPerDayChart({ data }: { data: BarPoint[] }) {
+  if (data.length === 0) return null;
   const maxY = Math.max(1, ...data.map((d) => d.y));
   const todayIso = new Date().toISOString().slice(0, 10);
 
   return (
-    <ScrollView
+    <FlatList
       horizontal
       nestedScrollEnabled={Platform.OS === "android"}
+      data={data}
+      keyExtractor={(d, i) => `${d.label}-${i}`}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.barScrollContent}
-    >
-      {data.map((d, i) => {
+      renderItem={({ item: d }) => {
         const h = Math.max(3, (d.y / maxY) * BAR_CHART_HEIGHT);
         const isToday = d.label === todayIso;
         return (
-          <View key={`${d.label}-${i}`} style={styles.barColumn}>
+          <View style={styles.barColumn}>
             <View style={styles.barTrack}>
               <LinearGradient
                 colors={isToday ? ["#ff8f66", colors.primary] : ["#ff5a1f", colors.primary]}
@@ -236,8 +235,8 @@ function SessionsPerDayChart({ data }: { data: BarPoint[] }) {
             <Text style={styles.barCount}>{d.y}</Text>
           </View>
         );
-      })}
-    </ScrollView>
+      }}
+    />
   );
 }
 
@@ -263,16 +262,12 @@ export default function StatsScreen() {
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
-  const [outputMetrics, setOutputMetrics] = useState<OutputMetricsDto | null>(null);
+  const [statsCoach, setStatsCoach] = useState<StatsCoachDto | null>(null);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
-  const [hasActiveSession, setHasActiveSession] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
-  const [calendarMode, setCalendarMode] = useState<CalendarMode>("week");
-  const [weekOffset, setWeekOffset] = useState(0);
-  const [monthOffset, setMonthOffset] = useState(0);
-  const [outputShareOpen, setOutputShareOpen] = useState(false);
+  const [showAdvancedInsights, setShowAdvancedInsights] = useState(false);
   const loadSeq = useRef(0);
   const mounted = useRef(true);
+  const initialFocusLoadDone = useRef(false);
   const contentFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -286,76 +281,74 @@ export default function StatsScreen() {
   const periodParam =
     filter.period === "week" ? "week" : filter.period === "month" ? "month" : "all";
 
-  const loadStats = useCallback(async (opts: { forceProgressionSync?: boolean } = {}) => {
-    const forceProgressionSync = Boolean(opts.forceProgressionSync);
-    if (!token) return;
-    const seq = ++loadSeq.current;
-    if (mounted.current) setLoading(true);
-    if (mounted.current) setError(null);
-    try {
-      const [rawStats, rawHm, rawRec, progressionRaw, outputMetricsRaw, activeSessionRaw] =
-        await Promise.all([
-        apiJson<unknown>(`/sessions/stats?period=${periodParam}`, { token }),
-        apiJson<unknown>(`/stats/heatmap`, { token }),
-        apiJson<unknown>(`/stats/records`, { token }),
-        syncProgression(token, { force: forceProgressionSync }).catch(() => null),
-        apiJson<unknown>("/outcomes/output-metrics/current", { token }).catch(() => null),
-        apiJson<unknown>("/sessions/active", { token }).catch(() => null),
-      ]);
-      const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
-        token,
-      }).catch(() => null);
-      if (!mounted.current || seq !== loadSeq.current) return;
-      const parsed = tryParseSessionStatsDto(rawStats);
-      if (!parsed) {
-        debugLog("stats", "invalid_stats_payload", { period: periodParam });
-        if (mounted.current) {
-          setStats(null);
-          setHeatmapDays([]);
-          setRecords([]);
-          setProgression(null);
-          setHasActiveSession(false);
-          setActiveSessionId(null);
-          setError(t("stats.invalidResponse"));
+  const loadStats = useCallback(
+    async (opts: { forceProgressionSync?: boolean } = {}) => {
+      const forceProgressionSync = Boolean(opts.forceProgressionSync);
+      if (!token) return;
+      const seq = ++loadSeq.current;
+      if (mounted.current) setLoading(true);
+      if (mounted.current) setError(null);
+      try {
+        const [rawStats, rawHm, rawRec] = await Promise.all([
+          apiJson<unknown>(`/sessions/stats?period=${periodParam}`, { token }),
+          apiJson<unknown>(`/stats/heatmap`, { token }),
+          apiJson<unknown>(`/stats/records`, { token }),
+        ]);
+        if (!mounted.current || seq !== loadSeq.current) return;
+        const parsed = tryParseSessionStatsDto(rawStats);
+        if (!parsed) {
+          debugLog("stats", "invalid_stats_payload", { period: periodParam });
+          if (mounted.current) {
+            setStats(null);
+            setHeatmapDays([]);
+            setRecords([]);
+            setProgression(null);
+            setError(t("stats.invalidResponse"));
+          }
+          return;
         }
-        return;
-      }
-      if (mounted.current) {
-        setStats(parsed);
-        setHeatmapDays(tryParseHeatmapDays(rawHm));
-        setRecords(tryParsePersonalRecords(rawRec));
-        setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
-        setOutputMetrics(outputMetricsRaw ? tryParseOutputMetricsDto(outputMetricsRaw) : null);
-        setProgression(progressionRaw);
-        const parsedActiveSessionId =
-          activeSessionRaw &&
-          typeof activeSessionRaw === "object" &&
-          !Array.isArray(activeSessionRaw) &&
-          typeof (activeSessionRaw as { id?: unknown }).id === "number" &&
-          Number.isFinite((activeSessionRaw as { id: number }).id) &&
-          (activeSessionRaw as { id: number }).id > 0
-            ? (activeSessionRaw as { id: number }).id
-            : null;
-        setHasActiveSession(parsedActiveSessionId != null);
-        setActiveSessionId(parsedActiveSessionId);
-      }
-    } catch (e) {
-      if (!mounted.current || seq !== loadSeq.current) return;
-      const msg = e instanceof Error ? e.message : t("stats.loadFailed");
-      debugLog("stats", "stats_fetch_failed", { period: periodParam, message: msg });
-      if (mounted.current) setError(msg);
-    } finally {
-      if (!mounted.current || seq !== loadSeq.current) return;
-      setLoading(false);
-    }
-  }, [periodParam, token, t]);
+        if (mounted.current) {
+          setStats(parsed);
+          setHeatmapDays(tryParseHeatmapDays(rawHm));
+          setRecords(tryParsePersonalRecords(rawRec));
+        }
+        // Show core stats first, then hydrate secondary sections.
+        if (mounted.current && seq === loadSeq.current) setLoading(false);
 
-  useEffect(() => {
-    loadStats().catch((e) => setError(e instanceof Error ? e.message : t("stats.loadFailed")));
-  }, [loadStats, t]);
+        const [progressionRes, statsCoachRes, forecastRes] = await Promise.allSettled([
+          syncProgression(token, { force: forceProgressionSync }),
+          apiJson<unknown>("/outcomes/stats-coach/current", { token, timeoutMs: 30_000 }),
+          apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
+        ]);
+        if (!mounted.current || seq !== loadSeq.current) return;
+
+        const progressionRaw = progressionRes.status === "fulfilled" ? progressionRes.value : null;
+        const statsCoachRaw = statsCoachRes.status === "fulfilled" ? statsCoachRes.value : null;
+        const forecastRaw = forecastRes.status === "fulfilled" ? forecastRes.value : null;
+
+        setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+        setStatsCoach(statsCoachRaw ? tryParseStatsCoachDto(statsCoachRaw) : null);
+        setProgression(progressionRaw);
+      } catch (e) {
+        if (!mounted.current || seq !== loadSeq.current) return;
+        const msg = e instanceof Error ? e.message : t("stats.loadFailed");
+        debugLog("stats", "stats_fetch_failed", { period: periodParam, message: msg });
+        if (mounted.current) setError(msg);
+      } finally {
+        if (!mounted.current || seq !== loadSeq.current) return;
+        setLoading(false);
+      }
+    },
+    [periodParam, token, t],
+  );
 
   useFocusEffect(
     useCallback(() => {
+      if (initialFocusLoadDone.current) {
+        loadStats().catch(() => undefined);
+        return;
+      }
+      initialFocusLoadDone.current = true;
       loadStats().catch(() => undefined);
     }, [loadStats]),
   );
@@ -394,78 +387,6 @@ export default function StatsScreen() {
     };
   }, [stats]);
 
-  const heatmapByDate = useMemo(() => {
-    const map = new Map<string, HeatmapDay>();
-    for (const day of heatmapDays) map.set(day.date, day);
-    return map;
-  }, [heatmapDays]);
-
-  const weekCalendarDays = useMemo(() => {
-    const today = new Date();
-    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() - weekOffset * 7);
-    const start = new Date(end.getTime() - 6 * CALENDAR_DAY_MS);
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(start.getTime() + i * CALENDAR_DAY_MS);
-      const key = localDateKey(date);
-      const data = heatmapByDate.get(key);
-      return {
-        key,
-        date,
-        dayName: date.toLocaleDateString(undefined, { weekday: "short" }),
-        dayNum: date.getDate(),
-        seconds: data?.seconds ?? 0,
-        intensity: data?.intensity ?? 0,
-      };
-    });
-  }, [heatmapByDate, weekOffset]);
-
-  const monthCalendarDays = useMemo(() => {
-    const base = new Date();
-    const monthDate = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
-    const year = monthDate.getFullYear();
-    const month = monthDate.getMonth();
-    const monthLabel = monthDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    const firstWeekday = (monthDate.getDay() + 6) % 7; // Monday=0
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const entries: {
-      key: string;
-      dayNum: number | null;
-      seconds: number;
-      intensity: number;
-      inMonth: boolean;
-    }[] = [];
-
-    for (let i = 0; i < firstWeekday; i += 1) {
-      entries.push({ key: `blank-${i}`, dayNum: null, seconds: 0, intensity: 0, inMonth: false });
-    }
-
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      const d = new Date(year, month, day);
-      const key = localDateKey(d);
-      const info = heatmapByDate.get(key);
-      entries.push({
-        key,
-        dayNum: day,
-        seconds: info?.seconds ?? 0,
-        intensity: info?.intensity ?? 0,
-        inMonth: true,
-      });
-    }
-
-    while (entries.length % 7 !== 0) {
-      entries.push({
-        key: `tail-${entries.length}`,
-        dayNum: null,
-        seconds: 0,
-        intensity: 0,
-        inMonth: false,
-      });
-    }
-
-    return { monthLabel, entries };
-  }, [heatmapByDate, monthOffset]);
-
   const chartData = useMemo((): BarPoint[] => {
     const points = stats?.trend ?? [];
     if (filter.period === "week") {
@@ -490,9 +411,9 @@ export default function StatsScreen() {
         };
       });
     }
-    if (points.length === 0) return [{ x: "—", y: 0, label: "-" }];
+    if (points.length === 0) return [];
     return points.map((p) => ({
-      x: weekdayLetterFromIsoDay(p.label),
+      x: formatIsoDateShortLocal(p.label),
       y: Number.isFinite(p.sessions) && p.sessions >= 0 ? p.sessions : 0,
       label: p.label,
     }));
@@ -556,6 +477,52 @@ export default function StatsScreen() {
     const daysWith = new Set(stats.trend.map((t) => t.label).filter(Boolean)).size;
     return { daysWith, goal: 7 };
   }, [filter.period, stats?.trend]);
+  const forecastRiskKey = forecast
+    ? forecast.risk_level === "on_track"
+      ? "stats.forecastRiskOnTrack"
+      : forecast.risk_level === "at_risk"
+        ? "stats.forecastRiskAtRisk"
+        : "stats.forecastRiskOffTrack"
+    : null;
+  const forecastProgressPercent = useMemo(() => {
+    if (!forecast || forecast.target_sessions <= 0) return 0;
+    return Math.max(
+      0,
+      Math.min(100, (forecast.completed_sessions / forecast.target_sessions) * 100),
+    );
+  }, [forecast]);
+
+  const statCarouselItems = useMemo(
+    () => [
+      {
+        key: "hours",
+        label: t("stats.totalHours"),
+        value: summary.hours,
+        sublabel:
+          summary.delta != null
+            ? t("stats.vsPrior", {
+                sign: summary.delta >= 0 ? "+" : "",
+                hours: summary.delta,
+              })
+            : undefined,
+        subPositive: summary.delta == null || summary.delta >= 0,
+      },
+      {
+        key: "sessions",
+        label: t("stats.sessions"),
+        value: summary.sessions,
+        subPositive: true,
+      },
+      {
+        key: "streak",
+        label: t("stats.currentStreak"),
+        value: `🔥 ${summary.streak}`,
+        sublabel: `${t("stats.bestStreakSub", { days: summary.bestStreak })}\n${t("stats.streakScopeNote")}`,
+        subPositive: true,
+      },
+    ],
+    [summary, t],
+  );
 
   const renderRecent = useCallback(
     ({ item }: { item: SessionDto }) => {
@@ -601,7 +568,7 @@ export default function StatsScreen() {
         <View style={styles.headerRow}>
           <ScreenHeader
             title={t("stats.title")}
-            subtitle={t("stats.filterAll")}
+            subtitle={filter.label}
             actionLabel={t("sessionFeedback.backToDashboard")}
             onActionPress={() => router.push("/(tabs)/dashboard")}
           />
@@ -625,25 +592,7 @@ export default function StatsScreen() {
               </Pressable>
             ))}
           </View>
-        </View>
-        <View style={styles.quickActions}>
-          <PrimaryButton
-            label={hasActiveSession ? t("sessionActive.inProgress") : t("dashboard.startSession")}
-            onPress={() => {
-              if (hasActiveSession && activeSessionId != null) {
-                router.push({
-                  pathname: "/session/active",
-                  params: { id: String(activeSessionId), source: "stats" },
-                });
-                return;
-              }
-              router.push("/session/setup");
-            }}
-          />
-          <SecondaryButton
-            label={t("sessionFeedback.backToDashboard")}
-            onPress={() => router.push("/(tabs)/dashboard")}
-          />
+          <Text style={styles.filterHint}>{t("stats.sessionFilterScope")}</Text>
         </View>
         {showInitialLoading ? <StatsSkeleton /> : null}
         {showInlineLoading ? (
@@ -661,434 +610,373 @@ export default function StatsScreen() {
         ) : null}
         {!showInitialLoading ? (
           <Animated.View style={[styles.contentFadeWrap, { opacity: contentFade }]}>
-        {!showInitialLoading ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={172}
-          decelerationRate="fast"
-          contentContainerStyle={styles.cardRow}
-        >
-          <StatCard
-            label={t("stats.totalHours")}
-            value={summary.hours}
-            sublabel={
-              summary.delta != null
-                ? t("stats.vsPrior", {
-                    sign: summary.delta >= 0 ? "+" : "",
-                    hours: summary.delta,
-                  })
-                : undefined
-            }
-            subPositive={summary.delta == null || summary.delta >= 0}
-          />
-          <StatCard label={t("stats.sessions")} value={summary.sessions} />
-          <StatCard
-            label={t("stats.currentStreak")}
-            value={`🔥 ${summary.streak}`}
-            sublabel={t("stats.bestStreakSub", { days: summary.bestStreak })}
-          />
-        </ScrollView>
-        ) : null}
-
-        {!showInitialLoading && outputMetrics ? (
-          <AppCard style={styles.outcomeCard}>
-            <Text style={styles.cardTitle}>{t("stats.outputMetricsTitle")}</Text>
-            <View style={styles.beforeAfterRow}>
-              <View style={styles.beforeAfterCell}>
-                <Text style={styles.beforeAfterKicker}>{t("stats.beforeProdifyLabel")}</Text>
-                <Text style={styles.beforeAfterValue}>{outputMetrics.baseline_tracks_30d}</Text>
-              </View>
-              <Text style={styles.beforeAfterArrow}>→</Text>
-              <View style={[styles.beforeAfterCell, styles.beforeAfterCellHighlight]}>
-                <Text style={styles.beforeAfterKicker}>{t("stats.nowLabel")}</Text>
-                <Text style={styles.beforeAfterValue}>{outputMetrics.tracks_finished_30d}</Text>
-              </View>
-            </View>
-            <View style={styles.outcomeGrid}>
-              <View style={styles.outcomeStatBlock}>
-                <Text style={styles.outcomeValue}>{outputMetrics.tracks_finished_30d}</Text>
-                <Text style={styles.outcomeLabel}>{t("stats.finishedTracks30d")}</Text>
-                <Text style={styles.outcomeMeta}>
-                  {t("stats.vsLastMonthPct", {
-                    sign: outputMetrics.vs_previous_month >= 0 ? "+" : "",
-                    pct: Math.round(outputMetrics.vs_previous_month),
-                  })}
-                </Text>
-              </View>
-              <View style={styles.outcomeStatBlock}>
-                <Text style={styles.outcomeValue}>{outputMetrics.avg_completion_time_days}d</Text>
-                <Text style={styles.outcomeLabel}>{t("stats.avgCompletionTime")}</Text>
-                <Text style={styles.outcomeMeta}>
-                  {t(
-                    outputMetrics.productivity_trend === "up"
-                      ? "stats.productivityTrendUp"
-                      : outputMetrics.productivity_trend === "down"
-                        ? "stats.productivityTrendDown"
-                        : "stats.productivityTrendStable",
-                  )}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.outcomeInsight}>
-              <Text style={styles.outcomeInsightText}>
-                {t("stats.sinceProdify", { days: outputMetrics.days_using })}
-              </Text>
-              <Text style={styles.outcomeInsightText}>
-                {t("stats.completedTracksCount", { count: outputMetrics.completed_tracks })}
-              </Text>
-              <Text style={styles.outcomeInsightText}>
-                {t("stats.consistencyImprovement", {
-                  sign: outputMetrics.consistency_improvement >= 0 ? "+" : "",
-                  pct: Math.round(outputMetrics.consistency_improvement),
-                })}
-              </Text>
-              <Text style={styles.outcomeInsightText}>
-                {t("stats.outputIncrease", {
-                  sign: outputMetrics.output_increase >= 0 ? "+" : "",
-                  pct: Math.round(outputMetrics.output_increase),
-                })}
-              </Text>
-            </View>
-            <View style={styles.outcomeShareRow}>
-              <PrimaryButton
-                label={t("stats.shareProducerStatsCta")}
-                onPress={() => {
-                  setOutputShareOpen(true);
-                }}
-              />
-              <SecondaryButton
-                label={t("stats.shareProducerStatsTextCta")}
-                onPress={() => {
-                  const msg = t("stats.shareProducerStatsText", {
-                    current: outputMetrics.tracks_finished_30d,
-                    baseline: outputMetrics.baseline_tracks_30d,
-                    growthSign: outputMetrics.output_increase >= 0 ? "+" : "",
-                    growth: Math.round(outputMetrics.output_increase),
-                    consistencySign: outputMetrics.consistency_improvement >= 0 ? "+" : "",
-                    consistency: Math.round(outputMetrics.consistency_improvement),
-                  });
-                  Share.share({ message: msg }).catch(() => undefined);
-                }}
-              />
-              <Text style={styles.outcomeShareHint}>{t("stats.shareQuickHint")}</Text>
-            </View>
-          </AppCard>
-        ) : null}
-
-        {!showInitialLoading && progression ? (
-          <AppCard style={styles.progressionCard}>
-            <View style={styles.progressionTopRow}>
-              <Text style={styles.cardTitle}>
-                {t("progression.levelTitle", { level: progression.current_level })}
-              </Text>
-              <Text style={styles.goalSubtle}>
-                {t("progression.xpTotal", { xp: progression.xp_total })}
-              </Text>
-            </View>
-            <View style={styles.progressionTrack}>
-              <View style={[styles.progressionFill, { width: `${levelProgressPercent}%` }]} />
-            </View>
-            <Text style={styles.goalSubtle}>
-              {t("progression.toNext", {
-                xp: progression.xp_to_next_level,
-                level: progression.current_level + 1,
-                percent: Math.round(levelProgressPercent),
-              })}
-            </Text>
-            <View style={styles.progressionButtonRow}>
-              <SecondaryButton
-                label={t("progression.openOverview")}
-                onPress={() => router.push("/progression-overview")}
-              />
-            </View>
-          </AppCard>
-        ) : null}
-
-        {!showInitialLoading && (weekGoal || forecast) ? (
-          <AppCard style={styles.goalCard}>
-            {weekGoal ? (
-              <>
-                <Text style={styles.goalTitle}>
-                  {t("stats.weeklyPresence", { have: weekGoal.daysWith, goal: weekGoal.goal })}
-                </Text>
-                <Text style={styles.goalSub}>
-                  {weekGoal.daysWith >= weekGoal.goal
-                    ? t("stats.weeklyCrushed")
-                    : t("stats.weeklyMoreDays", {
-                        count: weekGoal.goal - weekGoal.daysWith,
-                        n: weekGoal.goal - weekGoal.daysWith,
-                      })}
-                </Text>
-              </>
-            ) : null}
-            {forecast ? <Text style={styles.goalSubtle}>{forecast.warning_message}</Text> : null}
-          </AppCard>
-        ) : null}
-
-        {!showInitialLoading ? <AppCard style={styles.chartCard}>
-          <Text style={styles.cardTitle}>{t("stats.heatmapTitle")}</Text>
-          <View style={styles.heatmapGrid}>
-            {heatmapDays.map((d) => (
-              <View
-                key={d.date}
-                style={[
-                  styles.heatCell,
-                  {
-                    opacity: 0.25 + d.intensity * 0.18,
-                    backgroundColor:
-                      d.intensity === 0
-                        ? "#1e1e1e"
-                        : d.intensity < 3
-                          ? colors.primary
-                          : colors.secondary,
-                  },
-                ]}
-              />
-            ))}
-          </View>
-        </AppCard> : null}
-
-        {!showInitialLoading ? <AppCard style={styles.chartCard}>
-          <View style={styles.calendarHeader}>
-            <Text style={styles.cardTitle}>{t("stats.activityCalendarTitle")}</Text>
-            <View style={styles.calendarModeRow}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.modeChip,
-                  calendarMode === "week" && styles.modeChipActive,
-                  pressed && styles.modeChipPressed,
-                ]}
-                onPress={() => setCalendarMode("week")}
-              >
-                <Text
-                  style={[
-                    styles.modeChipText,
-                    calendarMode === "week" && styles.modeChipTextActive,
-                  ]}
-                >
-                  {t("stats.calendarWeek")}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.modeChip,
-                  calendarMode === "month" && styles.modeChipActive,
-                  pressed && styles.modeChipPressed,
-                ]}
-                onPress={() => setCalendarMode("month")}
-              >
-                <Text
-                  style={[
-                    styles.modeChipText,
-                    calendarMode === "month" && styles.modeChipTextActive,
-                  ]}
-                >
-                  {t("stats.calendarMonth")}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-
-          <View style={styles.calendarNavRow}>
-            <Pressable
-              style={({ pressed }) => [styles.navBtn, pressed && styles.navBtnPressed]}
-              onPress={() => {
-                if (calendarMode === "week") setWeekOffset((prev) => prev + 1);
-                else setMonthOffset((prev) => prev - 1);
-              }}
-            >
-              <Text style={styles.navBtnText}>{t("stats.calendarPrev")}</Text>
-            </Pressable>
-            <Text style={styles.calendarRangeLabel}>
-              {calendarMode === "week"
-                ? t("stats.calendarWeekRange", {
-                    start: weekCalendarDays[0]?.date.toLocaleDateString(),
-                    end: weekCalendarDays[6]?.date.toLocaleDateString(),
-                  })
-                : monthCalendarDays.monthLabel}
-            </Text>
-            <Pressable
-              style={({ pressed }) => [styles.navBtn, pressed && styles.navBtnPressed]}
-              disabled={calendarMode === "week" ? weekOffset === 0 : monthOffset === 0}
-              onPress={() => {
-                if (calendarMode === "week") setWeekOffset((prev) => Math.max(0, prev - 1));
-                else setMonthOffset((prev) => Math.min(0, prev + 1));
-              }}
-            >
-              <Text
-                style={[
-                  styles.navBtnText,
-                  (calendarMode === "week" ? weekOffset === 0 : monthOffset === 0) &&
-                    styles.navBtnTextDisabled,
-                ]}
-              >
-                {t("stats.calendarNext")}
-              </Text>
-            </Pressable>
-          </View>
-
-          {calendarMode === "week" ? (
-            <View style={styles.weekGrid}>
-              {weekCalendarDays.map((day) => (
-                <View key={day.key} style={styles.weekDayCell}>
-                  <Text style={styles.weekDayLabel}>{day.dayName.slice(0, 1)}</Text>
-                  <View
-                    style={[
-                      styles.weekDayDot,
-                      day.intensity > 0 && styles.weekDayDotActive,
-                      day.intensity > 2 && styles.weekDayDotStrong,
-                    ]}
-                  />
-                  <Text style={styles.weekDayNum}>{day.dayNum}</Text>
+            {!showInitialLoading ? (
+              <AppCard style={styles.coachCardCompact}>
+                <View style={styles.coachCompactHeader}>
+                  <Text style={styles.cardTitle}>{t("stats.aiCoachTitle")}</Text>
                 </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.monthGrid}>
-              {monthCalendarDays.entries.map((entry) => (
-                <View
-                  key={entry.key}
-                  style={[
-                    styles.monthCell,
-                    !entry.inMonth && styles.monthCellMuted,
-                    entry.intensity > 0 && styles.monthCellActive,
-                    entry.intensity > 2 && styles.monthCellStrong,
-                  ]}
-                >
-                  <Text style={[styles.monthCellText, !entry.inMonth && styles.monthCellTextMuted]}>
-                    {entry.dayNum ?? ""}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </AppCard> : null}
-
-        {!showInitialLoading ? <AppCard style={styles.chartCard}>
-          <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
-          {decoratedRecords.length === 0 ? (
-            <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
-          ) : (
-            <View style={styles.recordsWrap}>
-              {decoratedRecords.slice(0, 3).map((r, idx) => {
-                const meta = formatRecordDate(r.occurred_at, t);
-                const displayContext = formatRecordContext(r, t);
-                return (
+                <Text style={styles.coachCompactText} numberOfLines={2}>
+                  {statsCoach
+                    ? statsCoach.eligible
+                      ? statsCoach.coach_note || t("stats.aiCoachChatSubtitle")
+                      : t("stats.aiCoachLocked")
+                    : t("stats.aiCoachChatSubtitle")}
+                </Text>
+                <View style={styles.coachCompactCtaRow}>
                   <Pressable
-                    key={r.key + (r.occurred_at ?? "")}
                     style={({ pressed }) => [
-                      styles.recordCard,
-                      idx === 0 && styles.recordCardFeatured,
-                      pressed && styles.recordCardPressed,
+                      styles.coachCompactCta,
+                      pressed && styles.coachCompactCtaPressed,
                     ]}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                    }}
+                    onPress={() => router.push("/ai-coach")}
                   >
-                    <View style={styles.recordTitleRow}>
-                      <View style={styles.recordLabelWrap}>
-                        <Text style={styles.recordIcon}>{recordIcon(r.key)}</Text>
-                        <Text style={styles.recordLabel}>{recordTitle(r.key, r.label, t)}</Text>
-                      </View>
-                      <View style={styles.recordBadgesRow}>
-                        {r.isFresh ? (
-                          <View style={[styles.recordBadge, styles.recordBadgeFresh]}>
-                            <Text style={[styles.recordBadgeText, styles.recordBadgeTextFresh]}>
-                              {t("stats.recordFresh")}
-                            </Text>
-                          </View>
-                        ) : null}
-                        {idx === 0 ? (
-                          <View style={styles.recordBadge}>
-                            <Text style={styles.recordBadgeText}>{t("stats.recordBest")}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-                    <Text style={styles.recordVal}>{r.value}</Text>
-                    {displayContext ? <Text style={styles.recordCtx}>{displayContext}</Text> : null}
-                    {meta ? <Text style={styles.recordMeta}>{meta}</Text> : null}
+                    <Text style={styles.coachCompactCtaText}>{t("stats.aiCoachOpenChat")}</Text>
                   </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </AppCard> : null}
+                </View>
+              </AppCard>
+            ) : null}
 
-        {!showInitialLoading ? <AppCard style={styles.chartCard}>
-          <Text style={styles.cardTitle}>{t("stats.perDayTitle")}</Text>
-          {!loading && error ? <Text style={styles.errorText}>{error}</Text> : null}
-          <View style={styles.chartInner}>
-            <SessionsPerDayChart data={chartData} />
-          </View>
-        </AppCard> : null}
-
-        {!showInitialLoading ? <AppCard style={styles.chartCard}>
-          <Text style={styles.cardTitle}>{t("stats.typeMixTitle")}</Text>
-          {breakdownData.length > 0 ? (
-            <View style={styles.breakdownWrap}>
-              {breakdownData.map((item) => (
-                <View key={item.label} style={styles.breakdownRow}>
-                  <View style={styles.breakdownLabelWrap}>
-                    <View style={[styles.breakdownDot, { backgroundColor: item.color }]} />
-                    <Text style={styles.breakdownLabel}>{item.label}</Text>
+            {!showInitialLoading ? (
+              <AppCard style={styles.chartCard}>
+                <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
+                {decoratedRecords.length === 0 ? (
+                  <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
+                ) : (
+                  <View style={styles.recordsWrap}>
+                    {decoratedRecords.slice(0, 3).map((r, idx) => {
+                      const meta = formatRecordDate(r.occurred_at, t);
+                      const displayContext = formatRecordContext(r, t);
+                      return (
+                        <View
+                          key={`top-${r.key}${r.occurred_at ?? ""}`}
+                          style={[styles.recordCard, idx === 0 && styles.recordCardFeatured]}
+                        >
+                          <View style={styles.recordTitleRow}>
+                            <View style={styles.recordLabelWrap}>
+                              <Text style={styles.recordIcon}>{recordIcon(r.key)}</Text>
+                              <Text style={styles.recordLabel}>
+                                {recordTitle(r.key, r.label, t)}
+                              </Text>
+                            </View>
+                            <View style={styles.recordBadgesRow}>
+                              {r.isFresh ? (
+                                <View style={[styles.recordBadge, styles.recordBadgeFresh]}>
+                                  <Text
+                                    style={[styles.recordBadgeText, styles.recordBadgeTextFresh]}
+                                  >
+                                    {t("stats.recordFresh")}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              {idx === 0 ? (
+                                <View style={styles.recordBadge}>
+                                  <Text style={styles.recordBadgeText}>
+                                    {t("stats.recordBest")}
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
+                          <Text style={styles.recordVal}>{r.value}</Text>
+                          {displayContext ? (
+                            <Text style={styles.recordCtx}>{displayContext}</Text>
+                          ) : null}
+                          {meta ? <Text style={styles.recordMeta}>{meta}</Text> : null}
+                        </View>
+                      );
+                    })}
                   </View>
-                  <View style={styles.breakdownTrack}>
+                )}
+              </AppCard>
+            ) : null}
+
+            {!showInitialLoading && (weekGoal || forecast) ? (
+              <AppCard style={styles.goalCard}>
+                {forecast ? (
+                  <>
+                    <View style={styles.goalHeaderRow}>
+                      <Text style={styles.cardTitle}>{t("stats.forecastTitle")}</Text>
+                      {forecastRiskKey ? (
+                        <Text
+                          style={[
+                            styles.forecastRiskPill,
+                            forecast.risk_level === "on_track" && styles.forecastRiskOnTrack,
+                            forecast.risk_level === "at_risk" && styles.forecastRiskAtRisk,
+                            forecast.risk_level === "off_track" && styles.forecastRiskOffTrack,
+                          ]}
+                        >
+                          {t(forecastRiskKey)}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text style={styles.forecastProgressLine}>
+                      {t("stats.forecastProgress", {
+                        done: forecast.completed_sessions,
+                        target: forecast.target_sessions,
+                      })}
+                    </Text>
+                    <View style={styles.goalProgressTrack}>
+                      <View
+                        style={[styles.goalProgressFill, { width: `${forecastProgressPercent}%` }]}
+                      />
+                    </View>
+                    <Text style={styles.goalSub}>
+                      {t("stats.forecastRemaining", {
+                        n: forecast.remaining_sessions,
+                        days: forecast.days_left,
+                      })}
+                    </Text>
+                  </>
+                ) : null}
+                {weekGoal ? (
+                  <View style={forecast ? styles.forecastBlock : undefined}>
+                    <Text style={styles.goalTitle}>
+                      {t("stats.weeklyPresence", { have: weekGoal.daysWith, goal: weekGoal.goal })}
+                    </Text>
+                    <Text style={styles.goalSub}>
+                      {weekGoal.daysWith >= weekGoal.goal
+                        ? t("stats.weeklyCrushed")
+                        : t("stats.weeklyMoreDays", {
+                            count: weekGoal.goal - weekGoal.daysWith,
+                            n: weekGoal.goal - weekGoal.daysWith,
+                          })}
+                    </Text>
+                  </View>
+                ) : null}
+              </AppCard>
+            ) : null}
+
+            <FlatList
+              horizontal
+              data={statCarouselItems}
+              keyExtractor={(item) => item.key}
+              renderItem={({ item }) => (
+                <StatCard
+                  label={item.label}
+                  value={item.value}
+                  sublabel={item.sublabel}
+                  subPositive={item.subPositive}
+                />
+              )}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.cardRow}
+              snapToInterval={172}
+              decelerationRate="fast"
+              nestedScrollEnabled={Platform.OS === "android"}
+            />
+
+            {!showInitialLoading ? (
+              <AppCard style={styles.advancedCard}>
+                <View style={styles.advancedHeader}>
+                  <Text style={styles.cardTitle}>{t("stats.advancedInsightsTitle")}</Text>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.advancedToggle,
+                      pressed && styles.advancedTogglePressed,
+                    ]}
+                    onPress={() => setShowAdvancedInsights((prev) => !prev)}
+                  >
+                    <Text style={styles.advancedToggleText}>
+                      {showAdvancedInsights ? t("stats.advancedHide") : t("stats.advancedShow")}
+                    </Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.cardCaption}>{t("stats.advancedInsightsHint")}</Text>
+              </AppCard>
+            ) : null}
+
+            {showAdvancedInsights && !showInitialLoading ? (
+              <AppCard style={styles.chartCard}>
+                <Text style={styles.cardTitle}>{t("stats.heatmapTitle")}</Text>
+                <Text style={styles.cardCaption}>{t("stats.heatmapCaption")}</Text>
+                <View style={styles.heatmapGrid}>
+                  {heatmapDays.map((d) => (
                     <View
+                      key={d.date}
                       style={[
-                        styles.breakdownFill,
-                        { width: `${item.value}%`, backgroundColor: item.color },
+                        styles.heatCell,
+                        {
+                          opacity: 0.25 + d.intensity * 0.18,
+                          backgroundColor:
+                            d.intensity === 0
+                              ? "#1e1e1e"
+                              : d.intensity < 3
+                                ? colors.primary
+                                : colors.secondary,
+                        },
                       ]}
                     />
+                  ))}
+                </View>
+              </AppCard>
+            ) : null}
+
+            {showAdvancedInsights && !showInitialLoading ? (
+              <AppCard style={styles.chartCard}>
+                <Text style={styles.cardTitle}>{t("stats.perDayTitle")}</Text>
+                <Text style={styles.cardCaption}>{t("stats.perDayChartHint")}</Text>
+                {chartData.length === 0 ? (
+                  <Text style={styles.emptyText}>{t("stats.perDayEmpty")}</Text>
+                ) : (
+                  <View style={styles.chartInner}>
+                    <SessionsPerDayChart data={chartData} />
                   </View>
-                  <Text style={styles.breakdownValue}>
-                    {item.sessions} · {item.value}%
+                )}
+              </AppCard>
+            ) : null}
+
+            {showAdvancedInsights && !showInitialLoading ? (
+              <AppCard style={styles.chartCard}>
+                <Text style={styles.cardTitle}>{t("stats.typeMixTitle")}</Text>
+                {breakdownData.length > 0 ? (
+                  <View style={styles.breakdownWrap}>
+                    {breakdownData.map((item) => (
+                      <View key={item.label} style={styles.breakdownRow}>
+                        <View style={styles.breakdownLabelWrap}>
+                          <View style={[styles.breakdownDot, { backgroundColor: item.color }]} />
+                          <Text style={styles.breakdownLabel}>{item.label}</Text>
+                        </View>
+                        <View style={styles.breakdownTrack}>
+                          <View
+                            style={[
+                              styles.breakdownFill,
+                              { width: `${item.value}%`, backgroundColor: item.color },
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.breakdownValue}>
+                          {item.sessions} · {item.value}%
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.emptyWrap}>
+                    <Text style={styles.emptyText}>{t("stats.typeMixEmpty")}</Text>
+                  </View>
+                )}
+              </AppCard>
+            ) : null}
+
+            {showAdvancedInsights && !showInitialLoading && productivityHintText ? (
+              <AppCard style={styles.hintCard}>
+                <Text style={styles.hintText}>{productivityHintText}</Text>
+              </AppCard>
+            ) : null}
+
+            {!showInitialLoading && progression ? (
+              <AppCard style={styles.progressionCard}>
+                <View style={styles.progressionTopRow}>
+                  <Text style={styles.cardTitle}>
+                    {t("progression.levelTitle", { level: progression.current_level })}
+                  </Text>
+                  <Text style={styles.goalSubtle}>
+                    {t("progression.xpTotal", { xp: progression.xp_total })}
                   </Text>
                 </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyText}>{t("stats.typeMixEmpty")}</Text>
-            </View>
-          )}
-        </AppCard> : null}
+                <View style={styles.progressionTrack}>
+                  <View style={[styles.progressionFill, { width: `${levelProgressPercent}%` }]} />
+                </View>
+                <Text style={styles.goalSubtle}>
+                  {t("progression.toNext", {
+                    xp: progression.xp_to_next_level,
+                    level: progression.current_level + 1,
+                    percent: Math.round(levelProgressPercent),
+                  })}
+                </Text>
+                <View style={styles.progressionButtonRow}>
+                  <SecondaryButton
+                    label={t("progression.openOverview")}
+                    onPress={() => router.push("/progression-overview")}
+                  />
+                </View>
+              </AppCard>
+            ) : null}
 
-        {!showInitialLoading && productivityHintText ? (
-          <AppCard style={styles.hintCard}>
-            <Text style={styles.hintText}>{productivityHintText}</Text>
-          </AppCard>
-        ) : null}
-
-        {!showInitialLoading ? <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text> : null}
-        {!showInitialLoading && recent.length === 0 ? (
-          <Text style={styles.emptyText}>{t("stats.recentEmpty")}</Text>
-        ) : !showInitialLoading ? (
-          <View style={styles.recentList}>
-            {recent.map((item) => (
-              <View
-                key={typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}
-                style={styles.recentItem}
-              >
-                {renderRecent({ item })}
+            {!showInitialLoading ? (
+              <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
+            ) : null}
+            {!showInitialLoading && recent.length === 0 ? (
+              <Text style={styles.emptyText}>{t("stats.recentEmpty")}</Text>
+            ) : !showInitialLoading ? (
+              <View style={styles.recentList}>
+                {recent.map((item) => (
+                  <View
+                    key={`top-${typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}`}
+                    style={styles.recentItem}
+                  >
+                    {renderRecent({ item })}
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-        ) : null}
+            ) : null}
 
-        {!showInitialLoading && outputMetrics ? (
-          <OutputMetricsShareModal
-            visible={outputShareOpen}
-            onClose={() => setOutputShareOpen(false)}
-            metrics={outputMetrics}
-            title={t("stats.shareProofModalTitle")}
-            subtitle={t("stats.shareProofModalSubtitle")}
-            shareLabel={t("stats.shareProofPngCta")}
-            closeLabel={t("common.cancel")}
-            busyLabel={t("stats.shareProofBusy")}
-          />
-        ) : null}
+            {false && !showInitialLoading ? (
+              <AppCard style={styles.chartCard}>
+                <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
+                {decoratedRecords.length === 0 ? (
+                  <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
+                ) : (
+                  <View style={styles.recordsWrap}>
+                    {decoratedRecords.slice(0, 3).map((r, idx) => {
+                      const meta = formatRecordDate(r.occurred_at, t);
+                      const displayContext = formatRecordContext(r, t);
+                      return (
+                        <View
+                          key={r.key + (r.occurred_at ?? "")}
+                          style={[styles.recordCard, idx === 0 && styles.recordCardFeatured]}
+                        >
+                          <View style={styles.recordTitleRow}>
+                            <View style={styles.recordLabelWrap}>
+                              <Text style={styles.recordIcon}>{recordIcon(r.key)}</Text>
+                              <Text style={styles.recordLabel}>
+                                {recordTitle(r.key, r.label, t)}
+                              </Text>
+                            </View>
+                            <View style={styles.recordBadgesRow}>
+                              {r.isFresh ? (
+                                <View style={[styles.recordBadge, styles.recordBadgeFresh]}>
+                                  <Text
+                                    style={[styles.recordBadgeText, styles.recordBadgeTextFresh]}
+                                  >
+                                    {t("stats.recordFresh")}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              {idx === 0 ? (
+                                <View style={styles.recordBadge}>
+                                  <Text style={styles.recordBadgeText}>
+                                    {t("stats.recordBest")}
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
+                          <Text style={styles.recordVal}>{r.value}</Text>
+                          {displayContext ? (
+                            <Text style={styles.recordCtx}>{displayContext}</Text>
+                          ) : null}
+                          {meta ? <Text style={styles.recordMeta}>{meta}</Text> : null}
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </AppCard>
+            ) : null}
+
+            {false && !showInitialLoading ? (
+              <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
+            ) : null}
+
+            {!showInitialLoading ? (
+              <View style={styles.weeklyRecapBottomCta}>
+                <SecondaryButton
+                  label={t("stats.openWeeklyRecap")}
+                  onPress={() => router.push("/weekly-recap")}
+                />
+              </View>
+            ) : null}
           </Animated.View>
         ) : null}
       </ScrollView>
@@ -1100,9 +988,12 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: ui.screenPadding, paddingBottom: spacing.xxl },
   headerRow: { marginBottom: spacing.md, gap: spacing.sm },
-  quickActions: {
-    marginBottom: spacing.md,
-    gap: spacing.sm,
+  filterHint: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.body,
+    lineHeight: 18,
+    marginTop: spacing.xs,
   },
   skeletonWrap: {
     gap: spacing.lg,
@@ -1175,16 +1066,162 @@ const styles = StyleSheet.create({
   filterLabelActive: { color: colors.textPrimary },
   cardRow: { gap: spacing.sm, paddingBottom: spacing.lg },
   contentFadeWrap: {
-    gap: 0,
+    gap: spacing.lg,
   },
   goalCard: {
     marginBottom: spacing.lg,
   },
+  goalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
   goalTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
   goalSub: { color: colors.textSecondary, marginTop: 4, ...typography.meta },
+  goalProgressTrack: {
+    marginTop: spacing.sm,
+    width: "100%",
+    height: 8,
+    borderRadius: radii.round,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+  },
+  goalProgressFill: {
+    height: "100%",
+    backgroundColor: colors.primary,
+  },
   goalSubtle: { color: colors.textSecondary, marginTop: spacing.sm, ...typography.meta },
+  forecastBlock: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    gap: spacing.xs,
+  },
+  forecastRiskPill: {
+    alignSelf: "flex-start",
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radii.round,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyBold,
+  },
+  forecastRiskOnTrack: {
+    color: colors.success,
+    backgroundColor: "rgba(34,197,94,0.15)",
+  },
+  forecastRiskAtRisk: {
+    color: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.15)",
+  },
+  forecastRiskOffTrack: {
+    color: colors.danger,
+    backgroundColor: "rgba(239,68,68,0.12)",
+  },
+  forecastProgressLine: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+    marginTop: spacing.xs,
+  },
+  forecastWarning: {
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+    ...typography.meta,
+    lineHeight: 20,
+    fontFamily: fontFamily.bodyMedium,
+  },
   progressionCard: {
     marginBottom: spacing.lg,
+  },
+  coachCard: {
+    marginBottom: spacing.lg,
+    borderColor: "rgba(255,61,0,0.38)",
+    backgroundColor: "rgba(255,61,0,0.08)",
+  },
+  coachCardCompact: {
+    marginBottom: spacing.lg,
+    borderColor: "rgba(255,255,255,0.14)",
+    backgroundColor: "rgba(255,255,255,0.03)",
+  },
+  coachCompactHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: spacing.sm,
+  },
+  coachCompactText: {
+    marginTop: spacing.xs,
+    color: colors.textSecondary,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyMedium,
+    lineHeight: 19,
+  },
+  coachCompactCtaRow: {
+    marginTop: spacing.sm,
+    alignItems: "flex-start",
+  },
+  coachCompactCta: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: "rgba(255,61,0,0.45)",
+    backgroundColor: "rgba(255,61,0,0.14)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+  },
+  coachCompactCtaPressed: {
+    opacity: motion.pressOpacity,
+    transform: [{ scale: motion.pressScale }],
+  },
+  coachCompactCtaText: {
+    color: colors.textPrimary,
+    ...typography.meta,
+    fontFamily: fontFamily.bodyBold,
+  },
+  coachSection: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  coachSectionTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
+  coachList: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  coachListItem: {
+    color: colors.textPrimary,
+    ...typography.meta,
+    lineHeight: 20,
+    fontFamily: fontFamily.bodyMedium,
+  },
+  coachNoteBox: {
+    marginTop: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "rgba(0,0,0,0.24)",
+    padding: spacing.sm,
+    gap: spacing.xs,
+  },
+  coachNoteLabel: {
+    color: "#ffb07a",
+    ...typography.meta,
+    fontFamily: fontFamily.bodyBold,
+  },
+  coachNoteText: {
+    color: colors.textPrimary,
+    ...typography.body,
+    fontFamily: fontFamily.bodyMedium,
+  },
+  coachChatCta: {
+    marginTop: spacing.md,
   },
   progressionTopRow: {
     flexDirection: "row",
@@ -1212,204 +1249,45 @@ const styles = StyleSheet.create({
   chartCard: {
     marginBottom: spacing.lg,
   },
-  outcomeCard: {
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
-  },
-  outcomeGrid: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  beforeAfterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  beforeAfterCell: {
-    flex: 1,
-    borderWidth: 1,
+  advancedCard: {
+    marginBottom: spacing.md,
     borderColor: colors.border,
-    borderRadius: radii.md,
-    backgroundColor: "rgba(255,255,255,0.02)",
-    padding: spacing.sm,
-    gap: 4,
-    alignItems: "center",
+    backgroundColor: colors.surface,
   },
-  beforeAfterCellHighlight: {
-    borderColor: colors.primary,
-    backgroundColor: "rgba(255,61,0,0.12)",
-  },
-  beforeAfterKicker: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  beforeAfterValue: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 24,
-    lineHeight: 28,
-  },
-  beforeAfterArrow: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.bodyStrong,
-  },
-  outcomeStatBlock: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    padding: spacing.sm,
-    backgroundColor: "rgba(255,255,255,0.02)",
-    gap: 4,
-  },
-  outcomeValue: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 26,
-    lineHeight: 30,
-  },
-  outcomeLabel: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  outcomeMeta: {
-    color: colors.primary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyBold,
-  },
-  outcomeInsight: {
-    borderWidth: 1,
-    borderColor: "rgba(162,89,255,0.45)",
-    borderRadius: radii.md,
-    backgroundColor: "rgba(162,89,255,0.1)",
-    padding: spacing.sm,
-    gap: 4,
-  },
-  outcomeShareRow: {
-    marginTop: spacing.xs,
-    gap: spacing.sm,
-  },
-  outcomeShareHint: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  outcomeInsightText: {
-    color: colors.textPrimary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  calendarHeader: {
+  advancedHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
-  calendarModeRow: { flexDirection: "row", gap: spacing.xs },
-  modeChip: {
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    backgroundColor: colors.background,
-  },
-  modeChipActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.16)" },
-  modeChipPressed: { opacity: motion.pressOpacity, transform: [{ scale: motion.pressScale }] },
-  modeChipText: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  modeChipTextActive: { color: colors.textPrimary },
-  calendarNavRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
-    gap: spacing.xs,
-  },
-  navBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: spacing.sm,
+  advancedToggle: {
     borderRadius: radii.round,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
   },
-  navBtnPressed: { opacity: motion.pressOpacity, transform: [{ scale: motion.pressScale }] },
-  navBtnText: { color: colors.textPrimary, ...typography.meta, fontFamily: fontFamily.bodyBold },
-  navBtnTextDisabled: { color: colors.textSecondary },
-  calendarRangeLabel: {
-    flex: 1,
-    textAlign: "center",
-    color: colors.textSecondary,
-    ...typography.meta,
+  advancedTogglePressed: {
+    opacity: motion.pressOpacity,
+    transform: [{ scale: motion.pressScale }],
   },
-  weekGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: spacing.xs,
-  },
-  weekDayCell: { width: "13.5%", alignItems: "center", gap: 4 },
-  weekDayLabel: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  weekDayDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "transparent",
-  },
-  weekDayDotActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  weekDayDotStrong: { backgroundColor: colors.secondary, borderColor: colors.secondary },
-  weekDayNum: { color: colors.textSecondary, fontSize: 11 },
-  monthGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: spacing.xs,
-  },
-  monthCell: {
-    width: "13.4%",
-    aspectRatio: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.background,
-  },
-  monthCellMuted: {
-    opacity: 0.35,
-  },
-  monthCellActive: {
-    backgroundColor: "rgba(255,61,0,0.14)",
-    borderColor: "rgba(255,61,0,0.35)",
-  },
-  monthCellStrong: {
-    backgroundColor: "rgba(162,89,255,0.2)",
-    borderColor: "rgba(162,89,255,0.5)",
-  },
-  monthCellText: {
+  advancedToggleText: {
     color: colors.textPrimary,
     ...typography.meta,
-    fontFamily: fontFamily.bodyMedium,
+    fontFamily: fontFamily.bodyBold,
   },
-  monthCellTextMuted: { color: colors.textSecondary },
   cardTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
     ...typography.cardTitle,
+  },
+  cardCaption: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.body,
+    lineHeight: 18,
+    marginTop: 4,
   },
   heatmapGrid: {
     flexDirection: "row",
@@ -1442,10 +1320,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
-  },
-  recordCardPressed: {
-    transform: [{ scale: 0.985 }],
-    opacity: 0.92,
   },
   recordTitleRow: {
     flexDirection: "row",
@@ -1650,5 +1524,9 @@ const styles = StyleSheet.create({
   },
   recentItem: {
     marginBottom: spacing.md,
+  },
+  weeklyRecapBottomCta: {
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
 });

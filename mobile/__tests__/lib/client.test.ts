@@ -1,3 +1,6 @@
+import NetInfo from "@react-native-community/netinfo";
+import { apiJson } from "../../lib/client";
+
 jest.mock("@react-native-community/netinfo", () => ({
   __esModule: true,
   default: {
@@ -9,9 +12,6 @@ jest.mock("../../constants/api", () => ({
   API_BASE_URL: "http://test.local",
   getAppEnvironment: () => "development",
 }));
-
-import NetInfo from "@react-native-community/netinfo";
-import { apiJson, ApiError } from "../../lib/client";
 
 describe("apiJson error parsing", () => {
   const originalFetch = global.fetch;

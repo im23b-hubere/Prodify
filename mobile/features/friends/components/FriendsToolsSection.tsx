@@ -11,6 +11,7 @@ import type {
   SocialChallengeDto,
   SocialRecapDto,
 } from "../../../types/friends";
+import { hasPremiumAccess } from "../../../lib/billing";
 import type { EntitlementDto } from "../../../types/outcomes";
 import { challengeDaysLeft, challengeKindLabel } from "../utils/friendsScreenFormat";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
@@ -134,7 +135,7 @@ export function FriendsToolsSection({
                       })
                     : t("friendsScreen.buddyPickOne")}
             </Text>
-            {entitlement?.entitlement === "premium" ? (
+            {hasPremiumAccess(entitlement) ? (
               <Text style={styles.premiumPill}>{t("friendsScreen.premiumActive")}</Text>
             ) : null}
             {buddy?.status === "none" ? (
@@ -210,7 +211,13 @@ export function FriendsToolsSection({
                 ? t("friendsScreen.commitmentStatus", {
                     current: commitment.current_sessions,
                     target: commitment.target_sessions,
-                    status: commitment.status,
+                    status: t(
+                      commitment.status === "completed"
+                        ? "friendsScreen.commitmentPhaseCompleted"
+                        : commitment.status === "behind"
+                          ? "friendsScreen.commitmentPhaseBehind"
+                          : "friendsScreen.commitmentPhaseOnTrack",
+                    ),
                   })
                 : t("friendsScreen.commitmentHint")}
             </Text>
@@ -225,7 +232,7 @@ export function FriendsToolsSection({
             {commitment?.status === "completed" ? (
               <Text style={styles.upsellHint}>{t("friendsScreen.upsellInviteFriend")}</Text>
             ) : null}
-            {commitment?.upsell_hint && entitlement?.entitlement !== "premium" ? (
+            {commitment?.upsell_hint && !hasPremiumAccess(entitlement) ? (
               <Text style={styles.upsellHint}>{commitment.upsell_hint}</Text>
             ) : null}
           </View>
@@ -276,7 +283,10 @@ export function FriendsToolsSection({
                   ),
                 );
                 const me = m.user_id === currentUserId;
-                const leader = Math.max(...challenge.members.map((x) => x.progress_sessions));
+                const leader =
+                  challenge.members.length > 0
+                    ? Math.max(...challenge.members.map((x) => x.progress_sessions))
+                    : 0;
                 const label =
                   m.progress_sessions === leader
                     ? t("friendsScreen.challengeLabelTone")

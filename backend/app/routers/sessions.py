@@ -136,7 +136,6 @@ def start_session(
             paused_duration_seconds=0,
         )
         db.add(row)
-        _mark_auto_checkin_done(db, current.id)
         db.commit()
         db.refresh(row)
         track_event(db, "session_started", current.id, {"session_id": row.id, "session_type": row.session_type})
@@ -313,7 +312,6 @@ def quick_start_session(
         paused_duration_seconds=0,
     )
     db.add(row)
-    _mark_auto_checkin_done(db, current.id)
     try:
         db.commit()
     except IntegrityError:
