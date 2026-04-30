@@ -9,12 +9,12 @@ from sqlalchemy import engine_from_config, pool
 # Alembic only needs DB access; keep API secret validation strict elsewhere.
 os.environ.setdefault("SECRET_KEY", "alembic-migration-placeholder-secret-key-32")
 
-from app.config import settings
+from app.config import normalize_database_url, settings
 from app.database import Base
 from app import models  # noqa: F401
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option("sqlalchemy.url", normalize_database_url(settings.database_url))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

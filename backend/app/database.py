@@ -1,11 +1,11 @@
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-from app.config import is_sqlite_database_url, settings
+from app.config import is_sqlite_database_url, normalize_database_url, settings
 
 
 def _create_engine():
-    url = settings.database_url
+    url = normalize_database_url(settings.database_url)
     if is_sqlite_database_url(url):
         # Single-file SQLite: one writer at a time; check_same_thread allows FastAPI threadpool.
         return create_engine(url, connect_args={"check_same_thread": False})

@@ -175,3 +175,22 @@ def feature_flags_snapshot() -> dict[str, bool]:
 def is_sqlite_database_url(database_url: str) -> bool:
     """True for file- or memory-based SQLite (single-writer; fine for dev / small installs)."""
     return database_url.strip().lower().startswith("sqlite")
+
+
+def normalize_database_url(database_url: str) -> str:
+    """
+    Normalize DB URLs for SQLAlchemy driver compatibility.
+
+    Render and other hosts commonly provide `postgres://...` or `postgresql://...`.
+    This app uses psycopg v3, so we normalize to `postgresql+psycopg://...` to avoid
+    SQLAlchemy attempting psycopg2 imports.
+    """
+    raw = database_url.strip()
+    lower = raw.lower()
+    if lower.startswith("postgresql+psycopg://"):
+        return raw
+    if lower.startswith("postgres://"):
+        return "postgresql+psycopg://" + raw[len("postgres://") :]
+    if lower.startswith("postgresql://"):
+        return "postgresql+psycopg://" + raw[len("postgresql://") :]
+    return raw
