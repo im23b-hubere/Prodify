@@ -1,14 +1,17 @@
 import json
+import logging
 from collections import Counter
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import ProductionSession, UserGoal, WeeklyReviewSnapshot, utcnow
 from app.schemas import WeeklyReviewPublic
 from app.services.ollama_client import generate_weekly_coach_note
 from app.timeutil import as_utc_aware
+
+logger = logging.getLogger(__name__)
 
 
 def _week_range():
@@ -54,20 +57,32 @@ def _weekly_coach_prompt(
 
 def generate_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic:
     week_start, week_end = _week_range()
-    sessions = db.scalars(
+    week_start_dt = datetime.fromisoformat(week_start).replace(tzinfo=timezone.utc)
+    week_end_dt = datetime.fromisoformat(week_end).replace(tzinfo=timezone.utc) + timedelta(days=1)
+
+    totals = db.execute(
+        select(
+            func.count(ProductionSession.id),
+            func.coalesce(func.sum(ProductionSession.duration_seconds), 0),
+        ).where(
+            ProductionSession.user_id == user_id,
+            ProductionSession.deleted_at.is_(None),
+            ProductionSession.duration_seconds.is_not(None),
+            ProductionSession.started_at >= week_start_dt,
+            ProductionSession.started_at < week_end_dt,
+        )
+    ).one()
+    total_sessions = int(totals[0] or 0)
+    total_seconds = int(totals[1] or 0)
+    week_sessions = db.scalars(
         select(ProductionSession).where(
             ProductionSession.user_id == user_id,
             ProductionSession.deleted_at.is_(None),
             ProductionSession.duration_seconds.is_not(None),
+            ProductionSession.started_at >= week_start_dt,
+            ProductionSession.started_at < week_end_dt,
         )
     ).all()
-    week_sessions = [
-        row
-        for row in sessions
-        if week_start <= as_utc_aware(row.started_at).date().isoformat() <= week_end
-    ]
-    total_sessions = len(week_sessions)
-    total_seconds = int(sum(int(row.duration_seconds or 0) for row in week_sessions))
     by_weekday: Counter[int] = Counter()
     by_hour: Counter[int] = Counter()
     for row in week_sessions:
@@ -118,9 +133,15 @@ def generate_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic:
         insights=insights,
         blockers=blockers,
     )
-    generated = generate_weekly_coach_note(prompt)
-    if generated:
-        ai_feedback = generated
+    try:
+        generated = generate_weekly_coach_note(prompt)
+        if generated:
+            ai_feedback = generated
+    except Exception:
+        logger.exception(
+            "weekly_review_ai_provider_error",
+            extra={"provider": "ollama", "context": "weekly_review_generate"},
+        )
     row = db.scalar(
         select(WeeklyReviewSnapshot).where(
             WeeklyReviewSnapshot.user_id == user_id,

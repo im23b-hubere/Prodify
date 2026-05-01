@@ -48,7 +48,9 @@ def weekly_review_current(
 
 
 @router.post("/weekly-review/generate", response_model=WeeklyReviewPublic)
+@limiter.limit("10/minute")
 def weekly_review_generate(
+    request: Request,
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):

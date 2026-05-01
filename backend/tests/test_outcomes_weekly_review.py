@@ -35,6 +35,37 @@ def test_weekly_review_generate_uses_ollama_when_available(client, monkeypatch):
     assert body["ai_feedback"] == "Stay consistent and protect your best hour this week."
 
 
+def test_weekly_review_generate_ai_timeout_falls_back_without_500(client, monkeypatch):
+    from app.services import weekly_review_service
+
+    monkeypatch.setattr(weekly_review_service, "generate_weekly_coach_note", lambda _prompt: None)
+
+    headers = _auth_headers(client, "review-timeout@example.com", "review-timeout-user")
+    generated = client.post("/outcomes/weekly-review/generate", headers=headers)
+    assert generated.status_code == 200
+    body = generated.json()
+    assert isinstance(body["ai_feedback"], str)
+    assert body["ai_feedback"]
+
+
+def test_weekly_review_generate_logs_provider_errors_and_uses_fallback(client, monkeypatch, caplog):
+    from app.services import weekly_review_service
+
+    def _raise(_prompt: str) -> str:
+        raise RuntimeError("provider down")
+
+    monkeypatch.setattr(weekly_review_service, "generate_weekly_coach_note", _raise)
+
+    headers = _auth_headers(client, "review-provider@example.com", "review-provider-user")
+    with caplog.at_level("ERROR"):
+        generated = client.post("/outcomes/weekly-review/generate", headers=headers)
+    assert generated.status_code == 200
+    body = generated.json()
+    assert isinstance(body["ai_feedback"], str)
+    assert body["ai_feedback"]
+    assert any("weekly_review_ai_provider_error" in record.message for record in caplog.records)
+
+
 def test_output_metrics_current_returns_shape(client):
     headers = _auth_headers(client, "metrics@example.com", "metrics-user")
     me = client.get("/auth/me", headers=headers)

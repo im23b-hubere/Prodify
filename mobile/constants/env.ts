@@ -18,7 +18,7 @@ function readEmbeddedApiUrlFromManifest(): string | null {
 }
 
 export function getExpoPublicApiUrl(): string | null {
-  return readEmbeddedApiUrlFromManifest() ?? readPublicEnv("EXPO_PUBLIC_API_URL");
+  return readPublicEnv("EXPO_PUBLIC_API_URL") ?? readEmbeddedApiUrlFromManifest();
 }
 
 export function getExpoPublicAppEnv(): string | null {

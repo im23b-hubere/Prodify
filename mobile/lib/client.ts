@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "../constants/api";
 import NetInfo from "@react-native-community/netinfo";
 import Constants from "expo-constants";
+import * as Sentry from "@sentry/react-native";
 import i18n from "./i18n";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -8,6 +9,7 @@ const MAX_RETRIES = 2;
 const BASE_RETRY_DELAY_MS = 600;
 const REFRESH_ACCESS_TIMEOUT_MS = 12_000;
 const PRODUCTION_BASE_FALLBACKS = ["https://prodify-api-46b1.onrender.com", "https://api.prodify.app"];
+const RETRYABLE_STATUS_CODES = new Set([429, 502, 503, 504]);
 
 /** Set from AuthProvider: clear stored token when an authenticated request returns 401. */
 let unauthorizedHandler: (() => void | Promise<void>) | null = null;
@@ -49,6 +51,8 @@ export type ApiOptions = {
   body?: unknown;
   timeoutMs?: number;
   retries?: number;
+  /** Enable retries for non-idempotent methods only when explicitly intended. */
+  retryUnsafeMethods?: boolean | string[];
   signal?: AbortSignal;
   /** Internal: do not attempt refresh (avoids recursion). */
   _skipRefresh?: boolean;
@@ -58,8 +62,70 @@ export type ApiOptions = {
   _triedBaseUrls?: string[];
 };
 
+type NetworkBreadcrumb = {
+  path: string;
+  method: string;
+  timeoutMs: number;
+  host: string;
+  fallbackUsed: boolean;
+  reason: string;
+  attempt?: number;
+  status?: number;
+};
+
+export type ApiMultipartOptions = {
+  token?: string | null;
+  method?: "POST" | "PUT" | "PATCH";
+  formData: FormData;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+};
+
 function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/+$/, "");
+}
+
+function parseHostFromBaseUrl(baseUrl: string): string {
+  try {
+    const parsed = new URL(baseUrl);
+    return parsed.host || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+function addNetworkBreadcrumb(payload: NetworkBreadcrumb): void {
+  if (typeof (Sentry as { addBreadcrumb?: unknown }).addBreadcrumb === "function") {
+    (Sentry as { addBreadcrumb: (crumb: Record<string, unknown>) => void }).addBreadcrumb({
+      category: "network",
+      level: "info",
+      message: `api ${payload.method} ${payload.path}`,
+      data: {
+        method: payload.method,
+        path: payload.path,
+        host: payload.host,
+        timeoutMs: payload.timeoutMs,
+        fallbackUsed: payload.fallbackUsed,
+        reason: payload.reason,
+        attempt: payload.attempt,
+        status: payload.status,
+      },
+    });
+  }
+}
+
+function getRetryDelayMs(attempt: number): number {
+  const base = BASE_RETRY_DELAY_MS * 2 ** attempt;
+  const jitter = Math.floor(Math.random() * Math.max(100, Math.round(base * 0.35)));
+  return base + jitter;
+}
+
+function canRetryMethod(method: string, retryUnsafeMethods?: boolean | string[]): boolean {
+  if (method === "GET" || method === "HEAD") return true;
+  if (!retryUnsafeMethods) return false;
+  if (retryUnsafeMethods === true) return true;
+  const allowed = new Set(retryUnsafeMethods.map((value) => value.toUpperCase()));
+  return allowed.has(method);
 }
 
 function nextProductionFallbackBaseUrl(currentBaseUrl: string, tried: string[]): string | null {
@@ -195,8 +261,9 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
 
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const method = (opts.method ?? "GET").toUpperCase();
-  const allowRetry = method === "GET" || method === "HEAD";
+  const allowRetry = canRetryMethod(method, opts.retryUnsafeMethods);
   const retries = allowRetry ? Math.max(0, Math.min(opts.retries ?? MAX_RETRIES, 4)) : 0;
+  const host = parseHostFromBaseUrl(baseUrl);
 
   let res: Response | null = null;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
@@ -219,11 +286,28 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
       if (externalSignal) externalSignal.removeEventListener("abort", onExternalAbort);
       clearTimeout(timeoutId);
       if (attempt < retries) {
-        await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * 2 ** attempt));
+        addNetworkBreadcrumb({
+          method,
+          path,
+          timeoutMs,
+          host,
+          fallbackUsed: triedBaseUrls.length > 0,
+          reason: "network_retry_after_error",
+          attempt,
+        });
+        await new Promise((resolve) => setTimeout(resolve, getRetryDelayMs(attempt)));
         continue;
       }
       if (e instanceof Error && e.name === "AbortError") {
         if (externalSignal?.aborted) {
+          addNetworkBreadcrumb({
+            method,
+            path,
+            timeoutMs,
+            host,
+            fallbackUsed: triedBaseUrls.length > 0,
+            reason: "aborted_by_caller",
+          });
           const aborted = new Error("Request aborted by caller");
           aborted.name = "AbortError";
           throw aborted;
@@ -232,6 +316,14 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
           const fallbackBaseUrl = nextProductionFallbackBaseUrl(baseUrl, triedBaseUrls);
           if (fallbackBaseUrl) {
             console.warn(`[api] Request timeout on ${baseUrl}, retrying via ${fallbackBaseUrl}`);
+            addNetworkBreadcrumb({
+              method,
+              path,
+              timeoutMs,
+              host,
+              fallbackUsed: true,
+              reason: "timeout_fallback_host",
+            });
             return apiJson<T>(path, {
               ...opts,
               _baseUrl: fallbackBaseUrl,
@@ -239,6 +331,14 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
             });
           }
         }
+        addNetworkBreadcrumb({
+          method,
+          path,
+          timeoutMs,
+          host,
+          fallbackUsed: triedBaseUrls.length > 0,
+          reason: "timeout",
+        });
         throw new Error(i18n.t("errors.requestTimeout"));
       }
       if (e instanceof TypeError) {
@@ -253,6 +353,14 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
           const fallbackBaseUrl = nextProductionFallbackBaseUrl(baseUrl, triedBaseUrls);
           if (fallbackBaseUrl) {
             console.warn(`[api] Network failure on ${baseUrl}, retrying via ${fallbackBaseUrl}`);
+            addNetworkBreadcrumb({
+              method,
+              path,
+              timeoutMs,
+              host,
+              fallbackUsed: true,
+              reason: "network_fallback_host",
+            });
             return apiJson<T>(path, {
               ...opts,
               _baseUrl: fallbackBaseUrl,
@@ -260,14 +368,32 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
             });
           }
         }
+        addNetworkBreadcrumb({
+          method,
+          path,
+          timeoutMs,
+          host,
+          fallbackUsed: triedBaseUrls.length > 0,
+          reason: "network_error",
+        });
         throw new Error(i18n.t("errors.network"));
       }
       throw e;
     }
     if (externalSignal) externalSignal.removeEventListener("abort", onExternalAbort);
     clearTimeout(timeoutId);
-    if (res.status >= 500 && res.status < 600 && attempt < retries) {
-      await new Promise((resolve) => setTimeout(resolve, BASE_RETRY_DELAY_MS * 2 ** attempt));
+    if (RETRYABLE_STATUS_CODES.has(res.status) && attempt < retries) {
+      addNetworkBreadcrumb({
+        method,
+        path,
+        timeoutMs,
+        host,
+        fallbackUsed: triedBaseUrls.length > 0,
+        reason: "retryable_status",
+        attempt,
+        status: res.status,
+      });
+      await new Promise((resolve) => setTimeout(resolve, getRetryDelayMs(attempt)));
       continue;
     }
     break;
@@ -320,4 +446,83 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
     throw new ApiError(res.status, msg, data);
   }
   return data as T;
+}
+
+export async function apiMultipart<T = unknown>(
+  path: string,
+  { token, method = "POST", formData, timeoutMs = DEFAULT_TIMEOUT_MS, signal }: ApiMultipartOptions,
+): Promise<T> {
+  const controller = new AbortController();
+  const onExternalAbort = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    signal.addEventListener("abort", onExternalAbort, { once: true });
+  }
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const host = parseHostFromBaseUrl(API_BASE_URL);
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: token?.trim() ? { Authorization: `Bearer ${token.trim()}` } : undefined,
+      body: formData,
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    let payload: unknown = null;
+    try {
+      payload = raw ? JSON.parse(raw) : null;
+    } catch {
+      payload = raw;
+    }
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`;
+      if (typeof payload === "object" && payload && "detail" in payload) {
+        message = formatApiErrorDetail((payload as { detail: unknown }).detail);
+      } else if (typeof payload === "string" && payload.trim()) {
+        message = payload;
+      }
+      throw new ApiError(response.status, message, payload);
+    }
+    return payload as T;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      if (signal?.aborted) {
+        addNetworkBreadcrumb({
+          method,
+          path,
+          timeoutMs,
+          host,
+          fallbackUsed: false,
+          reason: "upload_aborted_by_caller",
+        });
+        const aborted = new Error("Request aborted by caller");
+        aborted.name = "AbortError";
+        throw aborted;
+      }
+      addNetworkBreadcrumb({
+        method,
+        path,
+        timeoutMs,
+        host,
+        fallbackUsed: false,
+        reason: "upload_timeout",
+      });
+      throw new Error(i18n.t("errors.requestTimeout"));
+    }
+    if (error instanceof TypeError) {
+      addNetworkBreadcrumb({
+        method,
+        path,
+        timeoutMs,
+        host,
+        fallbackUsed: false,
+        reason: "upload_network_error",
+      });
+      throw new Error(i18n.t("errors.network"));
+    }
+    throw error;
+  } finally {
+    if (signal) signal.removeEventListener("abort", onExternalAbort);
+    clearTimeout(timeoutId);
+  }
 }

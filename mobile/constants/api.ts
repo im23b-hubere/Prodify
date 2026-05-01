@@ -45,24 +45,23 @@ function isLoopbackApiUrl(url: string): boolean {
 function getApiUrl(): string {
   const envUrl = getExpoPublicApiUrl();
   const fromMetro = inferDevApiUrlFromMetroHost();
-  const productionFallback = "https://prodify-api-46b1.onrender.com";
 
   // Release / EAS builds: require a real remote API URL (not loopback).
   if (!__DEV__) {
     if (!envUrl?.trim()) {
-      console.warn(
-        `[api] EXPO_PUBLIC_API_URL missing in production build; falling back to ${productionFallback}.`,
+      throw new Error(
+        "[api] EXPO_PUBLIC_API_URL is missing in production. Set EXPO_PUBLIC_API_URL to a valid https:// API endpoint.",
       );
-      return productionFallback;
     }
     if (isLoopbackApiUrl(envUrl) || /10\.0\.2\.2/i.test(envUrl)) {
-      console.warn(
-        `[api] Invalid loopback EXPO_PUBLIC_API_URL in production (${envUrl}); falling back to ${productionFallback}.`,
+      throw new Error(
+        `[api] EXPO_PUBLIC_API_URL is invalid for production (${envUrl}). Set EXPO_PUBLIC_API_URL to a reachable https:// endpoint (no localhost/loopback).`,
       );
-      return productionFallback;
     }
     if (!/^https:\/\//i.test(envUrl)) {
-      console.warn("[api] Production API should use HTTPS.");
+      throw new Error(
+        `[api] EXPO_PUBLIC_API_URL must use HTTPS in production (${envUrl}). Set EXPO_PUBLIC_API_URL to an https:// endpoint.`,
+      );
     }
   }
 

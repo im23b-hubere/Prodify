@@ -36,10 +36,23 @@ def _generate_text(
         },
     }
 
+    timeout_seconds = float(settings.ollama_timeout_seconds or 20.0)
     try:
-        resp = httpx.post(url, json=body, timeout=float(settings.ollama_timeout_seconds or 20.0))
+        resp = httpx.post(url, json=body, timeout=timeout_seconds)
+    except httpx.TimeoutException:
+        logger.warning(
+            "Ollama %s timeout",
+            label,
+            extra={"provider": "ollama", "label": label, "timeout_seconds": timeout_seconds},
+        )
+        return None
     except httpx.HTTPError as exc:
-        logger.warning("Ollama %s transport error: %s", label, exc)
+        logger.warning(
+            "Ollama %s transport error: %s",
+            label,
+            exc,
+            extra={"provider": "ollama", "label": label},
+        )
         return None
 
     if resp.status_code >= 400:

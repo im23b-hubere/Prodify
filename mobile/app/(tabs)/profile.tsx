@@ -22,11 +22,10 @@ import { BadgeIcon } from "../../components/ui/BadgeIcon";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { StatCard } from "../../components/ui/StatCard";
-import { API_BASE_URL } from "../../constants/api";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-import { ApiError, apiJson } from "../../lib/client";
+import { ApiError, apiJson, apiMultipart } from "../../lib/client";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
 import type { SessionStatsDto } from "../../types/session";
 import type { StreakMilestonesDto } from "../../types/streak";
@@ -370,30 +369,32 @@ export default function ProfileScreen() {
         type: file.type,
       } as unknown as Blob);
 
-      const res = await fetch(`${API_BASE_URL}/users/me/profile-picture`, {
+      await apiMultipart("/users/me/profile-picture", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        token,
+        formData,
+        timeoutMs: 45_000,
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        const detail = extractProfilePictureErrorDetail(txt) || t("profile.pictureUploadFailed");
-        const userMsg = shouldOfferPictureFormatHint(detail)
-          ? t("profile.pictureUploadDetailWithHint", {
-              detail,
-              hint: t("profile.pictureFormatHelp"),
-            })
-          : detail;
-        throw new Error(userMsg);
-      }
       await refreshUser().catch(() => undefined);
       setAvatarVersion((prev) => prev + 1);
       await load();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (e) {
+      const fallbackMessage =
+        e instanceof ApiError
+          ? extractProfilePictureErrorDetail(String(e.message || "")) || t("profile.pictureUploadFailed")
+          : e instanceof Error
+            ? e.message
+            : t("profile.pictureUploadFailed");
+      const userMsg = shouldOfferPictureFormatHint(fallbackMessage)
+        ? t("profile.pictureUploadDetailWithHint", {
+            detail: fallbackMessage,
+            hint: t("profile.pictureFormatHelp"),
+          })
+        : fallbackMessage;
       Alert.alert(
         t("profile.pictureUploadFailedTitle"),
-        e instanceof Error ? e.message : t("profile.pictureUploadFailed"),
+        userMsg,
       );
     } finally {
       setPictureBusy(false);
