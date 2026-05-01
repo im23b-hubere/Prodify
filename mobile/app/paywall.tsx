@@ -56,6 +56,7 @@ export default function PaywallScreen() {
   const [purchaseEnabled, setPurchaseEnabled] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const isExpoGo = Constants.appOwnership === "expo";
+  const expoGoPreviewMode = __DEV__ && isExpoGo;
 
   const appUserId = useMemo(() => (user?.id != null ? String(user.id) : null), [user?.id]);
 
@@ -68,6 +69,14 @@ export default function PaywallScreen() {
         if (!hasApiKey) {
           setPurchaseEnabled(false);
           setError(t("paywall.errors.missingConfig"));
+          return;
+        }
+        if (expoGoPreviewMode) {
+          // Dev-only: allow visual Paywall previews in Expo Go without showing a blocking error state.
+          setPurchaseEnabled(false);
+          setWeeklyPkg(null);
+          setSixMonthPkg(null);
+          setError(null);
           return;
         }
         if (isExpoGo) {
@@ -105,7 +114,7 @@ export default function PaywallScreen() {
     return () => {
       cancelled = true;
     };
-  }, [appUserId, isExpoGo, reloadKey, t]);
+  }, [appUserId, expoGoPreviewMode, isExpoGo, reloadKey, t]);
 
   async function syncBackendFromCustomerInfo() {
     if (!token || !appUserId) return;
@@ -194,6 +203,11 @@ export default function PaywallScreen() {
         <Text style={styles.badge}>{t("paywall.badge")}</Text>
         <Text style={styles.title}>{copy.title}</Text>
         <Text style={styles.body}>{copy.body}</Text>
+        {expoGoPreviewMode ? (
+          <Text style={styles.previewHint}>
+            {t("paywall.errors.expoGoNotSupported")}
+          </Text>
+        ) : null}
         {loading ? <LoadingState message={t("paywall.loadingOfferings")} /> : null}
         {error ? (
           <ErrorState
@@ -259,6 +273,7 @@ const styles = StyleSheet.create({
   badge: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
   body: { color: colors.textSecondary, ...typography.body },
+  previewHint: { color: colors.textSecondary, ...typography.caption },
   restore: { alignItems: "center", paddingVertical: spacing.xs },
   restoreText: {
     color: colors.textSecondary,
