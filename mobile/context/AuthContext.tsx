@@ -123,6 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await apiJson<Partial<TokenPair>>("/auth/login", {
         method: "POST",
         body: { email, password },
+        timeoutMs: 60_000,
+        retries: 2,
       });
       const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
       const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
@@ -155,6 +157,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await apiJson<Partial<TokenPair>>("/auth/register", {
         method: "POST",
         body: { email, username, password },
+        timeoutMs: 60_000,
+        retries: 2,
       });
       const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
       const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";

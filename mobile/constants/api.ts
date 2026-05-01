@@ -45,7 +45,7 @@ function isLoopbackApiUrl(url: string): boolean {
 function getApiUrl(): string {
   const envUrl = getExpoPublicApiUrl();
   const fromMetro = inferDevApiUrlFromMetroHost();
-  const productionFallback = "https://api.prodify.app";
+  const productionFallback = "https://prodify-api-46b1.onrender.com";
 
   // Release / EAS builds: require a real remote API URL (not loopback).
   if (!__DEV__) {

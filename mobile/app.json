@@ -52,6 +52,7 @@
     },
     "extra": {
       "router": {},
+      "apiUrl": "https://prodify-api-46b1.onrender.com",
       "eas": {
         "projectId": "1f147cce-39c0-4a4c-81c6-03637bc0f628"
       }

@@ -3,10 +3,11 @@ import NetInfo from "@react-native-community/netinfo";
 import Constants from "expo-constants";
 import i18n from "./i18n";
 
-const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
 const BASE_RETRY_DELAY_MS = 600;
 const REFRESH_ACCESS_TIMEOUT_MS = 12_000;
+const PRODUCTION_BASE_FALLBACKS = ["https://prodify-api-46b1.onrender.com", "https://api.prodify.app"];
 
 /** Set from AuthProvider: clear stored token when an authenticated request returns 401. */
 let unauthorizedHandler: (() => void | Promise<void>) | null = null;
@@ -53,7 +54,26 @@ export type ApiOptions = {
   _skipRefresh?: boolean;
   /** Internal: force a specific base URL (used by dev fallback). */
   _baseUrl?: string;
+  /** Internal: base URLs already attempted for this request. */
+  _triedBaseUrls?: string[];
 };
+
+function normalizeBaseUrl(url: string): string {
+  return url.trim().replace(/\/+$/, "");
+}
+
+function nextProductionFallbackBaseUrl(currentBaseUrl: string, tried: string[]): string | null {
+  const normalizedCurrent = normalizeBaseUrl(currentBaseUrl);
+  const triedSet = new Set(tried.map(normalizeBaseUrl));
+  triedSet.add(normalizedCurrent);
+  for (const candidate of PRODUCTION_BASE_FALLBACKS) {
+    const normalizedCandidate = normalizeBaseUrl(candidate);
+    if (!triedSet.has(normalizedCandidate)) {
+      return normalizedCandidate;
+    }
+  }
+  return null;
+}
 
 function inferDevFallbackBaseUrl(): string | null {
   const uri =
@@ -156,6 +176,7 @@ async function tryRefreshAccessToken(): Promise<TokenPair | null> {
 
 export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}): Promise<T> {
   const baseUrl = opts._baseUrl ?? API_BASE_URL;
+  const triedBaseUrls = opts._triedBaseUrls ?? [];
   if (!baseUrl) {
     throw new Error(i18n.t("errors.serviceUnavailable"));
   }
@@ -207,6 +228,17 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
           aborted.name = "AbortError";
           throw aborted;
         }
+        if (!__DEV__) {
+          const fallbackBaseUrl = nextProductionFallbackBaseUrl(baseUrl, triedBaseUrls);
+          if (fallbackBaseUrl) {
+            console.warn(`[api] Request timeout on ${baseUrl}, retrying via ${fallbackBaseUrl}`);
+            return apiJson<T>(path, {
+              ...opts,
+              _baseUrl: fallbackBaseUrl,
+              _triedBaseUrls: [...triedBaseUrls, baseUrl],
+            });
+          }
+        }
         throw new Error(i18n.t("errors.requestTimeout"));
       }
       if (e instanceof TypeError) {
@@ -215,6 +247,17 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
           if (fallbackBaseUrl && fallbackBaseUrl !== baseUrl) {
             console.warn(`[api] Primary API unreachable (${baseUrl}), retrying via ${fallbackBaseUrl}`);
             return apiJson<T>(path, { ...opts, _baseUrl: fallbackBaseUrl });
+          }
+        }
+        if (!__DEV__) {
+          const fallbackBaseUrl = nextProductionFallbackBaseUrl(baseUrl, triedBaseUrls);
+          if (fallbackBaseUrl) {
+            console.warn(`[api] Network failure on ${baseUrl}, retrying via ${fallbackBaseUrl}`);
+            return apiJson<T>(path, {
+              ...opts,
+              _baseUrl: fallbackBaseUrl,
+              _triedBaseUrls: [...triedBaseUrls, baseUrl],
+            });
           }
         }
         throw new Error(i18n.t("errors.network"));
