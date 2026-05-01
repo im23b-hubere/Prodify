@@ -1,7 +1,7 @@
 {
   "name": "prodify",
   "description": "Prodify — create beats, share tracks, and build your sound.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start --go",
