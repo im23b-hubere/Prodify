@@ -287,6 +287,7 @@
     },
     "errors": {
       "storeUnavailable": "Store currently unavailable. You can continue and try again later.",
+      "appleProductsUnavailable": "Apple has not returned your subscription products yet. In App Store Connect, link both subscriptions to app version 1.0.1, confirm the Paid Apps Agreement is active, and enable In-App Purchase for com.prodify.app in Apple Developer. Then install the latest TestFlight build and try again.",
       "missingConfig": "Billing is not configured in this build (missing RevenueCat API key).",
       "expoGoNotSupported": "In-app purchases are not available in Expo Go. Use a development or production build to view plans.",
       "loadOfferings": "Failed to load offerings.",

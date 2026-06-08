@@ -26,6 +26,7 @@ import {
   isTrialActive,
   restoreRevenueCatPurchases,
 } from "../lib/revenuecat";
+import { isOfferingsErrorKey, resolveOfferingsLoadError } from "../lib/paywallErrors";
 
 type Variant = "value" | "outcome" | "social_proof";
 const WEEKLY_PRODUCT_ID = "prodify_premium_weekly";
@@ -109,7 +110,8 @@ export default function PaywallScreen() {
       } catch (e) {
         if (cancelled) return;
         setPurchaseEnabled(false);
-        setError(e instanceof Error ? e.message : t("paywall.errors.loadOfferings"));
+        const resolved = resolveOfferingsLoadError(e, t("paywall.errors.loadOfferings"));
+        setError(isOfferingsErrorKey(resolved) ? t(`paywall.errors.${resolved}`) : resolved);
       } finally {
         if (!cancelled) setLoading(false);
       }

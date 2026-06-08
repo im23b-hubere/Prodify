@@ -29,6 +29,9 @@ export async function configureRevenueCat(appUserId?: string): Promise<void> {
   }
   const apiKey = getRevenueCatApiKey();
   if (!apiKey) return;
+  if (__DEV__) {
+    Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
+  }
   const normalized = appUserId?.trim() ? appUserId.trim() : null;
 
   if (configuredForUser === normalized) return;
