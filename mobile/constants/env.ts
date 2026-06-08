@@ -6,11 +6,26 @@ function readPublicEnv(name: string): string | null {
 }
 
 function readExtraString(key: string): string | null {
-  const extra = Constants.expoConfig?.extra as Record<string, unknown> | undefined;
-  const value = extra?.[key];
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
+  const candidates: Record<string, unknown>[] = [];
+  const expoExtra = Constants.expoConfig?.extra;
+  if (expoExtra && typeof expoExtra === "object") candidates.push(expoExtra as Record<string, unknown>);
+
+  const manifestExtra = Constants.manifest?.extra;
+  if (manifestExtra && typeof manifestExtra === "object") {
+    candidates.push(manifestExtra as Record<string, unknown>);
+  }
+
+  const manifest2Extra = (Constants as { manifest2?: { extra?: Record<string, unknown> } }).manifest2
+    ?.extra;
+  if (manifest2Extra && typeof manifest2Extra === "object") candidates.push(manifest2Extra);
+
+  for (const extra of candidates) {
+    const value = extra[key];
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
 }
 
 function readEmbeddedApiUrlFromManifest(): string | null {
