@@ -56,27 +56,31 @@ export default function PaywallScreen() {
   const [purchaseEnabled, setPurchaseEnabled] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const isExpoGo = Constants.appOwnership === "expo";
+  /** Dev + Expo Go only: screenshot-friendly layout (no IAP). Never active in release builds. */
   const expoGoPreviewMode = __DEV__ && isExpoGo;
 
   const appUserId = useMemo(() => (user?.id != null ? String(user.id) : null), [user?.id]);
+
+  const previewWeeklyPrice = t("paywall.expoPreview.weeklyPricePlaceholder");
+  const previewSixMonthPrice = t("paywall.expoPreview.sixMonthPricePlaceholder");
 
   useEffect(() => {
     let cancelled = false;
     async function loadOfferings() {
       try {
+        if (expoGoPreviewMode) {
+          setPurchaseEnabled(false);
+          setWeeklyPkg(null);
+          setSixMonthPkg(null);
+          setError(null);
+          setLoading(false);
+          return;
+        }
         setLoading(true);
         const hasApiKey = Boolean(getExpoPublicRevenueCatApiKey());
         if (!hasApiKey) {
           setPurchaseEnabled(false);
           setError(t("paywall.errors.missingConfig"));
-          return;
-        }
-        if (expoGoPreviewMode) {
-          // Dev-only: allow visual Paywall previews in Expo Go without showing a blocking error state.
-          setPurchaseEnabled(false);
-          setWeeklyPkg(null);
-          setSixMonthPkg(null);
-          setError(null);
           return;
         }
         if (isExpoGo) {
@@ -203,11 +207,6 @@ export default function PaywallScreen() {
         <Text style={styles.badge}>{t("paywall.badge")}</Text>
         <Text style={styles.title}>{copy.title}</Text>
         <Text style={styles.body}>{copy.body}</Text>
-        {expoGoPreviewMode ? (
-          <Text style={styles.previewHint}>
-            {t("paywall.errors.expoGoNotSupported")}
-          </Text>
-        ) : null}
         {loading ? <LoadingState message={t("paywall.loadingOfferings")} /> : null}
         {error ? (
           <ErrorState
@@ -221,28 +220,32 @@ export default function PaywallScreen() {
         ) : null}
         <PrimaryButton
           label={
-            sixMonthPkg
-              ? t("paywall.cta.startTrialWithPrice", {
-                  price: sixMonthPkg.product.priceString,
-                })
-              : t("paywall.cta.startTrial")
+            expoGoPreviewMode
+              ? t("paywall.cta.startTrialWithPrice", { price: previewSixMonthPrice })
+              : sixMonthPkg
+                ? t("paywall.cta.startTrialWithPrice", {
+                    price: sixMonthPkg.product.priceString,
+                  })
+                : t("paywall.cta.startTrial")
           }
           onPress={() => void purchasePackage(sixMonthPkg ?? weeklyPkg)}
-          disabled={!purchaseEnabled || busy}
+          disabled={busy || (!purchaseEnabled && !expoGoPreviewMode)}
         />
         <PrimaryButton
           label={
-            weeklyPkg
-              ? t("paywall.cta.weeklyWithPrice", { price: weeklyPkg.product.priceString })
-              : t("paywall.cta.weekly")
+            expoGoPreviewMode
+              ? t("paywall.cta.weeklyWithPrice", { price: previewWeeklyPrice })
+              : weeklyPkg
+                ? t("paywall.cta.weeklyWithPrice", { price: weeklyPkg.product.priceString })
+                : t("paywall.cta.weekly")
           }
           onPress={() => void purchasePackage(weeklyPkg)}
-          disabled={!purchaseEnabled || busy}
+          disabled={busy || (!purchaseEnabled && !expoGoPreviewMode)}
         />
         <Pressable
           style={styles.restore}
           onPress={() => void onRestore()}
-          disabled={busy}
+          disabled={busy || expoGoPreviewMode}
           accessibilityRole="button"
           accessibilityLabel={t("paywall.cta.restore")}
         >
@@ -273,7 +276,6 @@ const styles = StyleSheet.create({
   badge: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
   body: { color: colors.textSecondary, ...typography.body },
-  previewHint: { color: colors.textSecondary, ...typography.caption },
   restore: { alignItems: "center", paddingVertical: spacing.xs },
   restoreText: {
     color: colors.textSecondary,

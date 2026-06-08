@@ -281,6 +281,10 @@
       "restoreCompleteNone": "No active premium found.",
       "restoreFailedTitle": "Restore failed"
     },
+    "expoPreview": {
+      "weeklyPricePlaceholder": "CHF 7.00",
+      "sixMonthPricePlaceholder": "CHF 40.00"
+    },
     "errors": {
       "storeUnavailable": "Store currently unavailable. You can continue and try again later.",
       "missingConfig": "Billing is not configured in this build (missing RevenueCat API key).",
