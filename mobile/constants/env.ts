@@ -5,6 +5,14 @@ function readPublicEnv(name: string): string | null {
   return value ? value : null;
 }
 
+function readExtraString(key: string): string | null {
+  const extra = Constants.expoConfig?.extra as Record<string, unknown> | undefined;
+  const value = extra?.[key];
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
 function readEmbeddedApiUrlFromManifest(): string | null {
   const extra = Constants.expoConfig?.extra as { apiUrl?: unknown } | undefined;
   const fromExtra = typeof extra?.apiUrl === "string" ? extra.apiUrl.trim() : "";
@@ -30,9 +38,14 @@ export function getExpoPublicSentryDsn(): string | null {
 }
 
 export function getExpoPublicRevenueCatApiKey(): string | null {
-  return readPublicEnv("EXPO_PUBLIC_REVENUECAT_API_KEY");
+  return (
+    readPublicEnv("EXPO_PUBLIC_REVENUECAT_API_KEY") ?? readExtraString("revenueCatApiKey")
+  );
 }
 
 export function getExpoPublicRevenueCatEntitlementId(): string | null {
-  return readPublicEnv("EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID");
+  return (
+    readPublicEnv("EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID") ??
+    readExtraString("revenueCatEntitlementId")
+  );
 }
