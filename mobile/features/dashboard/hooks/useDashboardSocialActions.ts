@@ -11,7 +11,6 @@ import {
 } from "react";
 import { Alert } from "react-native";
 
-import { apiJson } from "../../../lib/client";
 import type { MomentumAction } from "../../../lib/momentum";
 import { rescueBuddyStreak } from "../../../lib/social";
 import type { BuddyRiskDto, IdentityStateDto } from "../../../types/friends";
@@ -31,7 +30,6 @@ type Params = {
   router: DashboardSocialRouter;
   t: TFunction;
   loadSocial: () => Promise<void>;
-  loadSessions: () => Promise<void>;
   advancePrimaryNudge: (category: string) => Promise<void>;
   applyMomentumAction: (uid: number, action: MomentumAction) => Promise<void>;
   setSocialActionBusy: Dispatch<SetStateAction<string | null>>;
@@ -46,7 +44,6 @@ export function useDashboardSocialActions({
   router,
   t,
   loadSocial,
-  loadSessions,
   advancePrimaryNudge,
   applyMomentumAction,
   setSocialActionBusy,
@@ -138,17 +135,12 @@ export function useDashboardSocialActions({
       if (!token) return;
       setSocialActionBusy("commitment");
       try {
-        await apiJson("/sessions/quick-start", {
-          token,
-          method: "POST",
-          body: { session_type: "beat_making" },
-        });
-        await loadSessions();
         if (userId) {
           await applyMomentumAction(userId, "session");
         }
         showSocialToast(identityFeedback.session);
         await advancePrimaryNudge(category);
+        router.push("/session/setup");
       } catch (e) {
         Alert.alert(
           t("dashboard.couldNotStartProducing"),
@@ -160,7 +152,6 @@ export function useDashboardSocialActions({
     },
     [
       token,
-      loadSessions,
       showSocialToast,
       advancePrimaryNudge,
       userId,
@@ -168,6 +159,7 @@ export function useDashboardSocialActions({
       t,
       applyMomentumAction,
       setSocialActionBusy,
+      router,
     ],
   );
 

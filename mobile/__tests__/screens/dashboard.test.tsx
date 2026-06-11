@@ -86,11 +86,8 @@ jest.mock("../../features/dashboard/hooks/useDashboardSocialActions", () => ({
 
 jest.mock("../../features/dashboard/hooks/useDashboardSocialNudges", () => ({
   useDashboardSocialNudges: () => ({
-    momentumState: "stable",
-    momentumScore: 0,
     primaryNudge: null,
     secondaryNudge: null,
-    returnHook: null,
     advancePrimaryNudge: jest.fn(),
     applyMomentumAction: jest.fn(),
   }),
@@ -105,13 +102,6 @@ jest.mock("../../features/dashboard/hooks/useDashboardStreakEvents", () => ({
   }),
 }));
 
-jest.mock("../../components/dashboard/DashboardMotivationCard", () => ({
-  DashboardMotivationCard: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View);
-  },
-}));
 jest.mock("../../components/dashboard/DashboardSessionStarter", () => ({
   DashboardSessionStarter: () => {
     const React = require("react");
@@ -135,13 +125,6 @@ jest.mock("../../components/dashboard/TodayPlanCard", () => ({
 }));
 jest.mock("../../components/dashboard/TodayProgressCard", () => ({
   TodayProgressCard: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View);
-  },
-}));
-jest.mock("../../components/progression/ProgressionBarCard", () => ({
-  ProgressionBarCard: () => {
     const React = require("react");
     const { View } = require("react-native");
     return React.createElement(View);
@@ -184,13 +167,6 @@ jest.mock("../../components/TutorialOverlay", () => ({
 }));
 jest.mock("../../features/dashboard/components/ActiveSessionBlock", () => ({
   ActiveSessionBlock: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View);
-  },
-}));
-jest.mock("../../features/dashboard/components/ReturnHookCard", () => ({
-  ReturnHookCard: () => {
     const React = require("react");
     const { View } = require("react-native");
     return React.createElement(View);
@@ -270,9 +246,7 @@ const createDashboardState = (overrides: Record<string, unknown> = {}) => ({
   identityState: null,
   weeklyGoalTarget: 4,
   weekSessionsCount: 0,
-  serverMotivationDto: null,
   forecast: null,
-  progression: null,
   entitlement: { entitlement: "free" },
   loadSessions: jest.fn().mockResolvedValue(undefined),
   loadStreakOverview: jest.fn().mockResolvedValue(undefined),

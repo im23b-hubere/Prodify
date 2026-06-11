@@ -19,17 +19,29 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
 import { AppFlame, RecordGlyph, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { ErrorState } from "../../components/states/ErrorState";
 import { AppCard } from "../../components/ui/AppCard";
 import { StatCard } from "../../components/ui/StatCard";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
+import {
+  parseMotivationalMessage,
+  translateMotivationalMessage,
+  type MotivationalMessageDto,
+} from "../../lib/motivationApi";
+import {
+  generateMotivationMessage,
+  getTimeBasedGreeting,
+  getTimeOfDay,
+} from "../../lib/motivationEngine";
 import {
   formatIsoDateShortLocal,
   formatSessionListDate,
@@ -237,7 +249,7 @@ function SessionsPerDayChart({ data }: { data: BarPoint[] }) {
 
 export default function StatsScreen() {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const filters = useMemo(
     () =>
@@ -258,6 +270,9 @@ export default function StatsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
+  const [serverMotivationDto, setServerMotivationDto] = useState<MotivationalMessageDto | null>(
+    null,
+  );
   const loadSeq = useRef(0);
   const mounted = useRef(true);
   const initialFocusLoadDone = useRef(false);
@@ -308,17 +323,20 @@ export default function StatsScreen() {
         // Show core stats first, then hydrate secondary sections.
         if (mounted.current && seq === loadSeq.current) setLoading(false);
 
-        const [progressionRes, forecastRes] = await Promise.allSettled([
+        const [progressionRes, forecastRes, motivationRes] = await Promise.allSettled([
           syncProgression(token, { force: forceProgressionSync }),
           apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
+          apiJson<unknown>("/motivational-messages/random", { token }),
         ]);
         if (!mounted.current || seq !== loadSeq.current) return;
 
         const progressionRaw = progressionRes.status === "fulfilled" ? progressionRes.value : null;
         const forecastRaw = forecastRes.status === "fulfilled" ? forecastRes.value : null;
+        const motivationRaw = motivationRes.status === "fulfilled" ? motivationRes.value : null;
 
         setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
         setProgression(progressionRaw);
+        setServerMotivationDto(parseMotivationalMessage(motivationRaw));
       } catch (e) {
         if (!mounted.current || seq !== loadSeq.current) return;
         const msg = e instanceof Error ? e.message : t("stats.loadFailed");
@@ -421,6 +439,42 @@ export default function StatsScreen() {
   );
 
   const recent = stats?.recent_sessions ?? [];
+
+  const todaySessionCount = useMemo(() => {
+    const todayKey = localDateKey(new Date());
+    return recent.filter((session) => {
+      if (!session.started_at) return false;
+      const startedAt = new Date(session.started_at);
+      if (!Number.isFinite(startedAt.getTime())) return false;
+      return localDateKey(startedAt) === todayKey;
+    }).length;
+  }, [recent]);
+
+  const weekSessionCount = useMemo(() => {
+    if (filter.period === "week" && stats?.summary) {
+      return Math.max(0, stats.summary.total_sessions ?? 0);
+    }
+    return chartData.reduce((sum, point) => sum + point.y, 0);
+  }, [chartData, filter.period, stats?.summary]);
+
+  const serverMotivationLine = useMemo(() => {
+    if (!serverMotivationDto) return null;
+    return translateMotivationalMessage(serverMotivationDto, t);
+  }, [serverMotivationDto, t]);
+
+  const motivationMessage = useMemo(
+    () =>
+      generateMotivationMessage({
+        streak: summary.streak,
+        todayCount: todaySessionCount,
+        weekCount: weekSessionCount,
+        friends: { activeNow: 0, topThisWeek: null },
+        timeOfDay: getTimeOfDay(),
+        lastSessionFocus: recent[0]?.focus_score ?? null,
+      }),
+    [recent, summary.streak, todaySessionCount, weekSessionCount],
+  );
+
   const showInitialLoading = loading && !refreshing && !stats && !error;
   const showInlineLoading = loading && !refreshing && !!stats;
 
@@ -460,7 +514,6 @@ export default function StatsScreen() {
     }
     return stats?.productivity_hint ?? null;
   }, [stats?.productivity_hint_item, stats?.productivity_hint, t]);
-  const levelProgressPercent = Math.max(0, Math.min(100, progression?.progress_percent ?? 0));
 
   const weekGoal = useMemo(() => {
     if (filter.period !== "week" || !stats?.trend?.length) return null;
@@ -584,6 +637,17 @@ export default function StatsScreen() {
           </View>
           <Text style={styles.filterHint}>{t("stats.sessionFilterScope")}</Text>
         </View>
+        {token ? (
+          <View style={styles.motivationWrap}>
+            <DashboardMotivationCard
+              greeting={getTimeBasedGreeting()}
+              userName={user?.username ?? t("dashboard.defaultUserName")}
+              message={motivationMessage}
+              serverMessage={serverMotivationLine}
+              todaySessionCount={todaySessionCount}
+            />
+          </View>
+        ) : null}
         {showInitialLoading ? <StatsSkeleton /> : null}
         {showInlineLoading ? (
           <View style={styles.inlineLoadingRow}>
@@ -798,33 +862,11 @@ export default function StatsScreen() {
               </AppCard>
             ) : null}
 
-            {!showInitialLoading && progression ? (
-              <AppCard style={styles.progressionCard}>
-                <View style={styles.progressionTopRow}>
-                  <Text style={styles.cardTitle}>
-                    {t("progression.levelTitle", { level: progression.current_level })}
-                  </Text>
-                  <Text style={styles.goalSubtle}>
-                    {t("progression.xpTotal", { xp: progression.xp_total })}
-                  </Text>
-                </View>
-                <View style={styles.progressionTrack}>
-                  <View style={[styles.progressionFill, { width: `${levelProgressPercent}%` }]} />
-                </View>
-                <Text style={styles.goalSubtle}>
-                  {t("progression.toNext", {
-                    xp: progression.xp_to_next_level,
-                    level: progression.current_level + 1,
-                    percent: Math.round(levelProgressPercent),
-                  })}
-                </Text>
-                <View style={styles.progressionButtonRow}>
-                  <SecondaryButton
-                    label={t("progression.openOverview")}
-                    onPress={() => router.push(progressionOverviewHref("stats"))}
-                  />
-                </View>
-              </AppCard>
+            {!showInitialLoading ? (
+              <ProgressionBarCard
+                progression={progression}
+                onPress={() => router.push(progressionOverviewHref("stats"))}
+              />
             ) : null}
 
             {!showInitialLoading ? (
@@ -1002,6 +1044,9 @@ const styles = StyleSheet.create({
   contentFadeWrap: {
     gap: spacing.lg,
   },
+  motivationWrap: {
+    marginBottom: spacing.lg,
+  },
   goalCard: {
     marginBottom: spacing.lg,
   },
@@ -1068,32 +1113,6 @@ const styles = StyleSheet.create({
     ...typography.meta,
     lineHeight: 20,
     fontFamily: fontFamily.bodyMedium,
-  },
-  progressionCard: {
-    marginBottom: spacing.lg,
-  },
-  progressionTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  progressionTrack: {
-    marginTop: spacing.sm,
-    width: "100%",
-    height: 8,
-    borderRadius: radii.round,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-  },
-  progressionFill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-  },
-  progressionButtonRow: {
-    marginTop: spacing.xs,
   },
   chartCard: {
     marginBottom: spacing.lg,

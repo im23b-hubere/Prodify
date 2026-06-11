@@ -12,7 +12,6 @@ import Animated, { FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { ActiveSessionTimerBlock } from "../../features/dashboard/components/ActiveSessionTimerBlock";
-import { ReturnHookCard } from "../../features/dashboard/components/ReturnHookCard";
 import { DashboardSessionSetupModal } from "../../features/dashboard/components/DashboardSessionSetupModal";
 import { SessionSkeleton } from "../../features/dashboard/components/SessionSkeleton";
 import { useDashboardData } from "../../features/dashboard/hooks/useDashboardData";
@@ -21,12 +20,10 @@ import { useDashboardSocialActions } from "../../features/dashboard/hooks/useDas
 import { useDashboardSocialNudges } from "../../features/dashboard/hooks/useDashboardSocialNudges";
 import { useDashboardStreakEvents } from "../../features/dashboard/hooks/useDashboardStreakEvents";
 
-import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
 import { glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { DashboardSessionStarter } from "../../components/dashboard/DashboardSessionStarter";
 import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
 import { TodayPlanCard } from "../../components/dashboard/TodayPlanCard";
-import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
 import { TodayProgressCard } from "../../components/dashboard/TodayProgressCard";
 import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
 import { StreakHeroSection } from "../../components/streak/StreakHeroSection";
@@ -45,16 +42,9 @@ import { colors, motion, radii, shadows, spacing, typography, ui } from "../../c
 import { useAuth } from "../../context/AuthContext";
 import { hasPremiumAccess } from "../../lib/billing";
 import { apiJson } from "../../lib/client";
-import { progressionOverviewHref } from "../../lib/progressionNavigation";
 import { debugLog } from "../../lib/debugLog";
-import { translateMotivationalMessage } from "../../lib/motivationApi";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { tryParseSessionDto } from "../../lib/sessionDto";
-import {
-  generateMotivationMessage,
-  getTimeBasedGreeting,
-  getTimeOfDay,
-} from "../../lib/motivationEngine";
 import { buildTodayPlanRecommendation } from "../../lib/todayPlanEngine";
 import { buildWeeklyForecast } from "../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../lib/goalPace";
@@ -70,7 +60,6 @@ import {
 import {
   getLast7DaysProgress,
   getStreak,
-  parseActivityTimestamp,
   parseApiDate,
   toDateKey,
 } from "../../features/dashboard/utils";
@@ -118,9 +107,7 @@ export default function DashboardScreen() {
     identityState,
     weeklyGoalTarget,
     weekSessionsCount,
-    serverMotivationDto,
     forecast,
-    progression,
     entitlement,
     loadSessions,
     loadStreakOverview,
@@ -153,25 +140,16 @@ export default function DashboardScreen() {
     () => sessions.filter((session) => session.stopped_at !== null),
     [sessions],
   );
-  const {
-    momentumState,
-    momentumScore,
-    primaryNudge,
-    secondaryNudge,
-    returnHook,
-    advancePrimaryNudge,
-    applyMomentumAction,
-  } = useDashboardSocialNudges({
-    userId: user?.id,
-    friendActivity,
-    buddyRisk,
-    socialChallenges,
-    commitmentStatus,
-    checkinStatus,
-    streakOverviewCurrent: streakOverview?.current_streak,
-    clientStreak,
-    t,
-  });
+  const { primaryNudge, secondaryNudge, advancePrimaryNudge, applyMomentumAction } =
+    useDashboardSocialNudges({
+      userId: user?.id,
+      friendActivity,
+      buddyRisk,
+      socialChallenges,
+      commitmentStatus,
+      checkinStatus,
+      t,
+    });
   const { socialToast, runPrimaryAction } = useDashboardSocialActions({
     token,
     userId: user?.id,
@@ -181,7 +159,6 @@ export default function DashboardScreen() {
     router,
     t,
     loadSocial,
-    loadSessions,
     advancePrimaryNudge,
     applyMomentumAction,
     setSocialActionBusy,
@@ -321,46 +298,6 @@ export default function DashboardScreen() {
     return shortCount;
   }, [visibleSessions]);
 
-  const serverMotivationLine = useMemo(() => {
-    if (!serverMotivationDto) return null;
-    return translateMotivationalMessage(serverMotivationDto, t);
-  }, [serverMotivationDto, t]);
-
-  const motivationMessage = useMemo(() => {
-    const streakVal = streakOverview?.current_streak ?? clientStreak;
-    const last = visibleSessions[0];
-    let top: { userId: number; name: string } | null = null;
-    if (friendLeaderboard?.entries?.length) {
-      const others = friendLeaderboard.entries.filter((e) => e.user_id !== user?.id);
-      const sorted = [...others].sort((a, b) => b.sessions_in_period - a.sessions_in_period);
-      const w = sorted[0];
-      if (w) top = { userId: w.user_id, name: w.username };
-    }
-    const cutoff = Date.now() - 90 * 60 * 1000;
-    const activeNow = friendActivity.filter(
-      (a) =>
-        user?.id != null &&
-        a.user_id !== user.id &&
-        parseActivityTimestamp(a.completed_at) >= cutoff,
-    ).length;
-    return generateMotivationMessage({
-      streak: streakVal,
-      todayCount: todayStats.count,
-      weekCount: weekSessionsForGoal,
-      friends: { activeNow, topThisWeek: top },
-      timeOfDay: getTimeOfDay(),
-      lastSessionFocus: last?.focus_score ?? null,
-    });
-  }, [
-    streakOverview?.current_streak,
-    clientStreak,
-    visibleSessions,
-    friendLeaderboard,
-    friendActivity,
-    user?.id,
-    todayStats.count,
-    weekSessionsForGoal,
-  ]);
   const todayPlan = useMemo(
     () =>
       buildTodayPlanRecommendation({
@@ -697,11 +634,6 @@ export default function DashboardScreen() {
               goalForecast={hasAnyCompletedSessions ? forecast : null}
             />
 
-            <ProgressionBarCard
-              progression={progression}
-              onPress={() => router.push(progressionOverviewHref("dashboard"))}
-            />
-
             <FriendsActivityWidget
               currentUserId={user?.id ?? 0}
               activity={friendActivity}
@@ -723,20 +655,6 @@ export default function DashboardScreen() {
                   : null
               }
               secondaryHint={secondaryNudge ?? identityState?.line ?? null}
-            />
-
-            <DashboardMotivationCard
-              greeting={getTimeBasedGreeting()}
-              userName={user?.username ?? t("dashboard.defaultUserName")}
-              message={motivationMessage}
-              serverMessage={serverMotivationLine}
-              todaySessionCount={todayStats.count}
-            />
-
-            <ReturnHookCard
-              summaryLine={returnHook}
-              momentumState={momentumState}
-              momentumScore={momentumScore}
             />
 
             {!hasPremiumAccess(entitlement) ? (

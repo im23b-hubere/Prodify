@@ -31,20 +31,12 @@ type Params = {
   socialChallenges: SocialChallengeDto[];
   commitmentStatus: CommitmentDto | null;
   checkinStatus: CheckinStatusDto | null;
-  streakOverviewCurrent: number | undefined;
-  clientStreak: number;
   t: TFunction;
 };
 
 function secureStoreKey(base: string, userId: number): string {
   const safeUserId = String(userId).replace(/[^A-Za-z0-9._-]/g, "_");
   return `${base}_${safeUserId}`;
-}
-
-function parseActivityTimestamp(value: string | null | undefined): number {
-  if (!value) return 0;
-  const ms = new Date(value).getTime();
-  return Number.isFinite(ms) ? ms : 0;
 }
 
 export function useDashboardSocialNudges({
@@ -54,18 +46,13 @@ export function useDashboardSocialNudges({
   socialChallenges,
   commitmentStatus,
   checkinStatus,
-  streakOverviewCurrent,
-  clientStreak,
   t,
 }: Params) {
   const [momentumState, setMomentumState] = useState<MomentumState>("low");
   const [momentumScore, setMomentumScore] = useState(0);
   const [primaryNudge, setPrimaryNudge] = useState<DashboardPrimaryNudge | null>(null);
   const [secondaryNudge, setSecondaryNudge] = useState<string | null>(null);
-  const [returnHook, setReturnHook] = useState<string | null>(null);
   const hasHydratedNudgesRef = useRef(false);
-
-  const effectiveStreak = streakOverviewCurrent ?? clientStreak;
 
   const nudgeCandidates = useMemo(() => {
     const out: {
@@ -120,26 +107,14 @@ export function useDashboardSocialNudges({
         actionKey: "start_session",
       });
     }
-    if (effectiveStreak >= 3) {
-      out.push({
-        key: "streak_psych",
-        category: "streak_psych",
-        message: t("dashboard.nudgeStreakRun", {
-          days: effectiveStreak,
-        }),
-        priority: 4,
-        ctaLabel: t("dashboard.nudgeCtaJumpTrack"),
-        actionKey: "start_session",
-      });
-    }
     return out.sort((a, b) => a.priority - b.priority);
-  }, [buddyRisk, socialChallenges, commitmentStatus, effectiveStreak, userId, t]);
+  }, [buddyRisk, socialChallenges, commitmentStatus, userId, t]);
 
   const weightedNudgeCandidates = useMemo(() => {
     const preferredByState: Record<MomentumState, string[]> = {
       low: ["commitment_behind", "buddy_risk"],
       mid: ["challenge_close", "commitment_behind", "buddy_risk"],
-      high: ["buddy_risk", "challenge_close", "streak_psych"],
+      high: ["buddy_risk", "challenge_close"],
     };
     return nudgeCandidates
       .map((n) => ({
@@ -191,13 +166,11 @@ export function useDashboardSocialNudges({
     if (weightedNudgeCandidates.length === 0 && friendActivity.length === 0) {
       setPrimaryNudge(null);
       setSecondaryNudge(null);
-      setReturnHook(null);
       hasHydratedNudgesRef.current = true;
       return;
     }
     const key = secureStoreKey("retention_last_primary", userId);
     const cooldownKey = secureStoreKey("retention_primary_cooldowns", userId);
-    const visitKey = secureStoreKey("retention_last_visit", userId);
     const delayMs = hasHydratedNudgesRef.current ? 80 : 400;
     const timer = setTimeout(() => {
       void (async () => {
@@ -245,17 +218,6 @@ export function useDashboardSocialNudges({
             await SecureStore.setItemAsync(key, picked.category);
           }
 
-          const lastVisitRaw = await SecureStore.getItemAsync(visitKey);
-          const lastVisitMs = lastVisitRaw ? Number.parseInt(lastVisitRaw, 10) : 0;
-          const sinceCount = friendActivity.filter(
-            (a) => parseActivityTimestamp(a.completed_at) > lastVisitMs,
-          ).length;
-          if (sinceCount > 0) {
-            setReturnHook(t("dashboard.returnHookUpdates", { count: sinceCount }));
-          } else {
-            setReturnHook(null);
-          }
-          await SecureStore.setItemAsync(visitKey, `${Date.now()}`);
           hasHydratedNudgesRef.current = true;
         } catch {
           /* ignore persistence failures */
@@ -270,7 +232,6 @@ export function useDashboardSocialNudges({
     momentumScore,
     primaryNudge,
     secondaryNudge,
-    returnHook,
     advancePrimaryNudge,
     applyMomentumAction,
   };

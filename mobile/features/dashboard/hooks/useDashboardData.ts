@@ -10,9 +10,7 @@ import {
   fetchCommitment,
   fetchIdentityState,
 } from "../../../lib/social";
-import { syncProgression } from "../../../lib/progressionSync";
 import { tryParseGoalForecastDto } from "../../../lib/outcomesDto";
-import { parseMotivationalMessage, type MotivationalMessageDto } from "../../../lib/motivationApi";
 import { parseSessionList, tryParseSessionDto } from "../../../lib/sessionDto";
 import { syncStreakRiskNotifications } from "../../../lib/streakNotifications";
 import type {
@@ -24,7 +22,7 @@ import type {
   IdentityStateDto,
   SocialChallengeDto,
 } from "../../../types/friends";
-import type { EntitlementDto, GoalForecastDto, ProgressionDto } from "../../../types/outcomes";
+import type { EntitlementDto, GoalForecastDto } from "../../../types/outcomes";
 import type { SessionDto } from "../../../types/session";
 import type { StreakOverviewDto } from "../../../types/streak";
 
@@ -49,11 +47,7 @@ export function useDashboardData(token: string | null) {
   const [identityState, setIdentityState] = useState<IdentityStateDto | null>(null);
   const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
   const [weekSessionsCount, setWeekSessionsCount] = useState(0);
-  const [serverMotivationDto, setServerMotivationDto] = useState<MotivationalMessageDto | null>(
-    null,
-  );
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
-  const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [entitlement, setEntitlement] = useState<EntitlementDto | null>(null);
 
   const loadSessionsSeq = useRef(0);
@@ -87,8 +81,7 @@ export function useDashboardData(token: string | null) {
   }, [token, t]);
 
   const loadSocial = useCallback(
-    async (opts: { forceProgressionSync?: boolean } = {}) => {
-      const forceProgressionSync = Boolean(opts.forceProgressionSync);
+    async () => {
       if (!token) return;
       setSocialLoading(true);
       try {
@@ -132,12 +125,10 @@ export function useDashboardData(token: string | null) {
         setCommitmentStatus(commitmentRaw);
         setSocialChallenges(Array.isArray(challengesRaw) ? challengesRaw : []);
         setIdentityState(identityRaw);
-        const [forecastRaw, progRaw] = await Promise.all([
-          apiJson<unknown>("/outcomes/goal-forecast/current", { token }).catch(() => null),
-          syncProgression(token, { force: forceProgressionSync }).catch(() => null),
-        ]);
+        const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
+          token,
+        }).catch(() => null);
         setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
-        setProgression(progRaw);
         const ent = await fetchEntitlement(token).catch(() => null);
         setEntitlement(ent);
       } catch {
@@ -165,20 +156,6 @@ export function useDashboardData(token: string | null) {
     }
   }, [token]);
 
-  const loadServerMotivation = useCallback(async () => {
-    if (!token) {
-      setServerMotivationDto(null);
-      return;
-    }
-    try {
-      const raw = await apiJson<unknown>("/motivational-messages/random", { token });
-      const parsed = parseMotivationalMessage(raw);
-      setServerMotivationDto(parsed);
-    } catch {
-      setServerMotivationDto(null);
-    }
-  }, [token]);
-
   const refreshDashboard = useCallback(
     async ({
       force = false,
@@ -194,12 +171,7 @@ export function useDashboardData(token: string | null) {
         setLoading(true);
       }
       try {
-        await Promise.all([
-          loadSessions(),
-          loadStreakOverview(),
-          loadSocial({ forceProgressionSync: force }),
-          loadServerMotivation(),
-        ]);
+        await Promise.all([loadSessions(), loadStreakOverview(), loadSocial()]);
         lastDashboardFetchRef.current = Date.now();
       } catch (e) {
         setError(e instanceof Error ? e.message : t("dashboard.loadFailed"));
@@ -209,7 +181,7 @@ export function useDashboardData(token: string | null) {
         }
       }
     },
-    [token, loadSessions, loadStreakOverview, loadSocial, loadServerMotivation, t],
+    [token, loadSessions, loadStreakOverview, loadSocial, t],
   );
 
   useEffect(() => {
@@ -239,14 +211,11 @@ export function useDashboardData(token: string | null) {
     identityState,
     weeklyGoalTarget,
     weekSessionsCount,
-    serverMotivationDto,
     forecast,
-    progression,
     entitlement,
     loadSessions,
     loadStreakOverview,
     loadSocial,
-    loadServerMotivation,
     refreshDashboard,
   };
 }
