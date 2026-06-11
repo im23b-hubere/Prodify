@@ -1,4 +1,4 @@
-import { type Href, useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,11 @@ import { ScreenHeader } from "../components/ui/ScreenHeader";
 import { colors, radii, spacing, typography, ui } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import { apiJson } from "../lib/client";
+import {
+  leaveProgressionOverview,
+  parseProgressionOverviewFrom,
+  progressionBackLabel,
+} from "../lib/progressionNavigation";
 import { syncProgression } from "../lib/progressionSync";
 import type { ProgressionDto } from "../types/outcomes";
 
@@ -55,6 +60,9 @@ function parseLevelCatalog(raw: unknown): ProgressionLevelItem[] {
 export default function ProgressionOverviewScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const from = parseProgressionOverviewFrom(params.from);
+  const backLabel = progressionBackLabel(t, from);
   const { token } = useAuth();
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [levelCatalog, setLevelCatalog] = useState<ProgressionLevelItem[]>([]);
@@ -130,8 +138,8 @@ export default function ProgressionOverviewScreen() {
         <ScreenHeader
           title={t("progression.overviewTitle")}
           subtitle={t("progression.overviewSubtitle")}
-          actionLabel={t("progression.backToStats")}
-          onActionPress={() => router.push("/(tabs)/stats")}
+          actionLabel={backLabel}
+          onActionPress={() => leaveProgressionOverview(router, from)}
         />
 
         {!token ? (
@@ -233,8 +241,8 @@ export default function ProgressionOverviewScreen() {
             ) : null}
 
             <PrimaryButton
-              label={t("progression.backToStats")}
-              onPress={() => router.push("/(tabs)/stats")}
+              label={backLabel}
+              onPress={() => leaveProgressionOverview(router, from)}
             />
           </>
         ) : null}

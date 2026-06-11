@@ -37,7 +37,10 @@ import {
 } from "../../lib/sessionTime";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
+import { progressionOverviewHref } from "../../lib/progressionNavigation";
 import { syncProgression } from "../../lib/progressionSync";
+import { ActivityHeatmapLegend } from "../../components/charts/ActivityHeatmapLegend";
+import { heatmapCellColor } from "../../lib/heatmapStyle";
 import { tryParseGoalForecastDto } from "../../lib/outcomesDto";
 import {
   tryParseHeatmapDays,
@@ -131,7 +134,7 @@ function recordPriorityScore(key: string) {
   return 20;
 }
 
-const BAR_CHART_HEIGHT = 168;
+const BAR_CHART_HEIGHT = 104;
 
 type BarPoint = { x: string; y: number; label: string };
 
@@ -255,7 +258,6 @@ export default function StatsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
-  const [showAdvancedInsights, setShowAdvancedInsights] = useState(false);
   const loadSeq = useRef(0);
   const mounted = useRef(true);
   const initialFocusLoadDone = useRef(false);
@@ -559,11 +561,7 @@ export default function StatsScreen() {
         }
       >
         <View style={styles.headerRow}>
-          <ScreenHeader
-            title={t("stats.title")}
-            actionLabel={t("sessionFeedback.backToDashboard")}
-            onActionPress={() => router.push("/(tabs)/dashboard")}
-          />
+          <ScreenHeader title={t("stats.title")} />
           <View style={styles.filterRow}>
             {filters.map((f, i) => (
               <Pressable
@@ -732,26 +730,6 @@ export default function StatsScreen() {
             />
 
             {!showInitialLoading ? (
-              <AppCard style={styles.advancedCard}>
-                <View style={styles.advancedHeader}>
-                  <Text style={styles.cardTitle}>{t("stats.advancedInsightsTitle")}</Text>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.advancedToggle,
-                      pressed && styles.advancedTogglePressed,
-                    ]}
-                    onPress={() => setShowAdvancedInsights((prev) => !prev)}
-                  >
-                    <Text style={styles.advancedToggleText}>
-                      {showAdvancedInsights ? t("stats.advancedHide") : t("stats.advancedShow")}
-                    </Text>
-                  </Pressable>
-                </View>
-                <Text style={styles.cardCaption}>{t("stats.advancedInsightsHint")}</Text>
-              </AppCard>
-            ) : null}
-
-            {showAdvancedInsights && !showInitialLoading ? (
               <AppCard style={styles.chartCard}>
                 <Text style={styles.cardTitle}>{t("stats.heatmapTitle")}</Text>
                 <Text style={styles.cardCaption}>{t("stats.heatmapCaption")}</Text>
@@ -759,25 +737,15 @@ export default function StatsScreen() {
                   {heatmapDays.map((d) => (
                     <View
                       key={d.date}
-                      style={[
-                        styles.heatCell,
-                        {
-                          opacity: 0.25 + d.intensity * 0.18,
-                          backgroundColor:
-                            d.intensity === 0
-                              ? "#1e1e1e"
-                              : d.intensity < 3
-                                ? colors.primary
-                                : colors.secondary,
-                        },
-                      ]}
+                      style={[styles.heatCell, { backgroundColor: heatmapCellColor(d.intensity) }]}
                     />
                   ))}
                 </View>
+                <ActivityHeatmapLegend />
               </AppCard>
             ) : null}
 
-            {showAdvancedInsights && !showInitialLoading ? (
+            {!showInitialLoading ? (
               <AppCard style={styles.chartCard}>
                 <Text style={styles.cardTitle}>{t("stats.perDayTitle")}</Text>
                 <Text style={styles.cardCaption}>{t("stats.perDayChartHint")}</Text>
@@ -791,7 +759,7 @@ export default function StatsScreen() {
               </AppCard>
             ) : null}
 
-            {showAdvancedInsights && !showInitialLoading ? (
+            {!showInitialLoading ? (
               <AppCard style={styles.chartCard}>
                 <Text style={styles.cardTitle}>{t("stats.typeMixTitle")}</Text>
                 {breakdownData.length > 0 ? (
@@ -824,7 +792,7 @@ export default function StatsScreen() {
               </AppCard>
             ) : null}
 
-            {showAdvancedInsights && !showInitialLoading && productivityHintText ? (
+            {!showInitialLoading && productivityHintText ? (
               <AppCard style={styles.hintCard}>
                 <Text style={styles.hintText}>{productivityHintText}</Text>
               </AppCard>
@@ -853,7 +821,7 @@ export default function StatsScreen() {
                 <View style={styles.progressionButtonRow}>
                   <SecondaryButton
                     label={t("progression.openOverview")}
-                    onPress={() => router.push("/progression-overview")}
+                    onPress={() => router.push(progressionOverviewHref("stats"))}
                   />
                 </View>
               </AppCard>
@@ -1130,34 +1098,6 @@ const styles = StyleSheet.create({
   chartCard: {
     marginBottom: spacing.lg,
   },
-  advancedCard: {
-    marginBottom: spacing.md,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  advancedHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  advancedToggle: {
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  advancedTogglePressed: {
-    opacity: motion.pressOpacity,
-    transform: [{ scale: motion.pressScale }],
-  },
-  advancedToggleText: {
-    color: colors.textPrimary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyBold,
-  },
   cardTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
@@ -1263,16 +1203,17 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: 11,
   },
-  chartInner: { marginTop: spacing.sm },
+  chartInner: { marginTop: spacing.xs },
   barScrollContent: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 10,
-    paddingVertical: spacing.sm,
-    paddingRight: spacing.md,
+    gap: 8,
+    paddingTop: spacing.xs,
+    paddingBottom: 2,
+    paddingRight: spacing.sm,
   },
   barColumn: {
-    width: 44,
+    width: 40,
     alignItems: "center",
   },
   barTrack: {
@@ -1282,20 +1223,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   barFill: {
-    width: 28,
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
+    width: 24,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
   },
   barAxisLabel: {
-    marginTop: 8,
+    marginTop: 6,
     color: colors.textSecondary,
     fontSize: 10,
     fontFamily: fontFamily.body,
-    maxWidth: 44,
+    maxWidth: 40,
     textAlign: "center",
   },
   barCount: {
-    marginTop: 2,
+    marginTop: 1,
     color: colors.textSecondary,
     fontSize: 10,
     fontFamily: fontFamily.bodyMedium,

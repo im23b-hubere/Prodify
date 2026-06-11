@@ -43,6 +43,50 @@ def test_grant_xp_idempotent_session_complete_source(client):
         assert int(row.xp_total or 0) == 10
 
 
+def test_progression_sync_updates_existing_decay_ledger_without_500(client):
+    token = _register_token(client, "progression-decay-upsert@example.com", "progression-decay-upsert")
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    user_id = me.json()["id"]
+
+    with SessionLocal() as db:
+        row = UserProgression(
+            user_id=user_id,
+            xp_total=3200,
+            current_level=28,
+            xp_to_next_level=180,
+            updated_at=utcnow(),
+        )
+        db.add(row)
+        db.flush()
+        db.add(
+            XpLedger(
+                user_id=user_id,
+                source_type="session_stop",
+                source_id="seed",
+                xp_delta=80,
+                meta_json="{}",
+                created_at=utcnow() - timedelta(days=48),
+            )
+        )
+        db.add(
+            XpLedger(
+                user_id=user_id,
+                source_type="inactivity_decay",
+                source_id=f"since:{(utcnow() - timedelta(days=48)).date().isoformat()}",
+                xp_delta=-36,
+                meta_json="{}",
+            )
+        )
+        db.commit()
+
+    first = client.post("/progression/sync", headers={"Authorization": f"Bearer {token}"})
+    assert first.status_code == 200
+    second = client.post("/progression/sync", headers={"Authorization": f"Bearer {token}"})
+    assert second.status_code == 200
+    assert second.json()["xp_total"] == first.json()["xp_total"]
+
+
 def test_progression_me_applies_inactivity_decay_once(client):
     token = _register_token(client, "progression-decay@example.com", "progression-decay")
     me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})

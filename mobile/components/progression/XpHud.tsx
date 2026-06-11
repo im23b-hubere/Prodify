@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { usePathname, useRouter } from "expo-router";
+import { usePathname, useRouter, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../../context/AuthContext";
+import {
+  type ProgressionOverviewFrom,
+  progressionOverviewHref,
+} from "../../lib/progressionNavigation";
 import { syncProgression } from "../../lib/progressionSync";
 import { colors, spacing } from "../../constants/theme";
 import { fontFamily } from "../../constants/fonts";
+
+const HUD_TAB_NAMES = new Set(["dashboard", "stats", "friends", "profile"]);
 
 /** Main tab routes where the HUD is useful; hidden elsewhere (auth, sessions, modals, …). */
 const HUD_TAB_PREFIXES = [
@@ -21,10 +27,18 @@ const HUD_TAB_PREFIXES = [
   "/(tabs)/profile",
 ] as const;
 
+function isHudTabRoute(pathname: string | null, segments: string[]): boolean {
+  if (pathname?.startsWith("/(auth)")) return false;
+  if (pathname && HUD_TAB_PREFIXES.some((p) => pathname.startsWith(p))) return true;
+  const tab = segments[0] === "(tabs)" ? segments[1] : segments[0];
+  return typeof tab === "string" && HUD_TAB_NAMES.has(tab);
+}
+
 export function XpHud() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const pathname = usePathname();
+  const segments = useSegments();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [xp, setXp] = useState<number | null>(null);
@@ -32,11 +46,10 @@ export function XpHud() {
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [xpToNext, setXpToNext] = useState<number | null>(null);
 
-  const hidden = useMemo(() => {
-    if (!pathname) return false;
-    if (pathname.startsWith("/(auth)")) return true;
-    return !HUD_TAB_PREFIXES.some((p) => pathname.startsWith(p));
-  }, [pathname]);
+  const hidden = useMemo(
+    () => !isHudTabRoute(pathname, segments as string[]),
+    [pathname, segments],
+  );
 
   useEffect(() => {
     // Prevent showing stale XP while switching accounts/routes.
@@ -74,6 +87,14 @@ export function XpHud() {
     };
   }, [token, pathname, hidden, user?.id]);
 
+  const hudFrom = useMemo((): ProgressionOverviewFrom => {
+    const tab = segments[0] === "(tabs)" ? segments[1] : segments[0];
+    if (tab === "stats" || tab === "friends" || tab === "profile" || tab === "dashboard") {
+      return tab;
+    }
+    return "dashboard";
+  }, [segments]);
+
   if (!token || hidden || xp == null || level == null) return null;
 
   return (
@@ -82,7 +103,7 @@ export function XpHud() {
         accessibilityRole="button"
         accessibilityLabel={t("progression.xpHudA11y")}
         style={styles.badge}
-        onPress={() => router.push("/(tabs)/stats")}
+        onPress={() => router.push(progressionOverviewHref(hudFrom))}
       >
         <View style={styles.row}>
           <Text style={styles.level}>Lv {level}</Text>

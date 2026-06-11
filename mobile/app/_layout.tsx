@@ -70,6 +70,14 @@ export default function RootLayout() {
           >
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
+              name="progression-overview"
+              options={{
+                animation: "slide_from_right",
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
+            <Stack.Screen
               name="session-active"
               options={{
                 presentation: "fullScreenModal",

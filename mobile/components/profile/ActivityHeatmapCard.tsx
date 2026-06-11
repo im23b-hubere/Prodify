@@ -4,18 +4,12 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { ActivityHeatmapLegend } from "../charts/ActivityHeatmapLegend";
+import { heatmapCellColor } from "../../lib/heatmapStyle";
 
 export type HeatmapDay = { date: string; seconds: number; intensity: number };
 
 type Props = { days: HeatmapDay[] };
-
-const INTENSITY = [
-  "#2a2a2a",
-  "rgba(255,106,61,0.25)",
-  "rgba(255,106,61,0.45)",
-  "rgba(255,106,61,0.7)",
-  "#ff6a3d",
-];
 
 export const ActivityHeatmapCard = memo(function ActivityHeatmapCard({ days }: Props) {
   const { t } = useTranslation();
@@ -25,15 +19,18 @@ export const ActivityHeatmapCard = memo(function ActivityHeatmapCard({ days }: P
       {days.length === 0 ? (
         <Text style={styles.empty}>{t("profileHeatmap.empty")}</Text>
       ) : (
-        <View style={styles.grid}>
-          {days.map((d) => (
-            <View
-              key={d.date}
-              style={[styles.cell, { backgroundColor: INTENSITY[d.intensity] ?? INTENSITY[0] }]}
-              accessibilityLabel={t("profileHeatmap.a11y", { date: d.date, seconds: d.seconds })}
-            />
-          ))}
-        </View>
+        <>
+          <View style={styles.grid}>
+            {days.map((d) => (
+              <View
+                key={d.date}
+                style={[styles.cell, { backgroundColor: heatmapCellColor(d.intensity) }]}
+                accessibilityLabel={t("profileHeatmap.a11y", { date: d.date, seconds: d.seconds })}
+              />
+            ))}
+          </View>
+          <ActivityHeatmapLegend />
+        </>
       )}
     </View>
   );

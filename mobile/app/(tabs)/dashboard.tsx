@@ -45,6 +45,7 @@ import { colors, motion, radii, shadows, spacing, typography, ui } from "../../c
 import { useAuth } from "../../context/AuthContext";
 import { hasPremiumAccess } from "../../lib/billing";
 import { apiJson } from "../../lib/client";
+import { progressionOverviewHref } from "../../lib/progressionNavigation";
 import { debugLog } from "../../lib/debugLog";
 import { translateMotivationalMessage } from "../../lib/motivationApi";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
@@ -698,7 +699,7 @@ export default function DashboardScreen() {
 
             <ProgressionBarCard
               progression={progression}
-              onPress={() => router.push("/progression-overview")}
+              onPress={() => router.push(progressionOverviewHref("dashboard"))}
             />
 
             <FriendsActivityWidget

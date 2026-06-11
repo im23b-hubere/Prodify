@@ -78,21 +78,34 @@ def apply_inactivity_decay(db: Session, user_id: int) -> tuple[UserProgression |
     row.xp_total = max(0, int(row.xp_total or 0) - decay_delta)
     _recompute_progression_fields(row)
     row.updated_at = now
-    db.add(
-        XpLedger(
-            user_id=user_id,
-            source_type="inactivity_decay",
-            source_id=streak_marker,
-            xp_delta=-decay_delta,
-            meta_json=json.dumps(
-                {
-                    "days_since_activity": days_since_activity,
-                    "decay_days_due": decay_days_due,
-                    "xp_decay_per_day": XP_DECAY_PER_DAY,
-                }
-            ),
+    meta_json = json.dumps(
+        {
+            "days_since_activity": days_since_activity,
+            "decay_days_due": decay_days_due,
+            "xp_decay_per_day": XP_DECAY_PER_DAY,
+        }
+    )
+    new_total_decay = int(already_applied or 0) + decay_delta
+    existing_ledger = db.scalar(
+        select(XpLedger).where(
+            XpLedger.user_id == user_id,
+            XpLedger.source_type == "inactivity_decay",
+            XpLedger.source_id == streak_marker,
         )
     )
+    if existing_ledger is not None:
+        existing_ledger.xp_delta = -new_total_decay
+        existing_ledger.meta_json = meta_json
+    else:
+        db.add(
+            XpLedger(
+                user_id=user_id,
+                source_type="inactivity_decay",
+                source_id=streak_marker,
+                xp_delta=-new_total_decay,
+                meta_json=meta_json,
+            )
+        )
     return row, True
 
 
@@ -206,6 +219,20 @@ def grant_xp(
     return row
 
 
+def sync_user_progression(db: Session, user_id: int) -> UserProgression:
+    """Apply inactivity decay, ensure a progression row exists, and reconcile level fields."""
+    row, _decayed = apply_inactivity_decay(db, user_id)
+    if row is None:
+        row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
+        if row is None:
+            row = UserProgression(user_id=user_id)
+            db.add(row)
+            db.flush()
+    _recompute_progression_fields(row)
+    row.updated_at = utcnow()
+    return row
+
+
 def to_progression_public(row: UserProgression | None) -> ProgressionPublic:
     if row is None:
         return ProgressionPublic(
@@ -216,15 +243,18 @@ def to_progression_public(row: UserProgression | None) -> ProgressionPublic:
             decay_grace_days=XP_DECAY_GRACE_DAYS,
             decay_xp_per_day=XP_DECAY_PER_DAY,
         )
-    current_level_floor = _level_floor_xp(row.current_level)
-    next_level_floor = _level_floor_xp(row.current_level + 1)
+    current_level = max(1, int(row.current_level or 1))
+    xp_total = max(0, int(row.xp_total or 0))
+    xp_to_next = max(0, int(row.xp_to_next_level or 0))
+    current_level_floor = _level_floor_xp(current_level)
+    next_level_floor = _level_floor_xp(current_level + 1)
     progress_span = max(1, next_level_floor - current_level_floor)
-    progress_in_level = max(0, row.xp_total - current_level_floor)
+    progress_in_level = max(0, xp_total - current_level_floor)
     progress_percent = round(min(100.0, (progress_in_level / progress_span) * 100), 1)
     return ProgressionPublic(
-        xp_total=row.xp_total,
-        current_level=row.current_level,
-        xp_to_next_level=row.xp_to_next_level,
+        xp_total=xp_total,
+        current_level=current_level,
+        xp_to_next_level=xp_to_next,
         progress_percent=progress_percent,
         decay_grace_days=XP_DECAY_GRACE_DAYS,
         decay_xp_per_day=XP_DECAY_PER_DAY,
