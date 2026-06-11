@@ -244,13 +244,25 @@ export function FriendsTogetherSection({
                     </View>
                   </View>
                   <Text style={styles.userMeta}>
-                    {t("friendsScreen.challengeGoalLine", {
-                      target: challenge.target_sessions,
-                      days:
-                        challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
-                        challenge.duration_days ??
-                        7,
-                    })}
+                    {challenge.status === "completed"
+                      ? challenge.is_tie
+                        ? t("friendsScreen.challengeEndedTie")
+                        : challenge.winner_user_id === currentUserId
+                          ? t("friendsScreen.challengeYouWon")
+                          : t("friendsScreen.challengeEndedWinner", {
+                              winner:
+                                challenge.members.find((m) => m.user_id === challenge.winner_user_id)
+                                  ?.username ?? t("friendsScreen.challengeSomeone"),
+                            })
+                      : t("friendsScreen.challengeActiveLine", {
+                          target: challenge.target_sessions,
+                          days:
+                            challenge.days_remaining ??
+                            challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
+                            challenge.duration_days ??
+                            7,
+                          rank: challenge.your_rank ?? "—",
+                        })}
                   </Text>
                   {!isMember ? (
                     <PrimaryButton

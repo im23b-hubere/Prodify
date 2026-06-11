@@ -869,6 +869,12 @@ class SocialChallengePublic(BaseModel):
     target_sessions: int
     duration_days: int = 7
     status: str
+    days_remaining: int = 0
+    leader_user_id: int | None = None
+    winner_user_id: int | None = None
+    is_tie: bool = False
+    completion_reason: str | None = None
+    your_rank: int | None = None
     premium_detail_locked: bool = False
     upsell_hint: str | None = None
     members: list[SocialChallengeMemberPublic] = Field(default_factory=list)

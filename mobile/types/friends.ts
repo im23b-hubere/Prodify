@@ -84,6 +84,12 @@ export type SocialChallengeDto = {
   target_sessions: number;
   duration_days?: number;
   status: string;
+  days_remaining?: number;
+  leader_user_id?: number | null;
+  winner_user_id?: number | null;
+  is_tie?: boolean;
+  completion_reason?: string | null;
+  your_rank?: number | null;
   premium_detail_locked?: boolean;
   upsell_hint?: string | null;
   members: SocialChallengeMemberDto[];

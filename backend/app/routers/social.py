@@ -64,6 +64,13 @@ from app.streakutil import dump_frozen_json, parse_frozen_json
 from app.services.kpi_tracker import track_event
 from app.services.push_dispatch import send_ping
 from app.services.progression_service import grant_xp
+from app.services.social_challenge_service import (
+    challenge_completed_recently,
+    challenge_duration_days,
+    challenge_public_extras,
+    finalize_visible_active_challenges,
+    load_challenge_meta,
+)
 
 router = APIRouter(prefix="/social", tags=["social"])
 
@@ -701,7 +708,7 @@ def create_social_challenge(
         week_start=wk,
         target_sessions=body.target_sessions,
         status="active",
-        meta_json=json.dumps({"duration_days": body.duration_days}),
+        meta_json=json.dumps({"duration_days": body.duration_days, "credited_sessions": {}}),
     )
     db.add(row)
     db.flush()
@@ -709,10 +716,15 @@ def create_social_challenge(
     for uid in sorted(set(participants)):
         db.add(SocialChallengeMember(challenge_id=row.id, user_id=uid, progress_sessions=0))
     db.commit()
-    return _challenge_public(db, row.id)
+    return _challenge_public(db, row.id, current_user_id=current.id)
 
 
-def _challenge_public(db: Session, challenge_id: int) -> SocialChallengePublic:
+def _challenge_public(
+    db: Session,
+    challenge_id: int,
+    *,
+    current_user_id: int | None = None,
+) -> SocialChallengePublic:
     row = db.get(SocialChallenge, challenge_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Challenge not found")
@@ -720,13 +732,9 @@ def _challenge_public(db: Session, challenge_id: int) -> SocialChallengePublic:
         select(SocialChallengeMember).where(SocialChallengeMember.challenge_id == challenge_id)
     ).all()
     users = {u.id: u.username for u in db.scalars(select(User).where(User.id.in_([m.user_id for m in members]))).all()}
-    duration_days = 7
-    try:
-        meta = json.loads(row.meta_json or "{}")
-        if isinstance(meta, dict) and isinstance(meta.get("duration_days"), int):
-            duration_days = int(meta["duration_days"])
-    except json.JSONDecodeError:
-        duration_days = 7
+    meta = load_challenge_meta(row)
+    duration_days = challenge_duration_days(meta)
+    extras = challenge_public_extras(row, members, current_user_id=current_user_id)
     owner = db.get(User, row.owner_id)
     premium = bool(owner and _is_premium(db, owner))
     return SocialChallengePublic(
@@ -748,6 +756,7 @@ def _challenge_public(db: Session, challenge_id: int) -> SocialChallengePublic:
             )
             for m in sorted(members, key=lambda x: x.progress_sessions, reverse=True)
         ],
+        **extras,
     )
 
 
@@ -782,7 +791,7 @@ def join_social_challenge(
             meta={"challenge_id": row.id},
         )
         db.commit()
-    return _challenge_public(db, row.id)
+    return _challenge_public(db, row.id, current_user_id=current.id)
 
 
 @router.get("/challenges", response_model=list[SocialChallengePublic])
@@ -792,13 +801,23 @@ def list_social_challenges(
 ):
     rows = db.scalars(
         select(SocialChallenge)
-        .where(SocialChallenge.status == "active")
         .order_by(SocialChallenge.created_at.desc())
-        .limit(20)
+        .limit(40)
     ).all()
     friend_ids = set(_friend_user_ids(db, current.id))
     visible = [r for r in rows if r.owner_id == current.id or r.owner_id in friend_ids]
-    return [_challenge_public(db, r.id) for r in visible]
+    active_visible = [r for r in visible if r.status == "active"]
+    finalize_visible_active_challenges(db, active_visible)
+    db.commit()
+    listed: list[SocialChallenge] = []
+    for row in visible:
+        if row.status == "active":
+            listed.append(row)
+            continue
+        if row.status == "completed" and challenge_completed_recently(load_challenge_meta(row)):
+            listed.append(row)
+    listed = listed[:20]
+    return [_challenge_public(db, r.id, current_user_id=current.id) for r in listed]
 
 
 @router.post("/commitment", response_model=CommitmentPublic)

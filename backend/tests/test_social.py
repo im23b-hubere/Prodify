@@ -3,7 +3,7 @@ from datetime import timedelta
 from sqlalchemy import select
 
 from app.database import SessionLocal
-from app.models import BuddyRelationship, BuddyStatus, CheckinLog, GrowthEvent, Streak, User, utcnow
+from app.models import BuddyRelationship, BuddyStatus, CheckinLog, GrowthEvent, ProductionSession, SocialChallenge, Streak, User, utcnow
 
 
 def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
@@ -371,3 +371,115 @@ def test_commitment_witness_selection_persists_and_returns(client):
     assert 2 in body["witness_user_ids"]
     assert "witness_usernames" in body
     assert "social-t" in body["witness_usernames"]
+
+
+def _complete_long_session(client, headers: dict[str, str], *, minutes: int = 10) -> int:
+    started = client.post("/sessions/quick-start", headers=headers, json={"session_type": "beat_making"})
+    assert started.status_code == 201
+    sid = started.json()["id"]
+    with SessionLocal() as db:
+        row = db.get(ProductionSession, sid)
+        assert row is not None
+        row.started_at = utcnow() - timedelta(minutes=minutes)
+        db.commit()
+    stopped = client.post("/sessions/stop", headers=headers, json={"session_id": sid})
+    assert stopped.status_code == 200
+    return sid
+
+
+def _challenge_for_user(client, headers: dict[str, str], challenge_id: int) -> dict:
+    listed = client.get("/social/challenges", headers=headers)
+    assert listed.status_code == 200
+    for item in listed.json():
+        if item["id"] == challenge_id:
+            return item
+    raise AssertionError(f"challenge {challenge_id} not listed")
+
+
+def test_social_challenge_progress_syncs_from_completed_session(client):
+    a = _auth_headers(client, "social-ch-a@example.com", "social-ch-a")
+    b = _auth_headers(client, "social-ch-b@example.com", "social-ch-b")
+    _make_friends(client, a, b, "social-ch-b")
+
+    created = client.post(
+        "/social/challenges",
+        headers=a,
+        json={
+            "challenge_kind": "duel",
+            "title": "Progress Sync",
+            "target_sessions": 3,
+            "duration_days": 7,
+            "member_user_ids": [2],
+        },
+    )
+    assert created.status_code == 200
+    challenge_id = created.json()["id"]
+
+    _complete_long_session(client, a, minutes=12)
+    detail = _challenge_for_user(client, a, challenge_id)
+    me = next(m for m in detail["members"] if m["user_id"] == 1)
+    assert me["progress_sessions"] == 1
+    assert detail["status"] == "active"
+    assert detail["leader_user_id"] == 1
+
+
+def test_social_challenge_completes_when_target_reached(client):
+    a = _auth_headers(client, "social-ch-win-a@example.com", "social-ch-win-a")
+    b = _auth_headers(client, "social-ch-win-b@example.com", "social-ch-win-b")
+    _make_friends(client, a, b, "social-ch-win-b")
+
+    created = client.post(
+        "/social/challenges",
+        headers=a,
+        json={
+            "challenge_kind": "duel",
+            "title": "Quick Win",
+            "target_sessions": 1,
+            "duration_days": 7,
+            "member_user_ids": [2],
+        },
+    )
+    assert created.status_code == 200
+    challenge_id = created.json()["id"]
+
+    _complete_long_session(client, a, minutes=12)
+    detail = _challenge_for_user(client, a, challenge_id)
+    assert detail["status"] == "completed"
+    assert detail["winner_user_id"] == 1
+    assert detail["completion_reason"] == "target_reached"
+
+
+def test_social_challenge_expires_with_leader_on_time_up(client):
+    a = _auth_headers(client, "social-ch-exp-a@example.com", "social-ch-exp-a")
+    b = _auth_headers(client, "social-ch-exp-b@example.com", "social-ch-exp-b")
+    _make_friends(client, a, b, "social-ch-exp-b")
+
+    created = client.post(
+        "/social/challenges",
+        headers=a,
+        json={
+            "challenge_kind": "duel",
+            "title": "Time Up",
+            "target_sessions": 5,
+            "duration_days": 7,
+            "member_user_ids": [2],
+        },
+    )
+    assert created.status_code == 200
+    challenge_id = created.json()["id"]
+
+    _complete_long_session(client, a, minutes=12)
+    with SessionLocal() as db:
+        row = db.get(SocialChallenge, challenge_id)
+        assert row is not None
+        expired_start = utcnow() - timedelta(days=10)
+        row.week_start = expired_start.date().isoformat()
+        row.created_at = expired_start
+        db.commit()
+
+    listed = client.get("/social/challenges", headers=a)
+    assert listed.status_code == 200
+    detail = next(item for item in listed.json() if item["id"] == challenge_id)
+    assert detail["status"] == "completed"
+    assert detail["winner_user_id"] == 1
+    assert detail["completion_reason"] == "time_expired"

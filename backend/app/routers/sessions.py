@@ -20,6 +20,7 @@ from app.achievementsutil import (
 from app.models import CheckinLog, ProductionSession, SessionType, Streak, User, UserGoal, utcnow
 from app.services.friend_graph import friend_user_ids as _friend_user_ids
 from app.services.push_dispatch import schedule_notify_session_complete
+from app.services.social_challenge_service import sync_challenge_progress_on_session_complete
 from app.services.social_consequence import maybe_notify_streak_break_on_transition
 from app.services.streak_reconcile_service import reconcile_streak_row_for_user
 from app.services.kpi_tracker import track_event
@@ -227,6 +228,13 @@ def stop_session(
     streak_row = db.scalar(select(Streak).where(Streak.user_id == current.id))
     grant_achievements_after_completed_session(db, current.id, row, streak_row)
     _, prev_streak, new_streak, _, _ = reconcile_streak_row_for_user(db, current.id)
+    sync_challenge_progress_on_session_complete(
+        db,
+        user_id=current.id,
+        session_id=row.id,
+        stopped_at=end,
+        duration_seconds=int(row.duration_seconds or 0),
+    )
     db.commit()
     db.refresh(row)
     maybe_notify_streak_break_on_transition(prev_streak, new_streak, current.id)
