@@ -16,7 +16,7 @@ import { FriendsIncomingSection } from "../../features/friends/components/Friend
 import { FriendsModals } from "../../features/friends/components/FriendsModals";
 import { FriendsOverviewSection } from "../../features/friends/components/FriendsOverviewSection";
 import { FriendsScreenHeader } from "../../features/friends/components/FriendsScreenHeader";
-import { FriendsToolsSection } from "../../features/friends/components/FriendsToolsSection";
+import { FriendsTogetherSection } from "../../features/friends/components/FriendsTogetherSection";
 import { useFriendsDashboardData } from "../../features/friends/hooks/useFriendsDashboardData";
 import { useFriendsScreenActions } from "../../features/friends/hooks/useFriendsScreenActions";
 import { useFriendsScreenState } from "../../features/friends/hooks/useFriendsScreenState";
@@ -46,9 +46,7 @@ export default function FriendsScreen() {
     addBusy,
     actionBusy,
     buddy,
-    checkin,
     commitment,
-    recap,
     reactionUsersOpen,
     setReactionUsersOpen,
     reactionUsers,
@@ -59,7 +57,6 @@ export default function FriendsScreen() {
     setChallengeCreateOpen,
     challengeTitle,
     setChallengeTitle,
-    challengeKind,
     setChallengeKind,
     challengeTarget,
     setChallengeTarget,
@@ -326,23 +323,27 @@ export default function FriendsScreen() {
                   />
                 ) : null}
                 {sectionTab === "tools" ? (
-                  <FriendsToolsSection
+                  <FriendsTogetherSection
                     t={t}
                     busyActionKey={busyActionKey}
                     onJoinSocialChallenge={actions.joinSocialChallengeById}
-                    onSubmitShipCheckin={actions.submitShipCheckin}
-                    onOpenChallengeCreate={() => setChallengeCreateOpen(true)}
+                    onOpenChallengeCreate={() => {
+                      setChallengeKind("duel");
+                      setChallengeTarget("5");
+                      setChallengeDuration("7");
+                      setChallengeTitle("");
+                      setSelectedMembers([]);
+                      setChallengeCreateOpen(true);
+                    }}
+                    onOpenSessionSetup={openSessionSetup}
                     buddy={buddy}
-                    checkin={checkin}
                     commitment={commitment}
-                    entitlement={entitlement}
                     hasOtherFriends={actions.hasOtherFriends}
                     onOpenBuddyPicker={() => setBuddyPickerOpen(true)}
+                    onOpenAddFriend={() => setAddOpen(true)}
                     onAcceptBuddyInvite={actions.acceptBuddyInvite}
                     pendingBuddyInviteId={actions.pendingBuddyInviteId}
-                    onOpenGoalEditor={actions.openGoalEditor}
                     challengeCards={actions.challengeCards}
-                    recap={recap}
                     currentUserId={user?.id}
                   />
                 ) : null}
@@ -383,8 +384,6 @@ export default function FriendsScreen() {
         setChallengeCreateOpen={setChallengeCreateOpen}
         challengeTitle={challengeTitle}
         setChallengeTitle={setChallengeTitle}
-        challengeKind={challengeKind}
-        setChallengeKind={setChallengeKind}
         challengeTarget={challengeTarget}
         setChallengeTarget={setChallengeTarget}
         challengeDuration={challengeDuration}

@@ -246,6 +246,7 @@ export function useFriendsScreenActions({
     const title = state.challengeTitle.trim();
     const target = Number.parseInt(state.challengeTarget, 10);
     const durationDays = Number.parseInt(state.challengeDuration, 10);
+    const memberIds = state.selectedMembers.filter((id) => id !== userId);
     if (
       title.length < 3 ||
       !Number.isFinite(target) ||
@@ -259,9 +260,15 @@ export function useFriendsScreenActions({
       );
       return;
     }
+    if (memberIds.length === 0) {
+      Alert.alert(
+        t("friendsScreen.invalidChallengeTitle"),
+        t("friendsScreen.challengePickFriendRequired"),
+      );
+      return;
+    }
     state.setChallengeCreateBusy(true);
     try {
-      const memberIds = state.selectedMembers.filter((id) => id !== userId);
       await createChallenge(token, {
         challenge_kind: state.challengeKind,
         title,

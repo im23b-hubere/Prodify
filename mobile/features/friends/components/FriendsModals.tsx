@@ -5,7 +5,6 @@ import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
 import { fontFamily } from "../../../constants/fonts";
 import type { FriendLeaderboardEntryDto, SocialReactionUserDto } from "../../../types/friends";
-import { challengeKindLabel } from "../utils/friendsScreenFormat";
 
 type Props = {
   t: (key: string, options?: Record<string, unknown>) => string;
@@ -32,8 +31,6 @@ type Props = {
   setChallengeCreateOpen: (v: boolean) => void;
   challengeTitle: string;
   setChallengeTitle: (v: string) => void;
-  challengeKind: "duel" | "team" | "group";
-  setChallengeKind: (v: "duel" | "team" | "group") => void;
   challengeTarget: string;
   setChallengeTarget: (v: string) => void;
   challengeDuration: string;
@@ -77,8 +74,6 @@ export function FriendsModals({
   setChallengeCreateOpen,
   challengeTitle,
   setChallengeTitle,
-  challengeKind,
-  setChallengeKind,
   challengeTarget,
   setChallengeTarget,
   challengeDuration,
@@ -248,7 +243,7 @@ export function FriendsModals({
         <Pressable style={styles.modalBackdrop} onPress={() => setChallengeCreateOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>{t("friendsScreen.createChallengeTitle")}</Text>
-            <Text style={styles.modalHint}>{t("friendsScreen.createChallengeHint")}</Text>
+            <Text style={styles.modalHint}>{t("friendsScreen.createChallengeSimpleHint")}</Text>
             <Text style={styles.fieldLabel}>{t("friendsScreen.challengeTitleLabel")}</Text>
             <TextInput
               value={challengeTitle}
@@ -257,45 +252,15 @@ export function FriendsModals({
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
             />
-            <View style={styles.toggleRow}>
-              {(["duel", "team", "group"] as const).map((kind) => (
-                <Pressable
-                  key={kind}
-                  style={[styles.toggleChip, challengeKind === kind && styles.toggleChipActive]}
-                  onPress={() => setChallengeKind(kind)}
-                >
-                  <Text
-                    style={[styles.toggleText, challengeKind === kind && styles.toggleTextActive]}
-                  >
-                    {challengeKindLabel(kind, t as TFunction)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.fieldLabel}>{t("friendsScreen.challengeTargetLabel")}</Text>
-            <TextInput
-              value={challengeTarget}
-              onChangeText={setChallengeTarget}
-              keyboardType="number-pad"
-              placeholder={t("friendsScreen.challengeTargetPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-            />
-            <Text style={styles.fieldLabel}>{t("friendsScreen.challengeDurationLabel")}</Text>
-            <TextInput
-              value={challengeDuration}
-              onChangeText={setChallengeDuration}
-              keyboardType="number-pad"
-              placeholder={t("friendsScreen.challengeDurationPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-            />
-            <Text style={styles.modalHint}>{t("friendsScreen.participantsLabel")}</Text>
+            <Text style={styles.modalHint}>{t("friendsScreen.challengePickFriendLabel")}</Text>
             <View style={styles.memberChips}>
-              {entries
-                .filter((entry) => entry.user_id !== currentUserId)
-                .slice(0, 8)
-                .map((entry) => {
+              {entries.filter((entry) => entry.user_id !== currentUserId).length === 0 ? (
+                <Text style={styles.userMeta}>{t("friendsScreen.feedEmptyMessage")}</Text>
+              ) : (
+                entries
+                  .filter((entry) => entry.user_id !== currentUserId)
+                  .slice(0, 8)
+                  .map((entry) => {
                   const selected = selectedMembers.includes(entry.user_id);
                   return (
                     <Pressable
@@ -303,9 +268,7 @@ export function FriendsModals({
                       style={[styles.memberChip, selected && styles.memberChipSelected]}
                       onPress={() =>
                         setSelectedMembers((prev) =>
-                          prev.includes(entry.user_id)
-                            ? prev.filter((id) => id !== entry.user_id)
-                            : [...prev, entry.user_id],
+                          prev.includes(entry.user_id) ? [] : [entry.user_id],
                         )
                       }
                     >
@@ -316,7 +279,8 @@ export function FriendsModals({
                       </Text>
                     </Pressable>
                   );
-                })}
+                  })
+              )}
             </View>
             <PrimaryButton
               label={
