@@ -29,7 +29,6 @@ export type FriendsDashboardSnapshot = {
   commitment: CommitmentDto | null;
   recap: SocialRecapDto | null;
   entitlement: EntitlementDto | null;
-  challengeId: number | null;
 };
 
 export async function loadFriendsDashboard(token: string, periodParam: "week" | "all") {
@@ -55,10 +54,6 @@ export async function loadFriendsDashboard(token: string, periodParam: "week" | 
     fetchEntitlement(token).catch(() => null),
   ]);
 
-  const challenge = await apiJson<{ challenge_id: number }>("/challenges/weekly/leaderboard", {
-    token,
-  }).catch(() => null);
-
   const snapshot: FriendsDashboardSnapshot = {
     leaderboard,
     activity: Array.isArray(activity) ? activity : [],
@@ -69,7 +64,6 @@ export async function loadFriendsDashboard(token: string, periodParam: "week" | 
     commitment,
     recap,
     entitlement,
-    challengeId: typeof challenge?.challenge_id === "number" ? challenge.challenge_id : null,
   };
   return snapshot;
 }

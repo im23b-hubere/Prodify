@@ -77,6 +77,17 @@ export async function createSessionComment(
   });
 }
 
+export async function joinSocialChallenge(
+  token: string,
+  challengeId: number,
+): Promise<SocialChallengeDto> {
+  return apiJson<SocialChallengeDto>("/social/challenges/join", {
+    token,
+    method: "POST",
+    body: { challenge_id: challengeId },
+  });
+}
+
 export async function createChallenge(
   token: string,
   payload: {

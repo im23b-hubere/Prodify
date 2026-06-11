@@ -30,7 +30,6 @@ export function useFriendsScreenState() {
   const [addName, setAddName] = useState("");
   const [addBusy, setAddBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState<number | null>(null);
-  const [challengeId, setChallengeId] = useState<number | null>(null);
   const [buddy, setBuddy] = useState<BuddyStatusDto | null>(null);
   const [checkin, setCheckin] = useState<CheckinStatusDto | null>(null);
   const [challenges, setChallenges] = useState<SocialChallengeDto[]>([]);
@@ -109,8 +108,6 @@ export function useFriendsScreenState() {
     setAddBusy,
     actionBusy,
     setActionBusy,
-    challengeId,
-    setChallengeId,
     buddy,
     setBuddy,
     checkin,

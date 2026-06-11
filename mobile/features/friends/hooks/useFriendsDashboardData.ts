@@ -28,7 +28,6 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
     setRecap,
     setEntitlement,
     setFeedMetricsBySession,
-    setChallengeId,
     setUpsellMessage,
     setRefreshing,
   } = state;
@@ -64,7 +63,6 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
         };
       }
       setFeedMetricsBySession(metricsSeed);
-      setChallengeId(snapshot.challengeId);
       setUpsellMessage(null);
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
@@ -101,7 +99,6 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
     setRecap,
     setEntitlement,
     setFeedMetricsBySession,
-    setChallengeId,
     setUpsellMessage,
     setRefreshing,
   ]);

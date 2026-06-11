@@ -178,6 +178,7 @@ export function FriendsModals({
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>{t("friendsScreen.editGoalTitle")}</Text>
             <Text style={styles.modalHint}>{t("friendsScreen.editGoalHint")}</Text>
+            <Text style={styles.fieldLabel}>{t("friendsScreen.goalTargetLabel")}</Text>
             <TextInput
               value={goalTargetInput}
               onChangeText={setGoalTargetInput}
@@ -186,6 +187,7 @@ export function FriendsModals({
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
             />
+            <Text style={styles.fieldLabel}>{t("friendsScreen.goalDurationLabel")}</Text>
             <TextInput
               value={goalDaysInput}
               onChangeText={setGoalDaysInput}
@@ -246,6 +248,8 @@ export function FriendsModals({
         <Pressable style={styles.modalBackdrop} onPress={() => setChallengeCreateOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>{t("friendsScreen.createChallengeTitle")}</Text>
+            <Text style={styles.modalHint}>{t("friendsScreen.createChallengeHint")}</Text>
+            <Text style={styles.fieldLabel}>{t("friendsScreen.challengeTitleLabel")}</Text>
             <TextInput
               value={challengeTitle}
               onChangeText={setChallengeTitle}
@@ -268,6 +272,7 @@ export function FriendsModals({
                 </Pressable>
               ))}
             </View>
+            <Text style={styles.fieldLabel}>{t("friendsScreen.challengeTargetLabel")}</Text>
             <TextInput
               value={challengeTarget}
               onChangeText={setChallengeTarget}
@@ -276,6 +281,7 @@ export function FriendsModals({
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
             />
+            <Text style={styles.fieldLabel}>{t("friendsScreen.challengeDurationLabel")}</Text>
             <TextInput
               value={challengeDuration}
               onChangeText={setChallengeDuration}
@@ -380,6 +386,12 @@ const styles = StyleSheet.create({
     ...typography.subheadline,
   },
   modalHint: { color: colors.textSecondary, ...typography.caption },
+  fieldLabel: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+    marginBottom: -spacing.xs,
+  },
   input: {
     borderRadius: radii.md,
     borderWidth: 1,

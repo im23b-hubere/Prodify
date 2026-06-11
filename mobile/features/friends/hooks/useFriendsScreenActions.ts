@@ -6,10 +6,10 @@ import { Alert } from "react-native";
 
 import { type ApiError, apiJson } from "../../../lib/client";
 import { recordMomentumAction } from "../../../lib/momentum";
-import { tryParseSessionDto } from "../../../lib/sessionDto";
 import {
   createChallenge,
   fetchSessionReactionUsers,
+  joinSocialChallenge,
   toggleSessionReaction,
 } from "../../../lib/social";
 import type { FriendActivityDto } from "../../../types/friends";
@@ -23,7 +23,7 @@ type Params = {
   load: () => Promise<void>;
   state: FriendsScreenState;
   openSession: (sessionId: number, ownerName: string) => void;
-  openActiveSession: (sessionId: number) => void;
+  openSessionSetup: () => void;
 };
 
 export function useFriendsScreenActions({
@@ -33,7 +33,7 @@ export function useFriendsScreenActions({
   load,
   state,
   openSession,
-  openActiveSession,
+  openSessionSetup,
 }: Params) {
   const { setTriggerIndex } = state;
   const entries = state.leaderboard?.entries ?? [];
@@ -118,36 +118,29 @@ export function useFriendsScreenActions({
     [load, state, t, token],
   );
 
-  const joinChallenge = useCallback(async () => {
-    if (!token) return;
-    if (!state.challengeId) {
-      Alert.alert(t("friendsScreen.errorGeneric"), t("friendsScreen.noChallengesYet"));
-      state.setChallengeCreateOpen(true);
-      return;
-    }
-    state.setBusyActionKey("join_challenge");
-    try {
-      await apiJson("/social/challenges/join", {
-        token,
-        method: "POST",
-        body: { challenge_id: state.challengeId },
-      });
-      await load();
-      if (userId) {
-        await recordMomentumAction(userId, "challenge");
+  const joinSocialChallengeById = useCallback(
+    async (challengeId: number) => {
+      if (!token) return;
+      state.setBusyActionKey(`join_challenge_${challengeId}`);
+      try {
+        await joinSocialChallenge(token, challengeId);
+        await load();
+        if (userId) {
+          await recordMomentumAction(userId, "challenge");
+        }
+        state.showToast(t("friendsScreen.toastChallengeJoined"));
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : t("common.tryAgain");
+        if ((e as ApiError).status === 402) {
+          state.setUpsellMessage(msg);
+        }
+        Alert.alert(t("friendsScreen.errorGeneric"), msg);
+      } finally {
+        state.setBusyActionKey(null);
       }
-      state.showToast(t("friendsScreen.toastPressure"));
-      state.setUpsellMessage(t("friendsScreen.upsellInviteFriend"));
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t("common.tryAgain");
-      if ((e as ApiError).status === 402) {
-        state.setUpsellMessage(msg);
-      }
-      Alert.alert(t("friendsScreen.errorGeneric"), msg);
-    } finally {
-      state.setBusyActionKey(null);
-    }
-  }, [load, state, t, token, userId]);
+    },
+    [load, state, t, token, userId],
+  );
 
   const submitShipCheckin = useCallback(async () => {
     if (!token) return;
@@ -434,28 +427,8 @@ export function useFriendsScreenActions({
         title: t("friendsScreen.triggerBuddyStarted"),
         actionLabel: t("friendsScreen.triggerStartProducing"),
         onPress: () => {
-          if (!token) return;
-          apiJson("/sessions/quick-start", {
-            token,
-            method: "POST",
-            body: { session_type: "beat_making" },
-          })
-            .then(async (raw: unknown) => {
-              const created = tryParseSessionDto(raw);
-              if (userId) {
-                await recordMomentumAction(userId, "session");
-              }
-              state.showToast(t("friendsScreen.toastLockedIn"));
-              if (created) {
-                openActiveSession(created.id);
-              }
-            })
-            .catch((e: unknown) => {
-              Alert.alert(
-                t("friendsScreen.errorGeneric"),
-                e instanceof Error ? e.message : t("common.tryAgain"),
-              );
-            });
+          openSessionSetup();
+          state.showToast(t("friendsScreen.toastLockedIn"));
         },
       });
     }
@@ -513,7 +486,7 @@ export function useFriendsScreenActions({
       });
     }
     return cards;
-  }, [challengeCards, load, openSession, openActiveSession, state, t, token, userId]);
+  }, [challengeCards, load, openSession, openSessionSetup, state, t, token, userId]);
 
   useEffect(() => {
     setTriggerIndex(0);
@@ -548,7 +521,7 @@ export function useFriendsScreenActions({
     sendRequest,
     acceptRequest,
     declineRequest,
-    joinChallenge,
+    joinSocialChallengeById,
     submitShipCheckin,
     inviteBuddy,
     openGoalEditor,

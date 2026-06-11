@@ -99,15 +99,9 @@ export default function FriendsScreen() {
     },
     [router],
   );
-  const openActiveSession = useCallback(
-    (sessionId: number) => {
-      router.push({
-        pathname: "/session-active",
-        params: { id: String(sessionId), source: "dashboard" },
-      } as Href);
-    },
-    [router],
-  );
+  const openSessionSetup = useCallback(() => {
+    router.push("/session/setup" as Href);
+  }, [router]);
 
   const actions = useFriendsScreenActions({
     token,
@@ -116,7 +110,7 @@ export default function FriendsScreen() {
     load,
     state,
     openSession,
-    openActiveSession,
+    openSessionSetup,
   });
 
   const visibleActivity = useMemo(
@@ -335,7 +329,7 @@ export default function FriendsScreen() {
                   <FriendsToolsSection
                     t={t}
                     busyActionKey={busyActionKey}
-                    onJoinChallenge={actions.joinChallenge}
+                    onJoinSocialChallenge={actions.joinSocialChallengeById}
                     onSubmitShipCheckin={actions.submitShipCheckin}
                     onOpenChallengeCreate={() => setChallengeCreateOpen(true)}
                     buddy={buddy}
