@@ -15,6 +15,7 @@ import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import { syncEntitlement } from "../lib/billing";
+import { setDevBillingBypass } from "../lib/devBillingBypass";
 import { replaceWithPendingDeepLinkOrDashboard } from "../lib/pendingDeepLink";
 import { resolvePaywallExitRoute, type PaywallSource } from "../lib/postAuthNavigation";
 import {
@@ -174,6 +175,36 @@ export default function PaywallScreen() {
     }
   }
 
+  async function onSkipSubscriptionForDev() {
+    if (!expoGoPreviewMode) return;
+    setBusy(true);
+    try {
+      if (token && appUserId) {
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 30);
+        await syncEntitlement(token, {
+          app_user_id: appUserId,
+          entitlement: "premium",
+          trial_active: true,
+          expires_at: expires.toISOString(),
+        }).catch(() => undefined);
+      }
+      await setDevBillingBypass(true);
+      const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
+      if (exitRoute === "/(tabs)/dashboard") {
+        await replaceWithPendingDeepLinkOrDashboard(router);
+        return;
+      }
+      if (exitRoute) {
+        router.replace(exitRoute);
+        return;
+      }
+      router.back();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onRestore() {
     setBusy(true);
     try {
@@ -255,6 +286,19 @@ export default function PaywallScreen() {
             {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore")}
           </Text>
         </Pressable>
+        {expoGoPreviewMode ? (
+          <Pressable
+            style={styles.skipDev}
+            onPress={() => void onSkipSubscriptionForDev()}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={t("paywall.a11y.skipSubscription")}
+          >
+            <Text style={styles.skipDevText}>
+              {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.skipSubscriptionDev")}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -281,6 +325,20 @@ const styles = StyleSheet.create({
   restore: { alignItems: "center", paddingVertical: spacing.xs },
   restoreText: {
     color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyBold,
+  },
+  skipDev: {
+    alignItems: "center",
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.border,
+  },
+  skipDevText: {
+    color: colors.primary,
     ...typography.caption,
     fontFamily: fontFamily.bodyBold,
   },

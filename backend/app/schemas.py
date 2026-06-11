@@ -645,14 +645,6 @@ class GoalForecastPublic(BaseModel):
     warning_message: str
 
 
-class CoachDebriefPublic(BaseModel):
-    session_id: int
-    went_well: list[str] = Field(default_factory=list)
-    didnt_go_well: list[str] = Field(default_factory=list)
-    next_steps: list[str] = Field(default_factory=list)
-    tone: str = "motivating_realistic"
-
-
 class OutputMetricsPublic(BaseModel):
     tracks_finished_30d: int
     avg_completion_time_days: float
@@ -664,75 +656,6 @@ class OutputMetricsPublic(BaseModel):
     consistency_improvement: float
     output_increase: float
     baseline_tracks_30d: int
-
-
-class StatsCoachPublic(BaseModel):
-    eligible: bool
-    reason: str | None = None
-    days_active: int
-    sessions_completed: int
-    total_seconds: int
-    wins: list[str] = Field(default_factory=list)
-    risks: list[str] = Field(default_factory=list)
-    next_actions: list[str] = Field(default_factory=list)
-    coach_note: str = ""
-
-
-class StatsCoachChatBody(BaseModel):
-    message: str = Field(min_length=2, max_length=500)
-    preset_key: str | None = Field(default=None, max_length=64)
-    focus_area: Literal["consistency", "arrangement", "sound_design", "mixing", "finishing"] | None = None
-    plan_horizon: Literal["next_session", "7_days", "14_days"] | None = None
-    intensity: Literal["light", "balanced", "aggressive"] | None = None
-    history: list[str] = Field(default_factory=list, max_length=10)
-
-    @field_validator("message")
-    @classmethod
-    def sanitize_message(cls, value: str) -> str:
-        cleaned = " ".join(value.strip().split())
-        if len(cleaned) < 2:
-            raise ValueError("message must contain at least 2 characters")
-        return cleaned
-
-    @field_validator("preset_key")
-    @classmethod
-    def sanitize_preset_key(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
-
-    @field_validator("focus_area", "plan_horizon", "intensity", mode="before")
-    @classmethod
-    def sanitize_optional_choice(cls, value: object) -> object:
-        if value is None:
-            return None
-        cleaned = str(value).strip()
-        return cleaned or None
-
-    @field_validator("history", mode="before")
-    @classmethod
-    def sanitize_history(cls, value: object) -> list[str]:
-        if value is None:
-            return []
-        if not isinstance(value, list):
-            raise ValueError("history must be a list of strings")
-        cleaned_history: list[str] = []
-        for item in value[:10]:
-            normalized = " ".join(str(item).strip().split())
-            if not normalized:
-                continue
-            if len(normalized) > 240:
-                raise ValueError("history items must be at most 240 characters")
-            cleaned_history.append(normalized)
-        return cleaned_history
-
-
-class StatsCoachChatPublic(BaseModel):
-    eligible: bool
-    reason: str | None = None
-    reply: str
-    suggested_prompts: list[str] = Field(default_factory=list)
 
 
 class KpiSummaryPublic(BaseModel):

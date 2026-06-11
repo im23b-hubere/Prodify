@@ -30,3 +30,6 @@ export const PENDING_WEEKLY_GOAL_KEY = "prodify_pending_weekly_goal_v1";
 export const NOTIFICATION_INBOX_KEY = "prodify_notification_inbox_v1";
 export const NOTIFICATION_UNREAD_KEY = "prodify_notification_unread_v1";
 export const NOTIFICATION_SETTINGS_KEY = "prodify_notification_settings_v1";
+
+/** Expo Go dev only: skip paywall locally without Store purchase. */
+export const DEV_BILLING_BYPASS_KEY = "prodify_dev_billing_bypass_v1";

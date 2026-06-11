@@ -6,6 +6,7 @@ import { ONBOARDING_COMPLETE_KEY, REFRESH_TOKEN_KEY } from "../constants/storage
 import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } from "../lib/client";
 import i18n from "../lib/i18n";
 import { syncEntitlement } from "../lib/billing";
+import { clearDevBillingBypass } from "../lib/devBillingBypass";
 import { clearNotificationInbox, setNotificationUserContext } from "../lib/notificationInbox";
 import { clearPendingDeepLinkPath } from "../lib/pendingDeepLink";
 import { syncPendingWeeklyGoal } from "../lib/onboardingGoalSync";
@@ -197,6 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearNotificationInbox().catch(() => undefined);
     await setNotificationUserContext(null).catch(() => undefined);
     await clearPendingDeepLinkPath();
+    await clearDevBillingBypass();
     await configureRevenueCat(undefined).catch(() => undefined);
     setToken(null);
     setUser(null);
@@ -215,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearNotificationInbox().catch(() => undefined);
     await setNotificationUserContext(null).catch(() => undefined);
     await clearPendingDeepLinkPath();
+    await clearDevBillingBypass();
     await configureRevenueCat(undefined).catch(() => undefined);
     setToken(null);
     setUser(null);

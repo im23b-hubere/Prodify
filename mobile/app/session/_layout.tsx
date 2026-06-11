@@ -21,6 +21,7 @@ export default function SessionStackLayout() {
           presentation: "fullScreenModal",
           animation: "slide_from_bottom",
           gestureDirection: "vertical",
+          gestureEnabled: true,
         }}
       />
       <Stack.Screen name="complete" />

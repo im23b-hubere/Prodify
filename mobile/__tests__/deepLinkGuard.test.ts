@@ -32,6 +32,7 @@ describe("deepLinkGuard", () => {
     expect(deepLinkRequiresAuth("login")).toBe(false);
     expect(deepLinkRequiresAuth("session/42")).toBe(true);
     expect(toRoutableHref("session/42")).toBe("/session/42");
+    expect(toRoutableHref("session/active")).toBe("/session-active");
     expect(toRoutableHref("")).toBe("/");
   });
 });

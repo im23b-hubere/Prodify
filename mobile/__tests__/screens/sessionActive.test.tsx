@@ -35,7 +35,9 @@ jest.mock("react-native-gesture-handler", () => {
         enabled: () => ({
           activeOffsetY: () => ({
             failOffsetX: () => ({
-              onEnd: () => ({}),
+              onUpdate: () => ({
+                onEnd: () => ({}),
+              }),
             }),
           }),
         }),
@@ -67,7 +69,14 @@ jest.mock("../../context/AuthContext", () => ({
 }));
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace, back: jest.fn(), push: jest.fn() }),
+  useRouter: () => ({
+    replace: mockReplace,
+    back: jest.fn(),
+    push: jest.fn(),
+    dismiss: jest.fn(),
+    canDismiss: () => false,
+    canGoBack: () => false,
+  }),
   useLocalSearchParams: () => ({ id: "7", source: "dashboard" }),
 }));
 

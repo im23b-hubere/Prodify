@@ -21,10 +21,15 @@ export function ActiveSessionTimerBlock({
   const [nowMs, setNowMs] = useState(Date.now());
   const ringPulse = useSharedValue(1);
 
+  const isPaused = !!active.pause_started_at;
+
   useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    if (isPaused) return;
+    const tick = () => setNowMs(Date.now());
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [isPaused]);
 
   useEffect(() => {
     ringPulse.value = withRepeat(

@@ -84,11 +84,3 @@ def generate_weekly_coach_note(prompt: str) -> str | None:
         label="weekly_coach",
     )
 
-
-def generate_stats_chat_reply(prompt: str) -> str | None:
-    return _generate_text(
-        prompt,
-        num_predict=96,
-        temperature=0.25,
-        label="stats_chat",
-    )

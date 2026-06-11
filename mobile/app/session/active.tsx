@@ -32,7 +32,12 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { parseSessionList, sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
-import { effectiveElapsedSeconds, formatDurationWords } from "../../lib/sessionTime";
+import {
+  effectiveElapsedSeconds,
+  formatDurationWords,
+  mergeSessionPauseTiming,
+  parseSessionDate,
+} from "../../lib/sessionTime";
 import { SESSION_TYPE_IDS, type SessionDto, type SessionType } from "../../types/session";
 
 function formatClock(totalSeconds: number) {
@@ -72,8 +77,12 @@ export default function SessionActiveScreen() {
   const stopSessionInFlight = useRef(false);
 
   const pulse = useSharedValue(1);
+  const dismissDragY = useSharedValue(0);
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulse.value }],
+  }));
+  const dismissDragStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: dismissDragY.value }],
   }));
 
   const load = useCallback(async () => {
@@ -147,9 +156,12 @@ export default function SessionActiveScreen() {
   }, [token]);
 
   useEffect(() => {
-    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    if (session?.pause_started_at) return;
+    const tick = () => setNowMs(Date.now());
+    tick();
+    const t = setInterval(tick, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [session?.pause_started_at]);
 
   const elapsed = session ? effectiveElapsedSeconds(session, nowMs) : 0;
 
@@ -159,19 +171,45 @@ export default function SessionActiveScreen() {
     Alert.alert(t("sessionActive.longSessionTitle"), t("sessionActive.longSessionBody"));
   }, [elapsed, t]);
 
+  const isPaused = !!session?.pause_started_at;
+
   useEffect(() => {
+    if (isPaused) {
+      pulse.value = withTiming(1, { duration: 200 });
+      return;
+    }
     pulse.value = withRepeat(
       withSequence(withTiming(1.04, { duration: 500 }), withTiming(1, { duration: 500 })),
       -1,
     );
-  }, [pulse]);
+  }, [isPaused, pulse]);
 
   const fromDashboard = source === "dashboard";
 
   const minimizeToDashboard = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    router.back();
+    if (router.canDismiss()) {
+      router.dismiss();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/(tabs)/dashboard");
   }, [router]);
+
+  const finishDismissDrag = useCallback(
+    (translationY: number, velocityY: number) => {
+      const shouldDismiss = translationY > 48 || velocityY > 650;
+      if (shouldDismiss) {
+        minimizeToDashboard();
+        return;
+      }
+      dismissDragY.value = withTiming(0, { duration: 220 });
+    },
+    [dismissDragY, minimizeToDashboard],
+  );
 
   const swipeDownGesture = useMemo(
     () =>
@@ -179,16 +217,22 @@ export default function SessionActiveScreen() {
         .enabled(fromDashboard)
         .activeOffsetY(12)
         .failOffsetX([-28, 28])
+        .onUpdate((e) => {
+          dismissDragY.value = Math.max(0, e.translationY);
+        })
         .onEnd((e) => {
-          if (e.translationY > 48 || e.velocityY > 650) {
-            runOnJS(minimizeToDashboard)();
-          }
+          runOnJS(finishDismissDrag)(e.translationY, e.velocityY);
         }),
-    [fromDashboard, minimizeToDashboard],
+    [dismissDragY, finishDismissDrag, fromDashboard],
   );
 
   const pause = useCallback(async () => {
-    if (!token || !session) return;
+    if (!token || !session || session.pause_started_at) return;
+    const previous = session;
+    const pausedAtMs = Date.now();
+    const clientPauseStartedAt = new Date(pausedAtMs).toISOString();
+    setNowMs(pausedAtMs);
+    setSession({ ...session, pause_started_at: clientPauseStartedAt });
     setBusy(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
@@ -197,9 +241,13 @@ export default function SessionActiveScreen() {
         method: "POST",
       });
       const s = tryParseSessionDto(raw);
-      if (s) setSession(s);
-      else setError(t("sessionDetail.invalidResponse"));
+      if (s) setSession(mergeSessionPauseTiming(clientPauseStartedAt, s));
+      else {
+        setSession(previous);
+        setError(t("sessionDetail.invalidResponse"));
+      }
     } catch (e) {
+      setSession(previous);
       setError(e instanceof Error ? e.message : t("sessionActive.pauseFailed"));
     } finally {
       setBusy(false);
@@ -207,7 +255,19 @@ export default function SessionActiveScreen() {
   }, [session, token, t]);
 
   const resume = useCallback(async () => {
-    if (!token || !session) return;
+    if (!token || !session || !session.pause_started_at) return;
+    const previous = session;
+    const resumedAtMs = Date.now();
+    const pauseStartMs = parseSessionDate(session.pause_started_at).getTime();
+    const additionalPaused = Number.isFinite(pauseStartMs)
+      ? Math.max(0, Math.floor((resumedAtMs - pauseStartMs) / 1000))
+      : 0;
+    setNowMs(resumedAtMs);
+    setSession({
+      ...session,
+      pause_started_at: null,
+      paused_duration_seconds: (session.paused_duration_seconds ?? 0) + additionalPaused,
+    });
     setBusy(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
@@ -217,8 +277,12 @@ export default function SessionActiveScreen() {
       });
       const s = tryParseSessionDto(raw);
       if (s) setSession(s);
-      else setError(t("sessionDetail.invalidResponse"));
+      else {
+        setSession(previous);
+        setError(t("sessionDetail.invalidResponse"));
+      }
     } catch (e) {
+      setSession(previous);
       setError(e instanceof Error ? e.message : t("sessionActive.resumeFailed"));
     } finally {
       setBusy(false);
@@ -342,24 +406,22 @@ export default function SessionActiveScreen() {
     );
   }
 
-  const isPaused = !!session.pause_started_at;
   const tagList = sessionTagsList(session.tags);
 
-  return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={8}
-      >
-        {fromDashboard ? (
-          <GestureDetector gesture={swipeDownGesture}>
-            <View style={styles.minimizeStrip}>
-              <View style={styles.grabber} />
-              <Text style={styles.minimizeHint}>{t("sessionActive.minimizeHint")}</Text>
-            </View>
-          </GestureDetector>
-        ) : null}
+  const screenBody = (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={8}
+    >
+      {fromDashboard ? (
+        <GestureDetector gesture={swipeDownGesture}>
+          <View style={styles.minimizeStrip}>
+            <View style={styles.grabber} />
+            <Text style={styles.minimizeHint}>{t("sessionActive.minimizeHint")}</Text>
+          </View>
+        </GestureDetector>
+      ) : null}
         <View style={styles.header}>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{sessionTypeLabel(session.session_type, t)}</Text>
@@ -457,7 +519,16 @@ export default function SessionActiveScreen() {
             <Text style={styles.stopTxt}>{t("sessionActive.stopSession")}</Text>
           </Pressable>
         </ScrollView>
-      </KeyboardAvoidingView>
+    </KeyboardAvoidingView>
+  );
+
+  return (
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      {fromDashboard ? (
+        <Animated.View style={[styles.flex, dismissDragStyle]}>{screenBody}</Animated.View>
+      ) : (
+        screenBody
+      )}
     </SafeAreaView>
   );
 }

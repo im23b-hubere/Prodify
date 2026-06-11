@@ -28,14 +28,6 @@ export type GoalForecastDto = {
   warning_message: string;
 };
 
-export type CoachDebriefDto = {
-  session_id: number;
-  went_well: string[];
-  didnt_go_well: string[];
-  next_steps: string[];
-  tone: string;
-};
-
 export type ProgressionDto = {
   xp_total: number;
   current_level: number;
@@ -56,23 +48,4 @@ export type OutputMetricsDto = {
   consistency_improvement: number;
   output_increase: number;
   baseline_tracks_30d: number;
-};
-
-export type StatsCoachDto = {
-  eligible: boolean;
-  reason: string | null;
-  days_active: number;
-  sessions_completed: number;
-  total_seconds: number;
-  wins: string[];
-  risks: string[];
-  next_actions: string[];
-  coach_note: string;
-};
-
-export type StatsCoachChatDto = {
-  eligible: boolean;
-  reason: string | null;
-  reply: string;
-  suggested_prompts: string[];
 };

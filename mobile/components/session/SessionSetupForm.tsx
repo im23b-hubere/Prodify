@@ -183,7 +183,7 @@ function TypeCard({
 }
 
 export type SessionSetupFormProps = {
-  /** Optional preselected type (e.g. from coaching recommendation). */
+  /** Optional preselected session type. */
   initialSessionType?: SessionType | null;
   /** Called after the session is created successfully (API returned). */
   onStarted: (session: SessionDto) => void;

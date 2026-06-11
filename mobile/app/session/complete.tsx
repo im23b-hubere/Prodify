@@ -22,18 +22,16 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, motion, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
-import { fetchEntitlement } from "../../lib/billing";
 import { buildWeeklyForecast } from "../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../lib/goalPace";
 import { syncProgression } from "../../lib/progressionSync";
 import { buildSessionFeedback } from "../../lib/sessionFeedbackEngine";
 import { tryParseSessionDto } from "../../lib/sessionDto";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
-import { tryParseCoachDebriefDto } from "../../lib/outcomesDto";
 import { generateMotivationMessage, getTimeOfDay } from "../../lib/motivationEngine";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDto } from "../../types/session";
-import type { CoachDebriefDto, ProgressionDto } from "../../types/outcomes";
+import type { ProgressionDto } from "../../types/outcomes";
 
 const AUTO_RETURN_SECONDS = 10;
 const SESSION_XP_MINUTES_FLOOR = 5;
@@ -63,7 +61,6 @@ export default function SessionCompleteScreen() {
 
   const [session, setSession] = useState<SessionDto | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
-  const [coach, setCoach] = useState<CoachDebriefDto | null>(null);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
   const [weekSessionsCount, setWeekSessionsCount] = useState<number>(0);
@@ -116,11 +113,10 @@ export default function SessionCompleteScreen() {
       setTrackTitle(s.track_title ?? "");
       setTrackSaved(false);
       setTrackSaveError(null);
-      const [statsRaw, progressionRaw, goalRaw, ent] = await Promise.all([
+      const [statsRaw, progressionRaw, goalRaw] = await Promise.all([
         apiJson<unknown>("/sessions/stats?period=all", { token }).catch(() => null),
         syncProgression(token).catch(() => null),
         apiJson<unknown>("/goals/current", { token }).catch(() => null),
-        fetchEntitlement(token).catch(() => null),
       ]);
       if (cancelled.current) return;
       const stats = statsRaw ? tryParseSessionStatsDto(statsRaw) : null;
@@ -137,17 +133,6 @@ export default function SessionCompleteScreen() {
       } else {
         setWeeklyGoalTarget(null);
         setWeekSessionsCount(0);
-      }
-      const premiumish = Boolean(ent && (ent.entitlement === "premium" || ent.trial_active));
-      if (premiumish) {
-        try {
-          const coachRaw = await apiJson<unknown>(`/outcomes/coach/session/${id}`, { token });
-          if (!cancelled.current) setCoach(tryParseCoachDebriefDto(coachRaw));
-        } catch {
-          if (!cancelled.current) setCoach(null);
-        }
-      } else if (!cancelled.current) {
-        setCoach(null);
       }
       setLoadState("ready");
       setSecondsLeft(AUTO_RETURN_SECONDS);
@@ -440,27 +425,6 @@ export default function SessionCompleteScreen() {
           </Text>
         </AppCard>
 
-        {coach ? (
-          <AppCard style={styles.coachCard}>
-            <Text style={styles.coachTitle}>{t("sessionComplete.coachDebriefTitle")}</Text>
-            {coach.went_well.slice(0, 2).map((line) => (
-              <Text key={`well-${line}`} style={styles.coachLine}>
-                + {line}
-              </Text>
-            ))}
-            {coach.didnt_go_well.slice(0, 2).map((line) => (
-              <Text key={`risk-${line}`} style={styles.coachLine}>
-                - {line}
-              </Text>
-            ))}
-            {coach.next_steps.slice(0, 2).map((line) => (
-              <Text key={`next-${line}`} style={styles.coachLine}>
-                {"->"} {line}
-              </Text>
-            ))}
-          </AppCard>
-        ) : null}
-
         {paceForecast ? (
           <AppCard style={styles.supportingCard}>
             <Text
@@ -746,13 +710,6 @@ const styles = StyleSheet.create({
     ...typography.meta,
     fontFamily: fontFamily.bodyMedium,
   },
-  coachCard: {
-    marginTop: spacing.sm,
-    width: "100%",
-    gap: spacing.xs,
-  },
-  coachTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.meta },
-  coachLine: { color: colors.textSecondary, ...typography.meta },
   xpCard: {
     marginTop: spacing.sm,
     width: "100%",

@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { fetchEntitlement, hasPremiumAccess } from "../../lib/billing";
+import { isDevBillingBypassActive } from "../../lib/devBillingBypass";
 
 type TabIconProps = {
   focused: boolean;
@@ -44,10 +45,10 @@ export default function TabsLayout() {
       return;
     }
     setEntitlementLoading(true);
-    void fetchEntitlement(token)
-      .then((entitlement) => {
+    void Promise.all([fetchEntitlement(token), isDevBillingBypassActive()])
+      .then(([entitlement, devBypass]) => {
         if (!cancelled) {
-          setHasAccess(hasPremiumAccess(entitlement));
+          setHasAccess(hasPremiumAccess(entitlement) || devBypass);
         }
       })
       .catch(() => {

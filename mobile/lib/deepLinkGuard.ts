@@ -25,6 +25,7 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   /^progression-overview$/,
   /^session\/setup$/,
   /^session\/active$/,
+  /^session-active$/,
   /^session\/complete$/,
   /^session\/\d+$/,
   /^profile\/\d+$/,
@@ -80,5 +81,6 @@ export function deepLinkRequiresAuth(path: string | null | undefined): boolean {
 export function toRoutableHref(path: string | null | undefined): `/${string}` {
   const normalized = normalizeIncomingPath(path);
   if (!normalized) return "/";
+  if (normalized === "session/active") return "/session-active";
   return `/${normalized}`;
 }

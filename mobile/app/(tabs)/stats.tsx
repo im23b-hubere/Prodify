@@ -37,14 +37,14 @@ import {
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
 import { syncProgression } from "../../lib/progressionSync";
-import { tryParseGoalForecastDto, tryParseStatsCoachDto } from "../../lib/outcomesDto";
+import { tryParseGoalForecastDto } from "../../lib/outcomesDto";
 import {
   tryParseHeatmapDays,
   tryParsePersonalRecords,
   tryParseSessionStatsDto,
 } from "../../lib/statsDto";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
-import type { GoalForecastDto, ProgressionDto, StatsCoachDto } from "../../types/outcomes";
+import type { GoalForecastDto, ProgressionDto } from "../../types/outcomes";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 type PersonalRecord = {
@@ -262,7 +262,6 @@ export default function StatsScreen() {
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
-  const [statsCoach, setStatsCoach] = useState<StatsCoachDto | null>(null);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [showAdvancedInsights, setShowAdvancedInsights] = useState(false);
   const loadSeq = useRef(0);
@@ -315,19 +314,16 @@ export default function StatsScreen() {
         // Show core stats first, then hydrate secondary sections.
         if (mounted.current && seq === loadSeq.current) setLoading(false);
 
-        const [progressionRes, statsCoachRes, forecastRes] = await Promise.allSettled([
+        const [progressionRes, forecastRes] = await Promise.allSettled([
           syncProgression(token, { force: forceProgressionSync }),
-          apiJson<unknown>("/outcomes/stats-coach/current", { token, timeoutMs: 30_000 }),
           apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
         ]);
         if (!mounted.current || seq !== loadSeq.current) return;
 
         const progressionRaw = progressionRes.status === "fulfilled" ? progressionRes.value : null;
-        const statsCoachRaw = statsCoachRes.status === "fulfilled" ? statsCoachRes.value : null;
         const forecastRaw = forecastRes.status === "fulfilled" ? forecastRes.value : null;
 
         setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
-        setStatsCoach(statsCoachRaw ? tryParseStatsCoachDto(statsCoachRaw) : null);
         setProgression(progressionRaw);
       } catch (e) {
         if (!mounted.current || seq !== loadSeq.current) return;
@@ -610,32 +606,6 @@ export default function StatsScreen() {
         ) : null}
         {!showInitialLoading ? (
           <Animated.View style={[styles.contentFadeWrap, { opacity: contentFade }]}>
-            {!showInitialLoading ? (
-              <AppCard style={styles.coachCardCompact}>
-                <View style={styles.coachCompactHeader}>
-                  <Text style={styles.cardTitle}>{t("stats.aiCoachTitle")}</Text>
-                </View>
-                <Text style={styles.coachCompactText} numberOfLines={2}>
-                  {statsCoach
-                    ? statsCoach.eligible
-                      ? statsCoach.coach_note || t("stats.aiCoachChatSubtitle")
-                      : t("stats.aiCoachLocked")
-                    : t("stats.aiCoachChatSubtitle")}
-                </Text>
-                <View style={styles.coachCompactCtaRow}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.coachCompactCta,
-                      pressed && styles.coachCompactCtaPressed,
-                    ]}
-                    onPress={() => router.push("/ai-coach")}
-                  >
-                    <Text style={styles.coachCompactCtaText}>{t("stats.aiCoachOpenChat")}</Text>
-                  </Pressable>
-                </View>
-              </AppCard>
-            ) : null}
-
             {!showInitialLoading ? (
               <AppCard style={styles.chartCard}>
                 <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
@@ -1137,91 +1107,6 @@ const styles = StyleSheet.create({
   },
   progressionCard: {
     marginBottom: spacing.lg,
-  },
-  coachCard: {
-    marginBottom: spacing.lg,
-    borderColor: "rgba(255,61,0,0.38)",
-    backgroundColor: "rgba(255,61,0,0.08)",
-  },
-  coachCardCompact: {
-    marginBottom: spacing.lg,
-    borderColor: "rgba(255,255,255,0.14)",
-    backgroundColor: "rgba(255,255,255,0.03)",
-  },
-  coachCompactHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    gap: spacing.sm,
-  },
-  coachCompactText: {
-    marginTop: spacing.xs,
-    color: colors.textSecondary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyMedium,
-    lineHeight: 19,
-  },
-  coachCompactCtaRow: {
-    marginTop: spacing.sm,
-    alignItems: "flex-start",
-  },
-  coachCompactCta: {
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: "rgba(255,61,0,0.45)",
-    backgroundColor: "rgba(255,61,0,0.14)",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  coachCompactCtaPressed: {
-    opacity: motion.pressOpacity,
-    transform: [{ scale: motion.pressScale }],
-  },
-  coachCompactCtaText: {
-    color: colors.textPrimary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyBold,
-  },
-  coachSection: {
-    marginTop: spacing.sm,
-    gap: spacing.xs,
-  },
-  coachSectionTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
-  coachList: {
-    marginTop: spacing.sm,
-    gap: spacing.xs,
-  },
-  coachListItem: {
-    color: colors.textPrimary,
-    ...typography.meta,
-    lineHeight: 20,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  coachNoteBox: {
-    marginTop: spacing.sm,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.16)",
-    backgroundColor: "rgba(0,0,0,0.24)",
-    padding: spacing.sm,
-    gap: spacing.xs,
-  },
-  coachNoteLabel: {
-    color: "#ffb07a",
-    ...typography.meta,
-    fontFamily: fontFamily.bodyBold,
-  },
-  coachNoteText: {
-    color: colors.textPrimary,
-    ...typography.body,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  coachChatCta: {
-    marginTop: spacing.md,
   },
   progressionTopRow: {
     flexDirection: "row",

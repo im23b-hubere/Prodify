@@ -68,12 +68,14 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: colors.background },
             }}
           >
+            <Stack.Screen name="(tabs)" />
             <Stack.Screen
-              name="session/active"
+              name="session-active"
               options={{
                 presentation: "fullScreenModal",
                 animation: "slide_from_bottom",
                 gestureDirection: "vertical",
+                gestureEnabled: true,
               }}
             />
           </Stack>

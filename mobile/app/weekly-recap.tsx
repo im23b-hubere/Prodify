@@ -451,7 +451,7 @@ export default function WeeklyRecapScreen() {
                   <View style={styles.insightIconWrap}>
                     <Sparkles size={14} color="#cfb8ff" />
                   </View>
-                  <Text style={styles.feedbackLabel}>Coach Note</Text>
+                  <Text style={styles.feedbackLabel}>{t("weeklyRecap.weeklyInsightLabel")}</Text>
                 </View>
                 <Text style={styles.feedbackText}>{review?.ai_feedback}</Text>
               </View>

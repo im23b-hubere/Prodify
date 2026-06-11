@@ -16,13 +16,31 @@ export function effectiveElapsedSeconds(session: SessionDto, nowMs: number): num
   if (session.pause_started_at?.trim()) {
     const ps = parseSessionDate(session.pause_started_at).getTime();
     if (Number.isFinite(ps)) {
-      paused += Math.max(0, Math.floor((nowMs - ps) / 1000));
+      // Freeze at pause moment — avoids creep from 1s UI ticks or later server pause_started_at.
+      const grossAtPause = Math.floor((ps - startedMs) / 1000);
+      const net = grossAtPause - paused;
+      if (!Number.isFinite(net)) return 0;
+      return Math.max(0, net);
     }
   }
   const gross = Math.floor((nowMs - startedMs) / 1000);
   const net = gross - paused;
   if (!Number.isFinite(net)) return 0;
   return Math.max(0, net);
+}
+
+/** Keep client pause timestamp when server confirms later — avoids timer jumping forward. */
+export function mergeSessionPauseTiming(
+  clientPauseStartedAt: string | null | undefined,
+  server: SessionDto,
+): SessionDto {
+  if (!clientPauseStartedAt?.trim() || !server.pause_started_at?.trim()) return server;
+  const clientMs = parseSessionDate(clientPauseStartedAt).getTime();
+  const serverMs = parseSessionDate(server.pause_started_at).getTime();
+  if (Number.isFinite(clientMs) && Number.isFinite(serverMs) && clientMs <= serverMs) {
+    return { ...server, pause_started_at: clientPauseStartedAt };
+  }
+  return server;
 }
 
 export function formatDurationWords(totalSeconds: number): string {

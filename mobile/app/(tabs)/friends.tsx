@@ -102,7 +102,7 @@ export default function FriendsScreen() {
   const openActiveSession = useCallback(
     (sessionId: number) => {
       router.push({
-        pathname: "/session/active",
+        pathname: "/session-active",
         params: { id: String(sessionId), source: "dashboard" },
       } as Href);
     },

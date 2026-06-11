@@ -253,7 +253,7 @@ export default function DashboardScreen() {
         return [created, ...rest];
       });
       router.push({
-        pathname: "/session/active",
+        pathname: "/session-active",
         params: { id: String(created.id), source: "dashboard" },
       });
     } catch {
@@ -267,7 +267,7 @@ export default function DashboardScreen() {
     if (!active || typeof active.id !== "number" || !Number.isFinite(active.id)) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
     router.push({
-      pathname: "/session/active",
+      pathname: "/session-active",
       params: { id: String(active.id), source: "dashboard" },
     });
   }, [active, router]);
