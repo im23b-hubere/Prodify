@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
-import { Bell, Flame } from "lucide-react-native";
+import { Bell, Flame, Trophy } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
@@ -22,6 +22,7 @@ import { useDashboardSocialNudges } from "../../features/dashboard/hooks/useDash
 import { useDashboardStreakEvents } from "../../features/dashboard/hooks/useDashboardStreakEvents";
 
 import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
+import { glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { DashboardSessionStarter } from "../../components/dashboard/DashboardSessionStarter";
 import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
 import { TodayPlanCard } from "../../components/dashboard/TodayPlanCard";
@@ -144,7 +145,6 @@ export default function DashboardScreen() {
     : MILESTONE_CELEBRATED_MAX_KEY;
 
   const stopSessionInFlight = useRef(false);
-  const quickStartInFlight = useRef(false);
 
   const weekProgress = useMemo(() => getLast7DaysProgress(sessions), [sessions]);
   const clientStreak = useMemo(() => getStreak(sessions), [sessions]);
@@ -227,41 +227,6 @@ export default function DashboardScreen() {
     if (!token) return;
     registerPushTokenWithBackend(token).catch(() => undefined);
   }, [token]);
-
-  const openSetup = useCallback(async () => {
-    if (active) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
-      return;
-    }
-    if (!token || quickStartInFlight.current) {
-      router.push("/session/setup");
-      return;
-    }
-    quickStartInFlight.current = true;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-    try {
-      const createdRaw = await apiJson<unknown>("/sessions/quick-start", {
-        token,
-        method: "POST",
-        body: { session_type: "beat_making" },
-      });
-      const created = tryParseSessionDto(createdRaw);
-      if (!created) throw new Error(t("dashboard.couldNotReadSession"));
-      setActive(created);
-      setSessions((prev) => {
-        const rest = prev.filter((s) => s.id !== created.id);
-        return [created, ...rest];
-      });
-      router.push({
-        pathname: "/session-active",
-        params: { id: String(created.id), source: "dashboard" },
-      });
-    } catch {
-      router.push("/session/setup");
-    } finally {
-      quickStartInFlight.current = false;
-    }
-  }, [active, token, router, setActive, setSessions, t]);
 
   const openFullscreenActive = useCallback(() => {
     if (!active || typeof active.id !== "number" || !Number.isFinite(active.id)) return;
@@ -410,6 +375,22 @@ export default function DashboardScreen() {
       }),
     [effectiveWeeklyGoalTarget, weekSessionsForGoal, streakOverview, clientStreak, visibleSessions],
   );
+
+  const openSessionSetup = useCallback(() => {
+    if (active) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    router.push({
+      pathname: "/session/setup",
+      params: {
+        suggestedType: todayPlan.suggestedSessionType,
+        source: "dashboard",
+      },
+    });
+  }, [active, router, todayPlan.suggestedSessionType]);
+
   const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
   const completedCount = useMemo(() => completedSessionsCount(visibleSessions), [visibleSessions]);
   const hasAnyCompletedSessions = completedCount > 0;
@@ -602,7 +583,10 @@ export default function DashboardScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.milestoneToastInner}
           >
-            <Text style={styles.milestoneToastText}>🏆 {milestoneToast}</Text>
+            <View style={[glyphRowStyle, styles.milestoneToastRow]}>
+              <Trophy size={18} color="#fff" strokeWidth={2.2} fill="#fff" />
+              <Text style={styles.milestoneToastText}>{milestoneToast}</Text>
+            </View>
           </LinearGradient>
         </Animated.View>
       ) : null}
@@ -682,7 +666,7 @@ export default function DashboardScreen() {
                 stopBusy={stopBusy}
               />
             ) : (
-              <DashboardSessionStarter onQuickStart={openSetup} />
+              <DashboardSessionStarter onQuickStart={openSessionSetup} />
             )}
 
             <TodayPlanCard
@@ -701,15 +685,7 @@ export default function DashboardScreen() {
                     })
                   : null
               }
-              onStartSuggested={() =>
-                router.push({
-                  pathname: "/session/setup",
-                  params: {
-                    suggestedType: todayPlan.suggestedSessionType,
-                    source: "today_plan",
-                  },
-                })
-              }
+              onStartSuggested={openSessionSetup}
             />
 
             <TodayProgressCard
@@ -836,7 +812,7 @@ export default function DashboardScreen() {
                 style={{ alignSelf: "center", marginBottom: spacing.sm }}
               />
               <Text style={styles.emptyTitle}>{t("dashboard.emptyStreakTitle")}</Text>
-              <PrimaryButton label={t("dashboard.startSession")} onPress={openSetup} />
+              <PrimaryButton label={t("dashboard.startSession")} onPress={openSessionSetup} />
             </View>
           ) : null
         }
@@ -924,11 +900,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
   },
+  milestoneToastRow: {
+    justifyContent: "center",
+  },
   milestoneToastText: {
     color: "#ffffff",
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
     textAlign: "center",
+    flex: 1,
   },
   listContainer: {
     paddingHorizontal: ui.screenPadding,

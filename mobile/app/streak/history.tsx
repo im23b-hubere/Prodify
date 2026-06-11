@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { Href, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { ChevronLeft } from "lucide-react-native";
+import { Calendar, ChevronLeft } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -183,7 +183,7 @@ export default function StreakHistoryScreen() {
 
         {token && !loading && !error && runs.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>📅</Text>
+            <Calendar size={40} color={colors.primary} strokeWidth={2} />
             <Text style={styles.emptyTitle}>{t("streakHistory.emptyTitle")}</Text>
             <Text style={styles.emptySub}>{t("streakHistory.emptySub")}</Text>
           </View>
@@ -290,7 +290,6 @@ const styles = StyleSheet.create({
   retry: { alignSelf: "flex-start", paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
   retryText: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   empty: { alignItems: "center", paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
-  emptyEmoji: { fontSize: 40, marginBottom: spacing.sm },
   emptyTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,

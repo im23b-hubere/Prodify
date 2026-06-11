@@ -40,13 +40,7 @@ import { tryParseSessionDto } from "../../lib/sessionDto";
 import type { SessionDto } from "../../types/session";
 import { PrimaryButton } from "../ui/PrimaryButton";
 
-const MOODS = [
-  { level: 1 as const, emoji: "😴" },
-  { level: 2 as const, emoji: "😐" },
-  { level: 3 as const, emoji: "🙂" },
-  { level: 4 as const, emoji: "😊" },
-  { level: 5 as const, emoji: "🔥" },
-];
+import { MOOD_LEVELS, MoodIcon } from "../icons/ProdifyGlyphs";
 
 const SUGGESTED_TAGS = ["trap", "drill", "techno", "house", "experimental"];
 
@@ -239,7 +233,6 @@ export function SessionSetupForm({
 
   const noteLen = notes.length;
   const canStart = selectedType !== null;
-  const selectedTypeLabel = selectedType ? sessionTypeLabel(selectedType, t) : null;
 
   const addTag = useCallback(
     (raw: string) => {
@@ -402,14 +395,9 @@ export function SessionSetupForm({
       ) : null}
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <AppCard style={styles.introCard}>
-          <Text style={styles.introTitle}>{t("dashboard.newSessionTitle")}</Text>
-          <Text style={styles.introText}>
-            {selectedTypeLabel ? selectedTypeLabel : t("sessionSetup.startCta")}
-          </Text>
-        </AppCard>
-
-        <Text style={styles.sectionLabel}>{t("sessionActive.sessionType")}</Text>
+        <Text style={[styles.sectionLabel, styles.sectionLabelFirst]}>
+          {t("sessionActive.sessionType")}
+        </Text>
         <View style={styles.typeColumn}>
           {SESSION_TYPE_IDS.map((type) => (
             <TypeCard
@@ -459,20 +447,20 @@ export function SessionSetupForm({
 
               <Text style={styles.sectionLabel}>{t("sessionSetup.moodSection")}</Text>
               <View style={styles.moodRow}>
-                {MOODS.map((m) => (
+                {MOOD_LEVELS.map((level) => (
                   <Pressable
-                    key={m.level}
+                    key={level}
                     style={({ pressed }) => [
                       styles.moodBtn,
-                      mood === m.level && styles.moodBtnActive,
+                      mood === level && styles.moodBtnActive,
                       pressed && styles.moodBtnPressed,
                     ]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                      setMood(m.level);
+                      setMood(level);
                     }}
                   >
-                    <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                    <MoodIcon level={level} active={mood === level} size={24} />
                   </Pressable>
                 ))}
               </View>
@@ -572,25 +560,15 @@ const styles = StyleSheet.create({
   },
   closeText: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamily.bodyBold },
   scroll: { paddingHorizontal: ui.screenPadding, paddingBottom: spacing.xxl },
-  introCard: {
-    marginBottom: spacing.sm,
-  },
-  introTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.cardTitle,
-  },
-  introText: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    fontFamily: fontFamily.body,
-  },
   sectionLabel: {
     marginTop: ui.stackGap,
     marginBottom: spacing.sm,
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
     ...typography.meta,
+  },
+  sectionLabelFirst: {
+    marginTop: 0,
   },
   typeColumn: { gap: spacing.sm },
   optionalToggle: {
@@ -773,7 +751,6 @@ const styles = StyleSheet.create({
   },
   moodBtnActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.15)" },
   moodBtnPressed: { opacity: motion.pressOpacity, transform: [{ scale: motion.pressScaleStrong }] },
-  moodEmoji: { fontSize: 26 },
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   tagChip: {
     paddingHorizontal: spacing.sm,

@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
@@ -6,7 +6,7 @@ import { colors, spacing, typography, ui } from "../../constants/theme";
 
 type StatCardProps = {
   label: string;
-  value: string | number;
+  value: string | number | ReactNode;
   sublabel?: string;
   subPositive?: boolean;
 };
@@ -19,7 +19,11 @@ export const StatCard = memo(function StatCard({
 }: StatCardProps) {
   return (
     <View style={styles.card}>
-      <Text style={styles.value}>{value}</Text>
+      {typeof value === "string" || typeof value === "number" ? (
+        <Text style={styles.value}>{value}</Text>
+      ) : (
+        <View style={styles.valueRow}>{value}</View>
+      )}
       <Text style={styles.label}>{label}</Text>
       {sublabel ? (
         <Text style={[styles.sub, subPositive ? styles.subPos : styles.subNeg]}>{sublabel}</Text>
@@ -42,6 +46,11 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     ...typography.subheadline,
+  },
+  valueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   label: {
     color: colors.textSecondary,

@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 import { BadgeIcon } from "../../components/ui/BadgeIcon";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { AppFlame, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { StatCard } from "../../components/ui/StatCard";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -461,7 +462,12 @@ export default function ProfileScreen() {
             <StatCard label={t("profile.totalSessions")} value={summary.total_sessions} />
             <StatCard
               label={t("profile.currentStreak")}
-              value={`🔥 ${summary.current_streak_days}`}
+              value={
+                <View style={glyphRowStyle}>
+                  <AppFlame size={18} />
+                  <Text style={styles.streakStatValue}>{summary.current_streak_days}</Text>
+                </View>
+              }
             />
             <StatCard
               label={t("profile.bestStreak")}
@@ -722,6 +728,11 @@ const styles = StyleSheet.create({
   errorText: { color: "#ff9a9a", ...typography.caption, marginBottom: spacing.sm },
   retry: { alignSelf: "flex-start", paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
   retryText: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  streakStatValue: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
+  },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",

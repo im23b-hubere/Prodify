@@ -1,6 +1,8 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronRight, Shield } from "lucide-react-native";
+
+import { AppFlame } from "../icons/ProdifyGlyphs";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -63,7 +65,7 @@ export function StreakHeroSection({
       <LinearGradient colors={["#1f1410", "#141414"]} style={styles.card}>
         <Text style={styles.streakKicker}>{t("streakHero.kicker")}</Text>
         <View style={styles.topRow}>
-          <Text style={styles.flameEmoji}>🔥</Text>
+          <AppFlame size={36} />
           <Text style={styles.bigStreak}>{displayStreak}</Text>
           <Text style={styles.dayWord}>{t("streakHero.dayStreak")}</Text>
         </View>
@@ -191,10 +193,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: spacing.xs,
     fontFamily: fontFamily.bodyBold,
-  },
-  flameEmoji: {
-    fontSize: 36,
-    marginBottom: 4,
   },
   bigStreak: {
     fontSize: 56,

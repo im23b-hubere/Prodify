@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AppFlame, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { TextButton } from "../../components/ui/TextButton";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
@@ -299,7 +300,10 @@ export default function SessionCompleteScreen() {
           />
           <Text style={styles.bigDur}>{formatDurationWords(dur)}</Text>
           {streak !== null && streak > 0 ? (
-            <Text style={styles.streak}>{t("sessionComplete.streakLine", { count: streak })}</Text>
+            <View style={[glyphRowStyle, styles.streakRow]}>
+              <AppFlame size={22} />
+              <Text style={styles.streak}>{t("sessionComplete.streakLine", { count: streak })}</Text>
+            </View>
           ) : null}
           <Text style={styles.motivation}>{t(feedback.emotionalMessageKey)}</Text>
         </View>
@@ -550,10 +554,13 @@ const styles = StyleSheet.create({
     fontSize: 36,
     marginTop: spacing.sm,
   },
+  streakRow: {
+    justifyContent: "center",
+    marginTop: spacing.xs,
+  },
   streak: {
     color: colors.textSecondary,
     ...typography.meta,
-    marginTop: spacing.xs,
     textAlign: "center",
   },
   feedbackCard: {

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AchievementGlyph, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { ActivityHeatmapCard } from "../../components/profile/ActivityHeatmapCard";
 import { ProfileHeader } from "../../components/profile/ProfileHeader";
 import { StreakComparison } from "../../components/profile/StreakComparison";
@@ -27,15 +28,6 @@ import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { formatDurationWords, formatSessionListDate } from "../../lib/sessionTime";
 import type { StreakOverviewDto } from "../../types/streak";
 import type { BuddyStatusDto, SocialRecapDto } from "../../types/friends";
-
-const ACHIEVEMENT_EMOJI: Record<string, string> = {
-  first_session: "🎹",
-  sessions_10: "🔥",
-  sessions_50: "💪",
-  streak_7: "⚡",
-  marathon_2h: "👑",
-  night_owl: "🦉",
-};
 
 type FriendStatus = "self" | "none" | "pending" | "accepted";
 
@@ -361,12 +353,12 @@ export default function FriendProfileScreen() {
                 <Text style={styles.muted}>{t("friendProfile.noneUnlocked")}</Text>
               ) : (
                 stats.achievements.map((a) => {
-                  const emoji = ACHIEVEMENT_EMOJI[a.id] ?? "⭐";
                   const title = t(`friendProfile.achievements.${a.id}`, { defaultValue: a.id });
                   return (
-                    <Text key={a.id} style={styles.ach}>
-                      {emoji} {title}
-                    </Text>
+                    <View key={a.id} style={[glyphRowStyle, styles.achRow]}>
+                      <AchievementGlyph achievementId={a.id} size={18} />
+                      <Text style={styles.ach}>{title}</Text>
+                    </View>
                   );
                 })
               )}
@@ -457,7 +449,8 @@ const styles = StyleSheet.create({
   lineMuted: { color: colors.textSecondary, ...typography.body },
   lineStrong: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
   muted: { color: colors.textSecondary, ...typography.caption },
-  ach: { color: colors.textPrimary, ...typography.body },
+  ach: { color: colors.textPrimary, ...typography.body, flex: 1 },
+  achRow: { marginBottom: spacing.xs },
   sessRow: {
     flexDirection: "row",
     justifyContent: "space-between",

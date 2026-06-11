@@ -1,5 +1,4 @@
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -17,7 +16,6 @@ export const DashboardSessionStarter = memo(function DashboardSessionStarter({
   onQuickStart,
 }: Props) {
   const { t } = useTranslation();
-  const router = useRouter();
   return (
     <View style={styles.starterContainer}>
       <Pressable
@@ -36,7 +34,7 @@ export const DashboardSessionStarter = memo(function DashboardSessionStarter({
       <Pressable
         onPress={() => {
           Haptics.selectionAsync().catch(() => undefined);
-          router.push("/session/setup");
+          onQuickStart();
         }}
         style={({ pressed }) => [styles.customBtn, pressed && { opacity: 0.85 }]}
       >

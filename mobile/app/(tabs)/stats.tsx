@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AppFlame, RecordGlyph, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { ErrorState } from "../../components/states/ErrorState";
 import { AppCard } from "../../components/ui/AppCard";
 import { StatCard } from "../../components/ui/StatCard";
@@ -119,15 +120,6 @@ function recordTitle(key: string, fallback: string, t: TTranslate) {
   if (key === "current_streak") return t("stats.recordCurrentStreak");
   if (key === "productive_week") return t("stats.recordProductiveWeek");
   return fallback;
-}
-
-function recordIcon(key: string) {
-  if (key === "longest_session") return "⏱";
-  if (key === "most_sessions_day") return "📅";
-  if (key === "longest_streak") return "🔥";
-  if (key === "current_streak") return "⚡";
-  if (key === "productive_week") return "🏆";
-  return "⭐";
 }
 
 function recordPriorityScore(key: string) {
@@ -512,7 +504,12 @@ export default function StatsScreen() {
       {
         key: "streak",
         label: t("stats.currentStreak"),
-        value: `🔥 ${summary.streak}`,
+        value: (
+          <View style={glyphRowStyle}>
+            <AppFlame size={18} />
+            <Text style={styles.statValueText}>{summary.streak}</Text>
+          </View>
+        ),
         sublabel: `${t("stats.bestStreakSub", { days: summary.bestStreak })}\n${t("stats.streakScopeNote")}`,
         subPositive: true,
       },
@@ -564,7 +561,6 @@ export default function StatsScreen() {
         <View style={styles.headerRow}>
           <ScreenHeader
             title={t("stats.title")}
-            subtitle={filter.label}
             actionLabel={t("sessionFeedback.backToDashboard")}
             onActionPress={() => router.push("/(tabs)/dashboard")}
           />
@@ -623,7 +619,7 @@ export default function StatsScreen() {
                         >
                           <View style={styles.recordTitleRow}>
                             <View style={styles.recordLabelWrap}>
-                              <Text style={styles.recordIcon}>{recordIcon(r.key)}</Text>
+                              <RecordGlyph recordKey={r.key} size={16} />
                               <Text style={styles.recordLabel}>
                                 {recordTitle(r.key, r.label, t)}
                               </Text>
@@ -898,7 +894,7 @@ export default function StatsScreen() {
                         >
                           <View style={styles.recordTitleRow}>
                             <View style={styles.recordLabelWrap}>
-                              <Text style={styles.recordIcon}>{recordIcon(r.key)}</Text>
+                              <RecordGlyph recordKey={r.key} size={16} />
                               <Text style={styles.recordLabel}>
                                 {recordTitle(r.key, r.label, t)}
                               </Text>
@@ -1218,9 +1214,10 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     flexShrink: 1,
   },
-  recordIcon: {
-    fontSize: 15,
-    lineHeight: 19,
+  statValueText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
   },
   recordBadge: {
     borderRadius: radii.round,

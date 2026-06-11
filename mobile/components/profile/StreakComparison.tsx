@@ -2,6 +2,8 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
+import { AppFlame, glyphRowStyle } from "../icons/ProdifyGlyphs";
+
 import { GlassCard } from "../ui/GlassCard";
 import { fontFamily } from "../../constants/fonts";
 import { colors, spacing, typography } from "../../constants/theme";
@@ -32,18 +34,18 @@ export const StreakComparison = memo(function StreakComparison({ yourStreak, the
         <View style={styles.row}>
           <View style={styles.col}>
             <Text style={styles.lbl}>{t("streakComparison.you")}</Text>
-            <Text style={styles.val}>
-              {yourStreak}
-              <Text> 🔥</Text>
-            </Text>
+            <View style={[glyphRowStyle, styles.valRow]}>
+              <Text style={styles.val}>{yourStreak}</Text>
+              <AppFlame size={16} />
+            </View>
           </View>
           <Text style={styles.vs}>{t("streakComparison.vs")}</Text>
           <View style={styles.col}>
             <Text style={styles.lbl}>{t("streakComparison.them")}</Text>
-            <Text style={styles.val}>
-              {theirStreak}
-              <Text> 🔥</Text>
-            </Text>
+            <View style={[glyphRowStyle, styles.valRow]}>
+              <Text style={styles.val}>{theirStreak}</Text>
+              <AppFlame size={16} />
+            </View>
           </View>
         </View>
         <Text style={styles.msg}>{msg}</Text>
@@ -64,6 +66,7 @@ const styles = StyleSheet.create({
   col: { flex: 1, alignItems: "center", gap: 4 },
   lbl: { color: colors.textSecondary, ...typography.caption },
   val: { color: colors.textPrimary, fontFamily: fontFamily.heading, fontSize: 28 },
+  valRow: { justifyContent: "center" },
   vs: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,

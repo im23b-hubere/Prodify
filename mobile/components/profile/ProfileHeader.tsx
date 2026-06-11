@@ -5,6 +5,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { AppFlame, glyphRowStyle } from "../icons/ProdifyGlyphs";
 
 type Props = {
   username: string;
@@ -80,10 +81,10 @@ export const ProfileHeader = memo(function ProfileHeader({
             <Text style={styles.qLbl}>{t("profileHeader.sessions")}</Text>
           </View>
           <View style={styles.qItem}>
-            <Text style={styles.qVal}>
-              {currentStreak}
-              <Text style={styles.fire}> 🔥</Text>
-            </Text>
+            <View style={[glyphRowStyle, styles.qValRow]}>
+              <Text style={styles.qVal}>{currentStreak}</Text>
+              <AppFlame size={16} />
+            </View>
             <Text style={styles.qLbl}>{t("profileHeader.streak")}</Text>
           </View>
           <View style={styles.qItem}>
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
   quick: { flexDirection: "row", justifyContent: "space-around", marginTop: spacing.sm },
   qItem: { alignItems: "center", gap: 4 },
   qVal: { color: colors.textPrimary, fontFamily: fontFamily.heading, fontSize: 18 },
-  fire: { fontSize: 14 },
+  qValRow: { justifyContent: "center" },
   qLbl: { color: colors.textSecondary, ...typography.caption },
   followBtn: {
     marginTop: spacing.md,

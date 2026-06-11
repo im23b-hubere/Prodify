@@ -25,6 +25,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { isMoodLevel, MoodIcon, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -47,13 +48,6 @@ function formatClock(totalSeconds: number) {
   return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-const MOOD_EMOJI: Record<number, string> = {
-  1: "😴",
-  2: "😐",
-  3: "🙂",
-  4: "😊",
-  5: "🔥",
-};
 const ACTIVE_NOTES_MAX_LENGTH = 2000;
 
 export default function SessionActiveScreen() {
@@ -459,10 +453,11 @@ export default function SessionActiveScreen() {
               })}
             </View>
 
-            {session.mood_level ? (
-              <Text style={styles.row}>
-                {t("sessionActive.mood", { emoji: MOOD_EMOJI[session.mood_level] ?? "—" })}
-              </Text>
+            {session.mood_level && isMoodLevel(session.mood_level) ? (
+              <View style={[glyphRowStyle, styles.moodRow]}>
+                <Text style={styles.row}>{t("sessionActive.mood")}</Text>
+                <MoodIcon level={session.mood_level} size={20} />
+              </View>
             ) : null}
 
             <Text style={styles.editLabel}>{t("sessionActive.notes")}</Text>
@@ -613,6 +608,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   row: { color: colors.textPrimary, fontFamily: fontFamily.body, ...typography.body },
+  moodRow: { marginBottom: spacing.xs },
   editLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,

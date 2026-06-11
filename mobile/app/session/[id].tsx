@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Check } from "lucide-react-native";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Animated, {
