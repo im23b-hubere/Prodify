@@ -78,6 +78,7 @@ export type SocialChallengeMemberDto = {
 
 export type SocialChallengeDto = {
   id: number;
+  owner_id: number;
   challenge_kind: "duel" | "team" | "group" | string;
   title: string;
   week_start: string;

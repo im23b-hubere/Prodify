@@ -483,3 +483,135 @@ def test_social_challenge_expires_with_leader_on_time_up(client):
     assert detail["status"] == "completed"
     assert detail["winner_user_id"] == 1
     assert detail["completion_reason"] == "time_expired"
+
+
+def test_social_challenge_get_by_id(client):
+    a = _auth_headers(client, "social-ch-get-a@example.com", "social-ch-get-a")
+    b = _auth_headers(client, "social-ch-get-b@example.com", "social-ch-get-b")
+    stranger = _auth_headers(client, "social-ch-get-s@example.com", "social-ch-get-s")
+    _make_friends(client, a, b, "social-ch-get-b")
+
+    created = client.post(
+        "/social/challenges",
+        headers=a,
+        json={
+            "challenge_kind": "duel",
+            "title": "Detail View",
+            "target_sessions": 4,
+            "duration_days": 7,
+            "member_user_ids": [2],
+        },
+    )
+    assert created.status_code == 200
+    challenge_id = created.json()["id"]
+
+    detail = client.get(f"/social/challenges/{challenge_id}", headers=b)
+    assert detail.status_code == 200
+    assert detail.json()["title"] == "Detail View"
+    assert detail.json()["owner_id"] == 1
+
+    blocked = client.get(f"/social/challenges/{challenge_id}", headers=stranger)
+    assert blocked.status_code == 403
+
+
+def test_social_challenge_owner_can_update_and_cancel(client):
+    a = _auth_headers(client, "social-ch-edit-a@example.com", "social-ch-edit-a")
+    b = _auth_headers(client, "social-ch-edit-b@example.com", "social-ch-edit-b")
+    _make_friends(client, a, b, "social-ch-edit-b")
+
+    created = client.post(
+        "/social/challenges",
+        headers=a,
+        json={
+            "challenge_kind": "duel",
+            "title": "Editable Duel",
+            "target_sessions": 5,
+            "duration_days": 7,
+            "member_user_ids": [2],
+        },
+    )
+    assert created.status_code == 200
+    challenge_id = created.json()["id"]
+    assert created.json()["owner_id"] == 1
+
+    updated = client.patch(
+        f"/social/challenges/{challenge_id}",
+        headers=a,
+        json={"title": "Renamed Duel", "target_sessions": 6},
+    )
+    assert updated.status_code == 200
+    body = updated.json()
+    assert body["title"] == "Renamed Duel"
+    assert body["target_sessions"] == 6
+
+    forbidden = client.patch(
+        f"/social/challenges/{challenge_id}",
+        headers=b,
+        json={"title": "Hijacked"},
+    )
+    assert forbidden.status_code == 403
+
+    cancelled = client.delete(f"/social/challenges/{challenge_id}", headers=a)
+    assert cancelled.status_code == 204
+    listed = client.get("/social/challenges", headers=a)
+    assert listed.status_code == 200
+    assert all(item["id"] != challenge_id for item in listed.json())
+
+
+def test_social_challenge_target_cannot_drop_below_progress(client):
+    a = _auth_headers(client, "social-ch-floor-a@example.com", "social-ch-floor-a")
+    b = _auth_headers(client, "social-ch-floor-b@example.com", "social-ch-floor-b")
+    _make_friends(client, a, b, "social-ch-floor-b")
+
+    created = client.post(
+        "/social/challenges",
+        headers=a,
+        json={
+            "challenge_kind": "duel",
+            "title": "Floor Test",
+            "target_sessions": 5,
+            "duration_days": 7,
+            "member_user_ids": [2],
+        },
+    )
+    assert created.status_code == 200
+    challenge_id = created.json()["id"]
+    _complete_long_session(client, a, minutes=12)
+    _complete_long_session(client, a, minutes=12)
+
+    blocked = client.patch(
+        f"/social/challenges/{challenge_id}",
+        headers=a,
+        json={"target_sessions": 1},
+    )
+    assert blocked.status_code == 400
+
+
+def test_social_challenge_member_can_leave_and_owner_cannot(client):
+    a = _auth_headers(client, "social-ch-leave-a@example.com", "social-ch-leave-a")
+    b = _auth_headers(client, "social-ch-leave-b@example.com", "social-ch-leave-b")
+    _make_friends(client, a, b, "social-ch-leave-b")
+
+    created = client.post(
+        "/social/challenges",
+        headers=a,
+        json={
+            "challenge_kind": "duel",
+            "title": "Leave Test",
+            "target_sessions": 5,
+            "duration_days": 7,
+            "member_user_ids": [2],
+        },
+    )
+    assert created.status_code == 200
+    challenge_id = created.json()["id"]
+
+    owner_leave = client.post(f"/social/challenges/{challenge_id}/leave", headers=a)
+    assert owner_leave.status_code == 400
+
+    member_leave = client.post(f"/social/challenges/{challenge_id}/leave", headers=b)
+    assert member_leave.status_code == 204
+
+    listed = client.get("/social/challenges", headers=a)
+    assert listed.status_code == 200
+    assert all(item["id"] != challenge_id for item in listed.json())

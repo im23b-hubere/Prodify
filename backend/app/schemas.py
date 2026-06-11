@@ -854,6 +854,12 @@ class SocialChallengeJoinBody(BaseModel):
     challenge_id: int = Field(gt=0)
 
 
+class SocialChallengeUpdateBody(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=120)
+    target_sessions: int | None = Field(default=None, ge=1, le=50)
+    duration_days: int | None = Field(default=None, ge=3, le=30)
+
+
 class SocialChallengeMemberPublic(BaseModel):
     user_id: int
     username: str
@@ -863,6 +869,7 @@ class SocialChallengeMemberPublic(BaseModel):
 
 class SocialChallengePublic(BaseModel):
     id: int
+    owner_id: int
     challenge_kind: str
     title: str
     week_start: str

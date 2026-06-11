@@ -1,6 +1,6 @@
 import { type Href, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
-import { Swords, Users } from "lucide-react-native";
+import { ChevronRight, Swords, Users } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
@@ -57,6 +57,10 @@ export function FriendsTogetherSection({
 
   const openStats = () => {
     router.push("/(tabs)/stats" as Href);
+  };
+
+  const openChallengeDetail = (challengeId: number) => {
+    router.push(`/challenge/${challengeId}` as Href);
   };
 
   return (
@@ -232,39 +236,55 @@ export function FriendsTogetherSection({
                 typeof currentUserId === "number" &&
                 challenge.members.some((m) => m.user_id === currentUserId);
               const joinBusy = busyActionKey === `join_challenge_${challenge.id}`;
+              const summaryLine =
+                challenge.status === "completed"
+                  ? challenge.is_tie
+                    ? t("friendsScreen.challengeEndedTie")
+                    : challenge.winner_user_id === currentUserId
+                      ? t("friendsScreen.challengeYouWon")
+                      : t("friendsScreen.challengeEndedWinner", {
+                          winner:
+                            challenge.members.find((m) => m.user_id === challenge.winner_user_id)
+                              ?.username ?? t("friendsScreen.challengeSomeone"),
+                        })
+                  : t("friendsScreen.challengeActiveLine", {
+                      target: challenge.target_sessions,
+                      days:
+                        challenge.days_remaining ??
+                        challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
+                        challenge.duration_days ??
+                        7,
+                      rank: challenge.your_rank ?? "—",
+                    });
 
               return (
                 <View key={challenge.id} style={styles.challengeBlock}>
-                  <View style={styles.challengeHeaderRow}>
-                    <Text style={styles.userName}>{challenge.title}</Text>
-                    <View style={styles.challengeKindPill}>
-                      <Text style={styles.challengeKindPillText}>
-                        {challengeKindLabel(challenge.challenge_kind, t)}
-                      </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("friendsScreen.challengeOpenDetailA11y", {
+                      title: challenge.title,
+                    })}
+                    style={({ pressed }) => [
+                      styles.challengeTapCard,
+                      pressed && styles.challengeTapCardPressed,
+                    ]}
+                    onPress={() => openChallengeDetail(challenge.id)}
+                  >
+                    <View style={styles.challengeHeaderRow}>
+                      <Text style={styles.userName}>{challenge.title}</Text>
+                      <View style={styles.challengeHeaderRight}>
+                        <View style={styles.challengeKindPill}>
+                          <Text style={styles.challengeKindPillText}>
+                            {challengeKindLabel(challenge.challenge_kind, t)}
+                          </Text>
+                        </View>
+                        <ChevronRight color={colors.textSecondary} size={18} />
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.userMeta}>
-                    {challenge.status === "completed"
-                      ? challenge.is_tie
-                        ? t("friendsScreen.challengeEndedTie")
-                        : challenge.winner_user_id === currentUserId
-                          ? t("friendsScreen.challengeYouWon")
-                          : t("friendsScreen.challengeEndedWinner", {
-                              winner:
-                                challenge.members.find((m) => m.user_id === challenge.winner_user_id)
-                                  ?.username ?? t("friendsScreen.challengeSomeone"),
-                            })
-                      : t("friendsScreen.challengeActiveLine", {
-                          target: challenge.target_sessions,
-                          days:
-                            challenge.days_remaining ??
-                            challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
-                            challenge.duration_days ??
-                            7,
-                          rank: challenge.your_rank ?? "—",
-                        })}
-                  </Text>
-                  {!isMember ? (
+                    <Text style={styles.userMeta}>{summaryLine}</Text>
+                    <Text style={styles.challengeTapHint}>{t("friendsScreen.challengeTapHint")}</Text>
+                  </Pressable>
+                  {!isMember && challenge.status === "active" ? (
                     <PrimaryButton
                       label={
                         joinBusy ? t("friendsScreen.loading") : t("friendsScreen.joinThisChallenge")
@@ -272,51 +292,6 @@ export function FriendsTogetherSection({
                       onPress={() => void onJoinSocialChallenge(challenge.id)}
                       disabled={joinBusy}
                     />
-                  ) : null}
-                  {isMember ? (
-                    challenge.members.map((m) => {
-                      const pct = Math.max(
-                        0,
-                        Math.min(
-                          100,
-                          Math.round((m.progress_sessions / challenge.target_sessions) * 100),
-                        ),
-                      );
-                      const me = m.user_id === currentUserId;
-                      const leader =
-                        challenge.members.length > 0
-                          ? Math.max(...challenge.members.map((x) => x.progress_sessions))
-                          : 0;
-                      const label =
-                        m.progress_sessions === leader
-                          ? t("friendsScreen.challengeLabelTone")
-                          : leader - m.progress_sessions <= 1
-                            ? t("friendsScreen.challengeLabelCloseBattle")
-                            : t("friendsScreen.challengeLabelKeepGoing");
-                      return (
-                        <View
-                          key={`${challenge.id}-${m.user_id}`}
-                          style={styles.challengeMemberRow}
-                        >
-                          <View style={styles.challengeMemberHeader}>
-                            <Text style={[styles.userMeta, me && styles.challengeMe]}>
-                              {m.username}
-                            </Text>
-                            <Text style={[styles.userMeta, me && styles.challengeMe]}>
-                              {m.progress_sessions}/{challenge.target_sessions}
-                            </Text>
-                          </View>
-                          <View style={styles.progressTrack}>
-                            <View style={[styles.progressFill, { width: `${pct}%` }]} />
-                          </View>
-                          <Text style={styles.challengeMemberLabel}>{label}</Text>
-                        </View>
-                      );
-                    })
-                  ) : challenge.members.length > 0 ? (
-                    <Text style={styles.sectionHintText}>
-                      {t("friendsScreen.challengeJoinToSeeProgress")}
-                    </Text>
                   ) : null}
                 </View>
               );

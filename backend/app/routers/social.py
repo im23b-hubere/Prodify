@@ -46,6 +46,7 @@ from app.schemas import (
     CommitmentPublic,
     SocialChallengeCreateBody,
     SocialChallengeJoinBody,
+    SocialChallengeUpdateBody,
     SocialChallengeMemberPublic,
     SocialChallengePublic,
     SocialCommentBody,
@@ -65,11 +66,13 @@ from app.services.kpi_tracker import track_event
 from app.services.push_dispatch import send_ping
 from app.services.progression_service import grant_xp
 from app.services.social_challenge_service import (
+    cancel_challenge,
     challenge_completed_recently,
     challenge_duration_days,
     challenge_public_extras,
     finalize_visible_active_challenges,
     load_challenge_meta,
+    save_challenge_meta,
 )
 
 router = APIRouter(prefix="/social", tags=["social"])
@@ -739,6 +742,7 @@ def _challenge_public(
     premium = bool(owner and _is_premium(db, owner))
     return SocialChallengePublic(
         id=row.id,
+        owner_id=row.owner_id,
         challenge_kind=row.challenge_kind,
         title=row.title,
         week_start=row.week_start,
@@ -794,6 +798,24 @@ def join_social_challenge(
     return _challenge_public(db, row.id, current_user_id=current.id)
 
 
+@router.get("/challenges/{challenge_id}", response_model=SocialChallengePublic)
+def get_social_challenge(
+    challenge_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(SocialChallenge, challenge_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    friend_ids = set(_friend_user_ids(db, current.id))
+    if row.owner_id != current.id and row.owner_id not in friend_ids:
+        raise HTTPException(status_code=403, detail="You are not allowed to view this challenge")
+    if row.status == "active":
+        finalize_visible_active_challenges(db, [row])
+        db.commit()
+    return _challenge_public(db, row.id, current_user_id=current.id)
+
+
 @router.get("/challenges", response_model=list[SocialChallengePublic])
 def list_social_challenges(
     current: Annotated[User, Depends(get_current_user)],
@@ -818,6 +840,97 @@ def list_social_challenges(
             listed.append(row)
     listed = listed[:20]
     return [_challenge_public(db, r.id, current_user_id=current.id) for r in listed]
+
+
+@router.patch("/challenges/{challenge_id}", response_model=SocialChallengePublic)
+def update_social_challenge(
+    challenge_id: int,
+    body: SocialChallengeUpdateBody,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(SocialChallenge, challenge_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    if row.owner_id != current.id:
+        raise HTTPException(status_code=403, detail="Only the challenge owner can edit it")
+    if row.status != "active":
+        raise HTTPException(status_code=400, detail="Only active challenges can be edited")
+    if body.title is None and body.target_sessions is None and body.duration_days is None:
+        raise HTTPException(status_code=400, detail="No challenge fields to update")
+
+    members = db.scalars(
+        select(SocialChallengeMember).where(SocialChallengeMember.challenge_id == challenge_id)
+    ).all()
+    meta = load_challenge_meta(row)
+    premium = _is_premium(db, current)
+
+    if body.title is not None:
+        row.title = body.title.strip()
+    if body.target_sessions is not None:
+        max_progress = max((int(m.progress_sessions or 0) for m in members), default=0)
+        if body.target_sessions < max_progress:
+            raise HTTPException(
+                status_code=400,
+                detail="Target cannot be lower than a participant's current progress",
+            )
+        row.target_sessions = body.target_sessions
+    if body.duration_days is not None:
+        if not premium and body.duration_days > 7:
+            raise HTTPException(status_code=402, detail="Upgrade to run longer challenges.")
+        meta["duration_days"] = body.duration_days
+        save_challenge_meta(row, meta)
+
+    db.commit()
+    return _challenge_public(db, row.id, current_user_id=current.id)
+
+
+@router.delete("/challenges/{challenge_id}", status_code=204)
+def cancel_social_challenge(
+    challenge_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(SocialChallenge, challenge_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    if row.owner_id != current.id:
+        raise HTTPException(status_code=403, detail="Only the challenge owner can end it")
+    if row.status != "active":
+        raise HTTPException(status_code=400, detail="Challenge is no longer active")
+    cancel_challenge(db, row, reason="cancelled")
+    db.commit()
+
+
+@router.post("/challenges/{challenge_id}/leave", status_code=204)
+def leave_social_challenge(
+    challenge_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    row = db.get(SocialChallenge, challenge_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    if row.owner_id == current.id:
+        raise HTTPException(status_code=400, detail="Challenge owners should end the challenge instead of leaving")
+    if row.status != "active":
+        raise HTTPException(status_code=400, detail="Challenge is no longer active")
+    member = db.scalar(
+        select(SocialChallengeMember).where(
+            SocialChallengeMember.challenge_id == challenge_id,
+            SocialChallengeMember.user_id == current.id,
+        )
+    )
+    if member is None:
+        raise HTTPException(status_code=404, detail="You are not in this challenge")
+    db.delete(member)
+    db.flush()
+    remaining = db.scalars(
+        select(SocialChallengeMember).where(SocialChallengeMember.challenge_id == challenge_id)
+    ).all()
+    if len(remaining) < 2:
+        cancel_challenge(db, row, reason="member_left")
+    db.commit()
 
 
 @router.post("/commitment", response_model=CommitmentPublic)

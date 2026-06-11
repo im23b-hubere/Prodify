@@ -241,12 +241,21 @@ export function useFriendsScreenActions({
     }
   }, [load, state, t, token]);
 
+  const resetChallengeModal = useCallback(() => {
+    state.setChallengeCreateOpen(false);
+    state.setChallengeTitle("");
+    state.setChallengeTarget("5");
+    state.setChallengeDuration("7");
+    state.setSelectedMembers([]);
+  }, [state]);
+
   const submitCreateChallenge = useCallback(async () => {
     if (!token) return;
     const title = state.challengeTitle.trim();
     const target = Number.parseInt(state.challengeTarget, 10);
     const durationDays = Number.parseInt(state.challengeDuration, 10);
     const memberIds = state.selectedMembers.filter((id) => id !== userId);
+
     if (
       title.length < 3 ||
       !Number.isFinite(target) ||
@@ -260,6 +269,7 @@ export function useFriendsScreenActions({
       );
       return;
     }
+
     if (memberIds.length === 0) {
       Alert.alert(
         t("friendsScreen.invalidChallengeTitle"),
@@ -267,6 +277,7 @@ export function useFriendsScreenActions({
       );
       return;
     }
+
     state.setChallengeCreateBusy(true);
     try {
       await createChallenge(token, {
@@ -276,11 +287,7 @@ export function useFriendsScreenActions({
         duration_days: durationDays,
         member_user_ids: memberIds,
       });
-      state.setChallengeCreateOpen(false);
-      state.setChallengeTitle("");
-      state.setChallengeTarget("5");
-      state.setChallengeDuration("7");
-      state.setSelectedMembers([]);
+      resetChallengeModal();
       await load();
       if (userId) {
         await recordMomentumAction(userId, "challenge");
@@ -295,7 +302,7 @@ export function useFriendsScreenActions({
     } finally {
       state.setChallengeCreateBusy(false);
     }
-  }, [load, state, t, token, userId]);
+  }, [load, resetChallengeModal, state, t, token, userId]);
 
   const openReactionUsers = useCallback(
     async (sessionId: number) => {
@@ -534,6 +541,7 @@ export function useFriendsScreenActions({
     openGoalEditor,
     saveCommitmentTarget,
     submitCreateChallenge,
+    resetChallengeModal,
     openReactionUsers,
     toggleThumbReaction,
     acceptBuddyInvite,

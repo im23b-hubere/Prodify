@@ -41,6 +41,7 @@ type Props = {
   setSelectedMembers: (updater: (prev: number[]) => number[]) => void;
   challengeCreateBusy: boolean;
   submitCreateChallenge: () => void;
+  resetChallengeModal: () => void;
   addOpen: boolean;
   setAddOpen: (v: boolean) => void;
   addName: string;
@@ -84,6 +85,7 @@ export function FriendsModals({
   setSelectedMembers,
   challengeCreateBusy,
   submitCreateChallenge,
+  resetChallengeModal,
   addOpen,
   setAddOpen,
   addName,
@@ -238,9 +240,9 @@ export function FriendsModals({
         visible={challengeCreateOpen}
         animationType="slide"
         transparent
-        onRequestClose={() => setChallengeCreateOpen(false)}
+        onRequestClose={resetChallengeModal}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setChallengeCreateOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={resetChallengeModal}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>{t("friendsScreen.createChallengeTitle")}</Text>
             <Text style={styles.modalHint}>{t("friendsScreen.createChallengeSimpleHint")}</Text>
@@ -261,24 +263,24 @@ export function FriendsModals({
                   .filter((entry) => entry.user_id !== currentUserId)
                   .slice(0, 8)
                   .map((entry) => {
-                  const selected = selectedMembers.includes(entry.user_id);
-                  return (
-                    <Pressable
-                      key={entry.user_id}
-                      style={[styles.memberChip, selected && styles.memberChipSelected]}
-                      onPress={() =>
-                        setSelectedMembers((prev) =>
-                          prev.includes(entry.user_id) ? [] : [entry.user_id],
-                        )
-                      }
-                    >
-                      <Text
-                        style={[styles.memberChipText, selected && styles.memberChipTextSelected]}
+                    const selected = selectedMembers.includes(entry.user_id);
+                    return (
+                      <Pressable
+                        key={entry.user_id}
+                        style={[styles.memberChip, selected && styles.memberChipSelected]}
+                        onPress={() =>
+                          setSelectedMembers((prev) =>
+                            prev.includes(entry.user_id) ? [] : [entry.user_id],
+                          )
+                        }
                       >
-                        {entry.username}
-                      </Text>
-                    </Pressable>
-                  );
+                        <Text
+                          style={[styles.memberChipText, selected && styles.memberChipTextSelected]}
+                        >
+                          {entry.username}
+                        </Text>
+                      </Pressable>
+                    );
                   })
               )}
             </View>
@@ -291,6 +293,9 @@ export function FriendsModals({
               disabled={challengeCreateBusy}
               onPress={() => void submitCreateChallenge()}
             />
+            <Pressable style={styles.modalCancel} onPress={resetChallengeModal}>
+              <Text style={styles.modalCancelText}>{t("friendsScreen.modalCancel")}</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>

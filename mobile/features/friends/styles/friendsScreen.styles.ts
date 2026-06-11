@@ -134,7 +134,8 @@ export const friendsScreenStyles = StyleSheet.create({
     borderColor: "rgba(205,127,50,0.5)",
     backgroundColor: "rgba(205,127,50,0.08)",
   },
-  challengeSecondaryRow: { flexDirection: "row", gap: spacing.sm },
+  challengeSecondaryRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  challengeSecondaryButton: { flex: 1 },
   secondaryBtn: {
     borderRadius: radii.lg,
     borderWidth: 1,
@@ -661,6 +662,26 @@ export const friendsScreenStyles = StyleSheet.create({
   memberChipSelected: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.18)" },
   memberChipText: { color: colors.textSecondary, ...typography.caption },
   memberChipTextSelected: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold },
+  challengeTapCard: {
+    gap: spacing.xs,
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginHorizontal: -spacing.sm,
+  },
+  challengeTapCardPressed: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  challengeHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  challengeTapHint: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+    opacity: 0.85,
+  },
   challengeBlock: {
     width: "100%",
     gap: spacing.xs,

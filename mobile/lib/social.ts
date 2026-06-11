@@ -24,6 +24,13 @@ export async function fetchChallenges(token: string): Promise<SocialChallengeDto
   return apiJson<SocialChallengeDto[]>("/social/challenges", { token });
 }
 
+export async function fetchChallenge(
+  token: string,
+  challengeId: number,
+): Promise<SocialChallengeDto> {
+  return apiJson<SocialChallengeDto>(`/social/challenges/${challengeId}`, { token });
+}
+
 export async function fetchCommitment(token: string): Promise<CommitmentDto | null> {
   return apiJson<CommitmentDto | null>("/social/commitment", { token });
 }
@@ -102,6 +109,36 @@ export async function createChallenge(
     token,
     method: "POST",
     body: payload,
+  });
+}
+
+export async function updateChallenge(
+  token: string,
+  challengeId: number,
+  payload: {
+    title?: string;
+    target_sessions?: number;
+    duration_days?: number;
+  },
+): Promise<SocialChallengeDto> {
+  return apiJson<SocialChallengeDto>(`/social/challenges/${challengeId}`, {
+    token,
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export async function cancelChallenge(token: string, challengeId: number): Promise<void> {
+  await apiJson(`/social/challenges/${challengeId}`, {
+    token,
+    method: "DELETE",
+  });
+}
+
+export async function leaveChallenge(token: string, challengeId: number): Promise<void> {
+  await apiJson(`/social/challenges/${challengeId}/leave`, {
+    token,
+    method: "POST",
   });
 }
 

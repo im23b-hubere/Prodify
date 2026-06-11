@@ -394,6 +394,7 @@ export default function FriendsScreen() {
         setSelectedMembers={setSelectedMembers}
         challengeCreateBusy={challengeCreateBusy}
         submitCreateChallenge={actions.submitCreateChallenge}
+        resetChallengeModal={actions.resetChallengeModal}
         addOpen={addOpen}
         setAddOpen={setAddOpen}
         addName={addName}

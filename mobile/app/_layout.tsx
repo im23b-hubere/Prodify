@@ -78,6 +78,14 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="challenge/[id]"
+              options={{
+                animation: "slide_from_right",
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
+            <Stack.Screen
               name="session-active"
               options={{
                 presentation: "fullScreenModal",

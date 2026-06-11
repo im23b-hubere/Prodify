@@ -105,6 +105,16 @@ def _leader_member(members: list[SocialChallengeMember]) -> SocialChallengeMembe
     return None
 
 
+def cancel_challenge(db: Session, challenge: SocialChallenge, *, reason: str = "cancelled") -> None:
+    if challenge.status != "active":
+        return
+    meta = load_challenge_meta(challenge)
+    challenge.status = "cancelled"
+    meta["completion_reason"] = reason
+    meta["cancelled_at"] = _as_utc_aware(utcnow()).isoformat()
+    save_challenge_meta(challenge, meta)
+
+
 def complete_challenge(
     db: Session,
     challenge: SocialChallenge,
