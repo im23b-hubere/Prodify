@@ -51,7 +51,7 @@ export function resolvePostAuthRoute({
     return { pathname: "/onboarding" };
   }
 
-  if (allowPaywallPrompt && (entryPoint === "login" || entryPoint === "register" || entryPoint === "app_launch")) {
+  if (allowPaywallPrompt && entryPoint === "register") {
     return { pathname: "/paywall", params: { source: "post_auth" } };
   }
 

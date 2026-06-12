@@ -375,12 +375,10 @@ export default function ChallengeDetailScreen() {
           <Text style={styles.sectionLabel}>{t("challengeDetail.leaderboardTitle")}</Text>
           <AppCard style={styles.leaderboardCard}>
             {challenge.members.map((member, index) => {
+              const target = Math.max(1, challenge.target_sessions);
               const pct = Math.max(
                 0,
-                Math.min(
-                  100,
-                  Math.round((member.progress_sessions / challenge.target_sessions) * 100),
-                ),
+                Math.min(100, Math.round((member.progress_sessions / target) * 100)),
               );
               const me = member.user_id === currentUserId;
               const isLeader =

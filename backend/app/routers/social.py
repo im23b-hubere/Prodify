@@ -808,7 +808,13 @@ def get_social_challenge(
     if row is None:
         raise HTTPException(status_code=404, detail="Challenge not found")
     friend_ids = set(_friend_user_ids(db, current.id))
-    if row.owner_id != current.id and row.owner_id not in friend_ids:
+    is_member = db.scalar(
+        select(SocialChallengeMember).where(
+            SocialChallengeMember.challenge_id == challenge_id,
+            SocialChallengeMember.user_id == current.id,
+        )
+    )
+    if row.owner_id != current.id and row.owner_id not in friend_ids and is_member is None:
         raise HTTPException(status_code=403, detail="You are not allowed to view this challenge")
     if row.status == "active":
         finalize_visible_active_challenges(db, [row])
@@ -825,9 +831,20 @@ def list_social_challenges(
         select(SocialChallenge)
         .order_by(SocialChallenge.created_at.desc())
         .limit(40)
-    ).all()
+     ).all()
     friend_ids = set(_friend_user_ids(db, current.id))
-    visible = [r for r in rows if r.owner_id == current.id or r.owner_id in friend_ids]
+    member_challenge_ids = set(
+        db.scalars(
+            select(SocialChallengeMember.challenge_id).where(
+                SocialChallengeMember.user_id == current.id
+            )
+        ).all()
+    )
+    visible = [
+        r
+        for r in rows
+        if r.owner_id == current.id or r.owner_id in friend_ids or r.id in member_challenge_ids
+    ]
     active_visible = [r for r in visible if r.status == "active"]
     finalize_visible_active_challenges(db, active_visible)
     db.commit()

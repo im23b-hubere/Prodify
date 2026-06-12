@@ -8,12 +8,8 @@ import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useStreakReconcileOnForeground } from "../../hooks/useStreakReconcileOnForeground";
-import {
-  fetchEntitlement,
-  hasPremiumAccess,
-  peekCachedHasPremiumAccess,
-} from "../../lib/billing";
-import { isDevBillingBypassActive } from "../../lib/devBillingBypass";
+import { peekCachedHasPremiumAccess } from "../../lib/billing";
+import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
 type TabIconProps = {
   focused: boolean;
@@ -39,7 +35,7 @@ function TabIcon({ focused, color, icon }: TabIconProps) {
 
 export default function TabsLayout() {
   const { t } = useTranslation();
-  const { token, hydrated } = useAuth();
+  const { token, user, hydrated } = useAuth();
   const [entitlementLoading, setEntitlementLoading] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
@@ -62,10 +58,10 @@ export default function TabsLayout() {
       setEntitlementLoading(true);
     }
 
-    void Promise.all([fetchEntitlement(token), isDevBillingBypassActive()])
-      .then(([entitlement, devBypass]) => {
+    void resolvePremiumAccess(token, user?.id != null ? String(user.id) : null)
+      .then((access) => {
         if (!cancelled) {
-          setHasAccess(hasPremiumAccess(entitlement) || devBypass);
+          setHasAccess(access);
         }
       })
       .catch(() => {
@@ -81,7 +77,7 @@ export default function TabsLayout() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, user?.id]);
 
   const waitingForEntitlement =
     Boolean(token) && entitlementLoading && hasAccess == null;

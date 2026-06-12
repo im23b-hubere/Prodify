@@ -18,9 +18,7 @@ async function ensureSocialChannel() {
 
 async function ensureNotificationPermission() {
   const { status } = await Notifications.getPermissionsAsync();
-  if (status === "granted") return true;
-  const req = await Notifications.requestPermissionsAsync();
-  return req.status === "granted";
+  return status === "granted";
 }
 
 type PushThrottleState = Record<string, number>;
