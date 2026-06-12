@@ -24,6 +24,24 @@ export function clearEntitlementCache(): void {
   entitlementInFlight = null;
 }
 
+/** Cached entitlement for this token, or null if missing / stale / wrong user. */
+export function getCachedEntitlement(token: string): EntitlementDto | null {
+  if (!cachedEntitlement || cachedEntitlement.token !== token) {
+    return null;
+  }
+  if (Date.now() - cachedEntitlement.atMs > ENTITLEMENT_TTL_MS) {
+    return null;
+  }
+  return cachedEntitlement.value;
+}
+
+/** Synchronous premium check from cache; null when cache is unavailable. */
+export function peekCachedHasPremiumAccess(token: string): boolean | null {
+  const ent = getCachedEntitlement(token);
+  if (!ent) return null;
+  return hasPremiumAccess(ent);
+}
+
 export async function fetchEntitlement(
   token: string,
   opts: { force?: boolean } = {},

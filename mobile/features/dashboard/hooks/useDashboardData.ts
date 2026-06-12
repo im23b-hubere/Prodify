@@ -76,6 +76,22 @@ export function useDashboardData(token: string | null) {
     }
   }, [token, t]);
 
+  const loadWeeklyGoal = useCallback(async () => {
+    if (!token) return;
+    try {
+      const goalRaw = await fetchCurrentGoal(token).catch(() => null);
+      if (goalRaw) {
+        setWeeklyGoalTarget(goalRaw.target_value);
+        setWeekSessionsCount(goalRaw.current_sessions);
+      } else {
+        setWeeklyGoalTarget(null);
+        setWeekSessionsCount(0);
+      }
+    } catch {
+      // Keep last known weekly goal snapshot on transient failures.
+    }
+  }, [token]);
+
   const loadSocial = useCallback(
     async () => {
       if (!token) return;
@@ -84,7 +100,6 @@ export function useDashboardData(token: string | null) {
         const [
           lbRaw,
           actRaw,
-          goalRaw,
           buddyRiskRaw,
           checkinRaw,
           commitmentRaw,
@@ -93,7 +108,6 @@ export function useDashboardData(token: string | null) {
         ] = await Promise.all([
           apiJson<unknown>("/friends/leaderboard?period=week", { token }),
           apiJson<unknown>("/friends/activity?limit=8", { token }),
-          fetchCurrentGoal(token).catch(() => null),
           fetchBuddyRisk(token).catch(() => null),
           fetchCheckinStatus(token).catch(() => null),
           fetchCommitment(token).catch(() => null),
@@ -106,13 +120,6 @@ export function useDashboardData(token: string | null) {
             : null;
         setFriendLeaderboard(lb);
         setFriendActivity(Array.isArray(actRaw) ? (actRaw as FriendActivityDto[]) : []);
-        if (goalRaw) {
-          setWeeklyGoalTarget(goalRaw.target_value);
-          setWeekSessionsCount(goalRaw.current_sessions);
-        } else {
-          setWeeklyGoalTarget(null);
-          setWeekSessionsCount(0);
-        }
         setBuddyRisk(buddyRiskRaw);
         setCheckinStatus(checkinRaw);
         setCommitmentStatus(commitmentRaw);
@@ -157,17 +164,22 @@ export function useDashboardData(token: string | null) {
         setLoading(true);
       }
       try {
-        await Promise.all([loadSessions(), loadStreakOverview(), loadSocial()]);
+        await Promise.all([loadSessions(), loadStreakOverview(), loadWeeklyGoal()]);
         lastDashboardFetchRef.current = Date.now();
+        if (withLoading) {
+          setLoading(false);
+        }
+        void loadSocial().then(() => {
+          lastDashboardFetchRef.current = Date.now();
+        });
       } catch (e) {
         setError(e instanceof Error ? e.message : t("dashboard.loadFailed"));
-      } finally {
         if (withLoading) {
           setLoading(false);
         }
       }
     },
-    [token, loadSessions, loadStreakOverview, loadSocial, t],
+    [token, loadSessions, loadStreakOverview, loadWeeklyGoal, loadSocial, t],
   );
 
   useEffect(() => {

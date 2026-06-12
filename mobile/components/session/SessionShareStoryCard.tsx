@@ -11,11 +11,18 @@ export const STORY_CAPTURE_HEIGHT = 640;
 
 type Props = {
   template: ShareTemplateId;
+  /** Human-readable session type label (not slug). */
   sessionType: string;
   durationLabel: string;
   focusScore: number;
   producerName?: string;
 };
+
+function ShareBrandFooter({ subtle = false }: { subtle?: boolean }) {
+  return (
+    <Text style={[styles.shareBrandFooter, subtle && styles.shareBrandFooterSubtle]}>Prodify</Text>
+  );
+}
 
 export function SessionShareStoryCard({
   template,
@@ -36,7 +43,7 @@ export function SessionShareStoryCard({
         <View style={styles.minimalSpacer} />
         <View style={styles.minimalFooter}>
           <Text style={styles.minimalWho}>{who}</Text>
-          <Text style={styles.tagline}>Track. Create. Dominate.</Text>
+          <ShareBrandFooter />
         </View>
       </View>
     );
@@ -47,13 +54,15 @@ export function SessionShareStoryCard({
       <View style={styles.frame}>
         <LinearGradient colors={["#1a0a06", "#0a0a0a"]} style={StyleSheet.absoluteFill} />
         <View style={styles.boldStripe}>
-          <Text style={styles.boldStripeTxt}>SESSION</Text>
+          <Text style={styles.boldStripeTxt}>PRODIFY</Text>
         </View>
         <View style={styles.boldBody}>
           <Text style={styles.boldType}>{sessionType.toUpperCase()}</Text>
           <Text style={styles.boldDur}>{durationLabel}</Text>
           <Text style={styles.boldFocus}>FOCUS {focusScore}%</Text>
-          <Text style={styles.brandBold}>PRODIFY</Text>
+        </View>
+        <View style={styles.boldFooter}>
+          <ShareBrandFooter subtle />
         </View>
       </View>
     );
@@ -75,6 +84,7 @@ export function SessionShareStoryCard({
           <Text style={styles.gradPillTxt}>{focusScore}% focus</Text>
         </View>
         <Text style={styles.gradWho}>{who}</Text>
+        <ShareBrandFooter />
       </View>
     </View>
   );
@@ -122,7 +132,18 @@ const styles = StyleSheet.create({
   minimalSpacer: { flex: 1 },
   minimalFooter: { gap: 6 },
   minimalWho: { color: "rgba(255,255,255,0.55)", ...typography.caption },
-  tagline: { color: "rgba(255,255,255,0.35)", ...typography.caption, letterSpacing: 1 },
+  shareBrandFooter: {
+    color: colors.primary,
+    fontFamily: fontFamily.heading,
+    fontSize: 28,
+    lineHeight: 32,
+    letterSpacing: -0.5,
+  },
+  shareBrandFooterSubtle: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 22,
+    lineHeight: 26,
+  },
   boldStripe: {
     backgroundColor: colors.primary,
     paddingVertical: spacing.sm,
@@ -147,11 +168,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.subheadline,
   },
-  brandBold: {
-    marginTop: spacing.xl,
-    color: "rgba(255,255,255,0.4)",
-    fontFamily: fontFamily.bodyBold,
-    letterSpacing: 2,
+  boldFooter: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   gradGlass: {
     flex: 1,

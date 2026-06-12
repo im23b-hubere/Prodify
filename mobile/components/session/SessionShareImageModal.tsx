@@ -1,12 +1,14 @@
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import ViewShot from "react-native-view-shot";
 
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import type { SessionDto } from "../../types/session";
@@ -42,10 +44,15 @@ export function SessionShareImageModal({
   focusScore,
   producerName,
 }: Props) {
+  const { t } = useTranslation();
   const shotRef = useRef<ViewShot | null>(null);
   const [template, setTemplate] = useState<ShareTemplateId>("gradient");
   const [busy, setBusy] = useState(false);
 
+  const typeLabel = useMemo(
+    () => sessionTypeLabel(String(session.session_type), t),
+    [session.session_type, t],
+  );
   const durationLabel = formatDurationWords(session.duration_seconds ?? 0);
   const safeFocusScore = Math.max(
     0,
@@ -123,7 +130,7 @@ export function SessionShareImageModal({
               >
                 <SessionShareStoryCard
                   template={template}
-                  sessionType={String(session.session_type)}
+                  sessionType={typeLabel}
                   durationLabel={durationLabel}
                   focusScore={safeFocusScore}
                   producerName={producerName}
@@ -150,7 +157,7 @@ export function SessionShareImageModal({
             >
               <SessionShareStoryCard
                 template={template}
-                sessionType={String(session.session_type)}
+                sessionType={typeLabel}
                 durationLabel={durationLabel}
                 focusScore={safeFocusScore}
                 producerName={producerName}

@@ -50,6 +50,7 @@ export function OutputMetricsShareCard({ metrics, template }: Props) {
             completed: metrics.completed_tracks,
           })}
         </Text>
+        <Text style={styles.brandFooter}>Prodify</Text>
       </View>
     );
   }
@@ -59,7 +60,7 @@ export function OutputMetricsShareCard({ metrics, template }: Props) {
       <View style={styles.frame}>
         <LinearGradient colors={["#1a0a06", "#0a0a0a"]} style={StyleSheet.absoluteFill} />
         <View style={styles.boldStripe}>
-          <Text style={styles.boldStripeTxt}>{t("stats.shareProofCardBoldStripe")}</Text>
+          <Text style={styles.boldStripeTxt}>PRODIFY</Text>
         </View>
         <View style={[styles.glassCard, styles.boldCard]}>
           <Text style={styles.title}>{t("stats.shareProofCardBoldTitle")}</Text>
@@ -77,6 +78,7 @@ export function OutputMetricsShareCard({ metrics, template }: Props) {
               completed: metrics.completed_tracks,
             })}
           </Text>
+          <Text style={styles.brandFooter}>Prodify</Text>
         </View>
       </View>
     );
@@ -117,6 +119,7 @@ export function OutputMetricsShareCard({ metrics, template }: Props) {
             completed: metrics.completed_tracks,
           })}
         </Text>
+        <Text style={styles.brandFooter}>Prodify</Text>
       </View>
     </View>
   );
@@ -209,5 +212,12 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     ...typography.caption,
     fontFamily: fontFamily.bodyBold,
+  },
+  brandFooter: {
+    color: colors.primary,
+    fontFamily: fontFamily.heading,
+    fontSize: 24,
+    lineHeight: 28,
+    letterSpacing: -0.5,
   },
 });

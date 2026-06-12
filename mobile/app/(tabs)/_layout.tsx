@@ -8,7 +8,11 @@ import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useStreakReconcileOnForeground } from "../../hooks/useStreakReconcileOnForeground";
-import { fetchEntitlement, hasPremiumAccess } from "../../lib/billing";
+import {
+  fetchEntitlement,
+  hasPremiumAccess,
+  peekCachedHasPremiumAccess,
+} from "../../lib/billing";
 import { isDevBillingBypassActive } from "../../lib/devBillingBypass";
 
 type TabIconProps = {
@@ -48,7 +52,16 @@ export default function TabsLayout() {
       setEntitlementLoading(false);
       return;
     }
-    setEntitlementLoading(true);
+
+    const cachedAccess = peekCachedHasPremiumAccess(token);
+    if (cachedAccess !== null) {
+      setHasAccess(cachedAccess);
+      setEntitlementLoading(false);
+    } else {
+      setHasAccess(null);
+      setEntitlementLoading(true);
+    }
+
     void Promise.all([fetchEntitlement(token), isDevBillingBypassActive()])
       .then(([entitlement, devBypass]) => {
         if (!cancelled) {
@@ -57,7 +70,7 @@ export default function TabsLayout() {
       })
       .catch(() => {
         if (!cancelled) {
-          setHasAccess(false);
+          setHasAccess(cachedAccess ?? false);
         }
       })
       .finally(() => {
@@ -70,7 +83,10 @@ export default function TabsLayout() {
     };
   }, [token]);
 
-  if (!hydrated || (token && (entitlementLoading || hasAccess == null))) {
+  const waitingForEntitlement =
+    Boolean(token) && entitlementLoading && hasAccess == null;
+
+  if (!hydrated || waitingForEntitlement) {
     return (
       <View style={styles.center}>
         <ProdifyWordmark size="splash" style={styles.bootWordmark} />
