@@ -154,12 +154,30 @@ export function FriendsModals({
         <Pressable style={styles.modalBackdrop} onPress={resetChallengeModal}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>{t("friendsScreen.createChallengeTitle")}</Text>
-            <Text style={styles.modalHint}>{t("friendsScreen.createChallengeSimpleHint")}</Text>
+            <Text style={styles.modalHint}>{t("friendsScreen.createChallengeHint")}</Text>
             <Text style={styles.fieldLabel}>{t("friendsScreen.challengeTitleLabel")}</Text>
             <TextInput
               value={challengeTitle}
               onChangeText={setChallengeTitle}
               placeholder={t("friendsScreen.challengeTitlePlaceholder")}
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+            />
+            <Text style={styles.fieldLabel}>{t("friendsScreen.challengeTargetLabel")}</Text>
+            <TextInput
+              value={challengeTarget}
+              onChangeText={setChallengeTarget}
+              keyboardType="number-pad"
+              placeholder={t("friendsScreen.challengeTargetPlaceholder")}
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+            />
+            <Text style={styles.fieldLabel}>{t("friendsScreen.challengeDurationLabel")}</Text>
+            <TextInput
+              value={challengeDuration}
+              onChangeText={setChallengeDuration}
+              keyboardType="number-pad"
+              placeholder={t("friendsScreen.challengeDurationPlaceholder")}
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
             />

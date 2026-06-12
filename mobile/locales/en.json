@@ -350,7 +350,7 @@
     "togetherPromiseWithWitnesses": "You promised {{target}} sessions this week — {{names}} are watching.",
     "togetherPromiseSolo": "You promised {{target}} sessions this week — visible to friends.",
     "togetherViewInStats": "View progress in Stats",
-    "createChallengeSimpleHint": "7-day duel · 5 sessions. Pick one friend to compete with.",
+    "createChallengeSimpleHint": "Pick a session target, length, and one friend to compete with.",
     "challengePickFriendLabel": "Compete with",
     "challengePickFriendRequired": "Pick at least one friend for the challenge.",
     "sectionWeekTitle": "Your week",
