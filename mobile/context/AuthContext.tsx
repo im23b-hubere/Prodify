@@ -5,7 +5,12 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { ONBOARDING_COMPLETE_KEY, REFRESH_TOKEN_KEY } from "../constants/storageKeys";
 import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } from "../lib/client";
 import i18n from "../lib/i18n";
-import { clearEntitlementCache, syncEntitlement } from "../lib/billing";
+import {
+  clearEntitlementCache,
+  fetchEntitlement,
+  hasPremiumAccess,
+  syncEntitlement,
+} from "../lib/billing";
 import { clearLevelCatalogCache } from "../lib/progressionLevelCatalog";
 import { clearProgressionSyncCache } from "../lib/progressionSync";
 import { clearDevBillingBypass } from "../lib/devBillingBypass";
@@ -139,15 +144,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await syncPendingWeeklyGoal(access).catch(() => undefined);
       try {
         const me = await apiJson<UserMe>("/auth/me", { token: access });
+        setUser(me);
         await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
-        await configureRevenueCat(String(me.id));
-        const info = await getRevenueCatCustomerInfo();
-        await syncEntitlement(access, {
-          app_user_id: String(me.id),
-          entitlement: isPremiumActive(info) ? "premium" : "free",
-          trial_active: isTrialActive(info),
-          expires_at: activeEntitlementExpiration(info),
-        });
+        if (__DEV__) {
+          const ent = await fetchEntitlement(access);
+          if (!hasPremiumAccess(ent)) {
+            await configureRevenueCat(String(me.id));
+            const info = await getRevenueCatCustomerInfo();
+            await syncEntitlement(access, {
+              app_user_id: String(me.id),
+              entitlement: isPremiumActive(info) ? "premium" : "free",
+              trial_active: isTrialActive(info),
+              expires_at: activeEntitlementExpiration(info),
+            });
+          }
+        } else {
+          await configureRevenueCat(String(me.id));
+          const info = await getRevenueCatCustomerInfo();
+          await syncEntitlement(access, {
+            app_user_id: String(me.id),
+            entitlement: isPremiumActive(info) ? "premium" : "free",
+            trial_active: isTrialActive(info),
+            expires_at: activeEntitlementExpiration(info),
+          });
+        }
       } catch {
         /* best effort: auth succeeds even if billing sync fails */
       }
