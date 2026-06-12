@@ -4,14 +4,12 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography, ui } from "../../constants/theme";
-import type { ForecastComputed } from "../../lib/forecastEngine";
 import type { TodayPlanRecommendation } from "../../lib/todayPlanEngine";
 import { AppCard } from "../ui/AppCard";
 import { PrimaryButton } from "../ui/PrimaryButton";
 
 type Props = {
   plan: TodayPlanRecommendation;
-  forecast: ForecastComputed | null;
   shortSessionsHint?: string | null;
   adjustedTargetHint?: string | null;
   onStartSuggested: () => void;
@@ -19,7 +17,6 @@ type Props = {
 
 export const TodayPlanCard = memo(function TodayPlanCard({
   plan,
-  forecast,
   shortSessionsHint,
   adjustedTargetHint,
   onStartSuggested,
@@ -60,31 +57,6 @@ export const TodayPlanCard = memo(function TodayPlanCard({
       ) : null}
       {shortSessionsHint ? <Text style={styles.shortHint}>{shortSessionsHint}</Text> : null}
       {adjustedTargetHint ? <Text style={styles.adjustedHint}>{adjustedTargetHint}</Text> : null}
-      {forecast ? (
-        <View style={styles.forecastCard}>
-          <Text
-            style={[
-              styles.forecastLine,
-              forecast.forecastStatus === "will_miss"
-                ? styles.forecastDanger
-                : forecast.forecastStatus === "at_risk"
-                  ? styles.forecastWarn
-                  : styles.forecastGood,
-            ]}
-          >
-            {t(forecast.forecastMessageKey, forecast.forecastMessageParams)}
-          </Text>
-          <Text style={styles.forecastHint}>
-            {t(forecast.todayActionKey, forecast.todayActionParams)}
-          </Text>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${forecast.currentProgressPercent}%` }]} />
-            <View
-              style={[styles.progressMarker, { left: `${forecast.todayExpectedMarkerPercent}%` }]}
-            />
-          </View>
-        </View>
-      ) : null}
 
       <PrimaryButton label={t("todayPlan.cta")} onPress={onStartSuggested} />
     </AppCard>
@@ -151,50 +123,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyMedium,
     ...typography.meta,
-  },
-  forecastCard: {
-    marginTop: spacing.sm,
-    borderRadius: ui.cardRadius,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    backgroundColor: "rgba(255,255,255,0.01)",
-    padding: spacing.sm,
-    gap: spacing.xs,
-  },
-  forecastLine: {
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
-  forecastHint: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    fontFamily: fontFamily.body,
-    opacity: 0.9,
-  },
-  forecastDanger: { color: colors.danger },
-  forecastWarn: { color: "#f59e0b" },
-  forecastGood: { color: colors.success },
-  progressTrack: {
-    marginTop: 2,
-    width: "100%",
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-    position: "relative",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-  },
-  progressMarker: {
-    position: "absolute",
-    top: -2,
-    bottom: -2,
-    width: 2,
-    backgroundColor: "#ffffff",
-    opacity: 0.9,
   },
 });

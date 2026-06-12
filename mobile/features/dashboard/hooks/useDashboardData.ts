@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { apiJson } from "../../../lib/client";
 import { fetchEntitlement } from "../../../lib/billing";
+import { fetchCurrentGoal } from "../../../lib/goals";
 import {
   fetchBuddyRisk,
   fetchChallenges,
@@ -97,7 +98,7 @@ export function useDashboardData(token: string | null) {
         ] = await Promise.all([
           apiJson<unknown>("/friends/leaderboard?period=week", { token }),
           apiJson<unknown>("/friends/activity?limit=8", { token }),
-          apiJson<unknown>("/goals/current", { token }),
+          fetchCurrentGoal(token).catch(() => null),
           fetchBuddyRisk(token).catch(() => null),
           fetchCheckinStatus(token).catch(() => null),
           fetchCommitment(token).catch(() => null),
@@ -110,12 +111,9 @@ export function useDashboardData(token: string | null) {
             : null;
         setFriendLeaderboard(lb);
         setFriendActivity(Array.isArray(actRaw) ? (actRaw as FriendActivityDto[]) : []);
-        if (goalRaw && typeof goalRaw === "object") {
-          const g = goalRaw as { target_value?: unknown; current_sessions?: unknown };
-          const tv = typeof g.target_value === "number" ? g.target_value : null;
-          const cs = typeof g.current_sessions === "number" ? g.current_sessions : 0;
-          setWeeklyGoalTarget(tv);
-          setWeekSessionsCount(cs);
+        if (goalRaw) {
+          setWeeklyGoalTarget(goalRaw.target_value);
+          setWeekSessionsCount(goalRaw.current_sessions);
         } else {
           setWeeklyGoalTarget(null);
           setWeekSessionsCount(0);
@@ -210,6 +208,7 @@ export function useDashboardData(token: string | null) {
     socialChallenges,
     identityState,
     weeklyGoalTarget,
+    hasWeeklyGoal: weeklyGoalTarget != null && weeklyGoalTarget > 0,
     weekSessionsCount,
     forecast,
     entitlement,

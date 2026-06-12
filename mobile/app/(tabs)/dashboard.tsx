@@ -25,6 +25,7 @@ import { DashboardSessionStarter } from "../../components/dashboard/DashboardSes
 import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
 import { TodayPlanCard } from "../../components/dashboard/TodayPlanCard";
 import { TodayProgressCard } from "../../components/dashboard/TodayProgressCard";
+import { WeeklyGoalStatsNudge } from "../../components/dashboard/WeeklyGoalStatsNudge";
 import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
 import { StreakHeroSection } from "../../components/streak/StreakHeroSection";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
@@ -46,7 +47,6 @@ import { debugLog } from "../../lib/debugLog";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { tryParseSessionDto } from "../../lib/sessionDto";
 import { buildTodayPlanRecommendation } from "../../lib/todayPlanEngine";
-import { buildWeeklyForecast } from "../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../lib/goalPace";
 import { STREAK_MILESTONES } from "../../lib/streakMilestones";
 import { getUnreadCount, syncServerInbox } from "../../lib/notificationInbox";
@@ -106,8 +106,8 @@ export default function DashboardScreen() {
     socialChallenges,
     identityState,
     weeklyGoalTarget,
+    hasWeeklyGoal,
     weekSessionsCount,
-    forecast,
     entitlement,
     loadSessions,
     loadStreakOverview,
@@ -331,17 +331,11 @@ export default function DashboardScreen() {
 
   const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
   const completedCount = useMemo(() => completedSessionsCount(visibleSessions), [visibleSessions]);
-  const hasAnyCompletedSessions = completedCount > 0;
-  const paceForecast = useMemo(
-    () =>
-      hasAnyCompletedSessions && effectiveWeeklyGoalTarget != null && effectiveWeeklyGoalTarget > 0
-        ? buildWeeklyForecast({
-            weeklyGoalTarget: effectiveWeeklyGoalTarget,
-            completedThisWeek: weekSessionsForGoal,
-          })
-        : null,
-    [hasAnyCompletedSessions, effectiveWeeklyGoalTarget, weekSessionsForGoal],
-  );
+
+  const openStats = useCallback(() => {
+    Haptics.selectionAsync().catch(() => undefined);
+    router.push("/(tabs)/stats");
+  }, [router]);
 
   const displayOverview = useMemo((): StreakOverviewDto | null => {
     if (streakOverview) return streakOverview;
@@ -607,9 +601,10 @@ export default function DashboardScreen() {
               <DashboardSessionStarter onQuickStart={openSessionSetup} />
             )}
 
+            {!hasWeeklyGoal ? <WeeklyGoalStatsNudge onOpenStats={openStats} /> : null}
+
             <TodayPlanCard
               plan={todayPlan}
-              forecast={paceForecast}
               shortSessionsHint={
                 shortWeekSessionsCount > 0
                   ? t("todayPlan.shortSessionsHint", { count: shortWeekSessionsCount, min: 5 })
@@ -629,9 +624,7 @@ export default function DashboardScreen() {
             <TodayProgressCard
               todaySessions={todayStats.count}
               todayMinutes={todayStats.minutes}
-              weekSessions={weekSessionsForGoal}
-              weekGoalTarget={effectiveWeeklyGoalTarget}
-              goalForecast={hasAnyCompletedSessions ? forecast : null}
+              onViewWeekInStats={hasWeeklyGoal ? openStats : undefined}
             />
 
             <FriendsActivityWidget

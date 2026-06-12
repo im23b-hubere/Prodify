@@ -258,9 +258,11 @@ export function YourWeekCard({
               onPress={primaryAction}
               disabled={busy}
             />
-            <Pressable onPress={() => openEditor()} disabled={busy} style={styles.editLink}>
-              <Text style={styles.editLinkText}>{t("stats.yourWeek.editGoal")}</Text>
-            </Pressable>
+            {status !== "completed" ? (
+              <Pressable onPress={() => openEditor()} disabled={busy} style={styles.editLink}>
+                <Text style={styles.editLinkText}>{t("stats.yourWeek.editGoal")}</Text>
+              </Pressable>
+            ) : null}
           </>
         )}
       </AppCard>

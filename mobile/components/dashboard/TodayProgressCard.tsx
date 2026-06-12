@@ -1,31 +1,22 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
-import type { GoalForecastDto } from "../../types/outcomes";
 
 type Props = {
   todaySessions: number;
   todayMinutes: number;
-  weekSessions: number;
-  weekGoalTarget: number | null;
-  goalForecast?: GoalForecastDto | null;
+  onViewWeekInStats?: () => void;
 };
 
 export const TodayProgressCard = memo(function TodayProgressCard({
   todaySessions,
   todayMinutes,
-  weekSessions,
-  weekGoalTarget,
-  goalForecast,
+  onViewWeekInStats,
 }: Props) {
   const { t } = useTranslation();
-  const goalLine =
-    weekGoalTarget != null && weekGoalTarget > 0
-      ? t("todayProgress.weekGoal", { current: weekSessions, goal: weekGoalTarget })
-      : t("todayProgress.weekOnly", { count: weekSessions });
 
   return (
     <View style={styles.card}>
@@ -41,20 +32,14 @@ export const TodayProgressCard = memo(function TodayProgressCard({
           <Text style={styles.lbl}>{t("todayProgress.minutes")}</Text>
         </View>
       </View>
-      <Text style={styles.week}>{goalLine}</Text>
-      {goalForecast ? (
-        <Text
-          style={[
-            styles.week,
-            goalForecast.risk_level === "off_track"
-              ? styles.riskHigh
-              : goalForecast.risk_level === "at_risk"
-                ? styles.riskMid
-                : null,
-          ]}
+      {onViewWeekInStats ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onViewWeekInStats}
+          style={({ pressed }) => [styles.weekLink, pressed && styles.weekLinkPressed]}
         >
-          {goalForecast.warning_message}
-        </Text>
+          <Text style={styles.weekLinkText}>{t("dashboard.viewWeekInStats")}</Text>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -82,7 +67,11 @@ const styles = StyleSheet.create({
   divider: { width: 1, alignSelf: "stretch", backgroundColor: colors.border },
   big: { fontSize: 28, fontFamily: fontFamily.heading, color: colors.textPrimary },
   lbl: { color: colors.textSecondary, ...typography.caption },
-  week: { color: colors.textSecondary, ...typography.caption, textAlign: "center" },
-  riskMid: { color: "#eab308" },
-  riskHigh: { color: colors.danger },
+  weekLink: { alignSelf: "center", paddingVertical: spacing.xs },
+  weekLinkPressed: { opacity: 0.75 },
+  weekLinkText: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
 });

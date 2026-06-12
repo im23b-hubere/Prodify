@@ -130,6 +130,13 @@ jest.mock("../../components/dashboard/TodayProgressCard", () => ({
     return React.createElement(View);
   },
 }));
+jest.mock("../../components/dashboard/WeeklyGoalStatsNudge", () => ({
+  WeeklyGoalStatsNudge: () => {
+    const React = require("react");
+    const { Text } = require("react-native");
+    return React.createElement(Text, { testID: "weekly-goal-stats-nudge" }, "dashboard.weeklyGoalNudgeTitle");
+  },
+}));
 jest.mock("../../components/streak/StreakBreakModal", () => ({
   StreakBreakModal: () => {
     const React = require("react");
@@ -245,6 +252,7 @@ const createDashboardState = (overrides: Record<string, unknown> = {}) => ({
   socialChallenges: [],
   identityState: null,
   weeklyGoalTarget: 4,
+  hasWeeklyGoal: true,
   weekSessionsCount: 0,
   forecast: null,
   entitlement: { entitlement: "free" },
@@ -294,5 +302,27 @@ describe("Dashboard Screen", () => {
     );
     const { getByText } = render(<DashboardScreen />);
     expect(getByText("Network error")).toBeTruthy();
+  });
+
+  it("shows weekly goal nudge when no target is set", () => {
+    mockUseDashboardData.mockReturnValue(
+      createDashboardState({
+        weeklyGoalTarget: null,
+        hasWeeklyGoal: false,
+      }),
+    );
+    const { getByTestId } = render(<DashboardScreen />);
+    expect(getByTestId("weekly-goal-stats-nudge")).toBeTruthy();
+  });
+
+  it("hides weekly goal nudge when a target exists", () => {
+    mockUseDashboardData.mockReturnValue(
+      createDashboardState({
+        weeklyGoalTarget: 5,
+        hasWeeklyGoal: true,
+      }),
+    );
+    const { queryByTestId } = render(<DashboardScreen />);
+    expect(queryByTestId("weekly-goal-stats-nudge")).toBeNull();
   });
 });
