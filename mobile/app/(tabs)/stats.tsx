@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { type Href, useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -258,6 +258,8 @@ export default function StatsScreen() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{ focus?: string | string[] }>();
+  const focusParam = Array.isArray(params.focus) ? params.focus[0] : params.focus;
   const filters = useMemo(
     () =>
       [
@@ -287,6 +289,9 @@ export default function StatsScreen() {
   const loadSeq = useRef(0);
   const mounted = useRef(true);
   const initialFocusLoadDone = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const yourWeekOffsetY = useRef(0);
+  const pendingYourWeekFocus = useRef(false);
   const contentFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -377,15 +382,30 @@ export default function StatsScreen() {
     [periodParam, token, t],
   );
 
+  const tryScrollToYourWeek = useCallback(() => {
+    if (!pendingYourWeekFocus.current || yourWeekOffsetY.current <= 0) return;
+    pendingYourWeekFocus.current = false;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, yourWeekOffsetY.current - spacing.md),
+        animated: true,
+      });
+    });
+    router.setParams({ focus: undefined } as never);
+  }, [router]);
+
   useFocusEffect(
     useCallback(() => {
+      if (focusParam === "yourWeek") {
+        pendingYourWeekFocus.current = true;
+      }
       if (initialFocusLoadDone.current) {
         loadStats().catch(() => undefined);
         return;
       }
       initialFocusLoadDone.current = true;
       loadStats().catch(() => undefined);
-    }, [loadStats]),
+    }, [focusParam, loadStats]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -543,6 +563,11 @@ export default function StatsScreen() {
   const showInlineLoading = loading && !refreshing && !!stats;
 
   useEffect(() => {
+    if (!pendingYourWeekFocus.current || showInitialLoading || !token) return;
+    tryScrollToYourWeek();
+  }, [showInitialLoading, token, tryScrollToYourWeek]);
+
+  useEffect(() => {
     if (showInitialLoading) {
       contentFade.setValue(0);
       return;
@@ -647,6 +672,7 @@ export default function StatsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         nestedScrollEnabled
         refreshControl={
@@ -693,7 +719,13 @@ export default function StatsScreen() {
           </View>
         ) : null}
         {token && !showInitialLoading ? (
-          <View style={styles.yourWeekWrap}>
+          <View
+            style={styles.yourWeekWrap}
+            onLayout={(event) => {
+              yourWeekOffsetY.current = event.nativeEvent.layout.y;
+              tryScrollToYourWeek();
+            }}
+          >
             <YourWeekCard
               t={t}
               goal={weeklyGoal}

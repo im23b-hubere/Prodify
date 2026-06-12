@@ -11,7 +11,6 @@ import {
   fetchCommitment,
   fetchIdentityState,
 } from "../../../lib/social";
-import { tryParseGoalForecastDto } from "../../../lib/outcomesDto";
 import { parseSessionList, tryParseSessionDto } from "../../../lib/sessionDto";
 import { syncStreakRiskNotifications } from "../../../lib/streakNotifications";
 import type {
@@ -23,7 +22,7 @@ import type {
   IdentityStateDto,
   SocialChallengeDto,
 } from "../../../types/friends";
-import type { EntitlementDto, GoalForecastDto } from "../../../types/outcomes";
+import type { EntitlementDto } from "../../../types/outcomes";
 import type { SessionDto } from "../../../types/session";
 import type { StreakOverviewDto } from "../../../types/streak";
 
@@ -48,7 +47,6 @@ export function useDashboardData(token: string | null) {
   const [identityState, setIdentityState] = useState<IdentityStateDto | null>(null);
   const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
   const [weekSessionsCount, setWeekSessionsCount] = useState(0);
-  const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
   const [entitlement, setEntitlement] = useState<EntitlementDto | null>(null);
 
   const loadSessionsSeq = useRef(0);
@@ -123,10 +121,6 @@ export function useDashboardData(token: string | null) {
         setCommitmentStatus(commitmentRaw);
         setSocialChallenges(Array.isArray(challengesRaw) ? challengesRaw : []);
         setIdentityState(identityRaw);
-        const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
-          token,
-        }).catch(() => null);
-        setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
         const ent = await fetchEntitlement(token).catch(() => null);
         setEntitlement(ent);
       } catch {
@@ -210,7 +204,6 @@ export function useDashboardData(token: string | null) {
     weeklyGoalTarget,
     hasWeeklyGoal: weeklyGoalTarget != null && weeklyGoalTarget > 0,
     weekSessionsCount,
-    forecast,
     entitlement,
     loadSessions,
     loadStreakOverview,

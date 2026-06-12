@@ -56,7 +56,10 @@ export function FriendsTogetherSection({
     buddy?.status !== "pending_outgoing";
 
   const openStats = () => {
-    router.push("/(tabs)/stats" as Href);
+    router.push({
+      pathname: "/(tabs)/stats",
+      params: { focus: "yourWeek" },
+    } as Href);
   };
 
   const openChallengeDetail = (challengeId: number) => {

@@ -334,7 +334,10 @@ export default function DashboardScreen() {
 
   const openStats = useCallback(() => {
     Haptics.selectionAsync().catch(() => undefined);
-    router.push("/(tabs)/stats");
+    router.push({
+      pathname: "/(tabs)/stats",
+      params: { focus: "yourWeek" },
+    });
   }, [router]);
 
   const displayOverview = useMemo((): StreakOverviewDto | null => {

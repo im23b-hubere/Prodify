@@ -254,7 +254,6 @@ const createDashboardState = (overrides: Record<string, unknown> = {}) => ({
   weeklyGoalTarget: 4,
   hasWeeklyGoal: true,
   weekSessionsCount: 0,
-  forecast: null,
   entitlement: { entitlement: "free" },
   loadSessions: jest.fn().mockResolvedValue(undefined),
   loadStreakOverview: jest.fn().mockResolvedValue(undefined),
