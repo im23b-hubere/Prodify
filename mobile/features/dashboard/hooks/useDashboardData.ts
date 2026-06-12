@@ -92,20 +92,12 @@ export function useDashboardData(token: string | null) {
     }
   }, [token]);
 
-  const loadSocial = useCallback(
-    async () => {
-      if (!token) return;
-      setSocialLoading(true);
-      try {
-        const [
-          lbRaw,
-          actRaw,
-          buddyRiskRaw,
-          checkinRaw,
-          commitmentRaw,
-          challengesRaw,
-          identityRaw,
-        ] = await Promise.all([
+  const loadSocial = useCallback(async () => {
+    if (!token) return;
+    setSocialLoading(true);
+    try {
+      const [lbRaw, actRaw, buddyRiskRaw, checkinRaw, commitmentRaw, challengesRaw, identityRaw] =
+        await Promise.all([
           apiJson<unknown>("/friends/leaderboard?period=week", { token }),
           apiJson<unknown>("/friends/activity?limit=8", { token }),
           fetchBuddyRisk(token).catch(() => null),
@@ -114,26 +106,24 @@ export function useDashboardData(token: string | null) {
           fetchChallenges(token).catch(() => []),
           fetchIdentityState(token).catch(() => null),
         ]);
-        const lb =
-          lbRaw && typeof lbRaw === "object" && "entries" in lbRaw
-            ? (lbRaw as FriendLeaderboardDto)
-            : null;
-        setFriendLeaderboard(lb);
-        setFriendActivity(Array.isArray(actRaw) ? (actRaw as FriendActivityDto[]) : []);
-        setBuddyRisk(buddyRiskRaw);
-        setCheckinStatus(checkinRaw);
-        setCommitmentStatus(commitmentRaw);
-        setSocialChallenges(Array.isArray(challengesRaw) ? challengesRaw : []);
-        setIdentityState(identityRaw);
-      } catch {
-        // Preserve last known social snapshot and surface a clear partial-load error.
-        setError(t("dashboard.socialLoadFailed"));
-      } finally {
-        setSocialLoading(false);
-      }
-    },
-    [token, t],
-  );
+      const lb =
+        lbRaw && typeof lbRaw === "object" && "entries" in lbRaw
+          ? (lbRaw as FriendLeaderboardDto)
+          : null;
+      setFriendLeaderboard(lb);
+      setFriendActivity(Array.isArray(actRaw) ? (actRaw as FriendActivityDto[]) : []);
+      setBuddyRisk(buddyRiskRaw);
+      setCheckinStatus(checkinRaw);
+      setCommitmentStatus(commitmentRaw);
+      setSocialChallenges(Array.isArray(challengesRaw) ? challengesRaw : []);
+      setIdentityState(identityRaw);
+    } catch {
+      // Preserve last known social snapshot and surface a clear partial-load error.
+      setError(t("dashboard.socialLoadFailed"));
+    } finally {
+      setSocialLoading(false);
+    }
+  }, [token, t]);
 
   const loadStreakOverview = useCallback(async () => {
     if (!token) return;

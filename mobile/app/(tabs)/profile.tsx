@@ -98,73 +98,76 @@ export default function ProfileScreen() {
     };
   }, []);
 
-  const load = useCallback(async (opts?: { force?: boolean }) => {
-    const force = Boolean(opts?.force);
-    if (!force && !isScreenDataStale(lastFetchRef.current)) {
-      return;
-    }
+  const load = useCallback(
+    async (opts?: { force?: boolean }) => {
+      const force = Boolean(opts?.force);
+      if (!force && !isScreenDataStale(lastFetchRef.current)) {
+        return;
+      }
 
-    const seq = ++loadSeq.current;
-    if (!token) {
-      if (mounted.current) setLoading(false);
-      return;
-    }
-    if (mounted.current) {
-      setLoading(true);
-      setError(null);
-    }
-    try {
-      const [sr, mr, relPr, hmPr, progPr] = await Promise.allSettled([
-        apiJson<unknown>("/sessions/stats?period=all", { token }),
-        apiJson<StreakMilestonesDto>("/streak/milestones", { token }),
-        apiJson<ReliabilityScoreDto>("/users/me/reliability", { token }).catch(() => null),
-        apiJson<unknown>("/stats/heatmap", { token }),
-        fetchProgression(token),
-      ]);
-      if (!mounted.current || seq !== loadSeq.current) return;
+      const seq = ++loadSeq.current;
+      if (!token) {
+        if (mounted.current) setLoading(false);
+        return;
+      }
+      if (mounted.current) {
+        setLoading(true);
+        setError(null);
+      }
+      try {
+        const [sr, mr, relPr, hmPr, progPr] = await Promise.allSettled([
+          apiJson<unknown>("/sessions/stats?period=all", { token }),
+          apiJson<StreakMilestonesDto>("/streak/milestones", { token }),
+          apiJson<ReliabilityScoreDto>("/users/me/reliability", { token }).catch(() => null),
+          apiJson<unknown>("/stats/heatmap", { token }),
+          fetchProgression(token),
+        ]);
+        if (!mounted.current || seq !== loadSeq.current) return;
 
-      if (sr.status === "fulfilled") {
-        setStats(tryParseSessionStatsDto(sr.value));
-      } else {
+        if (sr.status === "fulfilled") {
+          setStats(tryParseSessionStatsDto(sr.value));
+        } else {
+          setStats(null);
+        }
+        if (mr.status === "fulfilled") {
+          setMilestones(mr.value);
+        } else {
+          setMilestones(null);
+        }
+        const rel = relPr.status === "fulfilled" ? relPr.value : null;
+        setReliability(rel);
+        setHeatmapDays(hmPr.status === "fulfilled" ? tryParseHeatmapDays(hmPr.value) : []);
+        setProgression(progPr.status === "fulfilled" ? progPr.value : null);
+
+        const errParts: string[] = [];
+        if (sr.status === "rejected") {
+          errParts.push(
+            sr.reason instanceof Error ? sr.reason.message : t("profile.errorLoadProfile"),
+          );
+        }
+        if (mr.status === "rejected") {
+          errParts.push(
+            mr.reason instanceof Error ? mr.reason.message : t("profile.errorLoadMilestones"),
+          );
+        }
+        setError(errParts.length ? errParts.join("\n") : null);
+        lastFetchRef.current = Date.now();
+      } catch (e) {
+        if (!mounted.current || seq !== loadSeq.current) return;
+        setError(e instanceof Error ? e.message : t("profile.errorLoadProfile"));
         setStats(null);
-      }
-      if (mr.status === "fulfilled") {
-        setMilestones(mr.value);
-      } else {
         setMilestones(null);
+        setReliability(null);
+        setHeatmapDays([]);
+        setProgression(null);
+      } finally {
+        if (!mounted.current || seq !== loadSeq.current) return;
+        setLoading(false);
+        setRefreshing(false);
       }
-      const rel = relPr.status === "fulfilled" ? relPr.value : null;
-      setReliability(rel);
-      setHeatmapDays(hmPr.status === "fulfilled" ? tryParseHeatmapDays(hmPr.value) : []);
-      setProgression(progPr.status === "fulfilled" ? progPr.value : null);
-
-      const errParts: string[] = [];
-      if (sr.status === "rejected") {
-        errParts.push(
-          sr.reason instanceof Error ? sr.reason.message : t("profile.errorLoadProfile"),
-        );
-      }
-      if (mr.status === "rejected") {
-        errParts.push(
-          mr.reason instanceof Error ? mr.reason.message : t("profile.errorLoadMilestones"),
-        );
-      }
-      setError(errParts.length ? errParts.join("\n") : null);
-      lastFetchRef.current = Date.now();
-    } catch (e) {
-      if (!mounted.current || seq !== loadSeq.current) return;
-      setError(e instanceof Error ? e.message : t("profile.errorLoadProfile"));
-      setStats(null);
-      setMilestones(null);
-      setReliability(null);
-      setHeatmapDays([]);
-      setProgression(null);
-    } finally {
-      if (!mounted.current || seq !== loadSeq.current) return;
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [token, t]);
+    },
+    [token, t],
+  );
 
   useFocusEffect(
     useCallback(() => {

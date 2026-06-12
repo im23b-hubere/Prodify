@@ -10,7 +10,9 @@ const FALLBACK_ROUTES: Record<ProgressionOverviewFrom, Href> = {
   profile: "/(tabs)/profile",
 };
 
-export function parseProgressionOverviewFrom(raw: string | string[] | undefined): ProgressionOverviewFrom {
+export function parseProgressionOverviewFrom(
+  raw: string | string[] | undefined,
+): ProgressionOverviewFrom {
   const value = Array.isArray(raw) ? raw[0] : raw;
   if (value === "stats" || value === "friends" || value === "profile" || value === "dashboard") {
     return value;

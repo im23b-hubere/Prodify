@@ -25,12 +25,7 @@ const basePlan: TodayPlanRecommendation = {
 describe("TodayPlanCard", () => {
   it("renders recommendation and start CTA without a week forecast block", () => {
     const onStartSuggested = jest.fn();
-    render(
-      <TodayPlanCard
-        plan={basePlan}
-        onStartSuggested={onStartSuggested}
-      />,
-    );
+    render(<TodayPlanCard plan={basePlan} onStartSuggested={onStartSuggested} />);
 
     expect(screen.getByText("todayPlan.title")).toBeTruthy();
     expect(

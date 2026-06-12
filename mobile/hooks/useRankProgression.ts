@@ -55,10 +55,7 @@ export function useRankProgression(enabled = true) {
     };
   }, [enabled, token, user?.id]);
 
-  const rankName = useMemo(
-    () => (level != null ? progressionLevelName(t, level) : ""),
-    [level, t],
-  );
+  const rankName = useMemo(() => (level != null ? progressionLevelName(t, level) : ""), [level, t]);
   const nextRankName = useMemo(
     () => (level != null ? progressionLevelName(t, level + 1) : ""),
     [level, t],

@@ -450,104 +450,104 @@ export default function SessionActiveScreen() {
           </View>
         </GestureDetector>
       ) : null}
-        <View style={styles.header}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{sessionTypeLabel(session.session_type, t)}</Text>
-          </View>
-          <Text style={styles.warn}>{t("sessionActive.inProgress")}</Text>
+      <View style={styles.header}>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{sessionTypeLabel(session.session_type, t)}</Text>
+        </View>
+        <Text style={styles.warn}>{t("sessionActive.inProgress")}</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Animated.View style={[styles.timerWrap, pulseStyle]}>
+          <Text style={styles.timer}>{formatClock(elapsed)}</Text>
+          <Text style={styles.subTimer}>{formatDurationWords(elapsed)}</Text>
+        </Animated.View>
+
+        <View style={styles.insightCard}>
+          <Text style={styles.insightText}>{insightLine}</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Animated.View style={[styles.timerWrap, pulseStyle]}>
-            <Text style={styles.timer}>{formatClock(elapsed)}</Text>
-            <Text style={styles.subTimer}>{formatDurationWords(elapsed)}</Text>
-          </Animated.View>
-
-          <View style={styles.insightCard}>
-            <Text style={styles.insightText}>{insightLine}</Text>
+        <View style={styles.card}>
+          <Text style={styles.editLabel}>{t("sessionActive.sessionType")}</Text>
+          <View style={styles.typeRow}>
+            {SESSION_TYPE_IDS.map((stype) => {
+              const active = session.session_type === stype;
+              return (
+                <Pressable
+                  key={stype}
+                  onPress={() => setSessionType(stype)}
+                  disabled={busy}
+                  style={[styles.typeChip, active && styles.typeChipActive]}
+                >
+                  <Text style={[styles.typeChipTxt, active && styles.typeChipTxtActive]}>
+                    {sessionTypeLabel(stype, t)}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.editLabel}>{t("sessionActive.sessionType")}</Text>
-            <View style={styles.typeRow}>
-              {SESSION_TYPE_IDS.map((stype) => {
-                const active = session.session_type === stype;
-                return (
-                  <Pressable
-                    key={stype}
-                    onPress={() => setSessionType(stype)}
-                    disabled={busy}
-                    style={[styles.typeChip, active && styles.typeChipActive]}
-                  >
-                    <Text style={[styles.typeChipTxt, active && styles.typeChipTxtActive]}>
-                      {sessionTypeLabel(stype, t)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+          {session.mood_level && isMoodLevel(session.mood_level) ? (
+            <View style={[glyphRowStyle, styles.moodRow]}>
+              <Text style={styles.row}>{t("sessionActive.mood")}</Text>
+              <MoodIcon level={session.mood_level} size={20} />
             </View>
+          ) : null}
 
-            {session.mood_level && isMoodLevel(session.mood_level) ? (
-              <View style={[glyphRowStyle, styles.moodRow]}>
-                <Text style={styles.row}>{t("sessionActive.mood")}</Text>
-                <MoodIcon level={session.mood_level} size={20} />
-              </View>
-            ) : null}
-
-            <Text style={styles.editLabel}>{t("sessionActive.notes")}</Text>
-            <TextInput
-              style={styles.notesInput}
-              placeholder={t("sessionActive.notesPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              multiline
-              textAlignVertical="top"
-              maxLength={ACTIVE_NOTES_MAX_LENGTH}
-              value={draftNotes}
-              onChangeText={setDraftNotes}
-              onBlur={() => saveNotes().catch(() => undefined)}
-            />
-            <View style={styles.notesFooter}>
-              <Text style={styles.counter}>
-                {draftNotes.length}/{ACTIVE_NOTES_MAX_LENGTH}
+          <Text style={styles.editLabel}>{t("sessionActive.notes")}</Text>
+          <TextInput
+            style={styles.notesInput}
+            placeholder={t("sessionActive.notesPlaceholder")}
+            placeholderTextColor={colors.textSecondary}
+            multiline
+            textAlignVertical="top"
+            maxLength={ACTIVE_NOTES_MAX_LENGTH}
+            value={draftNotes}
+            onChangeText={setDraftNotes}
+            onBlur={() => saveNotes().catch(() => undefined)}
+          />
+          <View style={styles.notesFooter}>
+            <Text style={styles.counter}>
+              {draftNotes.length}/{ACTIVE_NOTES_MAX_LENGTH}
+            </Text>
+            <Pressable
+              onPress={() => saveNotes().catch(() => undefined)}
+              disabled={savingNotes}
+              hitSlop={8}
+            >
+              <Text style={styles.saveNotes}>
+                {savingNotes ? t("sessionActive.saving") : t("sessionActive.save")}
               </Text>
-              <Pressable
-                onPress={() => saveNotes().catch(() => undefined)}
-                disabled={savingNotes}
-                hitSlop={8}
-              >
-                <Text style={styles.saveNotes}>
-                  {savingNotes ? t("sessionActive.saving") : t("sessionActive.save")}
-                </Text>
-              </Pressable>
+            </Pressable>
+          </View>
+
+          {tagList.length > 0 ? (
+            <View style={styles.tags}>
+              {tagList.map((tag) => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagTxt}>{tag}</Text>
+                </View>
+              ))}
             </View>
+          ) : null}
+        </View>
 
-            {tagList.length > 0 ? (
-              <View style={styles.tags}>
-                {tagList.map((tag) => (
-                  <View key={tag} style={styles.tag}>
-                    <Text style={styles.tagTxt}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </View>
+        {error ? <Text style={styles.err}>{error}</Text> : null}
 
-          {error ? <Text style={styles.err}>{error}</Text> : null}
+        <View style={styles.actions}>
+          {isPaused ? (
+            <PrimaryButton label={t("sessionActive.resume")} onPress={resume} loading={busy} />
+          ) : (
+            <Pressable style={styles.pauseOutline} onPress={pause} disabled={busy}>
+              <Text style={styles.pauseText}>{t("sessionActive.pause")}</Text>
+            </Pressable>
+          )}
+        </View>
 
-          <View style={styles.actions}>
-            {isPaused ? (
-              <PrimaryButton label={t("sessionActive.resume")} onPress={resume} loading={busy} />
-            ) : (
-              <Pressable style={styles.pauseOutline} onPress={pause} disabled={busy}>
-                <Text style={styles.pauseText}>{t("sessionActive.pause")}</Text>
-              </Pressable>
-            )}
-          </View>
-
-          <Pressable style={styles.stopBtn} onPress={confirmStop} disabled={busy}>
-            <Text style={styles.stopTxt}>{t("sessionActive.stopSession")}</Text>
-          </Pressable>
-        </ScrollView>
+        <Pressable style={styles.stopBtn} onPress={confirmStop} disabled={busy}>
+          <Text style={styles.stopTxt}>{t("sessionActive.stopSession")}</Text>
+        </Pressable>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 

@@ -8,7 +8,10 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
 const BASE_RETRY_DELAY_MS = 600;
 const REFRESH_ACCESS_TIMEOUT_MS = 12_000;
-const PRODUCTION_BASE_FALLBACKS = ["https://prodify-api-46b1.onrender.com", "https://api.prodify.app"];
+const PRODUCTION_BASE_FALLBACKS = [
+  "https://prodify-api-46b1.onrender.com",
+  "https://api.prodify.app",
+];
 const RETRYABLE_STATUS_CODES = new Set([429, 502, 503, 504]);
 
 /** Set from AuthProvider: clear stored token when an authenticated request returns 401. */
@@ -345,7 +348,9 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
         if (__DEV__ && !opts._baseUrl) {
           const fallbackBaseUrl = inferDevFallbackBaseUrl();
           if (fallbackBaseUrl && fallbackBaseUrl !== baseUrl) {
-            console.warn(`[api] Primary API unreachable (${baseUrl}), retrying via ${fallbackBaseUrl}`);
+            console.warn(
+              `[api] Primary API unreachable (${baseUrl}), retrying via ${fallbackBaseUrl}`,
+            );
             return apiJson<T>(path, { ...opts, _baseUrl: fallbackBaseUrl });
           }
         }

@@ -100,7 +100,10 @@ export default function OnboardingScreen() {
     [dailyTarget],
   );
   const dailyTargetUnit = useMemo(
-    () => (dailyTarget === 1 ? t("onboarding.quiz.weeklyGoal.session") : t("onboarding.quiz.weeklyGoal.sessions")),
+    () =>
+      dailyTarget === 1
+        ? t("onboarding.quiz.weeklyGoal.session")
+        : t("onboarding.quiz.weeklyGoal.sessions"),
     [dailyTarget, t],
   );
 
@@ -222,11 +225,7 @@ export default function OnboardingScreen() {
   if (step === "welcome") {
     return (
       <SafeAreaView style={styles.welcomeSafe} edges={["top", "bottom"]}>
-        <Pressable
-          accessibilityRole="button"
-          style={styles.welcomeSkip}
-          onPress={goToWeeklyGoal}
-        >
+        <Pressable accessibilityRole="button" style={styles.welcomeSkip} onPress={goToWeeklyGoal}>
           <Text style={styles.welcomeSkipTxt}>{t("onboarding.skip")}</Text>
         </Pressable>
         <View style={styles.welcomeBody}>
@@ -341,10 +340,7 @@ export default function OnboardingScreen() {
           />
         }
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.goalScroll}
-        >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.goalScroll}>
           <View style={styles.goalGrid}>
             {GOALS.map((g) => (
               <Pressable
@@ -355,7 +351,9 @@ export default function OnboardingScreen() {
                   setAnswers((prev) => ({ ...prev, weeklyGoal: g }));
                 }}
               >
-                <Text style={[styles.goalCardValue, goal === g && styles.goalCardValueOn]}>{g}</Text>
+                <Text style={[styles.goalCardValue, goal === g && styles.goalCardValueOn]}>
+                  {g}
+                </Text>
                 <Text style={[styles.goalCardLabel, goal === g && styles.goalCardLabelOn]}>
                   {t("onboarding.quiz.weeklyGoal.perWeek")}
                 </Text>

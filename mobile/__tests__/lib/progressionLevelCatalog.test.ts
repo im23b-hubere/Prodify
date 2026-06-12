@@ -27,9 +27,7 @@ describe("progressionLevelCatalog", () => {
   });
 
   it("caches catalog responses", async () => {
-    mockApiJson.mockResolvedValue([
-      { level: 1, xp_start: 0, xp_end_exclusive: 50, xp_span: 50 },
-    ]);
+    mockApiJson.mockResolvedValue([{ level: 1, xp_start: 0, xp_end_exclusive: 50, xp_span: 50 }]);
 
     await fetchLevelCatalog(20);
     await fetchLevelCatalog(20);

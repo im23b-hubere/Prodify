@@ -7,11 +7,7 @@ import { getExpoPublicSentryDsn } from "../constants/env";
 function isLikelyPlaceholderDsn(raw: string): boolean {
   const value = raw.trim().toLowerCase();
   if (!value) return true;
-  return (
-    value.includes("...") ||
-    value.includes("your-") ||
-    value.includes("<")
-  );
+  return value.includes("...") || value.includes("your-") || value.includes("<");
 }
 
 function isValidSentryDsn(raw: string): boolean {

@@ -80,8 +80,7 @@ export default function TabsLayout() {
     };
   }, [token, user?.id]);
 
-  const waitingForEntitlement =
-    Boolean(token) && entitlementLoading && hasAccess == null;
+  const waitingForEntitlement = Boolean(token) && entitlementLoading && hasAccess == null;
 
   if (!hydrated || waitingForEntitlement) {
     return (

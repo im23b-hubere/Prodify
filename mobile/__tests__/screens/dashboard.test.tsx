@@ -134,7 +134,11 @@ jest.mock("../../components/dashboard/WeeklyGoalStatsNudge", () => ({
   WeeklyGoalStatsNudge: () => {
     const React = require("react");
     const { Text } = require("react-native");
-    return React.createElement(Text, { testID: "weekly-goal-stats-nudge" }, "dashboard.weeklyGoalNudgeTitle");
+    return React.createElement(
+      Text,
+      { testID: "weekly-goal-stats-nudge" },
+      "dashboard.weeklyGoalNudgeTitle",
+    );
   },
 }));
 jest.mock("../../components/streak/StreakBreakModal", () => ({

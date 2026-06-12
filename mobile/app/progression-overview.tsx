@@ -201,10 +201,7 @@ export default function ProgressionOverviewScreen() {
               })}
             >
               <View
-                style={[
-                  styles.fill,
-                  { width: `${percent}%`, backgroundColor: currentTier.accent },
-                ]}
+                style={[styles.fill, { width: `${percent}%`, backgroundColor: currentTier.accent }]}
               />
             </View>
             <Text style={styles.metaLine}>
@@ -238,12 +235,7 @@ export default function ProgressionOverviewScreen() {
                   </View>
                   <View style={styles.levelRows}>
                     {tierLevels.map((entry) => (
-                      <LevelRankRow
-                        key={entry.level}
-                        entry={entry}
-                        currentLevel={level}
-                        t={t}
-                      />
+                      <LevelRankRow key={entry.level} entry={entry} currentLevel={level} t={t} />
                     ))}
                   </View>
                 </View>
@@ -253,10 +245,7 @@ export default function ProgressionOverviewScreen() {
         ) : null}
 
         {showHero || showRanks ? (
-          <PrimaryButton
-            label={backLabel}
-            onPress={() => leaveProgressionOverview(router, from)}
-          />
+          <PrimaryButton label={backLabel} onPress={() => leaveProgressionOverview(router, from)} />
         ) : null}
       </ScrollView>
     </SafeAreaView>

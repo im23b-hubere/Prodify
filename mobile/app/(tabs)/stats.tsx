@@ -355,23 +355,17 @@ export default function StatsScreen() {
         // Show core stats first, then hydrate secondary sections.
         if (mounted.current && seq === loadSeq.current) setLoading(false);
 
-        const [
-          progressionRes,
-          motivationRes,
-          goalRes,
-          commitmentRes,
-          configuredRes,
-          forecastRes,
-        ] = await Promise.allSettled([
-          forceProgressionSync
-            ? syncProgression(token, { force: true })
-            : fetchProgression(token),
-          apiJson<unknown>("/motivational-messages/random", { token }),
-          fetchCurrentGoal(token),
-          fetchCommitment(token),
-          AsyncStorage.getItem(WEEKLY_GOAL_CONFIGURED_KEY),
-          apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
-        ]);
+        const [progressionRes, motivationRes, goalRes, commitmentRes, configuredRes, forecastRes] =
+          await Promise.allSettled([
+            forceProgressionSync
+              ? syncProgression(token, { force: true })
+              : fetchProgression(token),
+            apiJson<unknown>("/motivational-messages/random", { token }),
+            fetchCurrentGoal(token),
+            fetchCommitment(token),
+            AsyncStorage.getItem(WEEKLY_GOAL_CONFIGURED_KEY),
+            apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
+          ]);
         if (!mounted.current || seq !== loadSeq.current) return;
 
         const progressionRaw = progressionRes.status === "fulfilled" ? progressionRes.value : null;
@@ -788,7 +782,9 @@ export default function StatsScreen() {
             title={t("common.oops")}
             message={error}
             retryLabel={t("common.tryAgain")}
-            onRetry={() => loadStats({ force: true, forceProgressionSync: true }).catch(() => undefined)}
+            onRetry={() =>
+              loadStats({ force: true, forceProgressionSync: true }).catch(() => undefined)
+            }
           />
         ) : null}
         {!showInitialLoading ? (
@@ -1020,10 +1016,7 @@ export default function StatsScreen() {
 
             {!showInitialLoading ? (
               <View style={styles.weeklyRecapBottomCta}>
-                <SecondaryButton
-                  label={t("stats.openWeeklyRecap")}
-                  onPress={openWeeklyRecap}
-                />
+                <SecondaryButton label={t("stats.openWeeklyRecap")} onPress={openWeeklyRecap} />
               </View>
             ) : null}
           </Animated.View>

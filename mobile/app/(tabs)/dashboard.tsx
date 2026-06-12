@@ -562,7 +562,9 @@ export default function DashboardScreen() {
                         pressed && styles.iconButtonPressed,
                       ]}
                       onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
+                          () => undefined,
+                        );
                         router.push("/notifications");
                       }}
                       accessibilityLabel={t("dashboard.notificationsA11y")}

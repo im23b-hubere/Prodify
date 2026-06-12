@@ -13,8 +13,15 @@ def _auth_headers(client, email: str, username: str, password: str = "strong-pas
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_billing_entitlement_sync_and_get(client):
+def test_billing_entitlement_sync_and_get(client, monkeypatch):
+    monkeypatch.setattr("app.dependencies_subscription.settings.onboarding_trial_days", 7)
+    # Dev sync trusts the client payload only when RevenueCat verification is not configured.
+    monkeypatch.setattr("app.routers.billing.settings.revenuecat_secret_key", None)
     headers = _auth_headers(client, "bill@example.com", "bill-user")
+    me = client.get("/auth/me", headers=headers)
+    assert me.status_code == 200
+    user_id = str(me.json()["id"])
+
     r = client.get("/billing/entitlement", headers=headers)
     assert r.status_code == 200
     data = r.json()
@@ -26,7 +33,7 @@ def test_billing_entitlement_sync_and_get(client):
         "/billing/sync",
         headers=headers,
         json={
-            "app_user_id": "1",
+            "app_user_id": user_id,
             "entitlement": "premium",
             "trial_active": True,
             "expires_at": None,

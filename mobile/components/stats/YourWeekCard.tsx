@@ -15,10 +15,7 @@ import { AppCard } from "../ui/AppCard";
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography, ui } from "../../constants/theme";
-import {
-  classifyGoalTrackStatus,
-  expectedWeeklySessionsByToday,
-} from "../../lib/goalPace";
+import { classifyGoalTrackStatus, expectedWeeklySessionsByToday } from "../../lib/goalPace";
 import { WEEKDAY_LETTERS, currentWeekDateKeys, localDateKey } from "../../lib/weekCalendar";
 import type { CommitmentDto } from "../../types/friends";
 import type { GoalCurrentDto } from "../../types/goals";
@@ -90,9 +87,7 @@ export function YourWeekCard({
 
   const todayKey = useMemo(() => localDateKey(new Date()), []);
   const status = statusKey(goal, forecast, configured);
-  const progressPct = goal
-    ? Math.max(0, Math.min(100, Math.round(goal.progress_percent)))
-    : 0;
+  const progressPct = goal ? Math.max(0, Math.min(100, Math.round(goal.progress_percent))) : 0;
 
   const openEditor = (prefill?: number) => {
     const value = prefill ?? goal?.target_value ?? 5;
@@ -164,10 +159,7 @@ export function YourWeekCard({
               {GOAL_CHIPS.map((n) => (
                 <Pressable
                   key={n}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    pressed && styles.chipPressed,
-                  ]}
+                  style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
                   disabled={busy}
                   onPress={() => void saveFromSetup(n)}
                 >
@@ -281,7 +273,12 @@ export function YourWeekCard({
         )}
       </AppCard>
 
-      <Modal visible={editorOpen} animationType="slide" transparent onRequestClose={() => setEditorOpen(false)}>
+      <Modal
+        visible={editorOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditorOpen(false)}
+      >
         <Pressable style={styles.modalBackdrop} onPress={() => setEditorOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>{t("stats.yourWeek.editTitle")}</Text>
@@ -298,7 +295,9 @@ export function YourWeekCard({
                       setCustomTarget("");
                     }}
                   >
-                    <Text style={[styles.chipValue, selected && styles.chipValueSelected]}>{n}</Text>
+                    <Text style={[styles.chipValue, selected && styles.chipValueSelected]}>
+                      {n}
+                    </Text>
                     <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
                       {t("stats.yourWeek.sessionsUnit")}
                     </Text>

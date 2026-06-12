@@ -72,7 +72,12 @@ export async function fetchEntitlement(
       const parsed = tryParseEntitlementDto(raw);
       const value: EntitlementDto =
         parsed ??
-        ({ provider: "revenuecat", entitlement: "free", trial_active: false, expires_at: null } as const);
+        ({
+          provider: "revenuecat",
+          entitlement: "free",
+          trial_active: false,
+          expires_at: null,
+        } as const);
       cachedEntitlement = { token, value, atMs: Date.now() };
       return value;
     })

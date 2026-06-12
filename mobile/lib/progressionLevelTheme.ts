@@ -121,7 +121,9 @@ export function levelRankState(level: number, currentLevel: number): LevelRankSt
   return "unlocked";
 }
 
-export function groupLevelsByTier<T extends { level: number }>(entries: T[]): Array<{
+export function groupLevelsByTier<T extends { level: number }>(
+  entries: T[],
+): Array<{
   tier: LevelTierTheme;
   levels: T[];
 }> {

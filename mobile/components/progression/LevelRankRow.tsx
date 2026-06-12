@@ -59,11 +59,7 @@ export function LevelRankRow({ entry, currentLevel, t }: Props) {
 
       <View style={styles.copy}>
         <Text
-          style={[
-            styles.title,
-            locked && styles.titleLocked,
-            current && { color: tier.accent },
-          ]}
+          style={[styles.title, locked && styles.titleLocked, current && { color: tier.accent }]}
           numberOfLines={1}
         >
           {t("progression.levelRowLabel", { level: entry.level, name })}

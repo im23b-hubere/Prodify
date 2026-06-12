@@ -11,7 +11,11 @@ type ProgressionCacheEntry = {
 let cached: ProgressionCacheEntry | null = null;
 let inFlight: { token: string; promise: Promise<ProgressionDto | null> } | null = null;
 
-function readCached(token: string, ttlMs: number, force: boolean): ProgressionDto | null | undefined {
+function readCached(
+  token: string,
+  ttlMs: number,
+  force: boolean,
+): ProgressionDto | null | undefined {
   if (force) return undefined;
   const now = Date.now();
   if (cached && cached.token === token && now - cached.atMs <= ttlMs) {

@@ -285,7 +285,9 @@ export function FriendsTogetherSection({
                       </View>
                     </View>
                     <Text style={styles.userMeta}>{summaryLine}</Text>
-                    <Text style={styles.challengeTapHint}>{t("friendsScreen.challengeTapHint")}</Text>
+                    <Text style={styles.challengeTapHint}>
+                      {t("friendsScreen.challengeTapHint")}
+                    </Text>
                   </Pressable>
                   {!isMember && challenge.status === "active" ? (
                     <PrimaryButton

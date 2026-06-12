@@ -18,7 +18,8 @@ describe("API config resolution", () => {
       },
     }));
 
-    const { getExpoPublicApiUrl } = require("../../constants/env") as typeof import("../../constants/env");
+    const { getExpoPublicApiUrl } =
+      require("../../constants/env") as typeof import("../../constants/env");
     expect(getExpoPublicApiUrl()).toBe("https://env.api.prodify.app");
   });
 

@@ -24,7 +24,10 @@ import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-import { challengeDaysLeft, challengeKindLabel } from "../../features/friends/utils/friendsScreenFormat";
+import {
+  challengeDaysLeft,
+  challengeKindLabel,
+} from "../../features/friends/utils/friendsScreenFormat";
 import {
   cancelChallenge,
   fetchChallenge,
@@ -116,9 +119,9 @@ export default function ChallengeDetailScreen() {
   const daysLeft =
     challenge?.days_remaining ??
     (challenge
-      ? challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
+      ? (challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
         challenge.duration_days ??
-        7
+        7)
       : 0);
 
   const leaderMember = useMemo(() => {
@@ -153,7 +156,10 @@ export default function ChallengeDetailScreen() {
       !Number.isFinite(durationDays) ||
       durationDays < 3
     ) {
-      Alert.alert(t("friendsScreen.invalidChallengeTitle"), t("friendsScreen.invalidChallengeBody"));
+      Alert.alert(
+        t("friendsScreen.invalidChallengeTitle"),
+        t("friendsScreen.invalidChallengeBody"),
+      );
       return;
     }
     setEditBusy(true);
@@ -381,8 +387,7 @@ export default function ChallengeDetailScreen() {
                 Math.min(100, Math.round((member.progress_sessions / target) * 100)),
               );
               const me = member.user_id === currentUserId;
-              const isLeader =
-                leaderMember != null && member.user_id === leaderMember.user_id;
+              const isLeader = leaderMember != null && member.user_id === leaderMember.user_id;
               return (
                 <View
                   key={member.user_id}
@@ -397,7 +402,9 @@ export default function ChallengeDetailScreen() {
                       </Text>
                       {isLeader && isActive ? (
                         <View style={styles.leaderBadge}>
-                          <Text style={styles.leaderBadgeText}>{t("challengeDetail.leaderBadge")}</Text>
+                          <Text style={styles.leaderBadgeText}>
+                            {t("challengeDetail.leaderBadge")}
+                          </Text>
                         </View>
                       ) : null}
                     </View>
@@ -463,7 +470,12 @@ export default function ChallengeDetailScreen() {
         </ScrollView>
       ) : null}
 
-      <Modal visible={editOpen} animationType="slide" transparent onRequestClose={() => setEditOpen(false)}>
+      <Modal
+        visible={editOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditOpen(false)}
+      >
         <Pressable style={styles.modalBackdrop} onPress={() => setEditOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>{t("friendsScreen.editChallengeTitle")}</Text>

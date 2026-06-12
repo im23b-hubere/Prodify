@@ -4,6 +4,7 @@ import type { SessionDto } from "../../types/session";
 function baseSession(overrides: Partial<SessionDto> = {}): SessionDto {
   return {
     id: 1,
+    user_id: 1,
     session_type: "beat_making",
     started_at: "2026-06-10T12:00:00Z",
     stopped_at: null,

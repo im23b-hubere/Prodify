@@ -4,13 +4,7 @@ import { Animated, Easing, StyleSheet, View } from "react-native";
 import { AppCard } from "../ui/AppCard";
 import { colors, radii, spacing, typography, ui } from "../../constants/theme";
 
-function ShimmerLine({
-  style,
-  durationMs = 780,
-}: {
-  style?: object;
-  durationMs?: number;
-}) {
+function ShimmerLine({ style, durationMs = 780 }: { style?: object; durationMs?: number }) {
   const pulse = useRef(new Animated.Value(0.45)).current;
 
   useEffect(() => {

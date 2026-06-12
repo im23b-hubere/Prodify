@@ -17,7 +17,11 @@ type Props = {
 
 export function QuizOptionCard({ label, hint, icon: Icon, selected, index, onPress }: Props) {
   return (
-    <Animated.View entering={FadeInUp.delay(index * 45).duration(300).springify()}>
+    <Animated.View
+      entering={FadeInUp.delay(index * 45)
+        .duration(300)
+        .springify()}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected }}
@@ -32,7 +36,11 @@ export function QuizOptionCard({ label, hint, icon: Icon, selected, index, onPre
         }}
       >
         <View style={[styles.iconWrap, selected && styles.iconWrapOn]}>
-          <Icon color={selected ? colors.primary : colors.textSecondary} size={20} strokeWidth={2.2} />
+          <Icon
+            color={selected ? colors.primary : colors.textSecondary}
+            size={20}
+            strokeWidth={2.2}
+          />
         </View>
         <View style={styles.textCol}>
           <Text style={[styles.label, selected && styles.labelOn]}>{label}</Text>
