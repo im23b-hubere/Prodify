@@ -3,7 +3,7 @@ import type { TFunction } from "i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors, spacing, typography } from "../../constants/theme";
 import { progressionLevelName } from "../../lib/progressionLevels";
 import { levelIconFor, levelTierFor } from "../../lib/progressionLevelTheme";
 

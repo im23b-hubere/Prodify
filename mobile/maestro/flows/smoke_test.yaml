@@ -1,6 +1,6 @@
 # Prodify smoke flow — requires API reachable from the simulator (e.g. EXPO_PUBLIC_API_URL).
 # Seed a test user once (username required, min 2 chars):
-#   curl -sS -X POST "https://api.prodify.app/auth/register" \
+#   curl -sS -X POST "https://prodify-api-46b1.onrender.com/auth/register" \
 #     -H "Content-Type: application/json" \
 #     -d '{"email":"test@prodify.app","password":"Test1234!","username":"e2euser"}'
 #

@@ -554,7 +554,7 @@ export default function StatsScreen() {
     [stats, t],
   );
 
-  const recent = stats?.recent_sessions ?? [];
+  const recent = useMemo(() => stats?.recent_sessions ?? [], [stats?.recent_sessions]);
 
   const todaySessionCount = useMemo(() => {
     const todayKey = localDateKey(new Date());

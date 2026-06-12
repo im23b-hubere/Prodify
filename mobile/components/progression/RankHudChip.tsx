@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing } from "../../constants/theme";
+import { colors, radii } from "../../constants/theme";
 import { useRankProgression } from "../../hooks/useRankProgression";
 import {
   type ProgressionOverviewFrom,
