@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 
+import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { useAuth } from "../../context/AuthContext";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
@@ -63,7 +64,7 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.badge}>{t("brand")}</Text>
+          <ProdifyWordmark />
           <Text style={styles.title}>{t("auth.login.title")}</Text>
           <Text style={styles.subtitle}>{t("auth.login.subtitle")}</Text>
         </View>
@@ -125,19 +126,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   hero: {
-    marginBottom: 18,
-  },
-  badge: {
-    alignSelf: "flex-start",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: radii.round,
-    color: colors.textPrimary,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    fontWeight: "700",
-    overflow: "hidden",
+    alignItems: "center",
+    marginBottom: spacing.lg,
   },
   card: {
     borderRadius: radii.lg,
@@ -152,17 +142,19 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   title: {
-    marginTop: 12,
+    marginTop: spacing.md,
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     letterSpacing: -0.8,
+    textAlign: "center",
     ...typography.headline,
   },
   subtitle: {
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
+    textAlign: "center",
     ...typography.body,
   },
   fieldLabel: {

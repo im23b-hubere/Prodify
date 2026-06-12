@@ -5,6 +5,14 @@ import SessionActiveScreen from "../../app/session/active";
 
 const mockReplace = jest.fn();
 const mockApiJson = jest.fn();
+const mockRouter = {
+  replace: mockReplace,
+  back: jest.fn(),
+  push: jest.fn(),
+  dismiss: jest.fn(),
+  canDismiss: () => false,
+  canGoBack: () => false,
+};
 
 jest.mock("expo-keep-awake", () => ({
   useKeepAwake: jest.fn(),
@@ -58,9 +66,11 @@ jest.mock("react-native-reanimated", () => {
   return Reanimated;
 });
 
+const translate = (key: string) => key;
+
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: translate,
   }),
 }));
 
@@ -69,14 +79,7 @@ jest.mock("../../context/AuthContext", () => ({
 }));
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({
-    replace: mockReplace,
-    back: jest.fn(),
-    push: jest.fn(),
-    dismiss: jest.fn(),
-    canDismiss: () => false,
-    canGoBack: () => false,
-  }),
+  useRouter: () => mockRouter,
   useLocalSearchParams: () => ({ id: "7", source: "dashboard" }),
 }));
 
@@ -107,6 +110,8 @@ describe("SessionActiveScreen error recovery", () => {
 
     await waitFor(() => {
       expect(getByText("load failed")).toBeTruthy();
+      expect(getByText("common.tryAgain")).toBeTruthy();
+      expect(getByText("common.back")).toBeTruthy();
     });
 
     const callsBeforeRetry = mockApiJson.mock.calls.length;
@@ -115,6 +120,10 @@ describe("SessionActiveScreen error recovery", () => {
       expect(mockApiJson.mock.calls.length).toBeGreaterThan(callsBeforeRetry);
     });
 
+    await waitFor(() => {
+      expect(getByText("load failed")).toBeTruthy();
+      expect(getByText("common.back")).toBeTruthy();
+    });
     fireEvent.press(getByText("common.back"));
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
   });

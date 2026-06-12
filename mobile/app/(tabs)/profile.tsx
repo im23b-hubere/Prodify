@@ -1,7 +1,4 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { manipulateAsync, SaveFormat, type Action } from "expo-image-manipulator";
-import * as ImagePicker from "expo-image-picker";
-import type { ImagePickerAsset } from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,119 +15,34 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 
+import { ActivityHeatmapCard } from "../../components/profile/ActivityHeatmapCard";
+import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
 import { BadgeIcon } from "../../components/ui/BadgeIcon";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { RankHudChip } from "../../components/progression/RankHudChip";
+import { ErrorState } from "../../components/states/ErrorState";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { TextButton } from "../../components/ui/TextButton";
 import { AppFlame, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { StatCard } from "../../components/ui/StatCard";
+import { API_BASE_URL } from "../../constants/api";
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography, ui } from "../../constants/theme";
+import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { isScreenDataStale } from "../../lib/screenDataStale";
-import { ApiError, apiJson, apiMultipart } from "../../lib/client";
-import { tryParseSessionStatsDto } from "../../lib/statsDto";
+import { ApiError, apiJson } from "../../lib/client";
+import { progressionOverviewHref } from "../../lib/progressionNavigation";
+import { fetchProgression } from "../../lib/progressionSync";
+import { tryParseHeatmapDays, tryParseSessionStatsDto } from "../../lib/statsDto";
+import type { ReliabilityScoreDto } from "../../types/friends";
+import type { ProgressionDto } from "../../types/outcomes";
 import type { SessionStatsDto } from "../../types/session";
 import type { StreakMilestonesDto } from "../../types/streak";
-import type { ReliabilityScoreDto } from "../../types/friends";
 
 function formatHours(totalSeconds: number): string {
   const h = totalSeconds / 3600;
   if (h < 10) return h.toFixed(1);
   return Math.round(h).toString();
-}
-
-function isHeicLikeAsset(uri: string, mimeType?: string | null): boolean {
-  const u = uri.toLowerCase();
-  if (u.includes(".heic") || u.includes(".heif")) return true;
-  const m = mimeType?.toLowerCase() ?? "";
-  return m.includes("heic") || m.includes("heif");
-}
-
-function extractProfilePictureErrorDetail(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return "";
-  try {
-    const j = JSON.parse(trimmed) as { detail?: unknown };
-    if (typeof j.detail === "string") return j.detail;
-    if (Array.isArray(j.detail) && j.detail.length > 0) {
-      const first = j.detail[0] as { msg?: unknown } | undefined;
-      if (first && typeof first.msg === "string") return first.msg;
-    }
-  } catch {
-    /* plain text */
-  }
-  return trimmed;
-}
-
-function shouldOfferPictureFormatHint(detail: string): boolean {
-  const d = detail.toLowerCase();
-  return (
-    d.includes("unsupported") ||
-    d.includes("only image") ||
-    d.includes("empty") ||
-    d.includes("5mb") ||
-    d.includes("exceeds") ||
-    d.includes("too large") ||
-    d.includes("format")
-  );
-}
-
-const PROFILE_UPLOAD_MAX_SIDE = 1600;
-
-function pickedMimeType(asset: ImagePickerAsset): string | null {
-  if ("mimeType" in asset && typeof (asset as { mimeType?: unknown }).mimeType === "string") {
-    return (asset as { mimeType: string }).mimeType;
-  }
-  return null;
-}
-
-/** HEIC/WEBP → JPEG; very large images downscaled so uploads stay under server limits. */
-async function resolveProfilePictureUploadFile(
-  asset: ImagePickerAsset,
-  t: (key: string) => string,
-): Promise<{ uri: string; name: string; type: string }> {
-  const uri = asset.uri;
-  const mimeType = pickedMimeType(asset);
-  const maxSide =
-    typeof asset.width === "number" && typeof asset.height === "number"
-      ? Math.max(asset.width, asset.height)
-      : 0;
-
-  const heic = isHeicLikeAsset(uri, mimeType);
-  const webp =
-    Boolean(mimeType?.toLowerCase().includes("webp")) || uri.toLowerCase().includes(".webp");
-
-  const needsResize = maxSide > PROFILE_UPLOAD_MAX_SIDE;
-  const needsReencode = heic || webp;
-
-  if (!needsResize && !needsReencode) {
-    const ext = uri.toLowerCase().endsWith(".png") ? "png" : "jpg";
-    return {
-      uri,
-      name: `profile.${ext}`,
-      type: ext === "png" ? "image/png" : "image/jpeg",
-    };
-  }
-
-  const actions: Action[] = [];
-  if (needsResize && asset.width && asset.height) {
-    actions.push(
-      asset.width >= asset.height
-        ? { resize: { width: PROFILE_UPLOAD_MAX_SIDE } }
-        : { resize: { height: PROFILE_UPLOAD_MAX_SIDE } },
-    );
-  }
-
-  try {
-    const out = await manipulateAsync(uri, actions, {
-      compress: 0.85,
-      format: SaveFormat.JPEG,
-    });
-    return { uri: out.uri, name: "profile.jpg", type: "image/jpeg" };
-  } catch {
-    throw new Error(t("profile.pictureConvertFailed"));
-  }
 }
 
 function ProfileSkeleton() {
@@ -160,7 +72,7 @@ function ProfileSkeleton() {
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
-  const { user, signOut, deleteAccount, token, refreshUser } = useAuth();
+  const { user, signOut, deleteAccount, token } = useAuth();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -168,10 +80,12 @@ export default function ProfileScreen() {
   const [milestones, setMilestones] = useState<StreakMilestonesDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reliability, setReliability] = useState<ReliabilityScoreDto | null>(null);
-  const [pictureBusy, setPictureBusy] = useState(false);
+  const [heatmapDays, setHeatmapDays] = useState<
+    { date: string; seconds: number; intensity: number }[]
+  >([]);
+  const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pingTemplate, setPingTemplate] = useState<"test" | "session_demo" | "streak_demo">("test");
-  const [avatarVersion, setAvatarVersion] = useState(0);
   const loadSeq = useRef(0);
   const mounted = useRef(true);
   const lastFetchRef = useRef(0);
@@ -200,10 +114,12 @@ export default function ProfileScreen() {
       setError(null);
     }
     try {
-      const [sr, mr, relPr] = await Promise.allSettled([
+      const [sr, mr, relPr, hmPr, progPr] = await Promise.allSettled([
         apiJson<unknown>("/sessions/stats?period=all", { token }),
         apiJson<StreakMilestonesDto>("/streak/milestones", { token }),
         apiJson<ReliabilityScoreDto>("/users/me/reliability", { token }).catch(() => null),
+        apiJson<unknown>("/stats/heatmap", { token }),
+        fetchProgression(token),
       ]);
       if (!mounted.current || seq !== loadSeq.current) return;
 
@@ -219,6 +135,8 @@ export default function ProfileScreen() {
       }
       const rel = relPr.status === "fulfilled" ? relPr.value : null;
       setReliability(rel);
+      setHeatmapDays(hmPr.status === "fulfilled" ? tryParseHeatmapDays(hmPr.value) : []);
+      setProgression(progPr.status === "fulfilled" ? progPr.value : null);
 
       const errParts: string[] = [];
       if (sr.status === "rejected") {
@@ -239,6 +157,8 @@ export default function ProfileScreen() {
       setStats(null);
       setMilestones(null);
       setReliability(null);
+      setHeatmapDays([]);
+      setProgression(null);
     } finally {
       if (!mounted.current || seq !== loadSeq.current) return;
       setLoading(false);
@@ -347,70 +267,6 @@ export default function ProfileScreen() {
       ? user.profile_picture_url
       : `${API_BASE_URL}${user.profile_picture_url}`
     : null;
-  const avatarUriWithVersion = avatarUri
-    ? `${avatarUri}${avatarUri.includes("?") ? "&" : "?"}v=${avatarVersion}`
-    : null;
-
-  const pickProfilePicture = useCallback(async () => {
-    if (!token || pictureBusy) return;
-    try {
-      setPictureBusy(true);
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(t("profile.picturePermissionTitle"), t("profile.picturePermissionMessage"));
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-      if (result.canceled || !result.assets?.[0]?.uri) return;
-
-      const asset = result.assets[0];
-      const file = await resolveProfilePictureUploadFile(asset, t);
-
-      const formData = new FormData();
-      formData.append("file", {
-        uri: file.uri,
-        name: file.name,
-        type: file.type,
-      } as unknown as Blob);
-
-      await apiMultipart("/users/me/profile-picture", {
-        method: "POST",
-        token,
-        formData,
-        timeoutMs: 45_000,
-      });
-      await refreshUser().catch(() => undefined);
-      setAvatarVersion((prev) => prev + 1);
-      await load({ force: true });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    } catch (e) {
-      const fallbackMessage =
-        e instanceof ApiError
-          ? extractProfilePictureErrorDetail(String(e.message || "")) || t("profile.pictureUploadFailed")
-          : e instanceof Error
-            ? e.message
-            : t("profile.pictureUploadFailed");
-      const userMsg = shouldOfferPictureFormatHint(fallbackMessage)
-        ? t("profile.pictureUploadDetailWithHint", {
-            detail: fallbackMessage,
-            hint: t("profile.pictureFormatHelp"),
-          })
-        : fallbackMessage;
-      Alert.alert(
-        t("profile.pictureUploadFailedTitle"),
-        userMsg,
-      );
-    } finally {
-      setPictureBusy(false);
-    }
-  }, [load, pictureBusy, refreshUser, t, token]);
-
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView
@@ -425,128 +281,147 @@ export default function ProfileScreen() {
       >
         <ScreenHeader
           title={t("tabs.profile")}
-          subtitle={t("profile.settingsTitle")}
-          actionNode={
-            <View style={styles.headerActions}>
-              <RankHudChip from="profile" />
-              <Pressable
-                style={({ pressed }) => [styles.headerLink, pressed && styles.pressed]}
-                onPress={() => router.push("/(tabs)/dashboard")}
-              >
-                <Text style={styles.headerLinkText}>{t("tabs.dashboard")}</Text>
-              </Pressable>
-            </View>
-          }
+          subtitle={t("profile.identitySubtitle")}
+          actionNode={<RankHudChip from="profile" />}
         />
         <View style={styles.profileHero}>
-          <Pressable
-            style={({ pressed }) => [styles.avatarPressable, pressed && styles.pressed]}
-            onPress={() => pickProfilePicture()}
-            disabled={pictureBusy}
-          >
-            <View style={styles.avatar}>
-              {avatarUri ? (
-                <Image
-                  source={{ uri: avatarUriWithVersion ?? avatarUri }}
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <Text style={styles.avatarText}>
-                  {user?.username?.slice(0, 2).toUpperCase() ?? t("profile.defaultInitials")}
-                </Text>
-              )}
-            </View>
-            <Text style={styles.avatarHint}>
-              {pictureBusy ? t("profile.pictureUploading") : t("profile.changePicture")}
-            </Text>
-          </Pressable>
+          <View style={styles.avatar}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {user?.username?.slice(0, 2).toUpperCase() ?? t("profile.defaultInitials")}
+              </Text>
+            )}
+          </View>
           <Text style={styles.username}>{user?.username ?? t("profile.defaultDisplayName")}</Text>
-          <Text style={styles.email}>{user?.email ?? t("profile.loadingEmail")}</Text>
+          {user?.email ? (
+            <Text style={styles.email}>{user.email}</Text>
+          ) : (
+            <View style={[styles.skeletonLine, styles.emailSkeleton]} />
+          )}
+          {user?.id ? (
+            <TextButton
+              label={t("profile.viewPublicProfile")}
+              onPress={() => router.push(`/profile/${user.id}`)}
+              subdued
+            />
+          ) : null}
         </View>
 
         {showInitialLoading ? <ProfileSkeleton /> : null}
 
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Pressable
-              style={styles.retry}
-              onPress={() => load({ force: true }).catch(() => undefined)}
-            >
-              <Text style={styles.retryText}>{t("profile.tryAgain")}</Text>
-            </Pressable>
+        {!showInitialLoading && error && !summary ? (
+          <ErrorState
+            title={t("common.oops")}
+            message={error}
+            retryLabel={t("profile.tryAgain")}
+            onRetry={() => void load({ force: true })}
+          />
+        ) : null}
+
+        {!showInitialLoading && error && summary ? (
+          <View style={styles.partialError}>
+            <Text style={styles.partialErrorText}>{error}</Text>
           </View>
         ) : null}
 
         {!showInitialLoading && summary ? (
-          <View style={styles.statsGrid}>
-            <StatCard label={t("profile.totalSessions")} value={summary.total_sessions} />
-            <StatCard
-              label={t("profile.currentStreak")}
-              value={
-                <View style={glyphRowStyle}>
-                  <AppFlame size={18} />
-                  <Text style={styles.streakStatValue}>{summary.current_streak_days}</Text>
-                </View>
-              }
-            />
-            <StatCard
-              label={t("profile.bestStreak")}
-              value={t("profile.bestStreakDays", { days: summary.best_streak_days })}
-            />
-            <StatCard label={t("profile.totalHours")} value={formatHours(summary.total_seconds)} />
-          </View>
-        ) : null}
-
-        {!showInitialLoading && reliability ? (
-          <View style={styles.reliabilityCard}>
-            <View style={styles.reliabilityHead}>
-              <Text style={styles.reliabilityLabel}>{t("profile.reliabilityTitle")}</Text>
-              <Text style={styles.reliabilityTrend}>
-                {reliability.trend === "up"
-                  ? t("profile.reliabilityTrendUp")
-                  : reliability.trend === "down"
-                    ? t("profile.reliabilityTrendDown")
-                    : t("profile.reliabilityTrendStable")}
-              </Text>
+          <>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitleInline}>{t("profile.producerSnapshotTitle")}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("profile.fullStatsLink")}
+                style={({ pressed }) => [styles.sectionLinkBtn, pressed && styles.pressed]}
+                onPress={() => router.push("/(tabs)/stats")}
+              >
+                <Text style={styles.sectionLink}>{t("profile.fullStatsLink")}</Text>
+              </Pressable>
             </View>
-            <Text style={styles.reliabilityScore}>{reliability.score.toFixed(1)}/10</Text>
-            <Text style={styles.reliabilityMeta}>
-              {typeof reliability.rank_percent === "number"
-                ? t("profile.reliabilityRank", { rank: reliability.rank_percent })
-                : t("profile.reliabilityRankUnavailable")}
-            </Text>
-            <Text style={styles.reliabilityHint}>
-              {t("profile.reliabilityHint", {
-                consistency: Math.round(Number(reliability.consistency_90d) || 0),
-                completion: Math.round(Number(reliability.completion_rate_90d) || 0),
-              })}
-            </Text>
-          </View>
+            <View style={styles.statsGrid}>
+              <StatCard label={t("profile.totalSessions")} value={summary.total_sessions} />
+              <StatCard
+                label={t("profile.currentStreak")}
+                value={
+                  <View style={glyphRowStyle}>
+                    <AppFlame size={18} />
+                    <Text style={styles.streakStatValue}>{summary.current_streak_days}</Text>
+                  </View>
+                }
+              />
+              <StatCard
+                label={t("profile.bestStreak")}
+                value={t("profile.bestStreakDays", { days: summary.best_streak_days })}
+              />
+              <StatCard
+                label={t("profile.totalHours")}
+                value={formatHours(summary.total_seconds)}
+              />
+            </View>
+
+            {reliability ? (
+              <View style={styles.reliabilityCard}>
+                <View style={styles.reliabilityHead}>
+                  <Text style={styles.reliabilityLabel}>{t("profile.reliabilityTitle")}</Text>
+                  <Text style={styles.reliabilityTrend}>
+                    {reliability.trend === "up"
+                      ? t("profile.reliabilityTrendUp")
+                      : reliability.trend === "down"
+                        ? t("profile.reliabilityTrendDown")
+                        : t("profile.reliabilityTrendStable")}
+                  </Text>
+                </View>
+                <Text style={styles.reliabilityScore}>{reliability.score.toFixed(1)}/10</Text>
+                <Text style={styles.reliabilityMeta}>
+                  {typeof reliability.rank_percent === "number"
+                    ? t("profile.reliabilityRank", { rank: reliability.rank_percent })
+                    : t("profile.reliabilityRankUnavailable")}
+                </Text>
+                <Text style={styles.reliabilityHint}>
+                  {t("profile.reliabilityHint", {
+                    consistency: Math.round(Number(reliability.consistency_90d) || 0),
+                    completion: Math.round(Number(reliability.completion_rate_90d) || 0),
+                  })}
+                </Text>
+              </View>
+            ) : null}
+
+            <ProgressionBarCard
+              progression={progression}
+              onPress={() => router.push(progressionOverviewHref("profile"))}
+            />
+
+            <View style={styles.heatmapBlock}>
+              <ActivityHeatmapCard days={heatmapDays} />
+            </View>
+          </>
         ) : null}
 
-        <Text style={styles.sectionTitle}>{t("profile.milestonesTitle")}</Text>
-        {milestones ? (
-          <Text style={styles.milestoneSub}>
-            {t("profile.milestoneSub", { days: milestones.longest_streak_days })}
-          </Text>
-        ) : null}
+        {!showInitialLoading ? (
+          <>
+            <Text style={styles.sectionTitle}>{t("profile.milestonesTitle")}</Text>
+            {milestones ? (
+              <Text style={styles.milestoneSub}>
+                {t("profile.milestoneSub", { days: milestones.longest_streak_days })}
+              </Text>
+            ) : null}
 
-        {!showInitialLoading && milestones ? (
-          <ScrollView
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.badgesRow}
-          >
-            {milestones.milestones.map((item) => (
-              <BadgeIcon key={item.days} label={item.title} unlocked={item.unlocked} />
-            ))}
-          </ScrollView>
-        ) : null}
-
-        {!showInitialLoading && !milestones && (!error || summary) ? (
-          <Text style={styles.muted}>{t("profile.milestonesUnavailable")}</Text>
+            {milestones ? (
+              <ScrollView
+                horizontal
+                nestedScrollEnabled
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.badgesRow}
+              >
+                {milestones.milestones.map((item) => (
+                  <BadgeIcon key={item.days} label={item.title} unlocked={item.unlocked} />
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.muted}>{t("profile.milestonesUnavailable")}</Text>
+            )}
+          </>
         ) : null}
 
         {__DEV__ ? (
@@ -680,10 +555,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
   },
   profileHero: { alignItems: "center", marginBottom: spacing.lg },
-  avatarPressable: {
-    alignItems: "center",
-    gap: spacing.xs,
-  },
   avatar: {
     width: 92,
     height: 92,
@@ -693,7 +564,7 @@ const styles = StyleSheet.create({
     borderColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
     overflow: "hidden",
   },
   avatarImage: {
@@ -705,10 +576,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.heading,
     ...typography.subheadline,
   },
-  avatarHint: {
-    color: colors.textSecondary,
-    ...typography.caption,
-  },
   username: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
@@ -719,36 +586,50 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     ...typography.caption,
   },
-  loadingBlock: {
-    alignItems: "center",
-    paddingVertical: spacing.xl,
-    gap: spacing.sm,
+  emailSkeleton: {
+    width: 180,
+    height: 12,
+    marginTop: spacing.xs,
   },
-  loadingHint: { color: colors.textSecondary, ...typography.caption },
-  inlineLoadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
+  partialError: {
     marginBottom: spacing.md,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    padding: spacing.sm,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    borderColor: "rgba(255,180,80,0.35)",
+    backgroundColor: "rgba(255,180,80,0.08)",
   },
-  inlineLoadingText: { color: colors.textSecondary, ...typography.caption },
-  errorBox: {
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    backgroundColor: "rgba(255,80,80,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,80,80,0.25)",
-    marginBottom: spacing.md,
+  partialErrorText: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    lineHeight: 18,
   },
-  errorText: { color: "#ff9a9a", ...typography.caption, marginBottom: spacing.sm },
-  retry: { alignSelf: "flex-start", paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
-  retryText: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  sectionHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  sectionTitleInline: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.subheadline,
+  },
+  sectionLinkBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  sectionLink: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  heatmapBlock: {
+    marginTop: spacing.md,
+  },
   streakStatValue: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
@@ -906,26 +787,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    flexShrink: 0,
-  },
-  headerLink: {
-    minHeight: 36,
-    justifyContent: "center",
-    borderRadius: ui.cardRadius,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.surface,
-  },
-  headerLinkText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
   outlineBtnText: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
+import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useStreakReconcileOnForeground } from "../../hooks/useStreakReconcileOnForeground";
@@ -72,13 +73,14 @@ export default function TabsLayout() {
   if (!hydrated || (token && (entitlementLoading || hasAccess == null))) {
     return (
       <View style={styles.center}>
+        <ProdifyWordmark size="splash" style={styles.bootWordmark} />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (!token) {
-    return <Redirect href="/(auth)/login" />;
+    return <Redirect href="/(auth)/register" />;
   }
   if (!hasAccess) {
     return <Redirect href={{ pathname: "/paywall", params: { source: "post_auth" } }} />;
@@ -161,6 +163,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
+    gap: spacing.md,
+  },
+  bootWordmark: {
+    marginBottom: spacing.xs,
   },
   tabIconWrap: {
     alignItems: "center",

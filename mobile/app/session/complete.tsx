@@ -14,11 +14,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppFlame, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
+import { SessionCompleteWeekCard } from "../../components/session/SessionCompleteWeekCard";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { TextButton } from "../../components/ui/TextButton";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { AppCard } from "../../components/ui/AppCard";
-import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { fontFamily } from "../../constants/fonts";
 import { colors, motion, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -27,10 +27,12 @@ import { buildWeeklyForecast } from "../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../lib/goalPace";
 import { progressionLevelName } from "../../lib/progressionLevels";
 import { syncProgression } from "../../lib/progressionSync";
-import { buildSessionFeedback } from "../../lib/sessionFeedbackEngine";
+import {
+  buildSessionFeedback,
+  type SessionFeedbackComputed,
+} from "../../lib/sessionFeedbackEngine";
 import { tryParseSessionDto } from "../../lib/sessionDto";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
-import { generateMotivationMessage, getTimeOfDay } from "../../lib/motivationEngine";
 import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDto } from "../../types/session";
 import type { ProgressionDto } from "../../types/outcomes";
@@ -41,6 +43,25 @@ const BASE_SESSION_XP = 5;
 const SESSION_XP_PER_MINUTE_AFTER_FLOOR = 0.5;
 const SESSION_XP_MAX = 85;
 const TRACK_TITLE_MAX_LENGTH = 160;
+
+function shortenLabel(value: string, max = 14): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, Math.max(1, max - 1))}…`;
+}
+
+function pickSessionHighlightKey(feedback: SessionFeedbackComputed): string {
+  if (feedback.remainingSessionsToGoal === 0) {
+    return feedback.statusMessageKey;
+  }
+  if (feedback.previousStatus != null && feedback.previousStatus !== feedback.newStatus) {
+    return feedback.statusMessageKey;
+  }
+  if (feedback.newStatus === "off_track") {
+    return feedback.statusMessageKey;
+  }
+  return feedback.emotionalMessageKey;
+}
 
 function estimateSessionXpGain(durationSeconds: number): number {
   const minutes = Math.max(0, Math.floor(durationSeconds / 60));
@@ -182,21 +203,6 @@ export default function SessionCompleteScreen() {
     return Math.max(0, Math.min(1, pct));
   }, [secondsLeft]);
 
-  const completionMessage = useMemo(() => {
-    if (!session) return null;
-    return generateMotivationMessage({
-      session: {
-        duration_seconds: session.duration_seconds ?? 0,
-        focus_score: session.focus_score ?? null,
-        session_type: String(session.session_type),
-      },
-      streak: streak ?? 0,
-      todayCount: 0,
-      weekCount: 0,
-      friends: { activeNow: 0, topThisWeek: null },
-      timeOfDay: getTimeOfDay(),
-    });
-  }, [session, streak]);
   const feedback = useMemo(
     () =>
       buildSessionFeedback({
@@ -293,53 +299,54 @@ export default function SessionCompleteScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <Text style={styles.check}>✓</Text>
-          <ScreenHeader
-            title={t("sessionComplete.title")}
-            subtitle={t("sessionFeedback.nextActionTitle")}
-            actionLabel={t("sessionFeedback.backToDashboard")}
-            onActionPress={() => router.replace("/(tabs)/dashboard")}
-          />
+          <Text style={styles.title}>{t("sessionComplete.title")}</Text>
           <Text style={styles.bigDur}>{formatDurationWords(dur)}</Text>
-          {streak !== null && streak > 0 ? (
-            <View style={[glyphRowStyle, styles.streakRow]}>
-              <AppFlame size={22} />
-              <Text style={styles.streak}>{t("sessionComplete.streakLine", { count: streak })}</Text>
-            </View>
+          <View style={styles.statRow}>
+            {streak !== null && streak > 0 ? (
+              <>
+                <View style={[glyphRowStyle, styles.statChip]}>
+                  <AppFlame size={16} />
+                  <Text style={styles.statItem}>
+                    {t("sessionComplete.statStreak", { count: streak })}
+                  </Text>
+                </View>
+                <Text style={styles.statDot}>·</Text>
+              </>
+            ) : null}
+            <Text style={styles.statItem}>
+              {t("sessionComplete.statXp", { xp: xpGainEstimate })}
+            </Text>
+            {progression ? (
+              <>
+                <Text style={styles.statDot}>·</Text>
+                <Text style={styles.statItem} numberOfLines={1}>
+                  {t("sessionComplete.statRank", {
+                    level: progression.current_level,
+                    name: shortenLabel(progressionLevelName(t, progression.current_level)),
+                  })}
+                </Text>
+              </>
+            ) : null}
+          </View>
+          {xpGainEstimate === 0 ? (
+            <Text style={styles.xpHintInline}>
+              {t("sessionComplete.xpMinDurationHint", { min: SESSION_XP_MINUTES_FLOOR })}
+            </Text>
           ) : null}
-          <Text style={styles.motivation}>{t(feedback.emotionalMessageKey)}</Text>
+          <Text style={styles.motivation}>{t(pickSessionHighlightKey(feedback))}</Text>
         </View>
 
-        <AppCard style={styles.feedbackCard}>
-          <Text style={styles.feedbackKicker}>{t("sessionFeedback.progressTitle")}</Text>
-          {feedback.progressPercent !== null ? (
-            <Text style={styles.feedbackBig}>
-              {t("sessionFeedback.progressSecured", { pct: feedback.progressPercent })}
-            </Text>
-          ) : (
-            <Text style={styles.feedbackBig}>{t("sessionFeedback.progressFallback")}</Text>
-          )}
-          <Text style={styles.feedbackStatus}>{t(feedback.statusMessageKey)}</Text>
-          {feedback.remainingSessionsToGoal !== null ? (
-            <Text style={styles.feedbackHint}>
-              {feedback.remainingSessionsToGoal > 0
-                ? t("sessionFeedback.remainingToGoal", {
-                    count: feedback.remainingSessionsToGoal,
-                  })
-                : t("sessionFeedback.goalReached")}
-            </Text>
-          ) : null}
-        </AppCard>
-
-        <AppCard style={styles.nextActionCard}>
-          <Text style={styles.nextActionTitle}>{t("sessionFeedback.nextActionTitle")}</Text>
-          <Text style={styles.nextActionText}>
-            {t(feedback.nextActionKey, feedback.nextActionParams)}
-          </Text>
-        </AppCard>
+        <SessionCompleteWeekCard
+          t={t}
+          feedback={feedback}
+          weekSessionsCount={weekSessionsCount}
+          weeklyGoalTarget={effectiveWeeklyGoalTarget}
+          paceForecast={paceForecast}
+          weekdayLabels={weekdayLabels}
+        />
 
         <AppCard style={styles.trackCard}>
-          <Text style={styles.nextActionTitle}>{t("sessionComplete.trackOutcomeTitle")}</Text>
-          <Text style={styles.trackHint}>{t("sessionComplete.trackOutcomeHint")}</Text>
+          <Text style={styles.cardTitle}>{t("sessionComplete.trackOutcomeTitle")}</Text>
           <View style={styles.trackOutcomeRow}>
             {(["none", "wip", "finished"] as const).map((option) => (
               <Pressable
@@ -411,76 +418,6 @@ export default function SessionCompleteScreen() {
           {trackSaveError ? <Text style={styles.trackError}>{trackSaveError}</Text> : null}
         </AppCard>
 
-        <AppCard style={styles.xpCard}>
-          <Text style={styles.xpTitle}>
-            {t("sessionComplete.xpEarned", { xp: xpGainEstimate })}
-          </Text>
-          {xpGainEstimate === 0 ? (
-            <Text style={styles.xpHint}>
-              {t("sessionComplete.xpMinDurationHint", { min: SESSION_XP_MINUTES_FLOOR })}
-            </Text>
-          ) : null}
-          <Text style={styles.xpMeta}>
-            {progression
-              ? t("sessionComplete.levelProgress", {
-                  name: progressionLevelName(t, progression.current_level),
-                  toNext: progression.xp_to_next_level,
-                  nextName: progressionLevelName(t, progression.current_level + 1),
-                })
-              : t("sessionComplete.levelProgressFallback")}
-          </Text>
-        </AppCard>
-
-        {paceForecast ? (
-          <AppCard style={styles.supportingCard}>
-            <Text
-              style={[
-                styles.forecastLine,
-                paceForecast.forecastStatus === "will_miss"
-                  ? styles.forecastDanger
-                  : paceForecast.forecastStatus === "at_risk"
-                    ? styles.forecastWarn
-                    : styles.forecastGood,
-              ]}
-            >
-              {t(paceForecast.forecastMessageKey, paceForecast.forecastMessageParams)}
-            </Text>
-            <Text style={styles.forecastHint}>
-              {t(paceForecast.todayActionKey, paceForecast.todayActionParams)}
-            </Text>
-            {paceForecast.projectedHitDayIndex != null &&
-            (paceForecast.forecastStatus === "on_track" ||
-              paceForecast.forecastStatus === "ahead") ? (
-              <Text style={styles.forecastEta}>
-                {t("forecast.hitByDay", {
-                  day:
-                    weekdayLabels[
-                      Math.max(0, Math.min(6, paceForecast.projectedHitDayIndex - 1))
-                    ] ?? weekdayLabels[0],
-                })}
-              </Text>
-            ) : null}
-            <View style={styles.goalProgressTrack}>
-              <View
-                style={[
-                  styles.goalProgressFill,
-                  { width: `${paceForecast.currentProgressPercent}%` },
-                ]}
-              />
-              <View
-                style={[
-                  styles.goalProgressMarker,
-                  { left: `${paceForecast.todayExpectedMarkerPercent}%` },
-                ]}
-              />
-            </View>
-          </AppCard>
-        ) : null}
-
-        {completionMessage ? (
-          <Text style={styles.secondaryMotivation}>{completionMessage}</Text>
-        ) : null}
-
         {autoReturnEnabled ? (
           <View style={styles.autoWrap}>
             <Text style={styles.auto}>
@@ -516,11 +453,6 @@ export default function SessionCompleteScreen() {
             label={t("sessionComplete.viewDetails")}
             onPress={() => router.replace(`/session/${id}` as never)}
           />
-          <TextButton
-            label={t("sessionFeedback.backToDashboard")}
-            onPress={() => router.replace("/(tabs)/dashboard")}
-            subdued
-          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -537,7 +469,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   scrollContent: { paddingBottom: spacing.xl },
-  hero: { alignItems: "stretch", marginTop: spacing.lg, gap: spacing.xs },
+  hero: { alignItems: "center", marginTop: spacing.lg, gap: spacing.xs },
   check: {
     fontSize: 48,
     color: colors.success,
@@ -554,117 +486,55 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: fontFamily.heading,
     fontSize: 36,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
-  streakRow: {
+  statRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
     justifyContent: "center",
-    marginTop: spacing.xs,
-  },
-  streak: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    textAlign: "center",
-  },
-  feedbackCard: {
-    marginTop: spacing.lg,
-    width: "100%",
     gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
   },
-  feedbackKicker: {
+  statChip: {
+    alignItems: "center",
+  },
+  statItem: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.meta,
+  },
+  statDot: {
     color: colors.textSecondary,
     ...typography.meta,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    fontFamily: fontFamily.bodyBold,
+    opacity: 0.6,
   },
-  feedbackBig: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 28,
-  },
-  feedbackStatus: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.bodyStrong,
-  },
-  feedbackHint: { color: colors.textSecondary, ...typography.meta },
-  forecastLine: {
-    marginTop: 2,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
-  forecastHint: { color: colors.textSecondary, ...typography.meta },
-  forecastEta: {
-    color: colors.textPrimary,
-    ...typography.meta,
+  xpHintInline: {
+    color: "#f59e0b",
+    ...typography.caption,
     fontFamily: fontFamily.bodyMedium,
-  },
-  forecastDanger: { color: colors.danger },
-  forecastWarn: { color: "#f59e0b" },
-  forecastGood: { color: colors.success },
-  goalProgressTrack: {
-    marginTop: spacing.xs,
-    width: "100%",
-    height: 9,
-    borderRadius: 999,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-    position: "relative",
-  },
-  goalProgressFill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-  },
-  goalProgressMarker: {
-    position: "absolute",
-    top: -2,
-    bottom: -2,
-    width: 2,
-    backgroundColor: "#ffffff",
-    opacity: 0.9,
+    textAlign: "center",
+    paddingHorizontal: spacing.md,
   },
   motivation: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
     ...typography.bodyStrong,
     textAlign: "center",
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
     paddingHorizontal: spacing.md,
     lineHeight: 22,
   },
-  secondaryMotivation: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    textAlign: "center",
-    paddingHorizontal: spacing.sm,
-    lineHeight: 20,
-    marginTop: spacing.sm,
-  },
-  nextActionCard: {
-    marginTop: spacing.sm,
-    width: "100%",
-    gap: spacing.xs,
-  },
-  nextActionTitle: {
+  cardTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
     ...typography.meta,
-  },
-  nextActionText: {
-    color: colors.textSecondary,
-    ...typography.body,
-    lineHeight: 22,
   },
   trackCard: {
     marginTop: spacing.sm,
     width: "100%",
     gap: spacing.sm,
-  },
-  trackHint: {
-    color: colors.textSecondary,
-    ...typography.meta,
   },
   trackOutcomeRow: {
     flexDirection: "row",
@@ -719,20 +589,7 @@ const styles = StyleSheet.create({
     ...typography.meta,
     fontFamily: fontFamily.bodyMedium,
   },
-  xpCard: {
-    marginTop: spacing.sm,
-    width: "100%",
-    gap: spacing.xs,
-  },
-  xpTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  xpHint: { color: "#f59e0b", ...typography.meta, fontFamily: fontFamily.bodyMedium },
-  xpMeta: { color: colors.textSecondary, ...typography.meta },
   auto: { color: colors.textSecondary, ...typography.meta, marginTop: spacing.md },
-  supportingCard: {
-    marginTop: spacing.sm,
-    width: "100%",
-    gap: spacing.xs,
-  },
   autoWrap: {
     marginTop: spacing.md,
     width: "100%",

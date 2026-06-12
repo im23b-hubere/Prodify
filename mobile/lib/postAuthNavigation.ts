@@ -44,7 +44,7 @@ export function resolvePostAuthRoute({
   allowPaywallPrompt = true,
 }: ResolvePostAuthRouteInput): ResolvedRoute {
   if (!hasToken) {
-    return { pathname: onboardingComplete ? "/(auth)/login" : "/onboarding" };
+    return { pathname: onboardingComplete ? "/(auth)/register" : "/onboarding" };
   }
 
   if (!onboardingComplete) {

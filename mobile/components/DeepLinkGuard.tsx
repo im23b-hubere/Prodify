@@ -23,13 +23,13 @@ export function DeepLinkGuard() {
       const targetPath = extractDeepLinkPath(url) || fromParsed;
 
       if (!isAllowedDeepLinkPath(targetPath)) {
-        router.replace((token ? "/dashboard" : "/(auth)/login") as Href);
+        router.replace((token ? "/dashboard" : "/(auth)/register") as Href);
         return;
       }
 
       if (deepLinkRequiresAuth(targetPath) && !token) {
         void setPendingDeepLinkPath(targetPath);
-        router.replace("/(auth)/login");
+        router.replace("/(auth)/register");
         return;
       }
 

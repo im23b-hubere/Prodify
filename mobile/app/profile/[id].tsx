@@ -2,21 +2,15 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AchievementGlyph, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { ActivityHeatmapCard } from "../../components/profile/ActivityHeatmapCard";
 import { ProfileHeader } from "../../components/profile/ProfileHeader";
 import { StreakComparison } from "../../components/profile/StreakComparison";
+import { ErrorState } from "../../components/states/ErrorState";
+import { LoadingState } from "../../components/states/LoadingState";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { API_BASE_URL } from "../../constants/api";
 import { fontFamily } from "../../constants/fonts";
@@ -78,7 +72,7 @@ type SessionItem = {
 export default function FriendProfileScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const raw = useLocalSearchParams<{ id: string | string[] }>().id;
   const idStr = Array.isArray(raw) ? raw[0] : raw;
   const userId = idStr ? parseInt(idStr, 10) : NaN;
@@ -168,11 +162,32 @@ export default function FriendProfileScreen() {
     void load({ silent: true });
   }, [load]);
 
-  if (loadState === "loading") {
+  const isOwnProfile = user?.id != null && user.id === userId;
+
+  const goBack = useCallback(() => {
+    Haptics.selectionAsync().catch(() => undefined);
+    router.back();
+  }, [router]);
+
+  const loadingMessage = isOwnProfile
+    ? t("friendProfile.loadingOwnProfile")
+    : t("friendProfile.loadingProfile");
+
+  if (loadState === "loading" && !refreshing) {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <View style={styles.centered}>
-          <ActivityIndicator color={colors.primary} />
+        <View style={styles.topRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("friendProfile.backA11y")}
+            onPress={goBack}
+            hitSlop={12}
+          >
+            <Text style={styles.back}>{t("friendProfile.backArrow")}</Text>
+          </Pressable>
+        </View>
+        <View style={styles.bootWrap}>
+          <LoadingState message={loadingMessage} />
         </View>
       </SafeAreaView>
     );
@@ -181,11 +196,31 @@ export default function FriendProfileScreen() {
   if (loadState === "error") {
     return (
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <View style={styles.centered}>
-          <Text style={styles.errTitle}>{t("friendProfile.couldNotLoadTitle")}</Text>
-          <Text style={styles.errSub}>{error}</Text>
-          <PrimaryButton label={t("friendProfile.retry")} onPress={() => void load()} />
-          <PrimaryButton label={t("friendProfile.back")} onPress={() => router.back()} />
+        <View style={styles.topRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("friendProfile.backA11y")}
+            onPress={goBack}
+            hitSlop={12}
+          >
+            <Text style={styles.back}>{t("friendProfile.backArrow")}</Text>
+          </Pressable>
+        </View>
+        <View style={styles.bootWrap}>
+          <ErrorState
+            title={t("friendProfile.couldNotLoadTitle")}
+            message={error ?? t("friendProfile.loadError")}
+            retryLabel={t("friendProfile.retry")}
+            onRetry={() => void load()}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("friendProfile.backA11y")}
+            style={styles.bootBackBtn}
+            onPress={goBack}
+          >
+            <Text style={styles.bootBackTxt}>{t("friendProfile.back")}</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -211,10 +246,7 @@ export default function FriendProfileScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("friendProfile.backA11y")}
-          onPress={() => {
-            Haptics.selectionAsync().catch(() => undefined);
-            router.back();
-          }}
+          onPress={goBack}
           hitSlop={12}
         >
           <Text style={styles.back}>{t("friendProfile.backArrow")}</Text>
@@ -406,15 +438,22 @@ const styles = StyleSheet.create({
   topRow: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   back: { color: colors.secondary, fontFamily: fontFamily.bodyBold, ...typography.body },
   scroll: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  centered: {
+  bootWrap: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
     gap: spacing.md,
   },
-  errTitle: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
-  errSub: { color: colors.textSecondary, ...typography.body, textAlign: "center" },
+  bootBackBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  bootBackTxt: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   locked: {
     padding: spacing.lg,
     borderRadius: radii.lg,

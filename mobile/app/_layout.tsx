@@ -14,14 +14,15 @@ import {
 import { Syne_700Bold, useFonts as useSyneFonts } from "@expo-google-fonts/syne";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { ProdifyWordmark } from "../components/brand/ProdifyWordmark";
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
 import { DeepLinkGuard } from "../components/DeepLinkGuard";
 import { OfflineBanner } from "../components/OfflineBanner";
 import { AuthProvider } from "../context/AuthContext";
-import { colors } from "../constants/theme";
+import { colors, spacing } from "../constants/theme";
 import { initSentry } from "../lib/sentry";
 import { configureNotificationHandler } from "../lib/streakNotifications";
 
@@ -41,12 +42,10 @@ export default function RootLayout() {
           backgroundColor: colors.background,
           alignItems: "center",
           justifyContent: "center",
-          gap: 14,
+          gap: spacing.md,
         }}
       >
-        <Text style={{ color: colors.textPrimary, fontSize: 26, fontFamily: "Syne_700Bold" }}>
-          Prodify
-        </Text>
+        <ProdifyWordmark size="splash" />
         <ActivityIndicator color={colors.primary} />
       </View>
     );

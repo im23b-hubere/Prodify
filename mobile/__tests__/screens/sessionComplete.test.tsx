@@ -103,14 +103,6 @@ jest.mock("../../components/ui/AppCard", () => {
   };
 });
 
-jest.mock("../../components/ui/ScreenHeader", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return {
-    ScreenHeader: ({ actionNode }: { actionNode?: React.ReactNode }) => <View>{actionNode}</View>,
-  };
-});
-
 describe("SessionCompleteScreen tracking UX", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -165,7 +157,7 @@ describe("SessionCompleteScreen tracking UX", () => {
       <SessionCompleteScreen />,
     );
 
-    await findByText("sessionComplete.trackOutcomeTitle");
+    await waitFor(() => expect(getByText("sessionComplete.trackOutcomeTitle")).toBeTruthy());
 
     const finishedOption = getAllByText("sessionComplete.trackOutcomeFinished", {
       includeHiddenElements: true,

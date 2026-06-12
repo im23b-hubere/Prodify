@@ -26,6 +26,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { isMoodLevel, MoodIcon, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
+import { ErrorState } from "../../components/states/ErrorState";
+import { LoadingState } from "../../components/states/LoadingState";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -63,6 +65,7 @@ export default function SessionActiveScreen() {
   const [session, setSession] = useState<SessionDto | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [longestCompletedSeconds, setLongestCompletedSeconds] = useState<number | null>(null);
   const [draftNotes, setDraftNotes] = useState("");
@@ -80,12 +83,21 @@ export default function SessionActiveScreen() {
   }));
 
   const load = useCallback(async () => {
-    if (!token) return;
+    setLoading(true);
+    setError(null);
+    if (!token) {
+      setSession(null);
+      setError(t("sessionSetup.notSignedIn"));
+      setLoading(false);
+      return;
+    }
     let sessionId: number | null = null;
     if (id != null && id !== "") {
       const parsedId = Number(id);
       if (!Number.isFinite(parsedId) || parsedId <= 0) {
+        setSession(null);
         setError(t("sessionActive.invalidSession"));
+        setLoading(false);
         return;
       }
       sessionId = parsedId;
@@ -108,6 +120,7 @@ export default function SessionActiveScreen() {
       if (sessionId == null) {
         setError(t("sessionActive.invalidSession"));
         setSession(null);
+        setLoading(false);
         return;
       }
     }
@@ -117,18 +130,22 @@ export default function SessionActiveScreen() {
       if (!data) {
         setError(t("sessionActive.invalidData"));
         setSession(null);
+        setLoading(false);
         return;
       }
       if (data.stopped_at != null) {
+        setLoading(false);
         router.replace(`/session/${data.id}`);
         return;
       }
       setSession(data);
       setDraftNotes(data.notes ?? "");
       setError(null);
+      setLoading(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("sessionActive.loadFailed"));
       setSession(null);
+      setLoading(false);
     }
   }, [id, token, router, t]);
 
@@ -384,17 +401,34 @@ export default function SessionActiveScreen() {
   }, [elapsed, longestCompletedSeconds, t]);
 
   if (!session) {
+    const loadingMessage =
+      id != null && id !== ""
+        ? t("sessionActive.resumingSession")
+        : t("sessionActive.loadingSession");
+
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.errorState}>
-          <Text style={styles.muted}>{error ?? t("sessionActive.loadingSession")}</Text>
-          <PrimaryButton label={t("common.tryAgain")} onPress={() => void load()} />
-          <Pressable
-            onPress={() => router.replace("/(tabs)/dashboard")}
-            style={styles.errorBackBtn}
-          >
-            <Text style={styles.errorBackTxt}>{t("common.back")}</Text>
-          </Pressable>
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <View style={styles.bootWrap}>
+          {loading && !error ? (
+            <LoadingState message={loadingMessage} />
+          ) : (
+            <>
+              <ErrorState
+                title={t("common.oops")}
+                message={error ?? t("sessionActive.loadFailed")}
+                retryLabel={t("common.tryAgain")}
+                onRetry={() => void load()}
+              />
+              <Pressable
+                onPress={() => router.replace("/(tabs)/dashboard")}
+                style={styles.bootBackBtn}
+                accessibilityRole="button"
+                accessibilityLabel={t("common.back")}
+              >
+                <Text style={styles.bootBackTxt}>{t("common.back")}</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </SafeAreaView>
     );
@@ -531,19 +565,18 @@ export default function SessionActiveScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  errorState: {
+  bootWrap: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
   },
-  muted: { color: colors.textSecondary, textAlign: "center", ...typography.body },
-  errorBackBtn: {
+  bootBackBtn: {
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
   },
-  errorBackTxt: {
+  bootBackTxt: {
     color: colors.textSecondary,
     ...typography.caption,
     fontFamily: fontFamily.bodyBold,
