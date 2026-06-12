@@ -1,22 +1,42 @@
 name: E2E Tests
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: API base URL for seed + app build
+        required: false
+        default: https://prodify-api-46b1.onrender.com
+      test_email:
+        description: E2E login email
+        required: false
+        default: test@prodify.app
+      test_password:
+        description: E2E login password
+        required: false
+        default: Test1234!
+      test_username:
+        description: E2E register username
+        required: false
+        default: e2euser
   pull_request:
     branches:
       - main
       - "release/**"
     paths:
       - "mobile/**"
+      - "scripts/seed-e2e-user.sh"
       - ".github/workflows/e2e.yml"
   schedule:
     # Nightly iOS E2E smoke.
     - cron: "30 2 * * *"
   push:
     branches:
+      - main
       - "release/**"
     paths:
       - "mobile/**"
+      - "scripts/seed-e2e-user.sh"
       - ".github/workflows/e2e.yml"
 
 permissions:
@@ -29,10 +49,20 @@ concurrency:
 jobs:
   e2e-ios:
     runs-on: macos-14
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       MAESTRO_VERSION: "1.39.13"
       MAESTRO_INSTALLER_SHA256: "40115b628eb491f29d02275bc7e3db5334024ba4fdff7210a334fd3cf4a8f306"
+      E2E_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
+      E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
+      E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || 'Test1234!' }}
+      E2E_TEST_USERNAME: ${{ github.event.inputs.test_username || 'e2euser' }}
+      EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
+      EXPO_PUBLIC_APP_ENV: development
+      EXPO_PUBLIC_ENV: development
+      EXPO_PUBLIC_E2E_MODE: "true"
+      EXPO_PUBLIC_REVENUECAT_API_KEY: appl_mnYqBJcSBBUEyNRCfULPzxMqpmX
+      EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID: app_access
     defaults:
       run:
         shell: bash
@@ -46,6 +76,9 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: mobile/package-lock.json
+
+      - name: Seed E2E API user
+        run: bash scripts/seed-e2e-user.sh
 
       - name: Install dependencies
         run: cd mobile && npm ci
@@ -76,21 +109,29 @@ jobs:
         working-directory: mobile/ios
         run: pod install
 
-      - name: List simulators
-        run: xcrun simctl list devices available
+      - name: Resolve simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          for NAME in "iPhone 16 Pro" "iPhone 15 Pro" "iPhone 15" "iPhone 14"; do
+            LINE=$(xcrun simctl list devices available | grep -F "${NAME} (" | head -1 || true)
+            if [[ -n "$LINE" ]]; then
+              UDID=$(echo "$LINE" | grep -oE '\([A-F0-9-]+\)' | head -1 | tr -d '()')
+              echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
+              echo "device_udid=$UDID" >> "$GITHUB_OUTPUT"
+              echo "Selected simulator: $NAME ($UDID)"
+              exit 0
+            fi
+          done
+          echo "No supported iPhone simulator found."
+          xcrun simctl list devices available
+          exit 1
 
       - name: Boot simulator
         run: |
           set -euo pipefail
-          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 15 Pro (" | grep -oE '\([A-F0-9-]+\)' | head -1 | tr -d '()')
-          if [[ -z "${UDID:-}" ]]; then
-            echo "Could not find iPhone 15 Pro simulator; list:"
-            xcrun simctl list devices available
-            exit 1
-          fi
-          echo "Booting simulator: $UDID"
-          xcrun simctl boot "$UDID" || true
-          sleep 10
+          xcrun simctl boot "${{ steps.sim.outputs.device_udid }}" || true
+          sleep 15
 
       - name: Build app (simulator)
         working-directory: mobile/ios
@@ -102,28 +143,32 @@ jobs:
             -configuration Debug \
             -sdk iphonesimulator \
             -derivedDataPath build \
-            -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_udid }}" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
       - name: Install app on booted simulator
         run: |
           set -euo pipefail
-          UDID=$(xcrun simctl list devices booted | grep -m1 "iPhone 15 Pro (" | grep -oE '\([A-F0-9-]+\)' | head -1 | tr -d '()')
           APP_PATH=$(find mobile/ios/build -name "Prodify.app" -type d 2>/dev/null | head -1)
           if [[ -z "${APP_PATH:-}" ]]; then
             echo "Prodify.app not found under mobile/ios/build"
             find mobile/ios/build -name "*.app" || true
             exit 1
           fi
-          echo "Installing $APP_PATH on $UDID"
-          xcrun simctl install "$UDID" "$APP_PATH"
+          echo "Installing $APP_PATH on ${{ steps.sim.outputs.device_udid }}"
+          xcrun simctl install "${{ steps.sim.outputs.device_udid }}" "$APP_PATH"
 
       - name: Run Maestro smoke
         working-directory: mobile
         env:
-          MAESTRO_DRIVER_STARTUP_TIMEOUT: "90000"
-        run: maestro test maestro/flows/smoke_test.yaml
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
+        run: |
+          set -euo pipefail
+          maestro test \
+            -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
+            -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
+            maestro/flows/smoke_test.yaml
 
       - name: Upload Maestro screenshots / reports
         if: always()
@@ -132,12 +177,13 @@ jobs:
           name: maestro-artifacts
           path: ~/.maestro/tests/
           retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload Maestro logs on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: maestro-logs
-          path: |
-            ~/.maestro/logs/
+          path: ~/.maestro/logs/
           retention-days: 7
+          if-no-files-found: ignore

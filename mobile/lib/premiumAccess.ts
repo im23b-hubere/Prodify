@@ -4,6 +4,7 @@ import {
   peekCachedHasPremiumAccess,
   syncEntitlement,
 } from "./billing";
+import { isE2eModeEnabled } from "./e2eMode";
 import { isDevBillingBypassActive } from "./devBillingBypass";
 import {
   activeEntitlementExpiration,
@@ -18,6 +19,10 @@ export async function resolvePremiumAccess(
   token: string,
   appUserId?: string | null,
 ): Promise<boolean> {
+  if (isE2eModeEnabled()) {
+    return true;
+  }
+
   if (await isDevBillingBypassActive()) {
     return true;
   }

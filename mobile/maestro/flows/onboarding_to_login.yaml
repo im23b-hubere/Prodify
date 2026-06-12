@@ -1,0 +1,13 @@
+# Fresh install: skip quiz onboarding, mark complete, open login via deep link.
+- tapOn: "Skip"
+- assertVisible: "Weekly session target"
+- tapOn: "Skip"
+- assertVisible: "Your Prodify plan"
+- tapOn: "Continue"
+- assertVisible: "Not now"
+- tapOn: "Not now"
+- extendedWaitUntil:
+    visible: "Premium"
+    timeout: 20000
+- openLink: prodify://login
+- assertVisible: "Welcome back"

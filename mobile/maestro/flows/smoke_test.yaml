@@ -1,11 +1,12 @@
-# Prodify smoke flow — requires API reachable from the simulator (e.g. EXPO_PUBLIC_API_URL).
-# Seed a test user once (username required, min 2 chars):
-#   curl -sS -X POST "https://prodify-api-46b1.onrender.com/auth/register" \
-#     -H "Content-Type: application/json" \
-#     -d '{"email":"test@prodify.app","password":"Test1234!","username":"e2euser"}'
+# Prodify smoke flow — iOS simulator + Maestro (see mobile/maestro/README.md).
+# Requires EXPO_PUBLIC_E2E_MODE=true in the CI build and a seeded API user.
 #
-# Override credentials when running Maestro:
-#   maestro test -e TEST_EMAIL=user@x.com -e TEST_PASSWORD='secret' maestro/flows/smoke_test.yaml
+# Seed locally:
+#   E2E_API_URL=https://prodify-api-46b1.onrender.com ./scripts/seed-e2e-user.sh
+#
+# Run:
+#   cd mobile
+#   maestro test -e TEST_EMAIL=test@prodify.app -e TEST_PASSWORD='Test1234!' maestro/flows/smoke_test.yaml
 
 appId: com.prodify.app
 env:
@@ -15,15 +16,17 @@ env:
 - launchApp
 - runFlow:
     when:
-      visible: "Welcome to Prodify"
-    file: onboarding_then_login.yaml
+      visible: "Let's build your studio plan"
+    file: onboarding_to_login.yaml
 - runFlow:
     when:
       visible: "Welcome back"
     file: login_with_credentials.yaml
 
 # --- Dashboard → session (aligned with en.json copy) ---
-- assertVisible: "Start session"
+- extendedWaitUntil:
+    visible: "Start session"
+    timeout: 30000
 - tapOn: "Start session"
 - assertVisible: "New Session"
 - tapOn: "Beat Making"

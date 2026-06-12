@@ -29,8 +29,20 @@ Runs on push and pull requests:
 
 Workflow: `.github/workflows/e2e.yml`
 
-- Current trigger: `workflow_dispatch` (manual)
-- Scope: iOS simulator build + Maestro smoke flow
+Triggers:
+
+- Manual `workflow_dispatch` (with optional API URL + test credentials)
+- Pull requests to `main` / `release/**` when `mobile/**` changes
+- Push to `main` / `release/**` when `mobile/**` changes
+- Nightly cron (02:30 UTC)
+
+Steps:
+
+1. Seed E2E user via `scripts/seed-e2e-user.sh`
+2. iOS simulator prebuild + `xcodebuild` (Debug, `EXPO_PUBLIC_E2E_MODE=true`)
+3. Maestro smoke flow (`mobile/maestro/flows/smoke_test.yaml`)
+
+See `mobile/maestro/README.md` for local setup.
 
 ## Release Flow (Recommended)
 
