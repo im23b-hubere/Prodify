@@ -1,4 +1,5 @@
-# Fresh install: skip quiz onboarding, mark complete, open login via deep link.
+appId: com.prodify.app
+---
 - tapOn: "Skip"
 - assertVisible: "Weekly session target"
 - tapOn: "Skip"

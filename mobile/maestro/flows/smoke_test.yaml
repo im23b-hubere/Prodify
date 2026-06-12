@@ -1,13 +1,3 @@
-# Prodify smoke flow — iOS simulator + Maestro (see mobile/maestro/README.md).
-# Requires EXPO_PUBLIC_E2E_MODE=true in the CI build and a seeded API user.
-#
-# Seed locally:
-#   E2E_API_URL=https://prodify-api-46b1.onrender.com ./scripts/seed-e2e-user.sh
-#
-# Run:
-#   cd mobile
-#   maestro test -e TEST_EMAIL=test@prodify.app -e TEST_PASSWORD='Test1234!' maestro/flows/smoke_test.yaml
-
 appId: com.prodify.app
 env:
   TEST_EMAIL: test@prodify.app
@@ -22,8 +12,6 @@ env:
     when:
       visible: "Welcome back"
     file: login_with_credentials.yaml
-
-# --- Dashboard → session (aligned with en.json copy) ---
 - extendedWaitUntil:
     visible: "Start session"
     timeout: 30000
@@ -33,21 +21,14 @@ env:
 - tapOn: "START SESSION"
 - assertVisible: "STOP SESSION"
 - waitForAnimationToEnd
-
-# End session (confirmation alert uses sentence case)
 - tapOn: "STOP SESSION"
 - tapOn: "End session"
 - assertVisible: "Session complete"
-
-# Tabs
 - tapOn: "Stats"
 - assertVisible: "Your stats"
-
 - tapOn: "Friends"
 - assertVisible: "Friends"
-
 - tapOn: "Profile"
 - assertVisible: "Profile"
-
 - tapOn: "Dashboard"
 - assertVisible: "Dashboard"
