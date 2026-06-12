@@ -15,6 +15,11 @@ import { AppCard } from "../ui/AppCard";
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography, ui } from "../../constants/theme";
+import {
+  classifyGoalTrackStatus,
+  expectedWeeklySessionsByToday,
+} from "../../lib/goalPace";
+import { PremiumFeatureTeaser } from "../premium/PremiumFeatureTeaser";
 import { WEEKDAY_LETTERS, currentWeekDateKeys, localDateKey } from "../../lib/weekCalendar";
 import type { CommitmentDto } from "../../types/friends";
 import type { GoalCurrentDto } from "../../types/goals";
@@ -32,18 +37,31 @@ type Props = {
   heatmapDays: HeatmapDay[];
   configured: boolean;
   busy: boolean;
+  hasPremiumAccess: boolean;
   onSaveGoal: (target: number, shareWithFriends: boolean) => Promise<void>;
   onStartSession: () => void;
+  onOpenPremium: () => void;
 };
 
 function statusKey(
   goal: GoalCurrentDto | null,
   forecast: GoalForecastDto | null,
   configured: boolean,
+  hasPremiumAccess: boolean,
 ): "setup" | "completed" | "behind" | "on_track" {
   if (!goal || !configured) return "setup";
   if (goal.current_sessions >= goal.target_value) return "completed";
-  if (forecast?.risk_level === "off_track" || forecast?.risk_level === "at_risk") return "behind";
+  if (hasPremiumAccess && forecast) {
+    if (forecast.risk_level === "off_track" || forecast.risk_level === "at_risk") return "behind";
+    return "on_track";
+  }
+  const expectedByNow = expectedWeeklySessionsByToday(goal.target_value);
+  const track = classifyGoalTrackStatus({
+    weeklyGoalTarget: goal.target_value,
+    weekSessionsCount: goal.current_sessions,
+    expectedByNow,
+  });
+  if (track === "off_track") return "behind";
   return "on_track";
 }
 
@@ -55,8 +73,10 @@ export function YourWeekCard({
   heatmapDays,
   configured,
   busy,
+  hasPremiumAccess,
   onSaveGoal,
   onStartSession,
+  onOpenPremium,
 }: Props) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState(5);
@@ -75,7 +95,7 @@ export function YourWeekCard({
   }, [heatmapDays]);
 
   const todayKey = useMemo(() => localDateKey(new Date()), []);
-  const status = statusKey(goal, forecast, configured);
+  const status = statusKey(goal, forecast, configured, hasPremiumAccess);
   const progressPct = goal
     ? Math.max(0, Math.min(100, Math.round(goal.progress_percent)))
     : 0;
@@ -203,7 +223,7 @@ export function YourWeekCard({
               <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
             </View>
 
-            {forecast && forecastRiskKey ? (
+            {hasPremiumAccess && forecast && forecastRiskKey ? (
               <Text
                 style={[
                   styles.forecastLine,
@@ -218,6 +238,14 @@ export function YourWeekCard({
                   days: forecast.days_left,
                 })}
               </Text>
+            ) : !hasPremiumAccess ? (
+              <PremiumFeatureTeaser
+                testID="your-week-forecast-teaser"
+                title={t("stats.premiumForecastTeaserTitle")}
+                body={t("stats.premiumForecastTeaserBody")}
+                ctaLabel={t("stats.premiumForecastCta")}
+                onPress={onOpenPremium}
+              />
             ) : null}
 
             <Text style={styles.studioLabel}>{t("stats.yourWeek.studioDays")}</Text>

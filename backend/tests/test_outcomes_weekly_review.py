@@ -8,8 +8,27 @@ def _auth_headers(client, email: str, username: str, password: str = "strong-pas
     return {"Authorization": f"Bearer {token}"}
 
 
+def _premium_auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
+    headers = _auth_headers(client, email, username, password)
+    me = client.get("/auth/me", headers=headers)
+    assert me.status_code == 200
+    user_id = me.json()["id"]
+    sync = client.post(
+        "/billing/sync",
+        headers=headers,
+        json={
+            "app_user_id": str(user_id),
+            "entitlement": "premium",
+            "trial_active": False,
+            "expires_at": None,
+        },
+    )
+    assert sync.status_code == 200
+    return headers
+
+
 def test_weekly_review_generate_and_fetch(client):
-    headers = _auth_headers(client, "review@example.com", "review-user")
+    headers = _premium_auth_headers(client, "review@example.com", "review-user")
     generated = client.post("/outcomes/weekly-review/generate", headers=headers)
     assert generated.status_code == 200
     body = generated.json()
@@ -28,7 +47,7 @@ def test_weekly_review_generate_uses_ollama_when_available(client, monkeypatch):
         lambda _prompt: "Stay consistent and protect your best hour this week.",
     )
 
-    headers = _auth_headers(client, "review-ollama@example.com", "review-ollama-user")
+    headers = _premium_auth_headers(client, "review-ollama@example.com", "review-ollama-user")
     generated = client.post("/outcomes/weekly-review/generate", headers=headers)
     assert generated.status_code == 200
     body = generated.json()
@@ -40,7 +59,7 @@ def test_weekly_review_generate_ai_timeout_falls_back_without_500(client, monkey
 
     monkeypatch.setattr(weekly_review_service, "generate_weekly_coach_note", lambda _prompt: None)
 
-    headers = _auth_headers(client, "review-timeout@example.com", "review-timeout-user")
+    headers = _premium_auth_headers(client, "review-timeout@example.com", "review-timeout-user")
     generated = client.post("/outcomes/weekly-review/generate", headers=headers)
     assert generated.status_code == 200
     body = generated.json()
@@ -56,7 +75,7 @@ def test_weekly_review_generate_logs_provider_errors_and_uses_fallback(client, m
 
     monkeypatch.setattr(weekly_review_service, "generate_weekly_coach_note", _raise)
 
-    headers = _auth_headers(client, "review-provider@example.com", "review-provider-user")
+    headers = _premium_auth_headers(client, "review-provider@example.com", "review-provider-user")
     with caplog.at_level("ERROR"):
         generated = client.post("/outcomes/weekly-review/generate", headers=headers)
     assert generated.status_code == 200
@@ -64,6 +83,29 @@ def test_weekly_review_generate_logs_provider_errors_and_uses_fallback(client, m
     assert isinstance(body["ai_feedback"], str)
     assert body["ai_feedback"]
     assert any("weekly_review_ai_provider_error" in record.message for record in caplog.records)
+
+
+def test_weekly_review_blocked_for_free_user_without_trial(client, monkeypatch):
+    monkeypatch.setattr("app.dependencies_subscription.settings.onboarding_trial_days", 0)
+    headers = _auth_headers(client, "review-free@example.com", "review-free-user")
+
+    current = client.get("/outcomes/weekly-review/current", headers=headers)
+    assert current.status_code == 402
+
+    generated = client.post("/outcomes/weekly-review/generate", headers=headers)
+    assert generated.status_code == 402
+
+
+def test_weekly_review_available_with_premium_sync_without_trial(client, monkeypatch):
+    monkeypatch.setattr("app.dependencies_subscription.settings.onboarding_trial_days", 0)
+    headers = _premium_auth_headers(client, "review-premium@example.com", "review-premium-user")
+
+    generated = client.post("/outcomes/weekly-review/generate", headers=headers)
+    assert generated.status_code == 200
+    assert "suggestions" in generated.json()
+
+    current = client.get("/outcomes/weekly-review/current", headers=headers)
+    assert current.status_code == 200
 
 
 def test_output_metrics_current_returns_shape(client):

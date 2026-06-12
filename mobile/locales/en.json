@@ -251,7 +251,7 @@
     "variants": {
       "value": {
         "title": "Know your week before it's lost",
-        "body": "Set a weekly goal, get early warnings, and a Sunday review that turns sessions into progress."
+        "body": "Get early warnings when you fall behind pace, plus a Sunday review that turns sessions into progress."
       },
       "outcome": {
         "title": "See progress, not just hours",
@@ -872,7 +872,7 @@
     "couldNotStartProducing": "Could not start producing",
     "unlockPremiumOutcomes": "Stay on track every week",
     "premiumUpsellTitle": "Know before your week slips",
-    "premiumUpsellBody": "Weekly goals, early warnings, and accountability from your crew — so you stay consistent in the studio.",
+    "premiumUpsellBody": "Early warnings, Sunday reviews, and accountability from your crew — so you stay consistent in the studio.",
     "premiumUpsellCta": "See Premium",
     "weeklyGoalNudgeTitle": "Set your weekly target",
     "weeklyGoalNudgeBody": "Choose how many sessions you want this week — in Stats.",
@@ -968,6 +968,9 @@
     "forecastWeekLabel": "Week starting {{date}}",
     "forecastProgress": "{{done}} / {{target}} sessions this week",
     "forecastRemaining": "{{n}} remaining · {{days}} days left in the week",
+    "premiumForecastTeaserTitle": "Know before your week slips",
+    "premiumForecastTeaserBody": "Unlock early warnings when you fall behind on your weekly goal.",
+    "premiumForecastCta": "See Premium",
     "yourWeek": {
       "eyebrow": "Your week",
       "setupTitle": "Set your weekly target",
@@ -1243,6 +1246,9 @@
     "needSignInTitle": "Sign in to see your recap",
     "needSignInBody": "Weekly reviews use your account data after you log in.",
     "signInCta": "Go to sign in",
+    "premiumTeaserTitle": "Sunday review, built for producers",
+    "premiumTeaserBody": "Unlock insights, blockers, and a clear plan for next week.",
+    "premiumTeaserCta": "See Premium",
     "shareHeadline": "My Prodify week",
     "shareInsightsIntro": "Highlights:",
     "generateCta": "Generate this week's recap",

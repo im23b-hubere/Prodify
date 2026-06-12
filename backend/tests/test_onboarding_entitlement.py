@@ -8,7 +8,8 @@ def _auth_headers(client, email: str, username: str, password: str = "strong-pas
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_billing_entitlement_reflects_onboarding_trial(client):
+def test_billing_entitlement_reflects_onboarding_trial(client, monkeypatch):
+    monkeypatch.setattr("app.dependencies_subscription.settings.onboarding_trial_days", 7)
     headers = _auth_headers(client, "onboard@example.com", "onboard-user")
     r = client.get("/billing/entitlement", headers=headers)
     assert r.status_code == 200
@@ -18,10 +19,13 @@ def test_billing_entitlement_reflects_onboarding_trial(client):
     assert body["expires_at"] is not None
 
 
-def test_outcomes_accessible_during_onboarding_without_billing_row(client):
+def test_outcomes_accessible_during_onboarding_without_billing_row(client, monkeypatch):
+    monkeypatch.setattr("app.dependencies_subscription.settings.onboarding_trial_days", 7)
     headers = _auth_headers(client, "trialout@example.com", "trialout-user")
     r = client.get("/outcomes/goal-forecast/current", headers=headers)
     assert r.status_code == 200
+    review = client.get("/outcomes/weekly-review/current", headers=headers)
+    assert review.status_code == 200
 
 
 def test_outcomes_blocked_when_onboarding_days_zero(client, monkeypatch):
@@ -29,3 +33,7 @@ def test_outcomes_blocked_when_onboarding_days_zero(client, monkeypatch):
     headers = _auth_headers(client, "notrial@example.com", "notrial-user")
     r = client.get("/outcomes/goal-forecast/current", headers=headers)
     assert r.status_code == 402
+    review_current = client.get("/outcomes/weekly-review/current", headers=headers)
+    assert review_current.status_code == 402
+    review_generate = client.post("/outcomes/weekly-review/generate", headers=headers)
+    assert review_generate.status_code == 402

@@ -19,3 +19,7 @@
 
 - Set weekly session targets from the Friends tab.
 - Mix community weekly challenges (`/challenges/weekly/*`) with social friend challenges (`/social/challenges/*`).
+
+## Premium
+
+Goal forecast and weekly review are premium-gated. Weekly goal setup remains free. See [premium-entitlements.md](./premium-entitlements.md).

@@ -26,6 +26,7 @@ router = APIRouter(prefix="/outcomes", tags=["outcomes"])
 def weekly_review_current(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    _entitlement: Annotated[EntitlementPublic, Depends(require_premium_or_trial)],
 ):
     review = get_current_weekly_review(db, current.id)
     if review is not None:
@@ -46,6 +47,7 @@ def weekly_review_generate(
     request: Request,
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    _entitlement: Annotated[EntitlementPublic, Depends(require_premium_or_trial)],
 ):
     review = generate_weekly_review(db, current.id)
     track_event(db, "weekly_review_generated", current.id, {"week_start": review.week_start})

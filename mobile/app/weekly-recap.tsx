@@ -8,6 +8,7 @@ import { Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } 
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
 
+import { PremiumFeatureTeaser } from "../components/premium/PremiumFeatureTeaser";
 import { AppCard } from "../components/ui/AppCard";
 import { EmptyState } from "../components/states/EmptyState";
 import { ErrorState } from "../components/states/ErrorState";
@@ -16,11 +17,12 @@ import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
-import { apiJson } from "../lib/client";
+import { fetchEntitlement, hasPremiumAccess } from "../lib/billing";
+import { ApiError, apiJson } from "../lib/client";
 import { tryParseSessionStatsDto } from "../lib/statsDto";
 import { tryParseWeeklyReviewDto } from "../lib/outcomesDto";
 import type { SessionStatsDto } from "../types/session";
-import type { WeeklyReviewDto } from "../types/outcomes";
+import type { EntitlementDto, WeeklyReviewDto } from "../types/outcomes";
 
 type WeeklyShareTemplateId = "minimal" | "gradient";
 
@@ -174,7 +176,18 @@ export default function WeeklyRecapScreen() {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareTemplate, setShareTemplate] = useState<WeeklyShareTemplateId>("minimal");
+  const [entitlement, setEntitlement] = useState<EntitlementDto | null>(null);
   const shotRef = useRef<ViewShot | null>(null);
+
+  const premiumAccess = hasPremiumAccess(entitlement);
+
+  const openPremiumPaywall = useCallback(() => {
+    Haptics.selectionAsync().catch(() => undefined);
+    router.push({
+      pathname: "/paywall",
+      params: { variant: "value", source: "weekly_recap" },
+    });
+  }, [router]);
 
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -185,6 +198,7 @@ export default function WeeklyRecapScreen() {
       if (!token) {
         setStats(null);
         setReview(null);
+        setEntitlement(null);
         if (!silent) setLoading(false);
         setRefreshing(false);
         return;
@@ -193,10 +207,22 @@ export default function WeeklyRecapScreen() {
       else setRefreshing(true);
 
       let parsedReview: WeeklyReviewDto | null = null;
+      let entitlementRaw: EntitlementDto | null = null;
       try {
-        const rawReview = await apiJson<unknown>("/outcomes/weekly-review/current", { token });
-        parsedReview = tryParseWeeklyReviewDto(rawReview);
+        entitlementRaw = await fetchEntitlement(token);
       } catch {
+        entitlementRaw = null;
+      }
+      setEntitlement(entitlementRaw);
+
+      if (hasPremiumAccess(entitlementRaw)) {
+        try {
+          const rawReview = await apiJson<unknown>("/outcomes/weekly-review/current", { token });
+          parsedReview = tryParseWeeklyReviewDto(rawReview);
+        } catch {
+          parsedReview = null;
+        }
+      } else {
         parsedReview = null;
       }
       setReview(parsedReview);
@@ -243,6 +269,10 @@ export default function WeeklyRecapScreen() {
 
   const onGenerateRecap = useCallback(async () => {
     if (!token) return;
+    if (!premiumAccess) {
+      openPremiumPaywall();
+      return;
+    }
     setGenerateBusy(true);
     setGenerateError(null);
     try {
@@ -259,12 +289,16 @@ export default function WeeklyRecapScreen() {
         setGenerateError(t("weeklyRecap.generateInvalid"));
       }
     } catch (e) {
+      if (e instanceof ApiError && e.status === 402) {
+        openPremiumPaywall();
+        return;
+      }
       const msg = e instanceof Error ? e.message : t("weeklyRecap.generateFailed");
       setGenerateError(msg);
     } finally {
       setGenerateBusy(false);
     }
-  }, [token, t]);
+  }, [openPremiumPaywall, premiumAccess, t, token]);
 
   const s = stats?.summary;
   const displaySessions = review?.total_sessions ?? s?.total_sessions ?? 0;
@@ -470,12 +504,24 @@ export default function WeeklyRecapScreen() {
 
         {token && !review && !loading && !showFatalError && !showSignIn ? (
           <View style={styles.generateBlock}>
-            <PrimaryButton
-              label={t("weeklyRecap.generateCta")}
-              loading={generateBusy}
-              onPress={() => void onGenerateRecap()}
-            />
-            {generateError ? <Text style={styles.generateErr}>{generateError}</Text> : null}
+            {premiumAccess ? (
+              <>
+                <PrimaryButton
+                  label={t("weeklyRecap.generateCta")}
+                  loading={generateBusy}
+                  onPress={() => void onGenerateRecap()}
+                />
+                {generateError ? <Text style={styles.generateErr}>{generateError}</Text> : null}
+              </>
+            ) : (
+              <PremiumFeatureTeaser
+                testID="weekly-recap-premium-teaser"
+                title={t("weeklyRecap.premiumTeaserTitle")}
+                body={t("weeklyRecap.premiumTeaserBody")}
+                ctaLabel={t("weeklyRecap.premiumTeaserCta")}
+                onPress={openPremiumPaywall}
+              />
+            )}
           </View>
         ) : null}
 

@@ -23,6 +23,8 @@ class EntitlementService:
             return True
         free_features = {
             "basic_stats": True,
+            "weekly_goal": True,
+            "goal_forecast": False,
             "weekly_review": False,
             "export_data": False,
             "custom_themes": False,

@@ -33,6 +33,7 @@ import { fontFamily } from "../../constants/fonts";
 import { WEEKLY_GOAL_CONFIGURED_KEY } from "../../constants/storageKeys";
 import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
+import { fetchEntitlement, hasPremiumAccess } from "../../lib/billing";
 import { apiJson } from "../../lib/client";
 import { fetchCurrentGoal, setWeeklyGoal as saveWeeklyGoalApi } from "../../lib/goals";
 import { fetchCommitment } from "../../lib/social";
@@ -67,7 +68,7 @@ import {
 import type { CommitmentDto } from "../../types/friends";
 import type { GoalCurrentDto } from "../../types/goals";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
-import type { GoalForecastDto, ProgressionDto } from "../../types/outcomes";
+import type { EntitlementDto, GoalForecastDto, ProgressionDto } from "../../types/outcomes";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 type PersonalRecord = {
@@ -278,6 +279,7 @@ export default function StatsScreen() {
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
+  const [entitlement, setEntitlement] = useState<EntitlementDto | null>(null);
   const [weeklyGoal, setWeeklyGoal] = useState<GoalCurrentDto | null>(null);
   const [commitment, setCommitment] = useState<CommitmentDto | null>(null);
   const [goalConfigured, setGoalConfigured] = useState(false);
@@ -339,25 +341,47 @@ export default function StatsScreen() {
         // Show core stats first, then hydrate secondary sections.
         if (mounted.current && seq === loadSeq.current) setLoading(false);
 
-        const [progressionRes, forecastRes, motivationRes, goalRes, commitmentRes, configuredRes] =
-          await Promise.allSettled([
-            syncProgression(token, { force: forceProgressionSync }),
-            apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
-            apiJson<unknown>("/motivational-messages/random", { token }),
-            fetchCurrentGoal(token),
-            fetchCommitment(token),
-            AsyncStorage.getItem(WEEKLY_GOAL_CONFIGURED_KEY),
-          ]);
+        const [
+          progressionRes,
+          entitlementRes,
+          motivationRes,
+          goalRes,
+          commitmentRes,
+          configuredRes,
+        ] = await Promise.allSettled([
+          syncProgression(token, { force: forceProgressionSync }),
+          fetchEntitlement(token),
+          apiJson<unknown>("/motivational-messages/random", { token }),
+          fetchCurrentGoal(token),
+          fetchCommitment(token),
+          AsyncStorage.getItem(WEEKLY_GOAL_CONFIGURED_KEY),
+        ]);
         if (!mounted.current || seq !== loadSeq.current) return;
 
         const progressionRaw = progressionRes.status === "fulfilled" ? progressionRes.value : null;
-        const forecastRaw = forecastRes.status === "fulfilled" ? forecastRes.value : null;
+        const entitlementRaw =
+          entitlementRes.status === "fulfilled" ? entitlementRes.value : null;
         const motivationRaw = motivationRes.status === "fulfilled" ? motivationRes.value : null;
         const goalRaw = goalRes.status === "fulfilled" ? goalRes.value : null;
         const commitmentRaw = commitmentRes.status === "fulfilled" ? commitmentRes.value : null;
         const configuredRaw = configuredRes.status === "fulfilled" ? configuredRes.value : null;
 
-        setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+        setEntitlement(entitlementRaw);
+        const premiumAccess = hasPremiumAccess(entitlementRaw);
+        if (premiumAccess) {
+          try {
+            const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
+              token,
+            });
+            if (mounted.current && seq === loadSeq.current) {
+              setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+            }
+          } catch {
+            if (mounted.current && seq === loadSeq.current) setForecast(null);
+          }
+        } else if (mounted.current && seq === loadSeq.current) {
+          setForecast(null);
+        }
         setWeeklyGoal(goalRaw);
         setCommitment(commitmentRaw);
         const hasConfiguredFlag = configuredRaw === "1";
@@ -441,18 +465,41 @@ export default function StatsScreen() {
           const nextCommitment = await fetchCommitment(token);
           setCommitment(nextCommitment);
         }
-        const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", { token });
-        setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+        if (hasPremiumAccess(entitlement)) {
+          const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", { token });
+          setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+        }
       } finally {
         setWeekBusy(false);
       }
     },
-    [token],
+    [entitlement, token],
+  );
+
+  const openPremiumPaywall = useCallback(
+    (source: string) => {
+      Haptics.selectionAsync().catch(() => undefined);
+      router.push({
+        pathname: "/paywall",
+        params: { variant: "value", source },
+      });
+    },
+    [router],
   );
 
   const handleStartSession = useCallback(() => {
     router.push("/session/setup" as Href);
   }, [router]);
+
+  const openWeeklyRecap = useCallback(() => {
+    if (hasPremiumAccess(entitlement)) {
+      router.push("/weekly-recap");
+      return;
+    }
+    openPremiumPaywall("stats_weekly_recap");
+  }, [entitlement, openPremiumPaywall, router]);
+
+  const premiumAccess = hasPremiumAccess(entitlement);
 
   const summary = useMemo(() => {
     const s = stats?.summary;
@@ -734,8 +781,10 @@ export default function StatsScreen() {
               heatmapDays={heatmapDays}
               configured={goalConfigured}
               busy={weekBusy}
+              hasPremiumAccess={premiumAccess}
               onSaveGoal={handleSaveWeeklyGoal}
               onStartSession={handleStartSession}
+              onOpenPremium={() => openPremiumPaywall("stats_your_week")}
             />
           </View>
         ) : null}
@@ -984,7 +1033,7 @@ export default function StatsScreen() {
               <View style={styles.weeklyRecapBottomCta}>
                 <SecondaryButton
                   label={t("stats.openWeeklyRecap")}
-                  onPress={() => router.push("/weekly-recap")}
+                  onPress={openWeeklyRecap}
                 />
               </View>
             ) : null}
