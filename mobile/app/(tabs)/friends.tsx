@@ -78,6 +78,13 @@ export default function FriendsScreen() {
   const periodParam = mode === "week" ? "week" : "all";
   const { load, onRefresh } = useFriendsDashboardData({ token, periodParam, t, state });
 
+  const openStatsYourWeek = useCallback(() => {
+    router.push({
+      pathname: "/(tabs)/stats",
+      params: { focus: "yourWeek" },
+    } as Href);
+  }, [router]);
+
   const openSession = useCallback(
     (sessionId: number, ownerName: string) => {
       router.push({
@@ -203,7 +210,7 @@ export default function FriendsScreen() {
           }}
           onViewCommitment={() => {
             if (item.status === "commitment_published") {
-              setSectionTab("tools");
+              openStatsYourWeek();
             }
           }}
           supportBusy={
@@ -219,9 +226,9 @@ export default function FriendsScreen() {
       busyActionKey,
       feedMetricsBySession,
       reactionBusyBySession,
-      setSectionTab,
       t,
       openSession,
+      openStatsYourWeek,
       user?.id,
     ],
   );
