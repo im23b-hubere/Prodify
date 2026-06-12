@@ -42,6 +42,11 @@ export function peekCachedHasPremiumAccess(token: string): boolean | null {
   return hasPremiumAccess(ent);
 }
 
+/** Optimistically warm entitlement cache (e.g. dev paywall skip). */
+export function seedEntitlementCache(token: string, value: EntitlementDto): void {
+  cachedEntitlement = { token, value, atMs: Date.now() };
+}
+
 export async function fetchEntitlement(
   token: string,
   opts: { force?: boolean } = {},

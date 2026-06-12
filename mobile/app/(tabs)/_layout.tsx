@@ -50,10 +50,11 @@ export default function TabsLayout() {
     }
 
     const cachedAccess = peekCachedHasPremiumAccess(token);
-    if (cachedAccess !== null) {
-      setHasAccess(cachedAccess);
+    if (cachedAccess === true) {
+      setHasAccess(true);
       setEntitlementLoading(false);
     } else {
+      // Never block on cached "free" — dev bypass / RevenueCat may still grant access.
       setHasAccess(null);
       setEntitlementLoading(true);
     }
@@ -66,7 +67,7 @@ export default function TabsLayout() {
       })
       .catch(() => {
         if (!cancelled) {
-          setHasAccess(cachedAccess ?? false);
+          setHasAccess(false);
         }
       })
       .finally(() => {

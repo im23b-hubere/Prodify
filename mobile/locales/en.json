@@ -78,6 +78,100 @@
       "benefit3": "• Key progress updates at the right time",
       "enable": "Enable notifications",
       "notNow": "Not now"
+    },
+    "quiz": {
+      "welcome": {
+        "title": "Let's build your studio plan",
+        "subtitle": "Answer a few quick questions so Prodify can match your workflow and goals.",
+        "cta": "Get started"
+      },
+      "experience": {
+        "title": "How long have you been producing?",
+        "subtitle": "We will tune your pace and expectations.",
+        "options": {
+          "under_1y": "Less than 1 year",
+          "1_3y": "1–3 years",
+          "3_5y": "3–5 years",
+          "5y_plus": "5+ years"
+        },
+        "hints": {
+          "under_1y": "Building foundations",
+          "1_3y": "Finding your sound",
+          "3_5y": "Serious momentum",
+          "5y_plus": "Veteran workflow"
+        }
+      },
+      "genre": {
+        "title": "What's your main genre?",
+        "subtitle": "Your dashboard and insights will reflect your lane.",
+        "options": {
+          "hip_hop": "Hip-Hop / Trap",
+          "edm": "EDM / Electronic",
+          "pop": "Pop / R&B",
+          "other": "Other / Mixed"
+        }
+      },
+      "producerGoal": {
+        "title": "What's your #1 goal right now?",
+        "subtitle": "We will shape your weekly plan around this.",
+        "options": {
+          "more_output": "Ship more music",
+          "consistency": "Stay consistent",
+          "finish_tracks": "Finish more tracks",
+          "learn_skills": "Level up skills"
+        }
+      },
+      "weeklyGoal": {
+        "title": "Weekly session target",
+        "subtitle": "Pick a number you can defend every week.",
+        "perWeek": "sessions / week",
+        "session": "session",
+        "sessions": "sessions",
+        "cta": "See my plan",
+        "previewTitle": "{{goal}} sessions per week",
+        "previewBody": "About {{daily}} {{unit}} per day on average."
+      },
+      "plan": {
+        "title": "Your Prodify plan",
+        "subtitle": "Personalized from your answers.",
+        "rowGenre": "Genre",
+        "rowFocus": "Focus",
+        "rowWeekly": "Weekly target",
+        "weeklyValue": "{{count}} studio sessions",
+        "insightFallback": "You are aiming for {{count}} focused sessions each week.",
+        "insights": {
+          "more_output": "You want to ship more — {{count}} sessions/week is your output rhythm.",
+          "consistency": "Consistency wins — {{count}} sessions/week builds real momentum.",
+          "finish_tracks": "Finish mode on — {{count}} sessions/week moves projects across the line.",
+          "learn_skills": "Skill growth mode — {{count}} sessions/week compounds fast."
+        },
+        "premium": {
+          "more_output": "Premium adds pace forecasts so you catch slippage before the week is gone.",
+          "consistency": "Premium adds streak protection nudges and a Sunday review to keep you on track.",
+          "finish_tracks": "Premium adds weekly insights that turn sessions into a clear next-week plan.",
+          "learn_skills": "Premium adds deeper stats so you see which sessions actually move the needle."
+        },
+        "premiumFallback": "Premium unlocks forecast warnings and a Sunday review built from your sessions.",
+        "cta": "Continue"
+      },
+      "paywall": {
+        "more_output": {
+          "title": "Protect your output pace",
+          "body": "Premium warns you early when you slip off {{weekly}} sessions/week — before the week is lost."
+        },
+        "consistency": {
+          "title": "Make consistency automatic",
+          "body": "Hit {{weekly}} sessions/week with forecast alerts and a Sunday review that keeps you accountable."
+        },
+        "finish_tracks": {
+          "title": "Finish what you start",
+          "body": "{{weekly}} sessions/week plus Premium insights — so tracks cross the finish line, not the backlog."
+        },
+        "learn_skills": {
+          "title": "Grow with every session",
+          "body": "Track {{weekly}} sessions/week with Premium trends that show what is actually working."
+        }
+      }
     }
   },
   "common": {

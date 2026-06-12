@@ -14,7 +14,7 @@ import { getExpoPublicRevenueCatApiKey } from "../constants/env";
 import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
-import { syncEntitlement } from "../lib/billing";
+import { seedEntitlementCache, syncEntitlement } from "../lib/billing";
 import { setDevBillingBypass } from "../lib/devBillingBypass";
 import { replaceWithPendingDeepLinkOrDashboard } from "../lib/pendingDeepLink";
 import { resolvePaywallExitRoute, type PaywallSource } from "../lib/postAuthNavigation";
@@ -27,6 +27,7 @@ import {
   isTrialActive,
   restoreRevenueCatPurchases,
 } from "../lib/revenuecat";
+import { loadOnboardingQuiz } from "../lib/onboardingQuiz";
 import { isOfferingsErrorKey, resolveOfferingsLoadError } from "../lib/paywallErrors";
 
 type Variant = "value" | "outcome" | "social_proof";
@@ -46,10 +47,17 @@ export default function PaywallScreen() {
     params.source === "onboarding" || params.source === "post_auth" ? params.source : "in_app";
   const variant: Variant =
     params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
-  const copy = {
-    title: t(`paywall.variants.${variant}.title`),
-    body: t(`paywall.variants.${variant}.body`),
-  };
+  const defaultCopy = useMemo(
+    () => ({
+      title: t(`paywall.variants.${variant}.title`),
+      body: t(`paywall.variants.${variant}.body`),
+    }),
+    [t, variant],
+  );
+  const [personalizedCopy, setPersonalizedCopy] = useState<{ title: string; body: string } | null>(
+    null,
+  );
+  const copy = personalizedCopy ?? defaultCopy;
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [weeklyPkg, setWeeklyPkg] = useState<PurchasesPackage | null>(null);
@@ -62,6 +70,26 @@ export default function PaywallScreen() {
   const expoGoPreviewMode = __DEV__ && isExpoGo;
 
   const appUserId = useMemo(() => (user?.id != null ? String(user.id) : null), [user?.id]);
+
+  useEffect(() => {
+    if (source !== "onboarding") {
+      setPersonalizedCopy(null);
+      return;
+    }
+    let cancelled = false;
+    void loadOnboardingQuiz().then((quiz) => {
+      if (cancelled || !quiz?.producerGoal) return;
+      setPersonalizedCopy({
+        title: t(`onboarding.quiz.paywall.${quiz.producerGoal}.title`),
+        body: t(`onboarding.quiz.paywall.${quiz.producerGoal}.body`, {
+          weekly: quiz.weeklyGoal ?? 7,
+        }),
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [source, t]);
 
   const previewWeeklyPrice = t("paywall.expoPreview.weeklyPricePlaceholder");
   const previewSixMonthPrice = t("paywall.expoPreview.sixMonthPricePlaceholder");
@@ -179,17 +207,26 @@ export default function PaywallScreen() {
     if (!expoGoPreviewMode) return;
     setBusy(true);
     try {
-      if (token && appUserId) {
+      await setDevBillingBypass(true);
+      if (token) {
         const expires = new Date();
         expires.setDate(expires.getDate() + 30);
-        await syncEntitlement(token, {
-          app_user_id: appUserId,
+        const expiresAt = expires.toISOString();
+        seedEntitlementCache(token, {
+          provider: "revenuecat",
           entitlement: "premium",
           trial_active: true,
-          expires_at: expires.toISOString(),
-        }).catch(() => undefined);
+          expires_at: expiresAt,
+        });
+        if (appUserId) {
+          await syncEntitlement(token, {
+            app_user_id: appUserId,
+            entitlement: "premium",
+            trial_active: true,
+            expires_at: expiresAt,
+          }).catch(() => undefined);
+        }
       }
-      await setDevBillingBypass(true);
       const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
       if (exitRoute === "/(tabs)/dashboard") {
         await replaceWithPendingDeepLinkOrDashboard(router);
