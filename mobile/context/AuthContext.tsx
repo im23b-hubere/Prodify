@@ -5,7 +5,9 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { ONBOARDING_COMPLETE_KEY, REFRESH_TOKEN_KEY } from "../constants/storageKeys";
 import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } from "../lib/client";
 import i18n from "../lib/i18n";
-import { syncEntitlement } from "../lib/billing";
+import { clearEntitlementCache, syncEntitlement } from "../lib/billing";
+import { clearLevelCatalogCache } from "../lib/progressionLevelCatalog";
+import { clearProgressionSyncCache } from "../lib/progressionSync";
 import { clearDevBillingBypass } from "../lib/devBillingBypass";
 import { clearNotificationInbox, setNotificationUserContext } from "../lib/notificationInbox";
 import { clearPendingDeepLinkPath } from "../lib/pendingDeepLink";
@@ -200,6 +202,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearPendingDeepLinkPath();
     await clearDevBillingBypass();
     await configureRevenueCat(undefined).catch(() => undefined);
+    clearEntitlementCache();
+    clearProgressionSyncCache();
+    clearLevelCatalogCache();
     setToken(null);
     setUser(null);
   }, []);
@@ -219,6 +224,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearPendingDeepLinkPath();
     await clearDevBillingBypass();
     await configureRevenueCat(undefined).catch(() => undefined);
+    clearEntitlementCache();
+    clearProgressionSyncCache();
+    clearLevelCatalogCache();
     setToken(null);
     setUser(null);
   }, [token]);

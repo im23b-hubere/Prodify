@@ -25,6 +25,7 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { buildWeeklyForecast } from "../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../lib/goalPace";
+import { progressionLevelName } from "../../lib/progressionLevels";
 import { syncProgression } from "../../lib/progressionSync";
 import { buildSessionFeedback } from "../../lib/sessionFeedbackEngine";
 import { tryParseSessionDto } from "../../lib/sessionDto";
@@ -116,7 +117,7 @@ export default function SessionCompleteScreen() {
       setTrackSaveError(null);
       const [statsRaw, progressionRaw, goalRaw] = await Promise.all([
         apiJson<unknown>("/sessions/stats?period=all", { token }).catch(() => null),
-        syncProgression(token).catch(() => null),
+        syncProgression(token, { force: true }).catch(() => null),
         apiJson<unknown>("/goals/current", { token }).catch(() => null),
       ]);
       if (cancelled.current) return;
@@ -422,8 +423,9 @@ export default function SessionCompleteScreen() {
           <Text style={styles.xpMeta}>
             {progression
               ? t("sessionComplete.levelProgress", {
-                  level: progression.current_level,
+                  name: progressionLevelName(t, progression.current_level),
                   toNext: progression.xp_to_next_level,
+                  nextName: progressionLevelName(t, progression.current_level + 1),
                 })
               : t("sessionComplete.levelProgressFallback")}
           </Text>

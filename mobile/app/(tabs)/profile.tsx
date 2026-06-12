@@ -20,12 +20,14 @@ import * as Haptics from "expo-haptics";
 
 import { BadgeIcon } from "../../components/ui/BadgeIcon";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { RankHudChip } from "../../components/progression/RankHudChip";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { AppFlame, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { StatCard } from "../../components/ui/StatCard";
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors, radii, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
+import { isScreenDataStale } from "../../lib/screenDataStale";
 import { ApiError, apiJson, apiMultipart } from "../../lib/client";
 import { tryParseSessionStatsDto } from "../../lib/statsDto";
 import type { SessionStatsDto } from "../../types/session";
@@ -172,6 +174,7 @@ export default function ProfileScreen() {
   const [avatarVersion, setAvatarVersion] = useState(0);
   const loadSeq = useRef(0);
   const mounted = useRef(true);
+  const lastFetchRef = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
@@ -181,7 +184,12 @@ export default function ProfileScreen() {
     };
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { force?: boolean }) => {
+    const force = Boolean(opts?.force);
+    if (!force && !isScreenDataStale(lastFetchRef.current)) {
+      return;
+    }
+
     const seq = ++loadSeq.current;
     if (!token) {
       if (mounted.current) setLoading(false);
@@ -224,6 +232,7 @@ export default function ProfileScreen() {
         );
       }
       setError(errParts.length ? errParts.join("\n") : null);
+      lastFetchRef.current = Date.now();
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
       setError(e instanceof Error ? e.message : t("profile.errorLoadProfile"));
@@ -294,7 +303,7 @@ export default function ProfileScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    load().catch(() => undefined);
+    load({ force: true }).catch(() => undefined);
   }, [load]);
 
   const pingPush = useCallback(async () => {
@@ -378,7 +387,7 @@ export default function ProfileScreen() {
       });
       await refreshUser().catch(() => undefined);
       setAvatarVersion((prev) => prev + 1);
-      await load();
+      await load({ force: true });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (e) {
       const fallbackMessage =
@@ -417,8 +426,17 @@ export default function ProfileScreen() {
         <ScreenHeader
           title={t("tabs.profile")}
           subtitle={t("profile.settingsTitle")}
-          actionLabel={t("tabs.dashboard")}
-          onActionPress={() => router.push("/(tabs)/dashboard")}
+          actionNode={
+            <View style={styles.headerActions}>
+              <RankHudChip from="profile" />
+              <Pressable
+                style={({ pressed }) => [styles.headerLink, pressed && styles.pressed]}
+                onPress={() => router.push("/(tabs)/dashboard")}
+              >
+                <Text style={styles.headerLinkText}>{t("tabs.dashboard")}</Text>
+              </Pressable>
+            </View>
+          }
         />
         <View style={styles.profileHero}>
           <Pressable
@@ -451,7 +469,10 @@ export default function ProfileScreen() {
         {error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.retry} onPress={() => load().catch(() => undefined)}>
+            <Pressable
+              style={styles.retry}
+              onPress={() => load({ force: true }).catch(() => undefined)}
+            >
               <Text style={styles.retryText}>{t("profile.tryAgain")}</Text>
             </Pressable>
           </View>
@@ -885,6 +906,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    flexShrink: 0,
+  },
+  headerLink: {
+    minHeight: 36,
+    justifyContent: "center",
+    borderRadius: ui.cardRadius,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.surface,
+  },
+  headerLinkText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
   outlineBtnText: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,

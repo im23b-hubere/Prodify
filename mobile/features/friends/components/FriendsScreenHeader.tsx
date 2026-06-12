@@ -2,6 +2,7 @@ import * as Haptics from "expo-haptics";
 import { Search } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { RankHudChip } from "../../../components/progression/RankHudChip";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
 
@@ -33,17 +34,20 @@ export function FriendsScreenHeader({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.screenSubtitle}>{subtitle}</Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={addFriendA11y}
-          style={styles.iconButton}
-          onPress={() => {
-            Haptics.selectionAsync().catch(() => undefined);
-            onOpenAddFriend();
-          }}
-        >
-          <Search color={colors.textPrimary} size={18} />
-        </Pressable>
+        <View style={styles.topActions}>
+          <RankHudChip from="friends" />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={addFriendA11y}
+            style={styles.iconButton}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => undefined);
+              onOpenAddFriend();
+            }}
+          >
+            <Search color={colors.textPrimary} size={18} />
+          </Pressable>
+        </View>
       </View>
       <View style={styles.screenSegmentedRow}>
         <Pressable
@@ -98,6 +102,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   titleBlock: { flex: 1, minWidth: 0 },
+  topActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    flexShrink: 0,
+  },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
   screenSubtitle: {
     marginTop: spacing.xs,

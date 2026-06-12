@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiJson } from "../../../lib/client";
-import { fetchEntitlement } from "../../../lib/billing";
 import { fetchCurrentGoal } from "../../../lib/goals";
 import {
   fetchBuddyRisk,
@@ -22,7 +21,6 @@ import type {
   IdentityStateDto,
   SocialChallengeDto,
 } from "../../../types/friends";
-import type { EntitlementDto } from "../../../types/outcomes";
 import type { SessionDto } from "../../../types/session";
 import type { StreakOverviewDto } from "../../../types/streak";
 
@@ -47,7 +45,6 @@ export function useDashboardData(token: string | null) {
   const [identityState, setIdentityState] = useState<IdentityStateDto | null>(null);
   const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
   const [weekSessionsCount, setWeekSessionsCount] = useState(0);
-  const [entitlement, setEntitlement] = useState<EntitlementDto | null>(null);
 
   const loadSessionsSeq = useRef(0);
   const loadStreakSeq = useRef(0);
@@ -121,8 +118,6 @@ export function useDashboardData(token: string | null) {
         setCommitmentStatus(commitmentRaw);
         setSocialChallenges(Array.isArray(challengesRaw) ? challengesRaw : []);
         setIdentityState(identityRaw);
-        const ent = await fetchEntitlement(token).catch(() => null);
-        setEntitlement(ent);
       } catch {
         // Preserve last known social snapshot and surface a clear partial-load error.
         setError(t("dashboard.socialLoadFailed"));
@@ -137,7 +132,6 @@ export function useDashboardData(token: string | null) {
     if (!token) return;
     const seq = ++loadStreakSeq.current;
     try {
-      await apiJson("/streak/reconcile", { method: "POST", token }).catch(() => undefined);
       const data = await apiJson<StreakOverviewDto>("/streak/overview", { token });
       if (seq !== loadStreakSeq.current) return;
       setStreakOverview(data);
@@ -204,7 +198,6 @@ export function useDashboardData(token: string | null) {
     weeklyGoalTarget,
     hasWeeklyGoal: weeklyGoalTarget != null && weeklyGoalTarget > 0,
     weekSessionsCount,
-    entitlement,
     loadSessions,
     loadStreakOverview,
     loadSocial,

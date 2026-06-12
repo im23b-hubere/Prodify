@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: spacing.md,
     right: spacing.md,
-    /** Above `XpHud` (200) so connectivity stays visible. */
+    /** High z-index so connectivity stays visible above screen content. */
     zIndex: 250,
   },
   banner: {

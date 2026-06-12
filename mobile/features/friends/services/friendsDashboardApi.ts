@@ -1,5 +1,4 @@
 import { apiJson } from "../../../lib/client";
-import { fetchEntitlement } from "../../../lib/billing";
 import {
   fetchBuddyStatus,
   fetchChallenges,
@@ -17,7 +16,6 @@ import type {
   SocialChallengeDto,
   SocialRecapDto,
 } from "../../../types/friends";
-import type { EntitlementDto } from "../../../types/outcomes";
 
 export type FriendsDashboardSnapshot = {
   leaderboard: FriendLeaderboardDto;
@@ -28,31 +26,20 @@ export type FriendsDashboardSnapshot = {
   challenges: SocialChallengeDto[];
   commitment: CommitmentDto | null;
   recap: SocialRecapDto | null;
-  entitlement: EntitlementDto | null;
 };
 
 export async function loadFriendsDashboard(token: string, periodParam: "week" | "all") {
-  const [
-    leaderboard,
-    activity,
-    incoming,
-    buddy,
-    checkin,
-    challenges,
-    commitment,
-    recap,
-    entitlement,
-  ] = await Promise.all([
-    apiJson<FriendLeaderboardDto>(`/friends/leaderboard?period=${periodParam}`, { token }),
-    apiJson<FriendActivityDto[]>("/friends/activity?limit=20", { token }),
-    apiJson<FriendIncomingDto[]>("/friends/incoming", { token }),
-    fetchBuddyStatus(token).catch(() => null),
-    fetchCheckinStatus(token).catch(() => null),
-    fetchChallenges(token).catch(() => []),
-    fetchCommitment(token).catch(() => null),
-    fetchWeeklyRecap(token).catch(() => null),
-    fetchEntitlement(token).catch(() => null),
-  ]);
+  const [leaderboard, activity, incoming, buddy, checkin, challenges, commitment, recap] =
+    await Promise.all([
+      apiJson<FriendLeaderboardDto>(`/friends/leaderboard?period=${periodParam}`, { token }),
+      apiJson<FriendActivityDto[]>("/friends/activity?limit=20", { token }),
+      apiJson<FriendIncomingDto[]>("/friends/incoming", { token }),
+      fetchBuddyStatus(token).catch(() => null),
+      fetchCheckinStatus(token).catch(() => null),
+      fetchChallenges(token).catch(() => []),
+      fetchCommitment(token).catch(() => null),
+      fetchWeeklyRecap(token).catch(() => null),
+    ]);
 
   const snapshot: FriendsDashboardSnapshot = {
     leaderboard,
@@ -63,7 +50,6 @@ export async function loadFriendsDashboard(token: string, periodParam: "week" | 
     challenges,
     commitment,
     recap,
-    entitlement,
   };
   return snapshot;
 }

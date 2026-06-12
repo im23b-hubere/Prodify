@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
+import { useStreakReconcileOnForeground } from "../../hooks/useStreakReconcileOnForeground";
 import { fetchEntitlement, hasPremiumAccess } from "../../lib/billing";
 import { isDevBillingBypassActive } from "../../lib/devBillingBypass";
 
@@ -36,6 +37,8 @@ export default function TabsLayout() {
   const { token, hydrated } = useAuth();
   const [entitlementLoading, setEntitlementLoading] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+
+  useStreakReconcileOnForeground(token);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +88,7 @@ export default function TabsLayout() {
     <Tabs
       detachInactiveScreens={false}
       screenOptions={{
-        lazy: false,
+        lazy: true,
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.textPrimary,
         headerTitleStyle: { fontFamily: "Syne_700Bold", fontSize: 20 },

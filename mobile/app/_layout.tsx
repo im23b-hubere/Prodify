@@ -20,7 +20,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
 import { DeepLinkGuard } from "../components/DeepLinkGuard";
 import { OfflineBanner } from "../components/OfflineBanner";
-import { XpHud } from "../components/progression/XpHud";
 import { AuthProvider } from "../context/AuthContext";
 import { colors } from "../constants/theme";
 import { initSentry } from "../lib/sentry";
@@ -60,7 +59,6 @@ export default function RootLayout() {
           <DeepLinkGuard />
           <OfflineBanner />
           <NotificationNavBridge />
-          <XpHud />
           <StatusBar style="light" />
           <Stack
             screenOptions={{

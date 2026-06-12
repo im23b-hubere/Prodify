@@ -29,6 +29,7 @@ import { WeeklyGoalStatsNudge } from "../../components/dashboard/WeeklyGoalStats
 import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
 import { StreakHeroSection } from "../../components/streak/StreakHeroSection";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { RankHudChip } from "../../components/progression/RankHudChip";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { TutorialOverlay } from "../../components/TutorialOverlay";
 import { PENDING_SESSION_SETUP_KEY } from "../../constants/sessionUi";
@@ -41,7 +42,6 @@ import {
 import { fontFamily } from "../../constants/fonts";
 import { colors, motion, radii, shadows, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-import { hasPremiumAccess } from "../../lib/billing";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
@@ -52,11 +52,6 @@ import { STREAK_MILESTONES } from "../../lib/streakMilestones";
 import { getUnreadCount, syncServerInbox } from "../../lib/notificationInbox";
 import { registerPushTokenWithBackend } from "../../lib/pushToken";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../lib/sessionTime";
-import {
-  completedSessionsCount,
-  pickPaywallVariant,
-  shouldTriggerPaywall,
-} from "../../lib/paywallRules";
 import {
   getLast7DaysProgress,
   getStreak,
@@ -108,7 +103,6 @@ export default function DashboardScreen() {
     weeklyGoalTarget,
     hasWeeklyGoal,
     weekSessionsCount,
-    entitlement,
     loadSessions,
     loadStreakOverview,
     loadSocial,
@@ -185,7 +179,7 @@ export default function DashboardScreen() {
           .then(() => refreshUnreadCount())
           .catch(() => undefined);
       }
-      refreshDashboard({ force: true, withLoading: false }).catch(() => null);
+      refreshDashboard({ withLoading: false }).catch(() => null);
       refreshUnreadCount();
       (async () => {
         try {
@@ -330,7 +324,6 @@ export default function DashboardScreen() {
   }, [active, router, todayPlan.suggestedSessionType]);
 
   const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
-  const completedCount = useMemo(() => completedSessionsCount(visibleSessions), [visibleSessions]);
 
   const openStats = useCallback(() => {
     Haptics.selectionAsync().catch(() => undefined);
@@ -561,20 +554,23 @@ export default function DashboardScreen() {
                 })}
                 subtitle={t("dashboard.streakFallbackTagline")}
                 actionNode={
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.iconButton,
-                      pressed && styles.iconButtonPressed,
-                    ]}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                      router.push("/notifications");
-                    }}
-                    accessibilityLabel={t("dashboard.notificationsA11y")}
-                  >
-                    <Bell color={colors.textPrimary} size={20} />
-                    {notifUnread > 0 ? <View style={styles.notifBadge} /> : null}
-                  </Pressable>
+                  <View style={styles.headerActions}>
+                    <RankHudChip from="dashboard" />
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.iconButton,
+                        pressed && styles.iconButtonPressed,
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                        router.push("/notifications");
+                      }}
+                      accessibilityLabel={t("dashboard.notificationsA11y")}
+                    >
+                      <Bell color={colors.textPrimary} size={20} />
+                      {notifUnread > 0 ? <View style={styles.notifBadge} /> : null}
+                    </Pressable>
+                  </View>
                 }
               />
             </View>
@@ -653,17 +649,6 @@ export default function DashboardScreen() {
               secondaryHint={secondaryNudge ?? identityState?.line ?? null}
             />
 
-            {!hasPremiumAccess(entitlement) ? (
-              <View style={styles.premiumCtaCard}>
-                <Text style={styles.premiumCtaTitle}>{t("dashboard.premiumUpsellTitle")}</Text>
-                <Text style={styles.premiumCtaBody}>{t("dashboard.premiumUpsellBody")}</Text>
-                <PrimaryButton
-                  label={t("dashboard.premiumUpsellCta")}
-                  onPress={() => router.push("/paywall")}
-                />
-              </View>
-            ) : null}
-
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{t("dashboard.recentSessions")}</Text>
               <View style={styles.sectionHeaderRight}>
@@ -693,28 +678,6 @@ export default function DashboardScreen() {
                   }}
                 />
               </View>
-            ) : null}
-            {!hasPremiumAccess(entitlement) &&
-            shouldTriggerPaywall({
-              completedSessionsCount: completedCount,
-              sawFirstWeeklyReview: false,
-              openedFirstInsight: false,
-            }) ? (
-              <PrimaryButton
-                label={t("dashboard.unlockPremiumOutcomes")}
-                onPress={() =>
-                  router.push({
-                    pathname: "/paywall",
-                    params: {
-                      variant: pickPaywallVariant({
-                        completedSessionsCount: completedCount,
-                        sawFirstWeeklyReview: false,
-                        openedFirstInsight: false,
-                      }),
-                    },
-                  })
-                }
-              />
             ) : null}
           </View>
         }
@@ -836,6 +799,12 @@ const styles = StyleSheet.create({
   },
   topBar: {
     marginBottom: spacing.md,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    flexShrink: 0,
   },
   username: {
     color: colors.textPrimary,
@@ -988,24 +957,5 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontFamily: fontFamily.bodyMedium,
     ...typography.meta,
-  },
-  premiumCtaCard: {
-    marginTop: ui.sectionGap,
-    borderRadius: ui.cardRadius,
-    borderWidth: ui.cardBorderWidth,
-    borderColor: "rgba(251,191,36,0.45)",
-    backgroundColor: "rgba(251,191,36,0.08)",
-    padding: ui.cardPadding,
-    gap: ui.compactGap,
-  },
-  premiumCtaTitle: {
-    color: "#fcd34d",
-    fontFamily: fontFamily.heading,
-    ...typography.body,
-  },
-  premiumCtaBody: {
-    color: colors.textPrimary,
-    ...typography.meta,
-    fontFamily: fontFamily.body,
   },
 });

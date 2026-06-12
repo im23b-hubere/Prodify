@@ -1,8 +1,9 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { fontFamily } from "../../constants/fonts";
+import { progressionLevelName } from "../../lib/progressionLevels";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import type { ProgressionDto } from "../../types/outcomes";
 
@@ -21,6 +22,8 @@ export const ProgressionBarCard = memo(function ProgressionBarCard({
   const xpToNext = progression?.xp_to_next_level ?? 50;
   const pct = Math.max(0, Math.min(100, progression?.progress_percent ?? 0));
   const nextLevel = level + 1;
+  const rankName = useMemo(() => progressionLevelName(t, level), [level, t]);
+  const nextRankName = useMemo(() => progressionLevelName(t, nextLevel), [nextLevel, t]);
 
   return (
     <Pressable
@@ -30,7 +33,7 @@ export const ProgressionBarCard = memo(function ProgressionBarCard({
       disabled={!onPress}
     >
       <View style={styles.row}>
-        <Text style={styles.title}>{t("progression.levelTitle", { level })}</Text>
+        <Text style={styles.title}>{t("progression.levelTitle", { level, name: rankName })}</Text>
         <Text style={styles.sub}>{t("progression.xpTotal", { xp })}</Text>
       </View>
       <Text style={styles.hint}>{t("progression.hint")}</Text>
@@ -38,7 +41,11 @@ export const ProgressionBarCard = memo(function ProgressionBarCard({
         <View style={[styles.fill, { width: `${pct}%` }]} />
       </View>
       <Text style={styles.sub}>
-        {t("progression.toNext", { xp: xpToNext, level: nextLevel, percent: Math.round(pct) })}
+        {t("progression.toNext", {
+          xp: xpToNext,
+          nextName: nextRankName,
+          percent: Math.round(pct),
+        })}
       </Text>
     </Pressable>
   );

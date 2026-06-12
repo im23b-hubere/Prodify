@@ -1,7 +1,8 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { TFunction } from "i18next";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
+import { isScreenDataStale } from "../../../lib/screenDataStale";
 import { loadFriendsDashboard } from "../services/friendsDashboardApi";
 import type { FriendsScreenState } from "./useFriendsScreenState";
 
@@ -13,6 +14,8 @@ type Params = {
 };
 
 export function useFriendsDashboardData({ token, periodParam, t, state }: Params) {
+  const lastFetchRef = useRef(0);
+  const lastPeriodParamRef = useRef<string | null>(null);
   const {
     loadSeq,
     mounted,
@@ -26,13 +29,17 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
     setChallenges,
     setCommitment,
     setRecap,
-    setEntitlement,
     setFeedMetricsBySession,
     setUpsellMessage,
     setRefreshing,
   } = state;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { force?: boolean }) => {
+    const force = Boolean(opts?.force);
+    if (!force && !isScreenDataStale(lastFetchRef.current)) {
+      return;
+    }
+
     const seq = ++loadSeq.current;
     if (!token) {
       if (mounted.current) setLoading(false);
@@ -50,7 +57,6 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
       setChallenges(snapshot.challenges);
       setCommitment(snapshot.commitment);
       setRecap(snapshot.recap);
-      setEntitlement(snapshot.entitlement);
       const metricsSeed: Record<
         number,
         { reactionsCount: number; commentsCount: number; viewerReaction: string | null }
@@ -64,6 +70,7 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
       }
       setFeedMetricsBySession(metricsSeed);
       setUpsellMessage(null);
+      lastFetchRef.current = Date.now();
     } catch (e) {
       if (!mounted.current || seq !== loadSeq.current) return;
       setError(e instanceof Error ? e.message : t("friendsScreen.loadError"));
@@ -75,7 +82,6 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
       setCommitment(null);
       setRecap(null);
       setFeedMetricsBySession({});
-      setEntitlement(null);
     } finally {
       if (!mounted.current || seq !== loadSeq.current) return;
       setLoading(false);
@@ -97,7 +103,6 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
     setChallenges,
     setCommitment,
     setRecap,
-    setEntitlement,
     setFeedMetricsBySession,
     setUpsellMessage,
     setRefreshing,
@@ -109,9 +114,19 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
     }, [load]),
   );
 
+  useEffect(() => {
+    if (lastPeriodParamRef.current === null) {
+      lastPeriodParamRef.current = periodParam;
+      return;
+    }
+    if (lastPeriodParamRef.current === periodParam) return;
+    lastPeriodParamRef.current = periodParam;
+    load({ force: true }).catch(() => undefined);
+  }, [load, periodParam]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    load().catch(() => undefined);
+    load({ force: true }).catch(() => undefined);
   }, [load, setRefreshing]);
 
   return { load, onRefresh };

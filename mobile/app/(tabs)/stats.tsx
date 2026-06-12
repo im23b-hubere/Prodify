@@ -28,12 +28,12 @@ import { AppCard } from "../../components/ui/AppCard";
 import { StatCard } from "../../components/ui/StatCard";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
+import { RankHudChip } from "../../components/progression/RankHudChip";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { WEEKLY_GOAL_CONFIGURED_KEY } from "../../constants/storageKeys";
 import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-import { fetchEntitlement, hasPremiumAccess } from "../../lib/billing";
 import { apiJson } from "../../lib/client";
 import { fetchCurrentGoal, setWeeklyGoal as saveWeeklyGoalApi } from "../../lib/goals";
 import { fetchCommitment } from "../../lib/social";
@@ -56,7 +56,8 @@ import {
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
 import { progressionOverviewHref } from "../../lib/progressionNavigation";
-import { syncProgression } from "../../lib/progressionSync";
+import { isScreenDataStale } from "../../lib/screenDataStale";
+import { fetchProgression, syncProgression } from "../../lib/progressionSync";
 import { ActivityHeatmapLegend } from "../../components/charts/ActivityHeatmapLegend";
 import { heatmapCellColor } from "../../lib/heatmapStyle";
 import { tryParseGoalForecastDto } from "../../lib/outcomesDto";
@@ -68,7 +69,7 @@ import {
 import type { CommitmentDto } from "../../types/friends";
 import type { GoalCurrentDto } from "../../types/goals";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
-import type { EntitlementDto, GoalForecastDto, ProgressionDto } from "../../types/outcomes";
+import type { GoalForecastDto, ProgressionDto } from "../../types/outcomes";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 type PersonalRecord = {
@@ -279,7 +280,6 @@ export default function StatsScreen() {
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
-  const [entitlement, setEntitlement] = useState<EntitlementDto | null>(null);
   const [weeklyGoal, setWeeklyGoal] = useState<GoalCurrentDto | null>(null);
   const [commitment, setCommitment] = useState<CommitmentDto | null>(null);
   const [goalConfigured, setGoalConfigured] = useState(false);
@@ -290,7 +290,8 @@ export default function StatsScreen() {
   );
   const loadSeq = useRef(0);
   const mounted = useRef(true);
-  const initialFocusLoadDone = useRef(false);
+  const lastStatsFetchRef = useRef<{ at: number; period: string } | null>(null);
+  const lastPeriodParamRef = useRef<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const yourWeekOffsetY = useRef(0);
   const pendingYourWeekFocus = useRef(false);
@@ -308,9 +309,22 @@ export default function StatsScreen() {
     filter.period === "week" ? "week" : filter.period === "month" ? "month" : "all";
 
   const loadStats = useCallback(
-    async (opts: { forceProgressionSync?: boolean } = {}) => {
+    async (opts: { force?: boolean; forceProgressionSync?: boolean } = {}) => {
+      const force = Boolean(opts.force);
       const forceProgressionSync = Boolean(opts.forceProgressionSync);
       if (!token) return;
+
+      const lastFetch = lastStatsFetchRef.current;
+      if (
+        !force &&
+        !forceProgressionSync &&
+        lastFetch &&
+        lastFetch.period === periodParam &&
+        !isScreenDataStale(lastFetch.at)
+      ) {
+        return;
+      }
+
       const seq = ++loadSeq.current;
       if (mounted.current) setLoading(true);
       if (mounted.current) setError(null);
@@ -343,44 +357,32 @@ export default function StatsScreen() {
 
         const [
           progressionRes,
-          entitlementRes,
           motivationRes,
           goalRes,
           commitmentRes,
           configuredRes,
+          forecastRes,
         ] = await Promise.allSettled([
-          syncProgression(token, { force: forceProgressionSync }),
-          fetchEntitlement(token),
+          forceProgressionSync
+            ? syncProgression(token, { force: true })
+            : fetchProgression(token),
           apiJson<unknown>("/motivational-messages/random", { token }),
           fetchCurrentGoal(token),
           fetchCommitment(token),
           AsyncStorage.getItem(WEEKLY_GOAL_CONFIGURED_KEY),
+          apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
         ]);
         if (!mounted.current || seq !== loadSeq.current) return;
 
         const progressionRaw = progressionRes.status === "fulfilled" ? progressionRes.value : null;
-        const entitlementRaw =
-          entitlementRes.status === "fulfilled" ? entitlementRes.value : null;
         const motivationRaw = motivationRes.status === "fulfilled" ? motivationRes.value : null;
         const goalRaw = goalRes.status === "fulfilled" ? goalRes.value : null;
         const commitmentRaw = commitmentRes.status === "fulfilled" ? commitmentRes.value : null;
         const configuredRaw = configuredRes.status === "fulfilled" ? configuredRes.value : null;
+        const forecastRaw = forecastRes.status === "fulfilled" ? forecastRes.value : null;
 
-        setEntitlement(entitlementRaw);
-        const premiumAccess = hasPremiumAccess(entitlementRaw);
-        if (premiumAccess) {
-          try {
-            const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
-              token,
-            });
-            if (mounted.current && seq === loadSeq.current) {
-              setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
-            }
-          } catch {
-            if (mounted.current && seq === loadSeq.current) setForecast(null);
-          }
-        } else if (mounted.current && seq === loadSeq.current) {
-          setForecast(null);
+        if (mounted.current && seq === loadSeq.current) {
+          setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
         }
         setWeeklyGoal(goalRaw);
         setCommitment(commitmentRaw);
@@ -393,6 +395,7 @@ export default function StatsScreen() {
         }
         setProgression(progressionRaw);
         setServerMotivationDto(parseMotivationalMessage(motivationRaw));
+        lastStatsFetchRef.current = { at: Date.now(), period: periodParam };
       } catch (e) {
         if (!mounted.current || seq !== loadSeq.current) return;
         const msg = e instanceof Error ? e.message : t("stats.loadFailed");
@@ -423,19 +426,24 @@ export default function StatsScreen() {
       if (focusParam === "yourWeek") {
         pendingYourWeekFocus.current = true;
       }
-      if (initialFocusLoadDone.current) {
-        loadStats().catch(() => undefined);
-        return;
-      }
-      initialFocusLoadDone.current = true;
       loadStats().catch(() => undefined);
     }, [focusParam, loadStats]),
   );
 
+  useEffect(() => {
+    if (lastPeriodParamRef.current === null) {
+      lastPeriodParamRef.current = periodParam;
+      return;
+    }
+    if (lastPeriodParamRef.current === periodParam) return;
+    lastPeriodParamRef.current = periodParam;
+    loadStats({ force: true }).catch(() => undefined);
+  }, [loadStats, periodParam]);
+
   const onRefresh = useCallback(async () => {
     if (mounted.current) setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    await loadStats({ forceProgressionSync: true }).catch((e) => {
+    await loadStats({ force: true, forceProgressionSync: true }).catch((e) => {
       if (mounted.current) setError(e instanceof Error ? e.message : t("stats.loadFailed"));
     });
     if (mounted.current) setRefreshing(false);
@@ -465,26 +473,15 @@ export default function StatsScreen() {
           const nextCommitment = await fetchCommitment(token);
           setCommitment(nextCommitment);
         }
-        if (hasPremiumAccess(entitlement)) {
-          const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", { token });
-          setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
-        }
+        const nextForecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
+          token,
+        }).catch(() => null);
+        setForecast(nextForecastRaw ? tryParseGoalForecastDto(nextForecastRaw) : null);
       } finally {
         setWeekBusy(false);
       }
     },
-    [entitlement, token],
-  );
-
-  const openPremiumPaywall = useCallback(
-    (source: string) => {
-      Haptics.selectionAsync().catch(() => undefined);
-      router.push({
-        pathname: "/paywall",
-        params: { variant: "value", source },
-      });
-    },
-    [router],
+    [token],
   );
 
   const handleStartSession = useCallback(() => {
@@ -492,14 +489,8 @@ export default function StatsScreen() {
   }, [router]);
 
   const openWeeklyRecap = useCallback(() => {
-    if (hasPremiumAccess(entitlement)) {
-      router.push("/weekly-recap");
-      return;
-    }
-    openPremiumPaywall("stats_weekly_recap");
-  }, [entitlement, openPremiumPaywall, router]);
-
-  const premiumAccess = hasPremiumAccess(entitlement);
+    router.push("/weekly-recap");
+  }, [router]);
 
   const summary = useMemo(() => {
     const s = stats?.summary;
@@ -731,7 +722,7 @@ export default function StatsScreen() {
         }
       >
         <View style={styles.headerRow}>
-          <ScreenHeader title={t("stats.title")} />
+          <ScreenHeader title={t("stats.title")} actionNode={<RankHudChip from="stats" />} />
           <View style={styles.filterRow}>
             {filters.map((f, i) => (
               <Pressable
@@ -781,10 +772,8 @@ export default function StatsScreen() {
               heatmapDays={heatmapDays}
               configured={goalConfigured}
               busy={weekBusy}
-              hasPremiumAccess={premiumAccess}
               onSaveGoal={handleSaveWeeklyGoal}
               onStartSession={handleStartSession}
-              onOpenPremium={() => openPremiumPaywall("stats_your_week")}
             />
           </View>
         ) : null}
@@ -799,7 +788,7 @@ export default function StatsScreen() {
             title={t("common.oops")}
             message={error}
             retryLabel={t("common.tryAgain")}
-            onRetry={() => loadStats({ forceProgressionSync: true }).catch(() => undefined)}
+            onRetry={() => loadStats({ force: true, forceProgressionSync: true }).catch(() => undefined)}
           />
         ) : null}
         {!showInitialLoading ? (

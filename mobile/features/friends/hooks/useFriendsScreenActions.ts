@@ -20,7 +20,7 @@ type Params = {
   token: string | null;
   userId?: number;
   t: TFunction;
-  load: () => Promise<void>;
+  load: (opts?: { force?: boolean }) => Promise<void>;
   state: FriendsScreenState;
   openSession: (sessionId: number, ownerName: string) => void;
   openSessionSetup: () => void;
@@ -54,7 +54,7 @@ export function useFriendsScreenActions({
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       state.setAddName("");
       state.setAddOpen(false);
-      await load();
+      await load({ force: true });
       Alert.alert(
         t("friendsScreen.requestSentTitle"),
         t("friendsScreen.requestSentBody", { name: username }),
@@ -78,7 +78,7 @@ export function useFriendsScreenActions({
           `/friends/${id}/post-accept-actions`,
           { token },
         ).catch(() => []);
-        await load();
+        await load({ force: true });
         if (actions.length > 0) {
           Alert.alert(
             t("friendsScreen.requestAcceptedTitle"),
@@ -105,7 +105,7 @@ export function useFriendsScreenActions({
       state.setActionBusy(id);
       try {
         await apiJson(`/friends/${id}`, { token, method: "DELETE" });
-        await load();
+        await load({ force: true });
       } catch (e) {
         Alert.alert(
           t("friendsScreen.errorGeneric"),
@@ -124,7 +124,7 @@ export function useFriendsScreenActions({
       state.setBusyActionKey(`join_challenge_${challengeId}`);
       try {
         await joinSocialChallenge(token, challengeId);
-        await load();
+        await load({ force: true });
         if (userId) {
           await recordMomentumAction(userId, "challenge");
         }
@@ -153,7 +153,7 @@ export function useFriendsScreenActions({
           note: t("friendsScreen.shippedThisWeekNote", { defaultValue: "Shipped this week." }),
         },
       });
-      await load();
+      await load({ force: true });
       state.showToast(t("friendsScreen.toastMomentum"));
     } catch (e) {
       Alert.alert(
@@ -180,7 +180,7 @@ export function useFriendsScreenActions({
           method: "POST",
           body: { friend_user_id: friendUserId },
         });
-        await load();
+        await load({ force: true });
         state.showToast(t("friendsScreen.toastSocialEngaged"));
         state.setBuddyPickerOpen(false);
       } catch (e) {
@@ -242,7 +242,7 @@ export function useFriendsScreenActions({
         member_user_ids: memberIds,
       });
       resetChallengeModal();
-      await load();
+      await load({ force: true });
       if (userId) {
         await recordMomentumAction(userId, "challenge");
       }
@@ -331,7 +331,7 @@ export function useFriendsScreenActions({
           method: "POST",
           body: { invite_id: inviteId },
         });
-        await load();
+        await load({ force: true });
         state.showToast(t("friendsScreen.toastCollaborativeMove"));
       } catch (e) {
         Alert.alert(
@@ -371,7 +371,7 @@ export function useFriendsScreenActions({
           });
           state.showToast(t("friendsScreen.streakSupportEncourageSuccess"));
         }
-        await load();
+        await load({ force: true });
       } catch (e) {
         Alert.alert(
           t("friendsScreen.errorGeneric"),
@@ -442,7 +442,7 @@ export function useFriendsScreenActions({
                 await recordMomentumAction(userId, "rescue");
               }
               state.showToast(t("friendsScreen.toastCollaborativeMove"));
-              return load();
+              return load({ force: true });
             })
             .catch((e: unknown) => {
               Alert.alert(

@@ -13,10 +13,6 @@ jest.mock("../../lib/client", () => ({
   apiJson: jest.fn(),
 }));
 
-jest.mock("../../lib/billing", () => ({
-  fetchEntitlement: jest.fn().mockResolvedValue({ entitlement: "free", trial_active: false }),
-}));
-
 jest.mock("../../lib/goals", () => ({
   fetchCurrentGoal: jest.fn(),
 }));
