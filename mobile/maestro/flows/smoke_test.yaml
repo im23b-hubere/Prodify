@@ -3,7 +3,8 @@ env:
   TEST_EMAIL: test@prodify.app
   TEST_PASSWORD: Test1234!
 ---
-- launchApp
+- launchApp:
+    clearState: true
 - runFlow:
     when:
       visible: "Let's build your studio plan"

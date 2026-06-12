@@ -154,6 +154,7 @@ jobs:
       - name: Install app on booted simulator
         run: |
           set -euo pipefail
+          xcrun simctl uninstall "${{ steps.sim.outputs.device_udid }}" com.prodify.app || true
           APP_PATH=$(find mobile/ios/build -path "*/Build/Products/*-iphonesimulator/Prodify.app" -type d | head -1)
           if [[ -z "${APP_PATH:-}" ]]; then
             APP_PATH=$(find mobile/ios/build -name "Prodify.app" -type d | head -1)
