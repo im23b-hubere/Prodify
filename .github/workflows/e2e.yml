@@ -48,7 +48,7 @@ concurrency:
 
 jobs:
   e2e-ios:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 60
     env:
       MAESTRO_VERSION: "1.39.13"
@@ -63,6 +63,10 @@ jobs:
       EXPO_PUBLIC_E2E_MODE: "true"
       EXPO_PUBLIC_REVENUECAT_API_KEY: appl_mnYqBJcSBBUEyNRCfULPzxMqpmX
       EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID: app_access
+      # Sentry native build scripts must not upload symbols or fail CI without auth.
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
+      SENTRY_ALLOW_FAILURE: "true"
+      CI: "true"
     defaults:
       run:
         shell: bash
@@ -92,14 +96,11 @@ jobs:
           MAESTRO_VERSION="${MAESTRO_VERSION}" /tmp/maestro-installer.sh
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
-      - name: Verify Maestro version
+      - name: Verify Maestro CLI
         run: |
           set -euo pipefail
-          INSTALLED_VERSION=$("$HOME/.maestro/bin/maestro" --version | tr -d '\r')
-          if [[ "$INSTALLED_VERSION" != "$MAESTRO_VERSION" ]]; then
-            echo "Expected Maestro version $MAESTRO_VERSION but found $INSTALLED_VERSION"
-            exit 1
-          fi
+          maestro --version
+          maestro --version | grep -Fq "${MAESTRO_VERSION}"
 
       - name: Prebuild iOS
         working-directory: mobile
@@ -113,10 +114,12 @@ jobs:
         id: sim
         run: |
           set -euo pipefail
+          xcodebuild -version
+          xcrun simctl list devices available
           for NAME in "iPhone 16 Pro" "iPhone 15 Pro" "iPhone 15" "iPhone 14"; do
             LINE=$(xcrun simctl list devices available | grep -F "${NAME} (" | head -1 || true)
             if [[ -n "$LINE" ]]; then
-              UDID=$(echo "$LINE" | grep -oE '\([A-F0-9-]+\)' | head -1 | tr -d '()')
+              UDID=$(echo "$LINE" | grep -oE '[A-F0-9-]{36}' | head -1)
               echo "device_name=$NAME" >> "$GITHUB_OUTPUT"
               echo "device_udid=$UDID" >> "$GITHUB_OUTPUT"
               echo "Selected simulator: $NAME ($UDID)"
@@ -124,14 +127,14 @@ jobs:
             fi
           done
           echo "No supported iPhone simulator found."
-          xcrun simctl list devices available
           exit 1
 
       - name: Boot simulator
         run: |
           set -euo pipefail
           xcrun simctl boot "${{ steps.sim.outputs.device_udid }}" || true
-          sleep 15
+          xcrun simctl bootstatus "${{ steps.sim.outputs.device_udid }}" -b
+          sleep 5
 
       - name: Build app (simulator)
         working-directory: mobile/ios
@@ -145,12 +148,16 @@ jobs:
             -derivedDataPath build \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_udid }}" \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Install app on booted simulator
         run: |
           set -euo pipefail
-          APP_PATH=$(find mobile/ios/build -name "Prodify.app" -type d 2>/dev/null | head -1)
+          APP_PATH=$(find mobile/ios/build -path "*/Build/Products/*-iphonesimulator/Prodify.app" -type d | head -1)
+          if [[ -z "${APP_PATH:-}" ]]; then
+            APP_PATH=$(find mobile/ios/build -name "Prodify.app" -type d | head -1)
+          fi
           if [[ -z "${APP_PATH:-}" ]]; then
             echo "Prodify.app not found under mobile/ios/build"
             find mobile/ios/build -name "*.app" || true
@@ -165,7 +172,7 @@ jobs:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
         run: |
           set -euo pipefail
-          maestro test \
+          maestro --device "${{ steps.sim.outputs.device_udid }}" test \
             -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
             -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
             maestro/flows/smoke_test.yaml
@@ -186,4 +193,14 @@ jobs:
           name: maestro-logs
           path: ~/.maestro/logs/
           retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload iOS build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: xcodebuild-logs
+          path: |
+            mobile/ios/build/Logs/
+          retention-days: 3
           if-no-files-found: ignore

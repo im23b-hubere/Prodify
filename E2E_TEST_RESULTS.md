@@ -58,6 +58,9 @@ E2E simulator builds set:
 
 - `EXPO_PUBLIC_E2E_MODE=true` — paywall bypass for smoke only (never in EAS production)
 - `EXPO_PUBLIC_API_URL` — default `https://prodify-api-46b1.onrender.com`
+- `SENTRY_DISABLE_AUTO_UPLOAD=true` — prevents Sentry symbol upload from failing CI builds
+
+If the workflow fails at **Prebuild iOS** or **Build app (simulator)**, check the step log for Sentry/`sentry-cli` errors and confirm the env vars above are present.
 
 ## Evidence log
 
