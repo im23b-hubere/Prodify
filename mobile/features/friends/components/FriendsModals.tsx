@@ -17,16 +17,6 @@ type Props = {
   friendCandidates: FriendLeaderboardEntryDto[];
   busyActionKey: string | null;
   inviteBuddy: (friendUserId: number) => void;
-  goalEditorOpen: boolean;
-  setGoalEditorOpen: (v: boolean) => void;
-  goalTargetInput: string;
-  setGoalTargetInput: (v: string) => void;
-  goalDaysInput: string;
-  setGoalDaysInput: (v: string) => void;
-  goalWitnesses: number[];
-  setGoalWitnesses: (updater: (prev: number[]) => number[]) => void;
-  goalSaving: boolean;
-  saveCommitmentTarget: () => void;
   challengeCreateOpen: boolean;
   setChallengeCreateOpen: (v: boolean) => void;
   challengeTitle: string;
@@ -61,16 +51,6 @@ export function FriendsModals({
   friendCandidates,
   busyActionKey,
   inviteBuddy,
-  goalEditorOpen,
-  setGoalEditorOpen,
-  goalTargetInput,
-  setGoalTargetInput,
-  goalDaysInput,
-  setGoalDaysInput,
-  goalWitnesses,
-  setGoalWitnesses,
-  goalSaving,
-  saveCommitmentTarget,
   challengeCreateOpen,
   setChallengeCreateOpen,
   challengeTitle,
@@ -159,77 +139,6 @@ export function FriendsModals({
               )}
             </View>
             <Pressable style={styles.modalCancel} onPress={() => setBuddyPickerOpen(false)}>
-              <Text style={styles.modalCancelText}>{t("friendsScreen.modalCancel")}</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <Modal
-        visible={goalEditorOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setGoalEditorOpen(false)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setGoalEditorOpen(false)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>{t("friendsScreen.editGoalTitle")}</Text>
-            <Text style={styles.modalHint}>{t("friendsScreen.editGoalHint")}</Text>
-            <Text style={styles.fieldLabel}>{t("friendsScreen.goalTargetLabel")}</Text>
-            <TextInput
-              value={goalTargetInput}
-              onChangeText={setGoalTargetInput}
-              keyboardType="number-pad"
-              placeholder={t("friendsScreen.challengeTargetPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-            />
-            <Text style={styles.fieldLabel}>{t("friendsScreen.goalDurationLabel")}</Text>
-            <TextInput
-              value={goalDaysInput}
-              onChangeText={setGoalDaysInput}
-              keyboardType="number-pad"
-              placeholder={t("friendsScreen.challengeDurationPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-            />
-            <Text style={styles.modalHint}>{t("friendsScreen.witnessesLabel")}</Text>
-            <View style={styles.memberChips}>
-              {friendCandidates.length === 0 ? (
-                <Text style={styles.userMeta}>{t("friendsScreen.feedEmptyMessage")}</Text>
-              ) : (
-                friendCandidates.slice(0, 12).map((entry) => {
-                  const selected = goalWitnesses.includes(entry.user_id);
-                  return (
-                    <Pressable
-                      key={`witness-${entry.user_id}`}
-                      style={[styles.memberChip, selected && styles.memberChipSelected]}
-                      onPress={() =>
-                        setGoalWitnesses((prev) => {
-                          if (prev.includes(entry.user_id)) {
-                            return prev.filter((id) => id !== entry.user_id);
-                          }
-                          if (prev.length >= 3) return prev;
-                          return [...prev, entry.user_id];
-                        })
-                      }
-                    >
-                      <Text
-                        style={[styles.memberChipText, selected && styles.memberChipTextSelected]}
-                      >
-                        {entry.username}
-                      </Text>
-                    </Pressable>
-                  );
-                })
-              )}
-            </View>
-            <PrimaryButton
-              label={goalSaving ? t("friendsScreen.loading") : t("friendsScreen.saveGoal")}
-              disabled={goalSaving}
-              onPress={() => void saveCommitmentTarget()}
-            />
-            <Pressable style={styles.modalCancel} onPress={() => setGoalEditorOpen(false)}>
               <Text style={styles.modalCancelText}>{t("friendsScreen.modalCancel")}</Text>
             </Pressable>
           </Pressable>

@@ -51,11 +51,6 @@ export function useFriendsScreenState() {
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [reactionUsersLoading, setReactionUsersLoading] = useState(false);
   const [buddyPickerOpen, setBuddyPickerOpen] = useState(false);
-  const [goalEditorOpen, setGoalEditorOpen] = useState(false);
-  const [goalTargetInput, setGoalTargetInput] = useState("5");
-  const [goalDaysInput, setGoalDaysInput] = useState("7");
-  const [goalWitnesses, setGoalWitnesses] = useState<number[]>([]);
-  const [goalSaving, setGoalSaving] = useState(false);
   const [sectionTab, setSectionTab] = useState<"overview" | "tools">("overview");
   const [feedMetricsBySession, setFeedMetricsBySession] = useState<FeedMetrics>({});
   const [reactionBusyBySession, setReactionBusyBySession] = useState<Record<number, boolean>>({});
@@ -149,16 +144,6 @@ export function useFriendsScreenState() {
     setReactionUsersLoading,
     buddyPickerOpen,
     setBuddyPickerOpen,
-    goalEditorOpen,
-    setGoalEditorOpen,
-    goalTargetInput,
-    setGoalTargetInput,
-    goalDaysInput,
-    setGoalDaysInput,
-    goalWitnesses,
-    setGoalWitnesses,
-    goalSaving,
-    setGoalSaving,
     sectionTab,
     setSectionTab,
     feedMetricsBySession,

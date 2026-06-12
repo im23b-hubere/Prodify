@@ -1,5 +1,6 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -20,6 +21,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
+import { YourWeekCard } from "../../components/stats/YourWeekCard";
 import { AppFlame, RecordGlyph, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { ErrorState } from "../../components/states/ErrorState";
 import { AppCard } from "../../components/ui/AppCard";
@@ -28,9 +30,12 @@ import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { fontFamily } from "../../constants/fonts";
+import { WEEKLY_GOAL_CONFIGURED_KEY } from "../../constants/storageKeys";
 import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { fetchCurrentGoal, setWeeklyGoal as saveWeeklyGoalApi } from "../../lib/goals";
+import { fetchCommitment } from "../../lib/social";
 import { debugLog } from "../../lib/debugLog";
 import {
   parseMotivationalMessage,
@@ -59,6 +64,8 @@ import {
   tryParsePersonalRecords,
   tryParseSessionStatsDto,
 } from "../../lib/statsDto";
+import type { CommitmentDto } from "../../types/friends";
+import type { GoalCurrentDto } from "../../types/goals";
 import type { SessionDto, SessionStatsDto } from "../../types/session";
 import type { GoalForecastDto, ProgressionDto } from "../../types/outcomes";
 
@@ -269,6 +276,10 @@ export default function StatsScreen() {
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
+  const [weeklyGoal, setWeeklyGoal] = useState<GoalCurrentDto | null>(null);
+  const [commitment, setCommitment] = useState<CommitmentDto | null>(null);
+  const [goalConfigured, setGoalConfigured] = useState(false);
+  const [weekBusy, setWeekBusy] = useState(false);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [serverMotivationDto, setServerMotivationDto] = useState<MotivationalMessageDto | null>(
     null,
@@ -323,18 +334,34 @@ export default function StatsScreen() {
         // Show core stats first, then hydrate secondary sections.
         if (mounted.current && seq === loadSeq.current) setLoading(false);
 
-        const [progressionRes, forecastRes, motivationRes] = await Promise.allSettled([
-          syncProgression(token, { force: forceProgressionSync }),
-          apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
-          apiJson<unknown>("/motivational-messages/random", { token }),
-        ]);
+        const [progressionRes, forecastRes, motivationRes, goalRes, commitmentRes, configuredRes] =
+          await Promise.allSettled([
+            syncProgression(token, { force: forceProgressionSync }),
+            apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
+            apiJson<unknown>("/motivational-messages/random", { token }),
+            fetchCurrentGoal(token),
+            fetchCommitment(token),
+            AsyncStorage.getItem(WEEKLY_GOAL_CONFIGURED_KEY),
+          ]);
         if (!mounted.current || seq !== loadSeq.current) return;
 
         const progressionRaw = progressionRes.status === "fulfilled" ? progressionRes.value : null;
         const forecastRaw = forecastRes.status === "fulfilled" ? forecastRes.value : null;
         const motivationRaw = motivationRes.status === "fulfilled" ? motivationRes.value : null;
+        const goalRaw = goalRes.status === "fulfilled" ? goalRes.value : null;
+        const commitmentRaw = commitmentRes.status === "fulfilled" ? commitmentRes.value : null;
+        const configuredRaw = configuredRes.status === "fulfilled" ? configuredRes.value : null;
 
         setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+        setWeeklyGoal(goalRaw);
+        setCommitment(commitmentRaw);
+        const hasConfiguredFlag = configuredRaw === "1";
+        const hasWeekActivity = (goalRaw?.current_sessions ?? 0) > 0;
+        const isConfigured = hasConfiguredFlag || hasWeekActivity;
+        setGoalConfigured(isConfigured);
+        if (isConfigured && !hasConfiguredFlag) {
+          void AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1");
+        }
         setProgression(progressionRaw);
         setServerMotivationDto(parseMotivationalMessage(motivationRaw));
       } catch (e) {
@@ -369,6 +396,43 @@ export default function StatsScreen() {
     });
     if (mounted.current) setRefreshing(false);
   }, [loadStats, t]);
+
+  const handleSaveWeeklyGoal = useCallback(
+    async (target: number, shareWithFriends: boolean) => {
+      if (!token) return;
+      setWeekBusy(true);
+      try {
+        const updated = await saveWeeklyGoalApi(token, target);
+        setWeeklyGoal(updated);
+        await AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1").catch(() => undefined);
+        setGoalConfigured(true);
+        if (shareWithFriends) {
+          await apiJson("/social/commitment", {
+            token,
+            method: "POST",
+            body: {
+              target_sessions: target,
+              visibility: "friends",
+              commitment_key: "sessions",
+              period_days: 7,
+              witness_user_ids: [],
+            },
+          });
+          const nextCommitment = await fetchCommitment(token);
+          setCommitment(nextCommitment);
+        }
+        const forecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", { token });
+        setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
+      } finally {
+        setWeekBusy(false);
+      }
+    },
+    [token],
+  );
+
+  const handleStartSession = useCallback(() => {
+    router.push("/session/setup" as Href);
+  }, [router]);
 
   const summary = useMemo(() => {
     const s = stats?.summary;
@@ -515,26 +579,6 @@ export default function StatsScreen() {
     return stats?.productivity_hint ?? null;
   }, [stats?.productivity_hint_item, stats?.productivity_hint, t]);
 
-  const weekGoal = useMemo(() => {
-    if (filter.period !== "week" || !stats?.trend?.length) return null;
-    const daysWith = new Set(stats.trend.map((t) => t.label).filter(Boolean)).size;
-    return { daysWith, goal: 7 };
-  }, [filter.period, stats?.trend]);
-  const forecastRiskKey = forecast
-    ? forecast.risk_level === "on_track"
-      ? "stats.forecastRiskOnTrack"
-      : forecast.risk_level === "at_risk"
-        ? "stats.forecastRiskAtRisk"
-        : "stats.forecastRiskOffTrack"
-    : null;
-  const forecastProgressPercent = useMemo(() => {
-    if (!forecast || forecast.target_sessions <= 0) return 0;
-    return Math.max(
-      0,
-      Math.min(100, (forecast.completed_sessions / forecast.target_sessions) * 100),
-    );
-  }, [forecast]);
-
   const statCarouselItems = useMemo(
     () => [
       {
@@ -648,6 +692,21 @@ export default function StatsScreen() {
             />
           </View>
         ) : null}
+        {token && !showInitialLoading ? (
+          <View style={styles.yourWeekWrap}>
+            <YourWeekCard
+              t={t}
+              goal={weeklyGoal}
+              forecast={forecast}
+              commitment={commitment}
+              heatmapDays={heatmapDays}
+              configured={goalConfigured}
+              busy={weekBusy}
+              onSaveGoal={handleSaveWeeklyGoal}
+              onStartSession={handleStartSession}
+            />
+          </View>
+        ) : null}
         {showInitialLoading ? <StatsSkeleton /> : null}
         {showInlineLoading ? (
           <View style={styles.inlineLoadingRow}>
@@ -715,62 +774,6 @@ export default function StatsScreen() {
                     })}
                   </View>
                 )}
-              </AppCard>
-            ) : null}
-
-            {!showInitialLoading && (weekGoal || forecast) ? (
-              <AppCard style={styles.goalCard}>
-                {forecast ? (
-                  <>
-                    <View style={styles.goalHeaderRow}>
-                      <Text style={styles.cardTitle}>{t("stats.forecastTitle")}</Text>
-                      {forecastRiskKey ? (
-                        <Text
-                          style={[
-                            styles.forecastRiskPill,
-                            forecast.risk_level === "on_track" && styles.forecastRiskOnTrack,
-                            forecast.risk_level === "at_risk" && styles.forecastRiskAtRisk,
-                            forecast.risk_level === "off_track" && styles.forecastRiskOffTrack,
-                          ]}
-                        >
-                          {t(forecastRiskKey)}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Text style={styles.forecastProgressLine}>
-                      {t("stats.forecastProgress", {
-                        done: forecast.completed_sessions,
-                        target: forecast.target_sessions,
-                      })}
-                    </Text>
-                    <View style={styles.goalProgressTrack}>
-                      <View
-                        style={[styles.goalProgressFill, { width: `${forecastProgressPercent}%` }]}
-                      />
-                    </View>
-                    <Text style={styles.goalSub}>
-                      {t("stats.forecastRemaining", {
-                        n: forecast.remaining_sessions,
-                        days: forecast.days_left,
-                      })}
-                    </Text>
-                  </>
-                ) : null}
-                {weekGoal ? (
-                  <View style={forecast ? styles.forecastBlock : undefined}>
-                    <Text style={styles.goalTitle}>
-                      {t("stats.weeklyPresence", { have: weekGoal.daysWith, goal: weekGoal.goal })}
-                    </Text>
-                    <Text style={styles.goalSub}>
-                      {weekGoal.daysWith >= weekGoal.goal
-                        ? t("stats.weeklyCrushed")
-                        : t("stats.weeklyMoreDays", {
-                            count: weekGoal.goal - weekGoal.daysWith,
-                            n: weekGoal.goal - weekGoal.daysWith,
-                          })}
-                    </Text>
-                  </View>
-                ) : null}
               </AppCard>
             ) : null}
 
@@ -1045,6 +1048,9 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   motivationWrap: {
+    marginBottom: spacing.lg,
+  },
+  yourWeekWrap: {
     marginBottom: spacing.lg,
   },
   goalCard: {

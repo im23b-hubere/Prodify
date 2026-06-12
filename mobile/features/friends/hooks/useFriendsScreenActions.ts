@@ -195,52 +195,6 @@ export function useFriendsScreenActions({
     [friendCandidates, load, state, t, token],
   );
 
-  const openGoalEditor = useCallback(() => {
-    state.setGoalTargetInput(String(Math.max(1, state.commitment?.target_sessions ?? 5)));
-    state.setGoalDaysInput(String(Math.max(3, state.commitment?.period_days ?? 7)));
-    state.setGoalWitnesses((state.commitment?.witness_user_ids ?? []).slice(0, 3));
-    state.setGoalEditorOpen(true);
-  }, [state]);
-
-  const saveCommitmentTarget = useCallback(async () => {
-    if (!token) return;
-    const target = Number.parseInt(state.goalTargetInput, 10);
-    const periodDays = Number.parseInt(state.goalDaysInput, 10);
-    if (!Number.isFinite(target) || target < 1 || target > 50) {
-      Alert.alert(t("friendsScreen.couldNotSetGoal"), t("friendsScreen.invalidChallengeBody"));
-      return;
-    }
-    if (!Number.isFinite(periodDays) || periodDays < 3 || periodDays > 30) {
-      Alert.alert(t("friendsScreen.couldNotSetGoal"), t("friendsScreen.invalidChallengeBody"));
-      return;
-    }
-    state.setGoalSaving(true);
-    try {
-      await apiJson("/social/commitment", {
-        token,
-        method: "POST",
-        body: {
-          target_sessions: target,
-          visibility: "friends",
-          commitment_key: "sessions",
-          period_days: periodDays,
-          witness_user_ids: state.goalWitnesses.slice(0, 3),
-        },
-      });
-      await load();
-      state.setGoalEditorOpen(false);
-      state.showToast(t("friendsScreen.toastExtraGoal"));
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t("common.tryAgain");
-      if (msg.toLowerCase().includes("premium")) {
-        state.setUpsellMessage(msg);
-      }
-      Alert.alert(t("friendsScreen.couldNotSetGoal"), msg);
-    } finally {
-      state.setGoalSaving(false);
-    }
-  }, [load, state, t, token]);
-
   const resetChallengeModal = useCallback(() => {
     state.setChallengeCreateOpen(false);
     state.setChallengeTitle("");
@@ -538,8 +492,6 @@ export function useFriendsScreenActions({
     joinSocialChallengeById,
     submitShipCheckin,
     inviteBuddy,
-    openGoalEditor,
-    saveCommitmentTarget,
     submitCreateChallenge,
     resetChallengeModal,
     openReactionUsers,

@@ -20,7 +20,11 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
-import { ONBOARDING_COMPLETE_KEY, PENDING_WEEKLY_GOAL_KEY } from "../../constants/storageKeys";
+import {
+  ONBOARDING_COMPLETE_KEY,
+  PENDING_WEEKLY_GOAL_KEY,
+  WEEKLY_GOAL_CONFIGURED_KEY,
+} from "../../constants/storageKeys";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -113,6 +117,7 @@ export default function OnboardingScreen() {
             method: "POST",
             body: { goal_type: "weekly_sessions", target_value: goal },
           });
+          await AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1").catch(() => undefined);
           await AsyncStorage.removeItem(PENDING_WEEKLY_GOAL_KEY).catch(() => undefined);
         } catch {
           /* goal sync is best-effort */

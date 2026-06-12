@@ -27,6 +27,7 @@ export const PENDING_DEEP_LINK_PATH_KEY = "prodify_pending_deep_link_path_v1";
 
 export const ONBOARDING_COMPLETE_KEY = "prodify_onboarding_done_v1";
 export const PENDING_WEEKLY_GOAL_KEY = "prodify_pending_weekly_goal_v1";
+export const WEEKLY_GOAL_CONFIGURED_KEY = "prodify_weekly_goal_configured_v1";
 export const NOTIFICATION_INBOX_KEY = "prodify_notification_inbox_v1";
 export const NOTIFICATION_UNREAD_KEY = "prodify_notification_unread_v1";
 export const NOTIFICATION_SETTINGS_KEY = "prodify_notification_settings_v1";

@@ -69,15 +69,6 @@ export default function FriendsScreen() {
     reactionUsersLoading,
     buddyPickerOpen,
     setBuddyPickerOpen,
-    goalEditorOpen,
-    setGoalEditorOpen,
-    goalTargetInput,
-    setGoalTargetInput,
-    goalDaysInput,
-    setGoalDaysInput,
-    goalWitnesses,
-    setGoalWitnesses,
-    goalSaving,
     sectionTab,
     setSectionTab,
     feedMetricsBySession,
@@ -370,16 +361,6 @@ export default function FriendsScreen() {
         friendCandidates={actions.friendCandidates}
         busyActionKey={busyActionKey}
         inviteBuddy={actions.inviteBuddy}
-        goalEditorOpen={goalEditorOpen}
-        setGoalEditorOpen={setGoalEditorOpen}
-        goalTargetInput={goalTargetInput}
-        setGoalTargetInput={setGoalTargetInput}
-        goalDaysInput={goalDaysInput}
-        setGoalDaysInput={setGoalDaysInput}
-        goalWitnesses={goalWitnesses}
-        setGoalWitnesses={setGoalWitnesses}
-        goalSaving={goalSaving}
-        saveCommitmentTarget={actions.saveCommitmentTarget}
         challengeCreateOpen={challengeCreateOpen}
         setChallengeCreateOpen={setChallengeCreateOpen}
         challengeTitle={challengeTitle}
