@@ -9,6 +9,7 @@ import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useStreakReconcileOnForeground } from "../../hooks/useStreakReconcileOnForeground";
 import { peekCachedHasPremiumAccess } from "../../lib/billing";
+import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
 type TabIconProps = {
@@ -49,12 +50,18 @@ export default function TabsLayout() {
       return;
     }
 
-    const cachedAccess = peekCachedHasPremiumAccess(token);
-    if (cachedAccess === true) {
+    if (isE2eModeEnabled()) {
       setHasAccess(true);
       setEntitlementLoading(false);
+      return;
+    }
+
+    const cachedAccess = peekCachedHasPremiumAccess(token);
+    if (cachedAccess !== null) {
+      // Fast path: show UI from cache; refresh billing in background (b92b637).
+      setHasAccess(cachedAccess);
+      setEntitlementLoading(false);
     } else {
-      // Never block on cached "free" — dev bypass / RevenueCat may still grant access.
       setHasAccess(null);
       setEntitlementLoading(true);
     }
@@ -67,7 +74,7 @@ export default function TabsLayout() {
       })
       .catch(() => {
         if (!cancelled) {
-          setHasAccess(false);
+          setHasAccess(cachedAccess ?? false);
         }
       })
       .finally(() => {

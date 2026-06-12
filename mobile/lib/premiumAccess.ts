@@ -37,6 +37,17 @@ export async function resolvePremiumAccess(
 }
 
 async function refreshPremiumAccess(token: string, appUserId?: string | null): Promise<boolean> {
+  if (__DEV__) {
+    try {
+      const ent = await fetchEntitlement(token);
+      if (hasPremiumAccess(ent)) {
+        return true;
+      }
+    } catch {
+      /* fall through to RevenueCat / cache */
+    }
+  }
+
   const userId = appUserId?.trim();
   if (userId) {
     try {
