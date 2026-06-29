@@ -1,4 +1,5 @@
 import { apiJson } from "./client";
+import { isDevBillingBypassActive } from "./devBillingBypass";
 import { tryParseEntitlementDto } from "./outcomesDto";
 import type { EntitlementDto } from "../types/outcomes";
 
@@ -13,10 +14,10 @@ let entitlementInFlight: { token: string; promise: Promise<EntitlementDto> } | n
 
 const ENTITLEMENT_TTL_MS = 60_000;
 
-/** True when the user may use premium-gated APIs (paid, store trial, or server onboarding trial). */
+/** True when the user may use premium-gated APIs (paid subscription only). */
 export function hasPremiumAccess(ent: EntitlementDto | null | undefined): boolean {
   if (!ent) return false;
-  return ent.entitlement === "premium" || Boolean(ent.trial_active);
+  return ent.entitlement === "premium";
 }
 
 export function clearEntitlementCache(): void {
@@ -61,6 +62,18 @@ export async function fetchEntitlement(
     now - cachedEntitlement.atMs <= ENTITLEMENT_TTL_MS
   ) {
     return cachedEntitlement.value;
+  }
+
+  if (!force && __DEV__) {
+    const bypass = await isDevBillingBypassActive().catch(() => false);
+    if (
+      bypass &&
+      cachedEntitlement &&
+      cachedEntitlement.token === token &&
+      hasPremiumAccess(cachedEntitlement.value)
+    ) {
+      return cachedEntitlement.value;
+    }
   }
 
   if (!force && entitlementInFlight && entitlementInFlight.token === token) {

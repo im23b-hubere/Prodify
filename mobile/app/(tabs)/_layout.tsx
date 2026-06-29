@@ -9,6 +9,7 @@ import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useStreakReconcileOnForeground } from "../../hooks/useStreakReconcileOnForeground";
 import { peekCachedHasPremiumAccess } from "../../lib/billing";
+import { isDevBillingBypassActive } from "../../lib/devBillingBypass";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
@@ -56,6 +57,14 @@ export default function TabsLayout() {
       return;
     }
 
+    void isDevBillingBypassActive()
+      .then((bypass) => {
+        if (cancelled || !bypass) return;
+        setHasAccess(true);
+        setEntitlementLoading(false);
+      })
+      .catch(() => undefined);
+
     const cachedAccess = peekCachedHasPremiumAccess(token);
     if (cachedAccess !== null) {
       // Fast path: show UI from cache; refresh billing in background (b92b637).
@@ -72,9 +81,10 @@ export default function TabsLayout() {
           setHasAccess(access);
         }
       })
-      .catch(() => {
+      .catch(async () => {
         if (!cancelled) {
-          setHasAccess(cachedAccess ?? false);
+          const bypass = await isDevBillingBypassActive().catch(() => false);
+          setHasAccess(bypass || cachedAccess === true);
         }
       })
       .finally(() => {

@@ -22,7 +22,6 @@ import {
   configureRevenueCat,
   getRevenueCatCustomerInfo,
   isPremiumActive,
-  isTrialActive,
 } from "../lib/revenuecat";
 
 const TOKEN_KEY = "prodify_token";
@@ -154,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await syncEntitlement(access, {
               app_user_id: String(me.id),
               entitlement: isPremiumActive(info) ? "premium" : "free",
-              trial_active: isTrialActive(info),
+              trial_active: false,
               expires_at: activeEntitlementExpiration(info),
             });
           }
@@ -164,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await syncEntitlement(access, {
             app_user_id: String(me.id),
             entitlement: isPremiumActive(info) ? "premium" : "free",
-            trial_active: isTrialActive(info),
+            trial_active: false,
             expires_at: activeEntitlementExpiration(info),
           });
         }
@@ -200,7 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await syncEntitlement(access, {
           app_user_id: String(me.id),
           entitlement: isPremiumActive(info) ? "premium" : "free",
-          trial_active: isTrialActive(info),
+          trial_active: false,
           expires_at: activeEntitlementExpiration(info),
         });
       } catch {

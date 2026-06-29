@@ -7,15 +7,23 @@ Single source of truth for what Free vs Premium includes. Paywall copy, mobile U
 | Check | Meaning |
 |-------|---------|
 | **Premium** | `users.is_premium` or active RevenueCat subscription |
-| **Trial** | `trial_active` from billing sync **or** server onboarding trial (`onboarding_trial_days`) |
-| **Gated API** | Requires premium **or** trial (`require_premium_or_trial`) |
+| **Gated API** | Requires premium (`require_premium_or_trial`) |
 
 Weekly goal setup (`/goals/*`) is always free.
 
+## Subscriptions (App Store / RevenueCat)
+
+| Product ID | Plan | Notes |
+|------------|------|-------|
+| `prodify_premium_weekly` | Weekly | No free trial |
+| `prodify_premium_6months` | 6 months | Marketing: **1 month free** vs weekly; no intro/trial period in Store |
+
+Disable **Introductory Offers / Free Trial** on both products in App Store Connect. Paywall copy uses live Store prices from RevenueCat.
+
 ## Feature matrix
 
-| Feature | Free | Premium / trial | Product pillar |
-|---------|------|-----------------|----------------|
+| Feature | Free | Premium | Product pillar |
+|---------|------|---------|----------------|
 | Weekly session goal (`/goals/set`, `/goals/current`) | Yes | Yes | Rhythm |
 | Week progress, studio-day strip (Stats) | Yes | Yes | Rhythm |
 | Goal forecast (`/outcomes/goal-forecast/current`) | No | Yes | Rhythm |
@@ -43,7 +51,7 @@ Free users receive `402` with `Premium entitlement required` on gated outcomes r
 
 - **Free:** Your Week shows progress + studio days; forecast area shows Premium teaser (no silent empty state).
 - **Free:** Weekly Recap loads week stats only; review generate + insights show Premium teaser → paywall.
-- **Premium / trial:** Full forecast + weekly review; gated APIs fetched only when `hasPremiumAccess()` is true.
+- **Premium:** Full forecast + weekly review; gated APIs fetched only when `hasPremiumAccess()` is true.
 
 ## Paywall variants (`en.json`)
 

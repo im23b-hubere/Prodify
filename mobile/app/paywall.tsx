@@ -24,7 +24,6 @@ import {
   getDefaultOffering,
   getRevenueCatCustomerInfo,
   isPremiumActive,
-  isTrialActive,
   restoreRevenueCatPurchases,
 } from "../lib/revenuecat";
 import { loadOnboardingQuiz } from "../lib/onboardingQuiz";
@@ -157,7 +156,7 @@ export default function PaywallScreen() {
     await syncEntitlement(token, {
       app_user_id: appUserId,
       entitlement: isPremiumActive(info) ? "premium" : "free",
-      trial_active: isTrialActive(info),
+      trial_active: false,
       expires_at: activeEntitlementExpiration(info),
     });
   }
@@ -177,7 +176,7 @@ export default function PaywallScreen() {
         await syncEntitlement(token, {
           app_user_id: appUserId,
           entitlement: "premium",
-          trial_active: isTrialActive(res.customerInfo),
+          trial_active: false,
           expires_at: activeEntitlementExpiration(res.customerInfo),
         });
       }
@@ -215,17 +214,9 @@ export default function PaywallScreen() {
         seedEntitlementCache(token, {
           provider: "revenuecat",
           entitlement: "premium",
-          trial_active: true,
+          trial_active: false,
           expires_at: expiresAt,
         });
-        if (appUserId) {
-          await syncEntitlement(token, {
-            app_user_id: appUserId,
-            entitlement: "premium",
-            trial_active: true,
-            expires_at: expiresAt,
-          }).catch(() => undefined);
-        }
       }
       const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
       if (exitRoute === "/(tabs)/dashboard") {
@@ -250,7 +241,7 @@ export default function PaywallScreen() {
         await syncEntitlement(token, {
           app_user_id: appUserId,
           entitlement: isPremiumActive(info) ? "premium" : "free",
-          trial_active: isTrialActive(info),
+          trial_active: false,
           expires_at: activeEntitlementExpiration(info),
         });
         await syncBackendFromCustomerInfo();
@@ -291,16 +282,17 @@ export default function PaywallScreen() {
         <PrimaryButton
           label={
             expoGoPreviewMode
-              ? t("paywall.cta.startTrialWithPrice", { price: previewSixMonthPrice })
+              ? t("paywall.cta.sixMonthWithPrice", { price: previewSixMonthPrice })
               : sixMonthPkg
-                ? t("paywall.cta.startTrialWithPrice", {
+                ? t("paywall.cta.sixMonthWithPrice", {
                     price: sixMonthPkg.product.priceString,
                   })
-                : t("paywall.cta.startTrial")
+                : t("paywall.cta.sixMonth")
           }
           onPress={() => void purchasePackage(sixMonthPkg ?? weeklyPkg)}
           disabled={busy || (!purchaseEnabled && !expoGoPreviewMode)}
         />
+        <Text style={styles.sixMonthHint}>{t("paywall.cta.sixMonthHint")}</Text>
         <PrimaryButton
           label={
             expoGoPreviewMode
@@ -359,6 +351,12 @@ const styles = StyleSheet.create({
   badge: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
   body: { color: colors.textSecondary, ...typography.body },
+  sixMonthHint: {
+    color: colors.primary,
+    ...typography.caption,
+    textAlign: "center",
+    marginTop: -spacing.xs,
+  },
   restore: { alignItems: "center", paddingVertical: spacing.xs },
   restoreText: {
     color: colors.textSecondary,

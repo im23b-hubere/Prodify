@@ -11,7 +11,6 @@ import {
   configureRevenueCat,
   getRevenueCatCustomerInfo,
   isPremiumActive,
-  isTrialActive,
 } from "./revenuecat";
 
 /** Resolve whether the user may access premium-gated tabs (RevenueCat + server). */
@@ -37,6 +36,10 @@ export async function resolvePremiumAccess(
 }
 
 async function refreshPremiumAccess(token: string, appUserId?: string | null): Promise<boolean> {
+  if (await isDevBillingBypassActive()) {
+    return true;
+  }
+
   if (__DEV__) {
     try {
       const ent = await fetchEntitlement(token);
@@ -54,12 +57,11 @@ async function refreshPremiumAccess(token: string, appUserId?: string | null): P
       await configureRevenueCat(userId);
       const info = await getRevenueCatCustomerInfo();
       const premium = isPremiumActive(info);
-      const trial = isTrialActive(info);
-      if (premium || trial) {
+      if (premium) {
         await syncEntitlement(token, {
           app_user_id: userId,
-          entitlement: premium ? "premium" : "free",
-          trial_active: trial,
+          entitlement: "premium",
+          trial_active: false,
           expires_at: activeEntitlementExpiration(info),
         }).catch(() => undefined);
         return true;

@@ -105,12 +105,12 @@ def _verification_from_revenuecat(body: BillingSyncBody) -> BillingVerificationR
     now = datetime.now(timezone.utc)
     still_active = expires_at is None or expires_at > now
     period_type = str(active_ent.get("period_type") or "").strip().lower()
-    trial_active = still_active and period_type == "trial"
+    is_paid_period = still_active and period_type != "trial"
     return BillingVerificationResult(
         app_user_id=body.app_user_id,
-        entitlement="premium" if still_active else "free",
-        trial_active=trial_active,
-        expires_at=expires_at,
+        entitlement="premium" if is_paid_period else "free",
+        trial_active=False,
+        expires_at=expires_at if is_paid_period else None,
         verification_source="revenuecat_api",
     )
 
@@ -136,11 +136,13 @@ def sync_from_webhook_payload(db: Session, payload: dict) -> tuple[int | None, U
     if user_id is None:
         return None, None
     event_type = str(event.get("type") or "").strip().upper()
-    trial_active = bool(event.get("is_trial_period"))
+    is_trial_period = bool(event.get("is_trial_period"))
 
     if "CANCELLATION" in event_type or "EXPIRATION" in event_type:
         ent = "free"
-    elif "PURCHASE" in event_type or "RENEWAL" in event_type or bool(event.get("is_active")):
+    elif not is_trial_period and (
+        "PURCHASE" in event_type or "RENEWAL" in event_type or bool(event.get("is_active"))
+    ):
         ent = "premium"
     else:
         # Safest fallback: do not accidentally grant access for unknown events.
@@ -161,7 +163,7 @@ def sync_from_webhook_payload(db: Session, payload: dict) -> tuple[int | None, U
     body = BillingSyncBody(
         app_user_id=str(user_id_raw),
         entitlement=ent,
-        trial_active=trial_active,
+        trial_active=False,
         expires_at=expires_at,
     )
     row = upsert_subscription(db, user_id, body)

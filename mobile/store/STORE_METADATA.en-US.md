@@ -74,7 +74,7 @@ Whether you are beat making, mixing, recording, or learning, Prodify keeps your 
 
 - Stats **Your Week** — set weekly targets, studio-day strip, optional share with friends
 - Dashboard focused on today's action; week overview lives in Stats
-- Premium gates aligned: forecast + weekly review for subscribers and trial
+- Premium gates aligned: forecast + weekly review for subscribers
 - Friend challenges with real session sync and challenge management
 - Together tab: buddy + challenges social view
 

@@ -16,9 +16,10 @@ import {
   TrendingUp,
   Trophy,
 } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { Easing, FadeIn, FadeInDown, FadeInUp, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
@@ -49,8 +50,15 @@ import {
 
 const GOALS = [3, 5, 7, 10, 14] as const;
 const QUIZ_STEPS = 5;
+const INTRO_SLIDE_COUNT = 3;
+const ONBOARDING_VISUALS = [
+  require("../../assets/onboarding/slide-2.png"),
+  require("../../assets/onboarding/slide-1.png"),
+  require("../../assets/onboarding/slide-3.png"),
+] as const;
 
 type Step =
+  | "intro"
   | "welcome"
   | "experience"
   | "genre"
@@ -88,9 +96,58 @@ export default function OnboardingScreen() {
   const { t } = useTranslation();
   const { token } = useAuth();
   const router = useRouter();
-  const [step, setStep] = useState<Step>("welcome");
+  const [step, setStep] = useState<Step>("intro");
+  const [introIndex, setIntroIndex] = useState(0);
   const [answers, setAnswers] = useState<OnboardingQuizAnswers>({ weeklyGoal: 7 });
   const [busy, setBusy] = useState(false);
+  const floatY = useSharedValue(0);
+  const parallaxX = useSharedValue(0);
+
+  const visualFloat = useAnimatedStyle(() => ({
+    transform: [{ translateY: floatY.value }, { translateX: parallaxX.value }],
+  }));
+
+  const copyParallax = useAnimatedStyle(() => ({
+    transform: [{ translateX: -parallaxX.value * 0.6 }],
+  }));
+
+  useEffect(() => {
+    floatY.value = withRepeat(
+      withSequence(
+        withTiming(-8, { duration: 1900, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 1900, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      false,
+    );
+  }, [floatY]);
+
+  useEffect(() => {
+    if (step !== "intro") return;
+    parallaxX.value = 14;
+    parallaxX.value = withTiming(0, { duration: 320, easing: Easing.out(Easing.cubic) });
+  }, [introIndex, parallaxX, step]);
+
+  const introSlides = useMemo(
+    () => [
+      {
+        title: t("onboarding.slide1.title"),
+        body: t("onboarding.slide1.body"),
+        image: ONBOARDING_VISUALS[0],
+      },
+      {
+        title: t("onboarding.slide2.title"),
+        body: t("onboarding.slide2.body"),
+        image: ONBOARDING_VISUALS[1],
+      },
+      {
+        title: t("onboarding.slide3.title"),
+        body: t("onboarding.slide3.body"),
+        image: ONBOARDING_VISUALS[2],
+      },
+    ],
+    [t],
+  );
 
   const goal = answers.weeklyGoal ?? 7;
 
@@ -221,6 +278,69 @@ export default function OnboardingScreen() {
     }
     return t("onboarding.quiz.plan.premiumFallback");
   }, [answers.producerGoal, t]);
+
+  if (step === "intro") {
+    const slide = introSlides[introIndex];
+    return (
+      <SafeAreaView style={styles.introSafe} edges={["top", "bottom"]}>
+        <View style={styles.introTopRow}>
+          <Pressable accessibilityRole="button" onPress={goToWeeklyGoal}>
+            <Text style={styles.introSkip}>{t("onboarding.skip")}</Text>
+          </Pressable>
+          <Text style={styles.introDots}>
+            {introIndex + 1}/{INTRO_SLIDE_COUNT}
+          </Text>
+        </View>
+        <Animated.View key={`intro-${introIndex}`} entering={FadeInDown.duration(320)} style={styles.introSlide}>
+          <Animated.View style={[styles.introVisualWrap, visualFloat]} entering={FadeInUp.duration(360)}>
+            <Animated.Image
+              key={`intro-visual-${introIndex}`}
+              source={slide.image}
+              style={styles.introVisualImage}
+              resizeMode="cover"
+              fadeDuration={0}
+              entering={FadeIn.duration(220)}
+              exiting={FadeOut.duration(180)}
+            />
+            {introIndex < introSlides.length - 1 ? (
+              <Image
+                source={introSlides[introIndex + 1].image}
+                style={styles.introHiddenPreload}
+                fadeDuration={0}
+              />
+            ) : null}
+          </Animated.View>
+          <Animated.View style={[styles.introCopyWrap, copyParallax]}>
+            <Text style={styles.introHeroTitle}>{slide.title}</Text>
+            <Text style={styles.introHeroBody}>{slide.body}</Text>
+          </Animated.View>
+        </Animated.View>
+        <View style={styles.introBottom}>
+          <View style={styles.introPaginationRow}>
+            {introSlides.map((_, idx) => (
+              <View
+                key={`intro-dot-${idx}`}
+                style={[styles.introPageDot, idx === introIndex && styles.introPageDotActive]}
+              />
+            ))}
+          </View>
+          <PrimaryButton
+            label={
+              introIndex === introSlides.length - 1 ? t("onboarding.continue") : t("onboarding.next")
+            }
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+              if (introIndex >= introSlides.length - 1) {
+                setStep("welcome");
+                return;
+              }
+              setIntroIndex((current) => current + 1);
+            }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (step === "welcome") {
     return (
@@ -433,6 +553,58 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
+  introSafe: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+    justifyContent: "flex-start",
+  },
+  introTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  introSkip: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  introDots: { color: colors.textSecondary, ...typography.caption },
+  introSlide: { flex: 1, justifyContent: "flex-start", gap: spacing.sm, paddingTop: spacing.sm },
+  introVisualWrap: {
+    alignSelf: "center",
+    width: "96%",
+    maxWidth: 380,
+    height: 360,
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  introVisualImage: { width: "100%", height: "100%" },
+  introHiddenPreload: { width: 0, height: 0, opacity: 0, position: "absolute" },
+  introCopyWrap: { gap: spacing.sm, paddingTop: spacing.md, paddingHorizontal: spacing.xs },
+  introHeroTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 26,
+    lineHeight: 32,
+  },
+  introHeroBody: { color: colors.textSecondary, ...typography.body, lineHeight: 22 },
+  introBottom: { gap: spacing.md, paddingTop: spacing.sm },
+  introPaginationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
+  introPageDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.22)",
+  },
+  introPageDotActive: {
+    width: 24,
+    backgroundColor: colors.primary,
+  },
   welcomeSafe: {
     flex: 1,
     backgroundColor: colors.background,

@@ -21,14 +21,14 @@ from app.models import (
 )
 from app.security import hash_password
 
-SCREENSHOT_FRIENDS: list[tuple[str, str, int, int]] = [
-    # (username, email, current_streak, progression_level)
-    ("nico.beats", "nico.beats.studio@gmail.com", 18, 17),
-    ("lena.wav", "lena.wav.music@gmail.com", 14, 15),
-    ("marcus808", "marcus808.prod@gmail.com", 22, 21),
-    ("kira.mix", "kira.mix.audio@gmail.com", 11, 13),
-    ("felix.arr", "felix.arrange@gmail.com", 9, 12),
-    ("sofia.sounds", "sofia.sounds.studio@gmail.com", 31, 26),
+SCREENSHOT_FRIENDS: list[tuple[str, str, int, int, int | None]] = [
+    # (username, email, current_streak, progression_level, total_sessions)
+    ("nico.beats", "nico.beats.studio@gmail.com", 18, 17, 24),
+    ("lena.wav", "lena.wav.music@gmail.com", 14, 15, 17),
+    ("marcus808", "marcus808.prod@gmail.com", 22, 21, None),
+    ("kira.mix", "kira.mix.audio@gmail.com", 11, 13, None),
+    ("felix.arr", "felix.arrange@gmail.com", 9, 12, None),
+    ("sofia.sounds", "sofia.sounds.studio@gmail.com", 31, 26, None),
 ]
 
 TRACK_TITLES = [
@@ -208,6 +208,47 @@ def _seed_realistic_sessions(
     return created
 
 
+def _seed_session_count(
+    db,
+    user_id: int,
+    *,
+    count: int,
+    base_minutes: int,
+) -> int:
+    """Spread exactly `count` completed sessions over recent days (screenshot-friendly)."""
+    if count <= 0:
+        return 0
+    now = utcnow()
+    session_types = ("beat_making", "mixing", "sound_design", "arrangement")
+    for i in range(count):
+        day_offset = count - i
+        minutes = base_minutes + (i % 4) * 8
+        hour = 10 + (i % 3) * 2
+        start = (now - timedelta(days=day_offset)).replace(
+            hour=hour, minute=18 + (i % 5) * 6, second=0, microsecond=0
+        )
+        stop = start + timedelta(minutes=minutes)
+        finished = i % 3 != 1
+        title_idx = i % len(TRACK_TITLES)
+        db.add(
+            ProductionSession(
+                user_id=user_id,
+                started_at=start,
+                stopped_at=stop,
+                duration_seconds=max(420, int(minutes * 60)),
+                session_type=session_types[i % len(session_types)],
+                notes=SESSION_NOTES[i % len(SESSION_NOTES)],
+                mood_level=3 + (i % 3),
+                tags=json.dumps(SESSION_TAGS[i % len(SESSION_TAGS)]),
+                paused_duration_seconds=0,
+                focus_score=70 + (i % 25),
+                track_outcome="finished" if finished else "wip",
+                track_title=TRACK_TITLES[title_idx] if finished else None,
+            )
+        )
+    return count
+
+
 def _ensure_weekly_goal(db, user_id: int, target: int = 7) -> None:
     week = _week_start(utcnow())
     row = db.scalar(
@@ -294,7 +335,7 @@ def seed_screenshot_account(
     _ensure_premium(db, main_user.id)
 
     friends_seeded = 0
-    for username, email, friend_streak, friend_level in SCREENSHOT_FRIENDS:
+    for username, email, friend_streak, friend_level, session_count in SCREENSHOT_FRIENDS:
         friend = _ensure_user(
             db,
             email=email,
@@ -303,13 +344,17 @@ def seed_screenshot_account(
         )
         _ensure_friendship_accepted(db, main_user.id, friend.id)
         _clear_user_sessions(db, friend.id)
-        _seed_realistic_sessions(
-            db,
-            friend.id,
-            days_back=28 + (friend_level % 6),
-            sessions_per_day=1,
-            base_minutes=34 + friend_level,
-        )
+        base_minutes = 34 + friend_level
+        if session_count is not None:
+            _seed_session_count(db, friend.id, count=session_count, base_minutes=base_minutes)
+        else:
+            _seed_realistic_sessions(
+                db,
+                friend.id,
+                days_back=28 + (friend_level % 6),
+                sessions_per_day=1,
+                base_minutes=base_minutes,
+            )
         fs = _ensure_streak(db, friend.id)
         fs.current_streak = friend_streak
         fs.longest_streak = max(int(fs.longest_streak or 0), friend_streak + 4)

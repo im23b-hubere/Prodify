@@ -14,7 +14,6 @@ def _auth_headers(client, email: str, username: str, password: str = "strong-pas
 
 
 def test_billing_entitlement_sync_and_get(client, monkeypatch):
-    monkeypatch.setattr("app.dependencies_subscription.settings.onboarding_trial_days", 7)
     # Dev sync trusts the client payload only when RevenueCat verification is not configured.
     monkeypatch.setattr("app.routers.billing.settings.revenuecat_secret_key", None)
     headers = _auth_headers(client, "bill@example.com", "bill-user")
@@ -26,8 +25,7 @@ def test_billing_entitlement_sync_and_get(client, monkeypatch):
     assert r.status_code == 200
     data = r.json()
     assert data["entitlement"] == "free"
-    # Server-side onboarding trial until Store / RevenueCat sync (see ONBOARDING_TRIAL_DAYS).
-    assert data["trial_active"] is True
+    assert data["trial_active"] is False
 
     synced = client.post(
         "/billing/sync",
@@ -35,13 +33,13 @@ def test_billing_entitlement_sync_and_get(client, monkeypatch):
         json={
             "app_user_id": user_id,
             "entitlement": "premium",
-            "trial_active": True,
+            "trial_active": False,
             "expires_at": None,
         },
     )
     assert synced.status_code == 200
     assert synced.json()["entitlement"] == "premium"
-    assert synced.json()["trial_active"] is True
+    assert synced.json()["trial_active"] is False
 
 
 def test_billing_sync_rejects_mismatched_app_user_id(client):
