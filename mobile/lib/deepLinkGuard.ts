@@ -29,8 +29,16 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   /^session\/complete$/,
   /^session\/\d+$/,
   /^profile\/\d+$/,
+  /^challenge\/\d+$/,
   /^streak\/history$/,
 ];
+
+const TAB_ROUTE_MAP: Record<string, `/(tabs)/${string}`> = {
+  dashboard: "/(tabs)/dashboard",
+  stats: "/(tabs)/stats",
+  friends: "/(tabs)/friends",
+  profile: "/(tabs)/profile",
+};
 
 export function normalizeIncomingPath(path: string | null | undefined): string {
   if (!path) return "";
@@ -82,5 +90,7 @@ export function toRoutableHref(path: string | null | undefined): `/${string}` {
   const normalized = normalizeIncomingPath(path);
   if (!normalized) return "/";
   if (normalized === "session/active") return "/session-active";
+  const tabHref = TAB_ROUTE_MAP[normalized];
+  if (tabHref) return tabHref;
   return `/${normalized}`;
 }

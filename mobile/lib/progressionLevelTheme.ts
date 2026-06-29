@@ -123,10 +123,10 @@ export function levelRankState(level: number, currentLevel: number): LevelRankSt
 
 export function groupLevelsByTier<T extends { level: number }>(
   entries: T[],
-): Array<{
+): {
   tier: LevelTierTheme;
   levels: T[];
-}> {
+}[] {
   const groups = new Map<LevelTierId, { tier: LevelTierTheme; levels: T[] }>();
   for (const entry of entries) {
     const tier = levelTierFor(entry.level);

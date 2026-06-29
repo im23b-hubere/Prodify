@@ -23,14 +23,15 @@ export const DashboardMotivationCard = memo(function DashboardMotivationCard({
   todaySessionCount,
 }: Props) {
   const { t } = useTranslation();
+  const motivationLine = serverMessage?.trim() ? serverMessage : message;
+
   return (
     <GlassCard>
       <View style={styles.inner}>
         <Text style={styles.greeting}>
           {greeting}, {userName}! 👋
         </Text>
-        <Text style={styles.motivationText}>{message}</Text>
-        {serverMessage ? <Text style={styles.serverMotivation}>{serverMessage}</Text> : null}
+        <Text style={styles.motivationText}>{motivationLine}</Text>
         {todaySessionCount > 0 ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
@@ -54,14 +55,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     ...typography.body,
     lineHeight: 22,
-  },
-  serverMotivation: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    lineHeight: 20,
-    opacity: 0.92,
-    fontStyle: "italic",
-    marginTop: 2,
   },
   badge: {
     alignSelf: "flex-start",

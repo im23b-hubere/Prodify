@@ -15,9 +15,9 @@ describe("progressionLevelTheme", () => {
   });
 
   it("groups catalog entries by tier", () => {
-    const groups = groupLevelsByTier([{ level: 1 }, { level: 5 }, { level: 9 }] as Array<{
+    const groups = groupLevelsByTier([{ level: 1 }, { level: 5 }, { level: 9 }] as {
       level: number;
-    }>);
+    }[]);
     expect(groups).toHaveLength(3);
     expect(groups[0]?.tier.id).toBe("starter");
     expect(groups[1]?.tier.id).toBe("builder");

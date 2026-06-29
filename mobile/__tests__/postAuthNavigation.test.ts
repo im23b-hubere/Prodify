@@ -1,7 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ONBOARDING_COMPLETE_KEY } from "../constants/storageKeys";
-import { getPostLoginHref, POST_REGISTER_HREF } from "../lib/postAuthNavigation";
+import {
+  DASHBOARD_TAB_HREF,
+  getPostLoginHref,
+  POST_REGISTER_HREF,
+  resolvePostAuthRoute,
+  resolveUnauthenticatedAuthHref,
+} from "../lib/postAuthNavigation";
 
 describe("postAuthNavigation", () => {
   beforeEach(() => {
@@ -10,6 +16,25 @@ describe("postAuthNavigation", () => {
 
   it("exports a fixed post-register route", () => {
     expect(POST_REGISTER_HREF).toBe("/onboarding");
+  });
+
+  it("exports dashboard tab href", () => {
+    expect(DASHBOARD_TAB_HREF).toBe("/(tabs)/dashboard");
+  });
+
+  it("resolveUnauthenticatedAuthHref sends onboarded users to login", () => {
+    expect(resolveUnauthenticatedAuthHref(true)).toBe("/(auth)/login");
+    expect(resolveUnauthenticatedAuthHref(false)).toBe("/onboarding");
+  });
+
+  it("resolvePostAuthRoute sends onboarded users without token to login", () => {
+    expect(
+      resolvePostAuthRoute({
+        hasToken: false,
+        onboardingComplete: true,
+        entryPoint: "app_launch",
+      }).pathname,
+    ).toBe("/(auth)/login");
   });
 
   it("getPostLoginHref returns dashboard when onboarding flag is set", async () => {

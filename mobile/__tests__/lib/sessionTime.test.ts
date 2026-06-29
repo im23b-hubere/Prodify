@@ -23,7 +23,6 @@ describe("effectiveElapsedSeconds", () => {
     const session = baseSession({
       pause_started_at: "2026-06-10T12:01:05Z",
     });
-    const startedMs = Date.parse("2026-06-10T12:00:00Z");
     const pauseMs = Date.parse("2026-06-10T12:01:05Z");
 
     expect(effectiveElapsedSeconds(session, pauseMs - 2000)).toBe(65);

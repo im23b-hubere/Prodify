@@ -302,7 +302,7 @@ export function SessionSetupForm({
       await Promise.resolve(onStarted(created));
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-      const msg = e instanceof Error ? e.message : "Could not start session";
+      const msg = e instanceof Error ? e.message : t("sessionSetup.startFailed");
       debugLog("session", "start_failure", {
         status: e instanceof ApiError ? e.status : 0,
         message: msg,

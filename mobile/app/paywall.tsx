@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { usePreventRemove } from "@react-navigation/native";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, BackHandler, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import type { PurchasesPackage } from "react-native-purchases";
@@ -44,6 +45,19 @@ export default function PaywallScreen() {
   const params = useLocalSearchParams<{ variant?: string; source?: string }>();
   const source: PaywallSource =
     params.source === "onboarding" || params.source === "post_auth" ? params.source : "in_app";
+  const blockExit = source === "post_auth" || source === "onboarding";
+
+  usePreventRemove(
+    blockExit,
+    useCallback(() => {}, []),
+  );
+
+  useEffect(() => {
+    if (!blockExit) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, [blockExit]);
+
   const variant: Variant =
     params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
   const defaultCopy = useMemo(

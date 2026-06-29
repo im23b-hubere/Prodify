@@ -109,7 +109,7 @@ export default function TabsLayout() {
   }
 
   if (!token) {
-    return <Redirect href="/(auth)/register" />;
+    return <Redirect href="/(auth)/login" />;
   }
   if (!hasAccess) {
     return <Redirect href={{ pathname: "/paywall", params: { source: "post_auth" } }} />;

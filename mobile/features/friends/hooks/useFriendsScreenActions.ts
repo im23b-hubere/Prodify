@@ -169,7 +169,7 @@ export function useFriendsScreenActions({
     async (friendUserId: number) => {
       if (!token) return;
       if (!friendCandidates.some((entry) => entry.user_id === friendUserId)) {
-        Alert.alert(t("friendsScreen.errorGeneric"), t("friendsScreen.feedEmptyMessage"));
+        Alert.alert(t("friendsScreen.errorGeneric"), t("friendsScreen.buddyPickerEmptyMessage"));
         state.setAddOpen(true);
         return;
       }

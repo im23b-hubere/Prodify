@@ -2,13 +2,13 @@ import { type Href, useRouter } from "expo-router";
 import { UserPlus } from "lucide-react-native";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, RefreshControl, Text, View, type ListRenderItem } from "react-native";
+import { FlatList, RefreshControl, Text, type ListRenderItem } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { ErrorState } from "../../components/states/ErrorState";
+import { EmptyState } from "../../components/states/EmptyState";
 import { LoadingState } from "../../components/states/LoadingState";
-import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { colors } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { FriendsActivityFeedItem } from "../../features/friends/components/FriendsActivityFeedItem";
@@ -257,19 +257,13 @@ export default function FriendsScreen() {
               addFriendA11y={t("friendsScreen.addFriendA11y")}
             />
             {!loading && !actions.hasOtherFriends ? (
-              <View style={styles.emptyFriendsCard}>
-                <View style={styles.emptyFriendsIcon}>
-                  <UserPlus color={colors.primary} size={18} />
-                </View>
-                <View style={styles.emptyFriendsCopy}>
-                  <Text style={styles.emptyFriendsTitle}>{t("friendsScreen.feedEmptyTitle")}</Text>
-                  <Text style={styles.userMeta}>{t("friendsScreen.feedEmptyMessage")}</Text>
-                </View>
-                <PrimaryButton
-                  label={t("friendsScreen.feedEmptyCta")}
-                  onPress={() => setAddOpen(true)}
-                />
-              </View>
+              <EmptyState
+                iconNode={<UserPlus color={colors.primary} size={36} />}
+                title={t("friendsScreen.feedEmptyTitle")}
+                message={t("friendsScreen.feedEmptyMessage")}
+                actionLabel={t("friendsScreen.feedEmptyCta")}
+                onAction={() => setAddOpen(true)}
+              />
             ) : null}
             {error ? (
               <ErrorState
@@ -292,7 +286,7 @@ export default function FriendsScreen() {
                   onAccept={actions.acceptRequest}
                   onDecline={actions.declineRequest}
                 />
-                {sectionTab === "overview" ? (
+                {sectionTab === "overview" && actions.hasOtherFriends ? (
                   <FriendsOverviewSection
                     t={t}
                     mode={mode}

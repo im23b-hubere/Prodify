@@ -8,10 +8,12 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Switch, Text, View } f
 import { Swipeable } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { fontFamily } from "../constants/fonts";
+import { EmptyState } from "../components/states/EmptyState";
+import { LoadingState } from "../components/states/LoadingState";
 import { useAuth } from "../context/AuthContext";
 import { debugNav } from "../lib/debugLog";
 import { deepLinkRequiresAuth, isAllowedDeepLinkPath, toRoutableHref } from "../lib/deepLinkGuard";
+import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import {
   loadInbox,
@@ -73,6 +75,7 @@ export default function NotificationsScreen() {
   const params = useLocalSearchParams<{ source?: string }>();
   const [items, setItems] = useState<InboxItem[]>([]);
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<NotificationCategory | "all">("all");
   const [serverSyncError, setServerSyncError] = useState<string | null>(null);
@@ -118,6 +121,7 @@ export default function NotificationsScreen() {
       }
     }
     setServerSyncError(serverErrors.length > 0 ? serverErrors.join("\n") : null);
+    setInitialLoading(false);
   }, [token, t]);
 
   useFocusEffect(
@@ -273,27 +277,33 @@ export default function NotificationsScreen() {
         </View>
       ) : null}
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(i) => i.id}
-        style={styles.listFlex}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Bell color={colors.textSecondary} size={40} style={{ marginBottom: spacing.sm }} />
-            <Text style={styles.emptyTitle}>{t("notificationsUi.emptyTitle")}</Text>
-            <Text style={styles.emptySub}>{t("notificationsUi.emptySub")}</Text>
-          </View>
-        }
-        renderItem={renderItem}
-      />
+      {initialLoading && !refreshing ? (
+        <View style={styles.loadingWrap}>
+          <LoadingState message={t("notificationsUi.loading")} />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(i) => i.id}
+          style={styles.listFlex}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              iconNode={<Bell color={colors.primary} size={40} />}
+              title={t("notificationsUi.emptyTitle")}
+              message={t("notificationsUi.emptySub")}
+            />
+          }
+          renderItem={renderItem}
+        />
+      )}
 
       {settings ? (
         <View style={styles.settings}>
@@ -466,6 +476,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
   },
   listFlex: { flex: 1 },
+  loadingWrap: { flex: 1, paddingHorizontal: spacing.md },
   list: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
   card: {
     borderRadius: radii.md,
@@ -526,18 +537,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   deleteTxt: { color: "#fff", fontFamily: fontFamily.bodyBold },
-  empty: { alignItems: "center", paddingVertical: spacing.xxl },
-  emptyTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.subheadline,
-  },
-  emptySub: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    marginTop: spacing.xs,
-    textAlign: "center",
-  },
   settings: {
     borderTopWidth: 1,
     borderTopColor: colors.border,

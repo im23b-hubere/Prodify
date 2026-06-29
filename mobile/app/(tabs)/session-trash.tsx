@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
+import { Trash2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -149,7 +150,7 @@ export default function SessionTrashScreen() {
           <ErrorState
             title={t("common.oops")}
             message={error}
-            retryLabel={t("common.tryAgain")}
+            retryLabel={t("common.reload")}
             onRetry={() => {
               setLoading(true);
               load({ reset: true }).catch(() => undefined);
@@ -158,7 +159,13 @@ export default function SessionTrashScreen() {
         ) : null}
 
         {!loading && !error && sessions.length === 0 ? (
-          <EmptyState icon="🗑️" title={t("sessionTrash.title")} message={t("sessionTrash.empty")} />
+          <EmptyState
+            iconNode={<Trash2 color={colors.primary} size={40} />}
+            title={t("sessionTrash.emptyTitle")}
+            message={t("sessionTrash.emptyBody")}
+            secondaryActionLabel={t("sessionFeedback.backToDashboard")}
+            onSecondaryAction={() => router.replace("/(tabs)/dashboard")}
+          />
         ) : (
           <>
             {sessions.map((session) => (

@@ -12,6 +12,8 @@ type Props = {
   plan: TodayPlanRecommendation;
   shortSessionsHint?: string | null;
   adjustedTargetHint?: string | null;
+  compact?: boolean;
+  showCta?: boolean;
   onStartSuggested: () => void;
 };
 
@@ -19,12 +21,21 @@ export const TodayPlanCard = memo(function TodayPlanCard({
   plan,
   shortSessionsHint,
   adjustedTargetHint,
+  compact = false,
+  showCta = true,
   onStartSuggested,
 }: Props) {
   const { t } = useTranslation();
 
+  const criticalHint =
+    plan.status === "off_track" && shortSessionsHint
+      ? shortSessionsHint
+      : plan.status === "off_track" && adjustedTargetHint
+        ? adjustedTargetHint
+        : null;
+
   return (
-    <AppCard style={styles.card}>
+    <AppCard style={[styles.card, compact ? styles.cardCompact : undefined]} testID="today-plan-card">
       <View style={styles.headerRow}>
         <Text style={styles.kicker}>{t("todayPlan.title")}</Text>
         <View
@@ -41,9 +52,11 @@ export const TodayPlanCard = memo(function TodayPlanCard({
         </View>
       </View>
 
-      <Text style={styles.recommendation}>{t(plan.messageKey, plan.messageParams)}</Text>
+      <Text style={[styles.recommendation, compact && styles.recommendationCompact]}>
+        {t(plan.messageKey, plan.messageParams)}
+      </Text>
 
-      {plan.feedbackPreview ? (
+      {!compact && plan.feedbackPreview ? (
         <Text style={styles.preview}>
           {t("todayPlan.preview", {
             pct: plan.feedbackPreview.weeklyGoalPercentAfterSession,
@@ -55,18 +68,25 @@ export const TodayPlanCard = memo(function TodayPlanCard({
           })}
         </Text>
       ) : null}
-      {shortSessionsHint ? <Text style={styles.shortHint}>{shortSessionsHint}</Text> : null}
-      {adjustedTargetHint ? <Text style={styles.adjustedHint}>{adjustedTargetHint}</Text> : null}
+      {!compact && shortSessionsHint ? <Text style={styles.shortHint}>{shortSessionsHint}</Text> : null}
+      {!compact && adjustedTargetHint ? (
+        <Text style={styles.adjustedHint}>{adjustedTargetHint}</Text>
+      ) : null}
+      {compact && criticalHint ? <Text style={styles.shortHint}>{criticalHint}</Text> : null}
 
-      <PrimaryButton label={t("todayPlan.cta")} onPress={onStartSuggested} />
+      {showCta && !compact ? (
+        <PrimaryButton label={t("todayPlan.cta")} onPress={onStartSuggested} />
+      ) : null}
     </AppCard>
   );
 });
 
 const styles = StyleSheet.create({
   card: {
-    marginTop: ui.stackGap,
     gap: ui.compactGap,
+  },
+  cardCompact: {
+    gap: spacing.sm,
   },
   headerRow: {
     flexDirection: "row",
@@ -86,6 +106,11 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.heading,
     ...typography.cardTitle,
     lineHeight: 22,
+  },
+  recommendationCompact: {
+    ...typography.body,
+    fontFamily: fontFamily.bodyMedium,
+    lineHeight: 20,
   },
   statusPill: {
     borderRadius: radii.round,

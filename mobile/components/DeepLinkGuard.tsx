@@ -9,6 +9,12 @@ import {
   isAllowedDeepLinkPath,
   toRoutableHref,
 } from "../lib/deepLinkGuard";
+import {
+  readOnboardingComplete,
+  resolveDeepLinkFallbackHref,
+  resolveUnauthenticatedAuthHref,
+  toHref,
+} from "../lib/postAuthNavigation";
 import { setPendingDeepLinkPath } from "../lib/pendingDeepLink";
 
 export function DeepLinkGuard() {
@@ -23,13 +29,23 @@ export function DeepLinkGuard() {
       const targetPath = extractDeepLinkPath(url) || fromParsed;
 
       if (!isAllowedDeepLinkPath(targetPath)) {
-        router.replace((token ? "/dashboard" : "/(auth)/register") as Href);
+        void readOnboardingComplete().then((onboardingComplete) => {
+          router.replace(
+            toHref({
+              pathname: resolveDeepLinkFallbackHref(Boolean(token), onboardingComplete),
+            }) as Href,
+          );
+        });
         return;
       }
 
       if (deepLinkRequiresAuth(targetPath) && !token) {
         void setPendingDeepLinkPath(targetPath);
-        router.replace("/(auth)/register");
+        void readOnboardingComplete().then((onboardingComplete) => {
+          router.replace(
+            toHref({ pathname: resolveUnauthenticatedAuthHref(onboardingComplete) }) as Href,
+          );
+        });
         return;
       }
 

@@ -8,6 +8,7 @@ import {
   normalizeIncomingPath,
   toRoutableHref,
 } from "./deepLinkGuard";
+import { DASHBOARD_TAB_HREF } from "./postAuthNavigation";
 
 type ReplaceFn = (href: Href) => void;
 
@@ -52,5 +53,5 @@ export async function replaceWithPendingDeepLinkOrDashboard(router: {
     router.replace(pending);
     return;
   }
-  router.replace("/(tabs)/dashboard" as Href);
+  router.replace(DASHBOARD_TAB_HREF as Href);
 }

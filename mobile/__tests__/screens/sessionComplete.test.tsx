@@ -153,7 +153,7 @@ describe("SessionCompleteScreen tracking UX", () => {
   });
 
   it("shows save error for track outcome and enforces 160-char title limit", async () => {
-    const { findByText, findByPlaceholderText, getByText, getAllByText } = render(
+    const { findByPlaceholderText, getByText, getAllByText } = render(
       <SessionCompleteScreen />,
     );
 

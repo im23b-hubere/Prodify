@@ -1,4 +1,3 @@
-import type { TFunction } from "i18next";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
@@ -124,7 +123,17 @@ export function FriendsModals({
             <Text style={styles.modalHint}>{t("friendsScreen.pickBuddyHint")}</Text>
             <View style={styles.memberChips}>
               {friendCandidates.length === 0 ? (
-                <Text style={styles.userMeta}>{t("friendsScreen.feedEmptyMessage")}</Text>
+                <View style={styles.modalEmpty}>
+                  <Text style={styles.modalEmptyTitle}>{t("friendsScreen.buddyPickerEmptyTitle")}</Text>
+                  <Text style={styles.userMeta}>{t("friendsScreen.buddyPickerEmptyMessage")}</Text>
+                  <PrimaryButton
+                    label={t("friendsScreen.buddyPickerEmptyCta")}
+                    onPress={() => {
+                      setBuddyPickerOpen(false);
+                      setAddOpen(true);
+                    }}
+                  />
+                </View>
               ) : (
                 friendCandidates.slice(0, 12).map((entry) => (
                   <Pressable
@@ -184,7 +193,19 @@ export function FriendsModals({
             <Text style={styles.modalHint}>{t("friendsScreen.challengePickFriendLabel")}</Text>
             <View style={styles.memberChips}>
               {entries.filter((entry) => entry.user_id !== currentUserId).length === 0 ? (
-                <Text style={styles.userMeta}>{t("friendsScreen.feedEmptyMessage")}</Text>
+                <View style={styles.modalEmpty}>
+                  <Text style={styles.modalEmptyTitle}>
+                    {t("friendsScreen.challengeMemberEmptyTitle")}
+                  </Text>
+                  <Text style={styles.userMeta}>{t("friendsScreen.challengeMemberEmptyMessage")}</Text>
+                  <PrimaryButton
+                    label={t("friendsScreen.challengeMemberEmptyCta")}
+                    onPress={() => {
+                      resetChallengeModal();
+                      setAddOpen(true);
+                    }}
+                  />
+                </View>
               ) : (
                 entries
                   .filter((entry) => entry.user_id !== currentUserId)
@@ -282,6 +303,15 @@ const styles = StyleSheet.create({
     ...typography.subheadline,
   },
   modalHint: { color: colors.textSecondary, ...typography.caption },
+  modalEmpty: {
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  modalEmptyTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
   fieldLabel: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyMedium,

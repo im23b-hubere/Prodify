@@ -25,6 +25,8 @@ export type ResolvePostAuthRouteInput = {
   allowPaywallPrompt?: boolean;
 };
 
+export const DASHBOARD_TAB_HREF: HrefPath = "/(tabs)/dashboard";
+
 // Backward-compatible route constants consumed by existing tests/callers.
 export const POST_REGISTER_HREF: HrefPath = "/onboarding";
 
@@ -37,6 +39,20 @@ export async function readOnboardingComplete(): Promise<boolean> {
   }
 }
 
+/** Where unauthenticated users land when auth is required (deep links, cold start). */
+export function resolveUnauthenticatedAuthHref(onboardingComplete: boolean): HrefPath {
+  return onboardingComplete ? "/(auth)/login" : "/onboarding";
+}
+
+/** Fallback when a deep link path is invalid or blocked. */
+export function resolveDeepLinkFallbackHref(
+  hasToken: boolean,
+  onboardingComplete: boolean,
+): HrefPath {
+  if (hasToken) return DASHBOARD_TAB_HREF;
+  return resolveUnauthenticatedAuthHref(onboardingComplete);
+}
+
 export function resolvePostAuthRoute({
   hasToken,
   onboardingComplete,
@@ -44,7 +60,7 @@ export function resolvePostAuthRoute({
   allowPaywallPrompt = true,
 }: ResolvePostAuthRouteInput): ResolvedRoute {
   if (!hasToken) {
-    return { pathname: onboardingComplete ? "/(auth)/register" : "/onboarding" };
+    return { pathname: resolveUnauthenticatedAuthHref(onboardingComplete) };
   }
 
   if (!onboardingComplete) {

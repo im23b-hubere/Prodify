@@ -6,7 +6,8 @@ import { colors, spacing, typography, ui } from "../../constants/theme";
 import { pressFeedbackStyle } from "./pressFeedback";
 
 type ScreenHeaderProps = {
-  title: string;
+  title?: string;
+  titleNode?: ReactNode;
   subtitle?: string | null;
   actionLabel?: string;
   onActionPress?: () => void;
@@ -15,6 +16,7 @@ type ScreenHeaderProps = {
 
 export function ScreenHeader({
   title,
+  titleNode,
   subtitle,
   actionLabel,
   onActionPress,
@@ -23,7 +25,16 @@ export function ScreenHeader({
   return (
     <View style={styles.wrap}>
       <View style={styles.textWrap}>
-        <Text style={styles.title}>{title}</Text>
+        {titleNode ?? (
+          <Text
+            style={styles.title}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.82}
+          >
+            {title}
+          </Text>
+        )}
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
       {actionNode ? actionNode : null}
@@ -49,12 +60,14 @@ const styles = StyleSheet.create({
   },
   textWrap: {
     flex: 1,
+    minWidth: 0,
     gap: spacing.xs,
   },
   title: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     ...typography.screenTitle,
+    flexShrink: 1,
   },
   subtitle: {
     color: colors.textSecondary,

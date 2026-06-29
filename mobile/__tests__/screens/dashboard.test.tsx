@@ -106,7 +106,7 @@ jest.mock("../../components/dashboard/DashboardSessionStarter", () => ({
   DashboardSessionStarter: () => {
     const React = require("react");
     const { View } = require("react-native");
-    return React.createElement(View);
+    return React.createElement(View, { testID: "dashboard-start-session" });
   },
 }));
 jest.mock("../../components/dashboard/FriendsActivityWidget", () => ({
@@ -120,7 +120,7 @@ jest.mock("../../components/dashboard/TodayPlanCard", () => ({
   TodayPlanCard: () => {
     const React = require("react");
     const { View } = require("react-native");
-    return React.createElement(View);
+    return React.createElement(View, { testID: "today-plan-card" });
   },
 }));
 jest.mock("../../components/dashboard/TodayProgressCard", () => ({
@@ -130,15 +130,13 @@ jest.mock("../../components/dashboard/TodayProgressCard", () => ({
     return React.createElement(View);
   },
 }));
-jest.mock("../../components/dashboard/WeeklyGoalStatsNudge", () => ({
-  WeeklyGoalStatsNudge: () => {
+jest.mock("../../components/dashboard/WeeklyGoalInlineCard", () => ({
+  WeeklyGoalInlineCard: ({ mode }: { mode: "setup" | "progress" }) => {
     const React = require("react");
-    const { Text } = require("react-native");
-    return React.createElement(
-      Text,
-      { testID: "weekly-goal-stats-nudge" },
-      "dashboard.weeklyGoalNudgeTitle",
-    );
+    const { View } = require("react-native");
+    return React.createElement(View, {
+      testID: mode === "setup" ? "weekly-goal-inline-setup" : "weekly-goal-inline-progress",
+    });
   },
 }));
 jest.mock("../../components/streak/StreakBreakModal", () => ({
@@ -214,6 +212,7 @@ jest.mock("../../lib/motivationApi", () => ({
 
 jest.mock("../../lib/todayPlanEngine", () => ({
   buildTodayPlanRecommendation: () => ({
+    status: "on_track",
     suggestedSessionType: "beat_making",
   }),
 }));
@@ -233,6 +232,10 @@ jest.mock("../../lib/pushToken", () => ({
 
 jest.mock("../../lib/client", () => ({
   apiJson: jest.fn(),
+}));
+
+jest.mock("../../lib/goals", () => ({
+  setWeeklyGoal: jest.fn().mockResolvedValue({ target_value: 5 }),
 }));
 
 const createDashboardState = (overrides: Record<string, unknown> = {}) => ({
@@ -306,7 +309,12 @@ describe("Dashboard Screen", () => {
     expect(getByText("Network error")).toBeTruthy();
   });
 
-  it("shows weekly goal nudge when no target is set", () => {
+  it("shows start session CTA above the fold", () => {
+    const { getByTestId } = render(<DashboardScreen />);
+    expect(getByTestId("dashboard-start-session")).toBeTruthy();
+  });
+
+  it("shows weekly goal inline setup when no target is set", () => {
     mockUseDashboardData.mockReturnValue(
       createDashboardState({
         weeklyGoalTarget: null,
@@ -314,17 +322,38 @@ describe("Dashboard Screen", () => {
       }),
     );
     const { getByTestId } = render(<DashboardScreen />);
-    expect(getByTestId("weekly-goal-stats-nudge")).toBeTruthy();
+    expect(getByTestId("weekly-goal-inline-setup")).toBeTruthy();
   });
 
-  it("hides weekly goal nudge when a target exists", () => {
+  it("shows weekly goal progress when a target exists", () => {
     mockUseDashboardData.mockReturnValue(
       createDashboardState({
         weeklyGoalTarget: 5,
         hasWeeklyGoal: true,
+        weekSessionsCount: 2,
+      }),
+    );
+    const { getByTestId } = render(<DashboardScreen />);
+    expect(getByTestId("weekly-goal-inline-progress")).toBeTruthy();
+  });
+
+  it("hides today plan when user already has sessions today and is on track", () => {
+    mockUseDashboardData.mockReturnValue(
+      createDashboardState({
+        weeklyGoalTarget: 5,
+        hasWeeklyGoal: true,
+        sessions: [
+          {
+            id: 101,
+            session_type: "mixing",
+            stopped_at: "2026-06-29T10:00:00Z",
+            started_at: "2026-06-29T09:30:00Z",
+            duration_seconds: 1800,
+          },
+        ],
       }),
     );
     const { queryByTestId } = render(<DashboardScreen />);
-    expect(queryByTestId("weekly-goal-stats-nudge")).toBeNull();
+    expect(queryByTestId("today-plan-card")).toBeNull();
   });
 });

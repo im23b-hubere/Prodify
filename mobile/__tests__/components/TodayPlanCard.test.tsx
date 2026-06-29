@@ -35,7 +35,19 @@ describe("TodayPlanCard", () => {
     expect(screen.queryByText("todayPlan.preview")).toBeNull();
   });
 
-  it("calls onStartSuggested when CTA is pressed", () => {
+  it("renders recommendation without CTA in compact mode", () => {
+    render(
+      <TodayPlanCard plan={basePlan} compact showCta={false} onStartSuggested={jest.fn()} />,
+    );
+
+    expect(screen.getByText("todayPlan.title")).toBeTruthy();
+    expect(
+      screen.getByText('todayPlan.recommendation.onTrack:{"sessions":1,"minutes":45}'),
+    ).toBeTruthy();
+    expect(screen.queryByText("todayPlan.cta")).toBeNull();
+  });
+
+  it("calls onStartSuggested when CTA is pressed in full mode", () => {
     const onStartSuggested = jest.fn();
     render(<TodayPlanCard plan={basePlan} onStartSuggested={onStartSuggested} />);
 

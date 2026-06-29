@@ -123,8 +123,6 @@ export default function ProgressionOverviewScreen() {
   const rankName = useMemo(() => progressionLevelName(t, level), [level, t]);
   const nextRankName = useMemo(() => progressionLevelName(t, nextLevel), [nextLevel, t]);
   const percent = Math.max(0, Math.min(100, progression?.progress_percent ?? 0));
-  const graceDays = progression?.decay_grace_days ?? 2;
-  const xpPerDay = progression?.decay_xp_per_day ?? 12;
   const currentTier = useMemo(() => levelTierFor(level), [level]);
   const tierGroups = useMemo(() => groupLevelsByTier(levelCatalog), [levelCatalog]);
 
@@ -212,9 +210,7 @@ export default function ProgressionOverviewScreen() {
               })}
             </Text>
             <Text style={styles.hint}>{t("progression.overviewHint")}</Text>
-            <Text style={styles.decayHint}>
-              {t("progression.decayRule", { graceDays: graceDays, xpPerDay: xpPerDay })}
-            </Text>
+            <Text style={styles.decayHint}>{t("progression.decayRule")}</Text>
           </AppCard>
         ) : null}
 

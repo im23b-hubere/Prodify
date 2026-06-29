@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from "react";
-import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
 import * as Haptics from "expo-haptics";
 import { colors, ui } from "../../constants/theme";
@@ -7,18 +7,30 @@ import { pressFeedbackStyle } from "./pressFeedback";
 
 type AppCardProps = {
   children: ReactNode;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
   onPress?: () => void;
   disabled?: boolean;
+  testID?: string;
 };
 
-export const AppCard = memo(function AppCard({ children, style, onPress, disabled }: AppCardProps) {
+export const AppCard = memo(function AppCard({
+  children,
+  style,
+  onPress,
+  disabled,
+  testID,
+}: AppCardProps) {
   if (!onPress) {
-    return <View style={[styles.card, style]}>{children}</View>;
+    return (
+      <View style={[styles.card, style]} testID={testID}>
+        {children}
+      </View>
+    );
   }
   return (
     <Pressable
       disabled={disabled}
+      testID={testID}
       onPress={() => {
         Haptics.selectionAsync().catch(() => undefined);
         onPress();

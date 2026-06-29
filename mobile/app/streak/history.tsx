@@ -4,18 +4,13 @@ import * as Haptics from "expo-haptics";
 import { Calendar, ChevronLeft } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
+import { EmptyState } from "../../components/states/EmptyState";
+import { ErrorState } from "../../components/states/ErrorState";
+import { LoadingState } from "../../components/states/LoadingState";
 import { AppCard } from "../../components/ui/AppCard";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
@@ -155,10 +150,7 @@ export default function StreakHistoryScreen() {
         }
       >
         {loading && !refreshing ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.muted}>{t("streakHistory.loading")}</Text>
-          </View>
+          <LoadingState message={t("streakHistory.loading")} />
         ) : null}
 
         {showSignIn ? (
@@ -173,20 +165,25 @@ export default function StreakHistoryScreen() {
         ) : null}
 
         {token && error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.retry} onPress={() => load().catch(() => undefined)}>
-              <Text style={styles.retryText}>{t("streakHistory.retry")}</Text>
-            </Pressable>
-          </View>
+          <ErrorState
+            title={t("common.oops")}
+            message={error}
+            retryLabel={t("common.tryAgain")}
+            onRetry={() => {
+              setLoading(true);
+              load().catch(() => undefined);
+            }}
+          />
         ) : null}
 
         {token && !loading && !error && runs.length === 0 ? (
-          <View style={styles.empty}>
-            <Calendar size={40} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.emptyTitle}>{t("streakHistory.emptyTitle")}</Text>
-            <Text style={styles.emptySub}>{t("streakHistory.emptySub")}</Text>
-          </View>
+          <EmptyState
+            iconNode={<Calendar color={colors.primary} size={40} />}
+            title={t("streakHistory.emptyTitle")}
+            message={t("streakHistory.emptySub")}
+            actionLabel={t("streakHistory.emptyCta")}
+            onAction={() => router.push("/session/setup" as Href)}
+          />
         ) : null}
 
         {runs.map((run, i) => {
@@ -198,7 +195,7 @@ export default function StreakHistoryScreen() {
             >
               <View
                 style={[styles.card, isCurrent && styles.cardCurrent]}
-                accessibilityRole="summary"
+                accessibilityRole="text"
                 accessibilityLabel={
                   isCurrent
                     ? t("streakHistory.runA11yCurrent", {
@@ -213,15 +210,13 @@ export default function StreakHistoryScreen() {
                       })
                 }
               >
-                <View style={styles.cardTop}>
-                  <View style={styles.cardTopLeft}>
-                    <Text style={styles.days}>{run.length_days}</Text>
-                    <Text style={styles.daysLabel}>
-                      {t("streakHistory.dayUnit", { count: run.length_days })}
-                    </Text>
-                  </View>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.days}>
+                    {run.length_days}{" "}
+                    {t("streakHistory.dayUnit", { count: run.length_days })}
+                  </Text>
                   {isCurrent ? (
-                    <View style={styles.currentBadge} accessibilityElementsHidden>
+                    <View style={styles.currentBadge}>
                       <Text style={styles.currentBadgeText}>{t("streakHistory.currentBadge")}</Text>
                     </View>
                   ) : null}
@@ -232,7 +227,7 @@ export default function StreakHistoryScreen() {
           );
         })}
 
-        {token && !error && runs.length > 0 ? (
+        {token && !loading && !error && runs.length > 0 ? (
           <Text style={styles.footnote}>
             {t("streakHistory.footnote", { limit: HISTORY_FETCH_LIMIT })}
           </Text>
@@ -248,103 +243,85 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
   },
   backBtn: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radii.md,
   },
-  backSpacer: { width: 44 },
   pressed: { opacity: 0.85 },
   title: {
     flex: 1,
     textAlign: "center",
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.subheadline,
+    ...typography.headline,
   },
-  scroll: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
+  backSpacer: { width: 40 },
+  scroll: {
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
+    gap: spacing.sm,
+  },
   cardTitle: {
     color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.subheadline,
-    marginBottom: spacing.xs,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.cardTitle,
   },
-  cardBody: { color: colors.textSecondary, ...typography.body, marginBottom: spacing.md },
-  footnote: { color: colors.textSecondary, ...typography.caption, marginTop: spacing.sm },
-  center: { paddingVertical: spacing.xl, alignItems: "center", gap: spacing.sm },
-  muted: { color: colors.textSecondary, ...typography.caption },
-  errorBox: {
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    backgroundColor: "rgba(255,80,80,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255,80,80,0.25)",
-    marginBottom: spacing.md,
+  cardBody: {
+    color: colors.textSecondary,
+    ...typography.body,
   },
-  errorText: { color: "#ff9a9a", ...typography.caption, marginBottom: spacing.sm },
-  retry: { alignSelf: "flex-start", paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
-  retryText: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  empty: { alignItems: "center", paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
-  emptyTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.subheadline,
-    marginBottom: spacing.xs,
-  },
-  emptySub: { color: colors.textSecondary, ...typography.body, textAlign: "center" },
   card: {
-    borderRadius: radii.xl,
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
     ...shadows.card,
   },
   cardCurrent: {
-    borderColor: colors.primary,
-    borderWidth: 1.5,
+    borderColor: "rgba(255,106,61,0.45)",
+    backgroundColor: "rgba(255,106,61,0.06)",
   },
-  cardTop: {
+  cardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
-    marginBottom: spacing.xs,
   },
-  cardTopLeft: { flexDirection: "row", alignItems: "baseline", gap: spacing.xs, flexShrink: 1 },
+  days: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 28,
+  },
   currentBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: spacing.sm,
     borderRadius: radii.round,
-    backgroundColor: "rgba(255, 90, 31, 0.15)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: "rgba(255,106,61,0.15)",
     borderWidth: 1,
-    borderColor: "rgba(255, 90, 31, 0.35)",
+    borderColor: "rgba(255,106,61,0.35)",
   },
   currentBadgeText: {
     color: colors.primary,
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
   },
-  days: {
-    fontSize: 36,
-    lineHeight: 40,
-    fontFamily: fontFamily.heading,
-    color: colors.primary,
-    fontVariant: ["tabular-nums"],
-  },
-  daysLabel: {
+  range: {
     color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    textTransform: "uppercase",
-    letterSpacing: 1,
+    ...typography.body,
+    marginTop: spacing.xs,
   },
-  range: { color: colors.textSecondary, ...typography.body },
+  footnote: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    textAlign: "center",
+    marginTop: spacing.md,
+  },
 });

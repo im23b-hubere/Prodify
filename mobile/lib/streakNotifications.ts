@@ -1,6 +1,8 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+import i18n from "./i18n";
+
 const DATA_KIND = "streak-risk";
 
 let handlerConfigured = false;
@@ -23,7 +25,7 @@ export function configureNotificationHandler() {
 async function ensureAndroidChannel() {
   if (Platform.OS !== "android") return;
   await Notifications.setNotificationChannelAsync("streak", {
-    name: "Streak reminders",
+    name: i18n.t("streakNotifications.channelName"),
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 120, 250],
     lightColor: "#FF3D00",
@@ -45,20 +47,20 @@ function streakSlots(streakCount: number) {
     {
       h: 22,
       m: 0,
-      title: "Streak in danger",
-      body: `⚠️ Your ${n}-day streak needs a session today — about 2 hours left.`,
+      title: i18n.t("streakNotifications.slot22Title"),
+      body: i18n.t("streakNotifications.slot22Body", { count: n }),
     },
     {
       h: 23,
       m: 0,
-      title: "Last chance",
-      body: `🔥 One hour left to save your ${n}-day streak. Start a quick session!`,
+      title: i18n.t("streakNotifications.slot23Title"),
+      body: i18n.t("streakNotifications.slot23Body", { count: n }),
     },
     {
       h: 23,
       m: 30,
-      title: "30 minutes left",
-      body: `⏰ 30 minutes until your ${n}-day streak resets. Open Prodify.`,
+      title: i18n.t("streakNotifications.slot2330Title"),
+      body: i18n.t("streakNotifications.slot2330Body", { count: n }),
     },
   ];
 }

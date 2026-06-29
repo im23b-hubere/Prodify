@@ -33,6 +33,12 @@ describe("deepLinkGuard", () => {
     expect(deepLinkRequiresAuth("session/42")).toBe(true);
     expect(toRoutableHref("session/42")).toBe("/session/42");
     expect(toRoutableHref("session/active")).toBe("/session-active");
+    expect(toRoutableHref("dashboard")).toBe("/(tabs)/dashboard");
     expect(toRoutableHref("")).toBe("/");
+  });
+
+  it("allows challenge deep links", () => {
+    expect(isAllowedDeepLinkPath("challenge/12")).toBe(true);
+    expect(toRoutableHref("challenge/12")).toBe("/challenge/12");
   });
 });

@@ -28,11 +28,13 @@ type Props = {
   producerName?: string;
 };
 
-const TEMPLATES: { id: ShareTemplateId; label: string }[] = [
-  { id: "minimal", label: "Minimal" },
-  { id: "bold", label: "Bold" },
-  { id: "gradient", label: "Gradient" },
-];
+const TEMPLATE_IDS: ShareTemplateId[] = ["minimal", "bold", "gradient"];
+
+const TEMPLATE_LABEL_KEYS: Record<ShareTemplateId, string> = {
+  minimal: "sessionInsights.shareTemplateMinimal",
+  bold: "sessionInsights.shareTemplateBold",
+  gradient: "sessionInsights.shareTemplateGradient",
+};
 
 const PREVIEW_SCALE = 0.68;
 
@@ -48,6 +50,15 @@ export function SessionShareImageModal({
   const shotRef = useRef<ViewShot | null>(null);
   const [template, setTemplate] = useState<ShareTemplateId>("gradient");
   const [busy, setBusy] = useState(false);
+
+  const templates = useMemo(
+    () =>
+      TEMPLATE_IDS.map((id) => ({
+        id,
+        label: t(TEMPLATE_LABEL_KEYS[id]),
+      })),
+    [t],
+  );
 
   const typeLabel = useMemo(
     () => sessionTypeLabel(String(session.session_type), t),
@@ -65,47 +76,54 @@ export function SessionShareImageModal({
       await new Promise((r) => setTimeout(r, 160));
       const uri = await shotRef.current?.capture?.();
       if (!uri) {
-        Alert.alert("Export", "Bild konnte nicht erzeugt werden. Bitte erneut versuchen.");
+        Alert.alert(
+          t("sessionInsights.shareExportFailedTitle"),
+          t("sessionInsights.shareExportFailedBody"),
+        );
         return;
       }
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
           mimeType: "image/png",
           UTI: "public.png",
-          dialogTitle: "Prodify Session",
+          dialogTitle: t("sessionInsights.shareDialogTitle"),
         });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       } else {
-        Alert.alert("Teilen", "Teilen wird auf diesem Gerät nicht unterstützt.");
+        Alert.alert(
+          t("sessionInsights.shareUnavailableTitle"),
+          t("sessionInsights.shareUnavailableBody"),
+        );
       }
     } catch (e) {
-      Alert.alert("Teilen", e instanceof Error ? e.message : "Unbekannter Fehler");
+      Alert.alert(
+        t("sessionInsights.shareFailedTitle"),
+        e instanceof Error ? e.message : t("stats.shareProofUnexpectedBody"),
+      );
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [t]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>Story-Bild</Text>
-          <Text style={styles.sub}>
-            Template wählen, PNG rendern (9:16), dann in Instagram / WhatsApp / Drive teilen.
-          </Text>
+          <Text style={styles.title}>{t("sessionInsights.shareModalTitle")}</Text>
+          <Text style={styles.sub}>{t("sessionInsights.shareModalSubtitle")}</Text>
 
           <View style={styles.chips}>
-            {TEMPLATES.map((t) => (
+            {templates.map((item) => (
               <Pressable
-                key={t.id}
-                style={[styles.chip, template === t.id && styles.chipOn]}
+                key={item.id}
+                style={[styles.chip, template === item.id && styles.chipOn]}
                 onPress={() => {
                   Haptics.selectionAsync().catch(() => undefined);
-                  setTemplate(t.id);
+                  setTemplate(item.id);
                 }}
               >
-                <Text style={[styles.chipTxt, template === t.id && styles.chipTxtOn]}>
-                  {t.label}
+                <Text style={[styles.chipTxt, template === item.id && styles.chipTxtOn]}>
+                  {item.label}
                 </Text>
               </Pressable>
             ))}
@@ -140,13 +158,15 @@ export function SessionShareImageModal({
           </View>
 
           <PrimaryButton
-            label={busy ? "Export…" : "PNG erstellen & teilen"}
+            label={
+              busy ? t("sessionInsights.sharePngBusy") : t("sessionInsights.sharePngCta")
+            }
             onPress={captureAndShare}
             loading={busy}
           />
 
           <Pressable style={styles.closeGhost} onPress={onClose} disabled={busy}>
-            <Text style={styles.closeGhostTxt}>Schließen</Text>
+            <Text style={styles.closeGhostTxt}>{t("sessionInsights.shareClose")}</Text>
           </Pressable>
 
           <View style={styles.hiddenShot} collapsable={false} pointerEvents="none">

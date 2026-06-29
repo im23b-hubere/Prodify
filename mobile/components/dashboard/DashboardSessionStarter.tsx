@@ -17,8 +17,10 @@ export const DashboardSessionStarter = memo(function DashboardSessionStarter({
 }: Props) {
   const { t } = useTranslation();
   return (
-    <View style={styles.starterContainer}>
+    <View style={styles.starterContainer} testID="dashboard-start-session">
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("sessionStarter.title")}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
           onQuickStart();
@@ -28,10 +30,10 @@ export const DashboardSessionStarter = memo(function DashboardSessionStarter({
         <LinearGradient colors={["#ff6a3d", colors.primary]} style={styles.quickStart}>
           <Text style={styles.quickEmoji}>▶</Text>
           <Text style={styles.quickTitle}>{t("sessionStarter.title")}</Text>
-          <Text style={styles.quickSub}>{t("sessionStarter.subtitle")}</Text>
         </LinearGradient>
       </Pressable>
       <Pressable
+        accessibilityRole="button"
         onPress={() => {
           Haptics.selectionAsync().catch(() => undefined);
           onQuickStart();
@@ -45,24 +47,23 @@ export const DashboardSessionStarter = memo(function DashboardSessionStarter({
 });
 
 const styles = StyleSheet.create({
-  starterContainer: { gap: spacing.md, marginTop: spacing.md },
+  starterContainer: { gap: spacing.sm },
   quickStart: {
     borderRadius: radii.xl,
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.lg,
     alignItems: "center",
     gap: spacing.xs,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
   },
-  quickEmoji: { fontSize: 40, color: "#fff" },
+  quickEmoji: { fontSize: 36, color: "#fff" },
   quickTitle: {
     color: "#fff",
     fontFamily: fontFamily.heading,
-    fontSize: 22,
-    letterSpacing: 1,
+    fontSize: 24,
+    letterSpacing: 1.2,
   },
-  quickSub: { color: "rgba(255,255,255,0.85)", ...typography.caption, textAlign: "center" },
-  customBtn: { alignItems: "center", paddingVertical: spacing.sm },
-  customTxt: { color: colors.secondary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  customBtn: { alignItems: "center", paddingVertical: spacing.xs },
+  customTxt: { color: colors.secondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
 });

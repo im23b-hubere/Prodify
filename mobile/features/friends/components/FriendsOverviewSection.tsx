@@ -8,6 +8,7 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import { API_BASE_URL } from "../../../constants/api";
 import { EmptyState } from "../../../components/states/EmptyState";
+import { LoadingState } from "../../../components/states/LoadingState";
 import { colors, spacing } from "../../../constants/theme";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../../types/friends";
 import { formatStreakStatusLabel } from "../utils/friendsScreenFormat";
@@ -102,12 +103,13 @@ export function FriendsOverviewSection({
             <Text style={styles.emptyLeader}>{t("friendsScreen.soloLeader")}</Text>
           ) : null}
           {!loading && visibleEntries.length === 0 ? (
-            <View style={styles.leaderboardEmptyBlock}>
-              <Text style={styles.emptyLeader}>{t("friendsScreen.leaderboardEmptyTitle")}</Text>
-              <Text style={styles.leaderboardEmptySubtitle}>
-                {t("friendsScreen.leaderboardEmptyMessage")}
-              </Text>
-            </View>
+            <EmptyState
+              compact
+              title={t("friendsScreen.leaderboardEmptyTitle")}
+              message={t("friendsScreen.leaderboardEmptyMessage")}
+              actionLabel={t("friendsScreen.leaderboardEmptyCta")}
+              onAction={onAddFriendFromEmptyFeed}
+            />
           ) : null}
           {visibleEntries.map((entry, idx) => (
             <Animated.View
@@ -210,21 +212,13 @@ export function FriendsOverviewSection({
           </View>
         ) : null}
         <View style={styles.activityFeedStack}>
-          {loading ? (
-            <View style={styles.cardElevated}>
-              <Text style={styles.feedEmpty}>{t("friendsScreen.loading")}</Text>
-            </View>
-          ) : null}
+          {loading ? <LoadingState message={t("friendsScreen.loading")} /> : null}
           {activity.length === 0 && !loading ? (
             <EmptyState
-              icon="•"
-              title={t("friendsScreen.feedEmptyTitle")}
-              message={t("friendsScreen.feedEmptyMessage")}
-              actionLabel={t("friendsScreen.feedEmptyCta")}
-              onAction={() => {
-                Haptics.selectionAsync().catch(() => undefined);
-                onAddFriendFromEmptyFeed();
-              }}
+              compact
+              iconNode={<Activity color={colors.primary} size={32} />}
+              title={t("friendsScreen.activityFeedEmptyTitle")}
+              message={t("friendsScreen.activityFeedEmptyMessage")}
             />
           ) : null}
           {activity.length > 0 ? (

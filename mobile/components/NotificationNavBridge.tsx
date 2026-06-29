@@ -5,6 +5,12 @@ import { useEffect } from "react";
 import { deepLinkRequiresAuth, isAllowedDeepLinkPath, toRoutableHref } from "../lib/deepLinkGuard";
 import { useAuth } from "../context/AuthContext";
 import { debugNav } from "../lib/debugLog";
+import { setPendingDeepLinkPath } from "../lib/pendingDeepLink";
+import {
+  readOnboardingComplete,
+  resolveUnauthenticatedAuthHref,
+  toHref,
+} from "../lib/postAuthNavigation";
 
 function parsePathFromNotificationData(data: Record<string, unknown> | undefined): string | null {
   if (!data) return null;
@@ -47,7 +53,12 @@ export function NotificationNavBridge() {
         return;
       }
       if (deepLinkRequiresAuth(normalizedPath) && !token) {
-        router.replace("/(auth)/login");
+        void setPendingDeepLinkPath(normalizedPath);
+        void readOnboardingComplete().then((onboardingComplete) => {
+          router.replace(
+            toHref({ pathname: resolveUnauthenticatedAuthHref(onboardingComplete) }) as Href,
+          );
+        });
         return;
       }
       try {

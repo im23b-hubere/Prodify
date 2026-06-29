@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal, StyleSheet, Text, View } from "react-native";
 import { Flame } from "lucide-react-native";
 
@@ -21,6 +22,7 @@ type StreakBreakModalProps = {
 };
 
 export function StreakBreakModal({ visible, brokenStreak, onStartFresh }: StreakBreakModalProps) {
+  const { t } = useTranslation();
   const soundRef = useRef<Audio.Sound | null>(null);
   const [lottieFailed, setLottieFailed] = useState(false);
   const [playbackToken, setPlaybackToken] = useState(0);
@@ -49,7 +51,7 @@ export function StreakBreakModal({ visible, brokenStreak, onStartFresh }: Streak
   useEffect(() => {
     if (!visible) return;
     setLottieFailed(false);
-    setPlaybackToken((t) => t + 1);
+    setPlaybackToken((token) => token + 1);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
     playBreakSound();
     return () => {
@@ -83,14 +85,14 @@ export function StreakBreakModal({ visible, brokenStreak, onStartFresh }: Streak
               </View>
             )}
           </View>
-          <Text style={styles.title}>Your {brokenStreak}-day streak ended</Text>
-          <Text style={styles.sub}>Every producer has setbacks. Start again today.</Text>
+          <Text style={styles.title}>{t("streakBreak.title", { days: brokenStreak })}</Text>
+          <Text style={styles.sub}>{t("streakBreak.subtitle")}</Text>
           <View style={styles.achievement}>
             <Text style={styles.achievementTxt}>
-              You still achieved {brokenStreak} days. That counts.
+              {t("streakBreak.achievement", { days: brokenStreak })}
             </Text>
           </View>
-          <PrimaryButton label="Start fresh" onPress={handleClose} />
+          <PrimaryButton label={t("streakBreak.startFresh")} onPress={handleClose} />
         </LinearGradient>
       </View>
     </Modal>

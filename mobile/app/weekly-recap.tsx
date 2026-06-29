@@ -102,13 +102,13 @@ function WeeklyShareCard({
   weekRange,
 }: WeeklyShareCardProps) {
   const isGradient = template === "gradient";
-  const cardTitle = isGradient ? "Prodify" : t("weeklyRecap.title");
+  const cardTitle = isGradient ? t("brand") : t("weeklyRecap.title");
   const cardSubtitle =
     currentStreak >= 7
-      ? "Momentum is compounding."
+      ? t("weeklyRecap.shareSubtitleMomentum")
       : currentStreak >= 3
-        ? "Keep the streak alive."
-        : "Show up and build momentum.";
+        ? t("weeklyRecap.shareSubtitleStreak")
+        : t("weeklyRecap.shareSubtitleDefault");
   return (
     <View
       style={[
@@ -155,7 +155,7 @@ function WeeklyShareCard({
         })}
       </Text>
 
-      <Text style={styles.shareCardFooter}>Prodify</Text>
+      <Text style={styles.shareCardFooter}>{t("brand")}</Text>
     </View>
   );
 }
@@ -463,12 +463,12 @@ export default function WeeklyRecapScreen() {
           <EmptyState
             title={t("weeklyRecap.emptyTitle")}
             message={t("weeklyRecap.emptyBody")}
-            actionLabel={t("common.tryAgain")}
-            onAction={() => void load()}
+            actionLabel={t("weeklyRecap.emptyCta")}
+            onAction={() => router.push("/session/setup" as Href)}
           />
         ) : null}
 
-        {token && !review && !loading && !showFatalError && !showSignIn ? (
+        {token && !review && !loading && !showFatalError && !showSignIn && !showEmpty ? (
           <View style={styles.generateBlock}>
             <PrimaryButton
               label={t("weeklyRecap.generateCta")}

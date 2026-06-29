@@ -33,6 +33,7 @@ type Props = {
   heatmapDays: HeatmapDay[];
   configured: boolean;
   busy: boolean;
+  hero?: boolean;
   onSaveGoal: (target: number, shareWithFriends: boolean) => Promise<void>;
   onStartSession: () => void;
 };
@@ -66,6 +67,7 @@ export function YourWeekCard({
   heatmapDays,
   configured,
   busy,
+  hero = false,
   onSaveGoal,
   onStartSession,
 }: Props) {
@@ -146,20 +148,41 @@ export function YourWeekCard({
         : "stats.forecastRiskOffTrack"
     : null;
 
+  const nextStepLine = useMemo(() => {
+    if (!configured || !goal) return null;
+    if (status === "completed") return t("stats.yourWeek.nextStepCompleted");
+    if (status === "behind" && forecast?.warning_message) {
+      return forecast.warning_message;
+    }
+    if (forecast && forecast.remaining_sessions > 0) {
+      return t("stats.yourWeek.nextStepRemaining", { n: forecast.remaining_sessions });
+    }
+    return t("stats.yourWeek.nextStepOnTrack");
+  }, [configured, goal, status, forecast, t]);
+
   return (
     <>
-      <AppCard style={styles.card}>
+      <View testID={hero ? "your-week-hero" : undefined}>
+      <AppCard style={[styles.card, hero ? styles.cardHero : undefined]}>
         <Text style={styles.sectionEyebrow}>{t("stats.yourWeek.eyebrow")}</Text>
 
         {!configured ? (
           <View style={styles.setupWrap}>
-            <Text style={styles.setupTitle}>{t("stats.yourWeek.setupTitle")}</Text>
-            <Text style={styles.setupHint}>{t("stats.yourWeek.setupHint")}</Text>
+            <Text style={[styles.setupTitle, hero && styles.setupTitleHero]}>
+              {t("stats.yourWeek.setupTitle")}
+            </Text>
+            {!hero ? (
+              <Text style={styles.setupHint}>{t("stats.yourWeek.setupHint")}</Text>
+            ) : null}
             <View style={styles.chipRow}>
               {GOAL_CHIPS.map((n) => (
                 <Pressable
                   key={n}
-                  style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    hero && styles.chipHero,
+                    pressed && styles.chipPressed,
+                  ]}
                   disabled={busy}
                   onPress={() => void saveFromSetup(n)}
                 >
@@ -181,7 +204,7 @@ export function YourWeekCard({
         ) : (
           <>
             <View style={styles.metricRow}>
-              <Text style={styles.bigNumber}>
+              <Text style={[styles.bigNumber, hero && styles.bigNumberHero]}>
                 {goal?.current_sessions ?? 0}
                 <Text style={styles.bigNumberDim}> / {goal?.target_value ?? "—"}</Text>
               </Text>
@@ -209,7 +232,13 @@ export function YourWeekCard({
               <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
             </View>
 
-            {forecast && forecastRiskKey ? (
+            {hero && nextStepLine ? (
+              <Text style={styles.nextStep} numberOfLines={2}>
+                {nextStepLine}
+              </Text>
+            ) : null}
+
+            {!hero && forecast && forecastRiskKey ? (
               <Text
                 style={[
                   styles.forecastLine,
@@ -226,28 +255,32 @@ export function YourWeekCard({
               </Text>
             ) : null}
 
-            <Text style={styles.studioLabel}>{t("stats.yourWeek.studioDays")}</Text>
-            <View style={styles.dayRow}>
-              {weekKeys.map((key, idx) => {
-                const active = activeDayKeys.has(key);
-                return (
-                  <View key={key} style={styles.dayCell}>
-                    <View
-                      style={[
-                        styles.dayDot,
-                        active && styles.dayDotActive,
-                        key === todayKey && styles.dayDotToday,
-                      ]}
-                    />
-                    <Text style={[styles.dayLetter, active && styles.dayLetterActive]}>
-                      {WEEKDAY_LETTERS[idx]}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
+            {!hero ? (
+              <>
+                <Text style={styles.studioLabel}>{t("stats.yourWeek.studioDays")}</Text>
+                <View style={styles.dayRow}>
+                  {weekKeys.map((key, idx) => {
+                    const active = activeDayKeys.has(key);
+                    return (
+                      <View key={key} style={styles.dayCell}>
+                        <View
+                          style={[
+                            styles.dayDot,
+                            active && styles.dayDotActive,
+                            key === todayKey && styles.dayDotToday,
+                          ]}
+                        />
+                        <Text style={[styles.dayLetter, active && styles.dayLetterActive]}>
+                          {WEEKDAY_LETTERS[idx]}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            ) : null}
 
-            {commitment ? (
+            {!hero && commitment ? (
               <View style={styles.promiseRow}>
                 <Text style={styles.promiseText}>
                   {commitment.witness_usernames?.length
@@ -272,6 +305,7 @@ export function YourWeekCard({
           </>
         )}
       </AppCard>
+      </View>
 
       <Modal
         visible={editorOpen}
@@ -338,6 +372,7 @@ export function YourWeekCard({
 
 const styles = StyleSheet.create({
   card: { gap: spacing.sm },
+  cardHero: { gap: spacing.xs },
   sectionEyebrow: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
@@ -350,6 +385,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     ...typography.cardTitle,
+  },
+  setupTitleHero: {
+    ...typography.body,
+    fontFamily: fontFamily.bodyBold,
   },
   setupHint: {
     color: colors.textSecondary,
@@ -370,6 +409,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
     gap: 2,
+  },
+  chipHero: {
+    minHeight: 52,
   },
   chipSelected: {
     borderColor: colors.primary,
@@ -405,6 +447,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.heading,
     fontSize: 32,
     lineHeight: 38,
+  },
+  bigNumberHero: {
+    fontSize: 28,
+    lineHeight: 32,
   },
   bigNumberDim: {
     color: colors.textSecondary,
@@ -461,6 +507,12 @@ const styles = StyleSheet.create({
   forecastOnTrack: { color: colors.success },
   forecastAtRisk: { color: colors.primary },
   forecastOffTrack: { color: colors.danger },
+  nextStep: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.meta,
+    lineHeight: 18,
+  },
   studioLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,

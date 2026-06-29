@@ -22,10 +22,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
 import { YourWeekCard } from "../../components/stats/YourWeekCard";
+import { StatsCollapsibleSection } from "../../components/stats/StatsCollapsibleSection";
+import { StatsKpiStrip } from "../../components/stats/StatsKpiStrip";
+import { StatsPremiumTeaser } from "../../components/stats/StatsPremiumTeaser";
 import { AppFlame, RecordGlyph, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { ErrorState } from "../../components/states/ErrorState";
+import { LoadingState } from "../../components/states/LoadingState";
+import { EmptyState } from "../../components/states/EmptyState";
 import { AppCard } from "../../components/ui/AppCard";
-import { StatCard } from "../../components/ui/StatCard";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
 import { RankHudChip } from "../../components/progression/RankHudChip";
@@ -662,16 +666,40 @@ export default function StatsScreen() {
         label: t("stats.currentStreak"),
         value: (
           <View style={glyphRowStyle}>
-            <AppFlame size={18} />
+            <AppFlame size={16} />
             <Text style={styles.statValueText}>{summary.streak}</Text>
           </View>
         ),
-        sublabel: `${t("stats.bestStreakSub", { days: summary.bestStreak })}\n${t("stats.streakScopeNote")}`,
+        sublabel: t("stats.bestStreakSub", { days: summary.bestStreak }),
         subPositive: true,
       },
     ],
     [summary, t],
   );
+
+  const hasRecentHeatmapActivity = useMemo(() => {
+    const cutoff = Date.now() - 14 * CALENDAR_DAY_MS;
+    return heatmapDays.some((d) => {
+      if ((d.intensity ?? 0) <= 0 && (d.seconds ?? 0) <= 0) return false;
+      const ms = new Date(d.date).getTime();
+      return Number.isFinite(ms) && ms >= cutoff;
+    });
+  }, [heatmapDays]);
+
+  const hasFreshRecords = useMemo(
+    () => decoratedRecords.some((record) => record.isFresh),
+    [decoratedRecords],
+  );
+
+  const showPremiumTeaser = useMemo(
+    () =>
+      !user?.is_premium &&
+      forecast != null &&
+      (forecast.risk_level === "at_risk" || forecast.risk_level === "off_track"),
+    [user?.is_premium, forecast],
+  );
+
+  const trendsStartExpanded = filter.period === "week";
 
   const renderRecent = useCallback(
     ({ item }: { item: SessionDto }) => {
@@ -737,46 +765,11 @@ export default function StatsScreen() {
               </Pressable>
             ))}
           </View>
-          <Text style={styles.filterHint}>{t("stats.sessionFilterScope")}</Text>
+          <Text style={styles.filterHint}>{t("stats.filterScopeShort")}</Text>
         </View>
-        {token ? (
-          <View style={styles.motivationWrap}>
-            <DashboardMotivationCard
-              greeting={getTimeBasedGreeting()}
-              userName={user?.username ?? t("dashboard.defaultUserName")}
-              message={motivationMessage}
-              serverMessage={serverMotivationLine}
-              todaySessionCount={todaySessionCount}
-            />
-          </View>
-        ) : null}
-        {token && !showInitialLoading ? (
-          <View
-            style={styles.yourWeekWrap}
-            onLayout={(event) => {
-              yourWeekOffsetY.current = event.nativeEvent.layout.y;
-              tryScrollToYourWeek();
-            }}
-          >
-            <YourWeekCard
-              t={t}
-              goal={weeklyGoal}
-              forecast={forecast}
-              commitment={commitment}
-              heatmapDays={heatmapDays}
-              configured={goalConfigured}
-              busy={weekBusy}
-              onSaveGoal={handleSaveWeeklyGoal}
-              onStartSession={handleStartSession}
-            />
-          </View>
-        ) : null}
+
         {showInitialLoading ? <StatsSkeleton /> : null}
-        {showInlineLoading ? (
-          <View style={styles.inlineLoadingRow}>
-            <Text style={styles.inlineLoadingText}>{t("stats.loading")}</Text>
-          </View>
-        ) : null}
+        {showInlineLoading ? <LoadingState message={t("stats.loading")} /> : null}
         {!loading && error ? (
           <ErrorState
             title={t("common.oops")}
@@ -787,114 +780,84 @@ export default function StatsScreen() {
             }
           />
         ) : null}
+
         {!showInitialLoading ? (
           <Animated.View style={[styles.contentFadeWrap, { opacity: contentFade }]}>
-            {!showInitialLoading ? (
-              <AppCard style={styles.chartCard}>
-                <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
-                {decoratedRecords.length === 0 ? (
-                  <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
-                ) : (
-                  <View style={styles.recordsWrap}>
-                    {decoratedRecords.slice(0, 3).map((r, idx) => {
-                      const meta = formatRecordDate(r.occurred_at, t);
-                      const displayContext = formatRecordContext(r, t);
-                      return (
-                        <View
-                          key={`top-${r.key}${r.occurred_at ?? ""}`}
-                          style={[styles.recordCard, idx === 0 && styles.recordCardFeatured]}
-                        >
-                          <View style={styles.recordTitleRow}>
-                            <View style={styles.recordLabelWrap}>
-                              <RecordGlyph recordKey={r.key} size={16} />
-                              <Text style={styles.recordLabel}>
-                                {recordTitle(r.key, r.label, t)}
-                              </Text>
-                            </View>
-                            <View style={styles.recordBadgesRow}>
-                              {r.isFresh ? (
-                                <View style={[styles.recordBadge, styles.recordBadgeFresh]}>
-                                  <Text
-                                    style={[styles.recordBadgeText, styles.recordBadgeTextFresh]}
-                                  >
-                                    {t("stats.recordFresh")}
-                                  </Text>
-                                </View>
-                              ) : null}
-                              {idx === 0 ? (
-                                <View style={styles.recordBadge}>
-                                  <Text style={styles.recordBadgeText}>
-                                    {t("stats.recordBest")}
-                                  </Text>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-                          <Text style={styles.recordVal}>{r.value}</Text>
-                          {displayContext ? (
-                            <Text style={styles.recordCtx}>{displayContext}</Text>
-                          ) : null}
-                          {meta ? <Text style={styles.recordMeta}>{meta}</Text> : null}
-                        </View>
-                      );
-                    })}
-                  </View>
-                )}
-              </AppCard>
-            ) : null}
-
-            <FlatList
-              horizontal
-              data={statCarouselItems}
-              keyExtractor={(item) => item.key}
-              renderItem={({ item }) => (
-                <StatCard
-                  label={item.label}
-                  value={item.value}
-                  sublabel={item.sublabel}
-                  subPositive={item.subPositive}
+            {token ? (
+              <View
+                style={styles.heroWrap}
+                onLayout={(event) => {
+                  yourWeekOffsetY.current = event.nativeEvent.layout.y;
+                  tryScrollToYourWeek();
+                }}
+              >
+                <YourWeekCard
+                  t={t}
+                  goal={weeklyGoal}
+                  forecast={forecast}
+                  commitment={commitment}
+                  heatmapDays={heatmapDays}
+                  configured={goalConfigured}
+                  busy={weekBusy}
+                  hero
+                  onSaveGoal={handleSaveWeeklyGoal}
+                  onStartSession={handleStartSession}
                 />
-              )}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.cardRow}
-              snapToInterval={172}
-              decelerationRate="fast"
-              nestedScrollEnabled={Platform.OS === "android"}
-            />
+              </View>
+            ) : null}
 
-            {!showInitialLoading ? (
-              <AppCard style={styles.chartCard}>
-                <Text style={styles.cardTitle}>{t("stats.heatmapTitle")}</Text>
-                <Text style={styles.cardCaption}>{t("stats.heatmapCaption")}</Text>
-                <View style={styles.heatmapGrid}>
-                  {heatmapDays.map((d) => (
-                    <View
-                      key={d.date}
-                      style={[styles.heatCell, { backgroundColor: heatmapCellColor(d.intensity) }]}
-                    />
-                  ))}
-                </View>
-                <ActivityHeatmapLegend />
+            <StatsKpiStrip items={statCarouselItems} testID="stats-kpi-strip" />
+
+            {productivityHintText ? (
+              <AppCard style={styles.hintCard} testID="stats-ai-insight">
+                <Text style={styles.hintLabel}>{t("stats.aiInsightLabel")}</Text>
+                <Text style={styles.hintText}>{productivityHintText}</Text>
               </AppCard>
             ) : null}
 
-            {!showInitialLoading ? (
-              <AppCard style={styles.chartCard}>
-                <Text style={styles.cardTitle}>{t("stats.perDayTitle")}</Text>
-                <Text style={styles.cardCaption}>{t("stats.perDayChartHint")}</Text>
+            <Text style={styles.sectionGroupTitle}>{t("stats.sectionInsights")}</Text>
+
+            <StatsCollapsibleSection
+              title={t("stats.motivationSectionTitle")}
+              subtitle={serverMotivationLine ?? motivationMessage}
+              testID="stats-section-motivation"
+            >
+              {token ? (
+                <DashboardMotivationCard
+                  greeting={getTimeBasedGreeting()}
+                  userName={user?.username ?? t("dashboard.defaultUserName")}
+                  message={motivationMessage}
+                  serverMessage={serverMotivationLine}
+                  todaySessionCount={todaySessionCount}
+                />
+              ) : null}
+            </StatsCollapsibleSection>
+
+            <StatsCollapsibleSection
+              title={t("stats.trendsSectionTitle")}
+              subtitle={t("stats.trendsSectionSubtitle")}
+              defaultExpanded={trendsStartExpanded}
+              startExpanded={trendsStartExpanded}
+              testID="stats-section-trends"
+            >
+              <View style={styles.nestedBlock}>
+                <Text style={styles.nestedTitle}>{t("stats.perDayTitle")}</Text>
                 {chartData.length === 0 ? (
-                  <Text style={styles.emptyText}>{t("stats.perDayEmpty")}</Text>
+                  <EmptyState
+                    compact
+                    title={t("stats.perDayEmptyTitle")}
+                    message={t("stats.perDayEmpty")}
+                    actionLabel={t("common.startSession")}
+                    onAction={handleStartSession}
+                  />
                 ) : (
                   <View style={styles.chartInner}>
                     <SessionsPerDayChart data={chartData} />
                   </View>
                 )}
-              </AppCard>
-            ) : null}
-
-            {!showInitialLoading ? (
-              <AppCard style={styles.chartCard}>
-                <Text style={styles.cardTitle}>{t("stats.typeMixTitle")}</Text>
+              </View>
+              <View style={styles.nestedBlock}>
+                <Text style={styles.nestedTitle}>{t("stats.typeMixTitle")}</Text>
                 {breakdownData.length > 0 ? (
                   <View style={styles.breakdownWrap}>
                     {breakdownData.map((item) => (
@@ -918,107 +881,144 @@ export default function StatsScreen() {
                     ))}
                   </View>
                 ) : (
-                  <View style={styles.emptyWrap}>
-                    <Text style={styles.emptyText}>{t("stats.typeMixEmpty")}</Text>
-                  </View>
+                  <EmptyState
+                    compact
+                    title={t("stats.typeMixEmptyTitle")}
+                    message={t("stats.typeMixEmpty")}
+                    actionLabel={t("common.startSession")}
+                    onAction={handleStartSession}
+                  />
                 )}
-              </AppCard>
-            ) : null}
+              </View>
+            </StatsCollapsibleSection>
 
-            {!showInitialLoading && productivityHintText ? (
-              <AppCard style={styles.hintCard}>
-                <Text style={styles.hintText}>{productivityHintText}</Text>
-              </AppCard>
-            ) : null}
+            <Text style={styles.sectionGroupTitle}>{t("stats.sectionHistory")}</Text>
 
-            {!showInitialLoading ? (
-              <ProgressionBarCard
-                progression={progression}
-                onPress={() => router.push(progressionOverviewHref("stats"))}
-              />
-            ) : null}
-
-            {!showInitialLoading ? (
-              <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
-            ) : null}
-            {!showInitialLoading && recent.length === 0 ? (
-              <Text style={styles.emptyText}>{t("stats.recentEmpty")}</Text>
-            ) : !showInitialLoading ? (
-              <View style={styles.recentList}>
-                {recent.map((item) => (
+            <StatsCollapsibleSection
+              title={t("stats.heatmapTitle")}
+              subtitle={t("stats.heatmapCaptionShort")}
+              startExpanded={hasRecentHeatmapActivity}
+              testID="stats-section-heatmap"
+            >
+              <View style={styles.heatmapGrid}>
+                {heatmapDays.map((d) => (
                   <View
-                    key={`top-${typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}`}
-                    style={styles.recentItem}
-                  >
-                    {renderRecent({ item })}
-                  </View>
+                    key={d.date}
+                    style={[styles.heatCell, { backgroundColor: heatmapCellColor(d.intensity) }]}
+                  />
                 ))}
               </View>
-            ) : null}
+              <ActivityHeatmapLegend />
+            </StatsCollapsibleSection>
 
-            {false && !showInitialLoading ? (
-              <AppCard style={styles.chartCard}>
-                <Text style={styles.cardTitle}>{t("stats.recordsTitle")}</Text>
-                {decoratedRecords.length === 0 ? (
-                  <Text style={styles.emptyText}>{t("stats.recordsEmpty")}</Text>
-                ) : (
-                  <View style={styles.recordsWrap}>
-                    {decoratedRecords.slice(0, 3).map((r, idx) => {
-                      const meta = formatRecordDate(r.occurred_at, t);
-                      const displayContext = formatRecordContext(r, t);
-                      return (
-                        <View
-                          key={r.key + (r.occurred_at ?? "")}
-                          style={[styles.recordCard, idx === 0 && styles.recordCardFeatured]}
-                        >
-                          <View style={styles.recordTitleRow}>
-                            <View style={styles.recordLabelWrap}>
-                              <RecordGlyph recordKey={r.key} size={16} />
-                              <Text style={styles.recordLabel}>
-                                {recordTitle(r.key, r.label, t)}
-                              </Text>
-                            </View>
-                            <View style={styles.recordBadgesRow}>
-                              {r.isFresh ? (
-                                <View style={[styles.recordBadge, styles.recordBadgeFresh]}>
-                                  <Text
-                                    style={[styles.recordBadgeText, styles.recordBadgeTextFresh]}
-                                  >
-                                    {t("stats.recordFresh")}
-                                  </Text>
-                                </View>
-                              ) : null}
-                              {idx === 0 ? (
-                                <View style={styles.recordBadge}>
-                                  <Text style={styles.recordBadgeText}>
-                                    {t("stats.recordBest")}
-                                  </Text>
-                                </View>
-                              ) : null}
-                            </View>
+            <StatsCollapsibleSection
+              title={t("stats.recordsTitle")}
+              subtitle={
+                decoratedRecords.length > 0
+                  ? decoratedRecords[0]?.value
+                  : t("stats.recordsEmpty")
+              }
+              startExpanded={hasFreshRecords}
+              testID="stats-section-records"
+            >
+              {decoratedRecords.length === 0 ? (
+                <EmptyState
+                  compact
+                  title={t("stats.recordsEmptyTitle")}
+                  message={t("stats.recordsEmpty")}
+                  actionLabel={t("common.startSession")}
+                  onAction={handleStartSession}
+                />
+              ) : (
+                <View style={styles.recordsWrap}>
+                  {decoratedRecords.slice(0, 3).map((r, idx) => {
+                    const meta = formatRecordDate(r.occurred_at, t);
+                    const displayContext = formatRecordContext(r, t);
+                    return (
+                      <View
+                        key={`top-${r.key}${r.occurred_at ?? ""}`}
+                        style={[styles.recordCard, idx === 0 && styles.recordCardFeatured]}
+                      >
+                        <View style={styles.recordTitleRow}>
+                          <View style={styles.recordLabelWrap}>
+                            <RecordGlyph recordKey={r.key} size={16} />
+                            <Text style={styles.recordLabel}>
+                              {recordTitle(r.key, r.label, t)}
+                            </Text>
                           </View>
-                          <Text style={styles.recordVal}>{r.value}</Text>
-                          {displayContext ? (
-                            <Text style={styles.recordCtx}>{displayContext}</Text>
-                          ) : null}
-                          {meta ? <Text style={styles.recordMeta}>{meta}</Text> : null}
+                          <View style={styles.recordBadgesRow}>
+                            {r.isFresh ? (
+                              <View style={[styles.recordBadge, styles.recordBadgeFresh]}>
+                                <Text
+                                  style={[styles.recordBadgeText, styles.recordBadgeTextFresh]}
+                                >
+                                  {t("stats.recordFresh")}
+                                </Text>
+                              </View>
+                            ) : null}
+                            {idx === 0 ? (
+                              <View style={styles.recordBadge}>
+                                <Text style={styles.recordBadgeText}>{t("stats.recordBest")}</Text>
+                              </View>
+                            ) : null}
+                          </View>
                         </View>
-                      );
-                    })}
-                  </View>
-                )}
-              </AppCard>
-            ) : null}
+                        <Text style={styles.recordVal}>{r.value}</Text>
+                        {displayContext ? (
+                          <Text style={styles.recordCtx}>{displayContext}</Text>
+                        ) : null}
+                        {meta ? <Text style={styles.recordMeta}>{meta}</Text> : null}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </StatsCollapsibleSection>
 
-            {false && !showInitialLoading ? (
+            <View style={styles.recentBlock} testID="stats-section-recent">
               <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
-            ) : null}
+              {recent.length === 0 ? (
+                <EmptyState
+                  compact
+                  title={t("stats.recentEmptyTitle")}
+                  message={t("stats.recentEmpty")}
+                  actionLabel={t("common.startSession")}
+                  onAction={handleStartSession}
+                />
+              ) : (
+                <View style={styles.recentList}>
+                  {recent.slice(0, 5).map((item) => (
+                    <View
+                      key={`top-${typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}`}
+                      style={styles.recentItem}
+                    >
+                      {renderRecent({ item })}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
 
-            {!showInitialLoading ? (
-              <View style={styles.weeklyRecapBottomCta}>
-                <SecondaryButton label={t("stats.openWeeklyRecap")} onPress={openWeeklyRecap} />
+            <Text style={styles.sectionGroupTitle}>{t("stats.sectionExtras")}</Text>
+
+            <StatsCollapsibleSection
+              title={t("stats.progressionSectionTitle")}
+              subtitle={t("stats.progressionSectionSubtitle")}
+              testID="stats-section-progression"
+            >
+              <View style={styles.progressionInner}>
+                <ProgressionBarCard
+                  progression={progression}
+                  onPress={() => router.push(progressionOverviewHref("stats"))}
+                />
               </View>
-            ) : null}
+            </StatsCollapsibleSection>
+
+            {showPremiumTeaser ? <StatsPremiumTeaser testID="stats-premium-teaser" /> : null}
+
+            <View style={styles.weeklyRecapBottomCta}>
+              <SecondaryButton label={t("stats.openWeeklyRecap")} onPress={openWeeklyRecap} />
+            </View>
           </Animated.View>
         ) : null}
       </ScrollView>
@@ -1108,13 +1108,32 @@ const styles = StyleSheet.create({
   filterLabelActive: { color: colors.textPrimary },
   cardRow: { gap: spacing.sm, paddingBottom: spacing.lg },
   contentFadeWrap: {
-    gap: spacing.lg,
+    gap: spacing.md,
   },
-  motivationWrap: {
-    marginBottom: spacing.lg,
+  heroWrap: {
+    marginBottom: spacing.xs,
   },
-  yourWeekWrap: {
-    marginBottom: spacing.lg,
+  sectionGroupTitle: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginTop: spacing.xs,
+  },
+  nestedBlock: {
+    gap: spacing.sm,
+  },
+  nestedTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
+  recentBlock: {
+    gap: spacing.sm,
+  },
+  progressionInner: {
+    marginTop: -spacing.md,
   },
   goalCard: {
     marginBottom: spacing.lg,
@@ -1210,7 +1229,6 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   recordsWrap: {
-    marginTop: spacing.md,
     gap: spacing.sm,
   },
   recordCard: {
@@ -1330,8 +1348,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
   },
   breakdownWrap: {
-    marginTop: spacing.md,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   breakdownRow: {
     flexDirection: "row",
@@ -1393,14 +1410,20 @@ const styles = StyleSheet.create({
     ...typography.caption,
   },
   hintCard: {
-    marginBottom: spacing.lg,
     backgroundColor: "rgba(162,89,255,0.12)",
     borderColor: colors.secondary,
+    gap: spacing.xs,
+  },
+  hintLabel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   hintText: { color: colors.textSecondary, ...typography.meta, lineHeight: 20 },
   recentTitle: {
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
     ...typography.sectionTitle,
@@ -1431,13 +1454,13 @@ const styles = StyleSheet.create({
   recentDate: { color: colors.textSecondary, ...typography.meta, marginTop: 2 },
   recentChev: { color: colors.primary, fontSize: 20, marginLeft: spacing.xs },
   recentList: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
   recentItem: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   weeklyRecapBottomCta: {
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
   },
 });
