@@ -606,6 +606,17 @@ class BillingSyncBody(BaseModel):
         return cleaned
 
 
+class SeedScreenshotAccountBody(BaseModel):
+    main_email: str = Field(default="eric.huber.ch@gmail.com", max_length=255)
+    main_username: str = Field(default="erix", min_length=2, max_length=64)
+    main_password: str = Field(default="demo123456", min_length=8, max_length=128)
+    friend_password: str = Field(default="demo123456", min_length=8, max_length=128)
+    days_back: int = Field(default=84, ge=14, le=365)
+    current_streak: int = Field(default=52, ge=1, le=999)
+    longest_streak: int = Field(default=71, ge=1, le=999)
+    main_level: int = Field(default=24, ge=1, le=99)
+
+
 class ProgressionPublic(BaseModel):
     xp_total: int
     current_level: int

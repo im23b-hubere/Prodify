@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.jobs.send_streak_reminders import run_streak_reminder_job
+from app.schemas import SeedScreenshotAccountBody
 from app.services.screenshot_seed_service import seed_screenshot_account
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -47,11 +48,23 @@ def http_run_streak_reminders(
 @router.post("/seed-screenshot-account")
 def http_seed_screenshot_account(
     db: Annotated[Session, Depends(get_db)],
+    body: SeedScreenshotAccountBody | None = None,
     x_internal_job_key: Annotated[str | None, Header(alias="X-Internal-Job-Key")] = None,
 ) -> dict:
     """Seed realistic streak/sessions/friends for App Store screenshots (idempotent)."""
     _require_internal_job_key(x_internal_job_key)
-    result = seed_screenshot_account(db)
+    opts = body or SeedScreenshotAccountBody()
+    result = seed_screenshot_account(
+        db,
+        main_email=opts.main_email,
+        main_username=opts.main_username,
+        main_password=opts.main_password,
+        friend_password=opts.friend_password,
+        days_back=opts.days_back,
+        current_streak=opts.current_streak,
+        longest_streak=opts.longest_streak,
+        main_level=opts.main_level,
+    )
     return {
         "status": "ok",
         "main_email": result.main_email,
