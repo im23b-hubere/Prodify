@@ -118,7 +118,7 @@ export default function PaywallScreen() {
           return;
         }
         await configureRevenueCat(appUserId ?? undefined);
-        const offering = await getDefaultOffering();
+        const offering = await getDefaultOffering(appUserId ?? undefined);
         if (cancelled) return;
         const pkgs = offering?.availablePackages ?? [];
         const weekly = pkgs.find((p) => p.packageType === "WEEKLY");
@@ -152,7 +152,7 @@ export default function PaywallScreen() {
 
   async function syncBackendFromCustomerInfo() {
     if (!token || !appUserId) return;
-    const info = await getRevenueCatCustomerInfo();
+    const info = await getRevenueCatCustomerInfo(appUserId ?? undefined);
     await syncEntitlement(token, {
       app_user_id: appUserId,
       entitlement: isPremiumActive(info) ? "premium" : "free",
@@ -236,7 +236,7 @@ export default function PaywallScreen() {
   async function onRestore() {
     setBusy(true);
     try {
-      const info = await restoreRevenueCatPurchases();
+      const info = await restoreRevenueCatPurchases(appUserId ?? undefined);
       if (token && appUserId) {
         await syncEntitlement(token, {
           app_user_id: appUserId,

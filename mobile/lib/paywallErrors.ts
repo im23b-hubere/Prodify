@@ -5,6 +5,8 @@ export function resolveOfferingsLoadError(error: unknown, fallback: string): str
 
   if (
     normalized.includes("configuration") ||
+    normalized.includes("singleton instance") ||
+    normalized.includes("configure purchases") ||
     normalized.includes("app store connect") ||
     normalized.includes("storekit") ||
     normalized.includes("could not be fetched") ||

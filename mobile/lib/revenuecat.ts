@@ -9,7 +9,11 @@ import {
   getExpoPublicRevenueCatEntitlementId,
 } from "../constants/env";
 
+/** RevenueCat app user id currently associated with the SDK session. */
 let configuredForUser: string | null = null;
+/** Purchases.configure() may only run once per app process. */
+let sdkConfigured = false;
+let configureChain: Promise<void> = Promise.resolve();
 
 function getRevenueCatApiKey(): string | null {
   const key = getExpoPublicRevenueCatApiKey();
@@ -23,40 +27,73 @@ function configuredEntitlementId(): string {
   return raw;
 }
 
+function normalizeAppUserId(appUserId?: string): string | null {
+  const trimmed = appUserId?.trim();
+  return trimmed ? trimmed : null;
+}
+
+/** Configure RevenueCat once, then logIn/logOut when the app user changes. */
 export async function configureRevenueCat(appUserId?: string): Promise<void> {
   if (Platform.OS === "web") {
     return;
   }
   const apiKey = getRevenueCatApiKey();
   if (!apiKey) return;
-  if (__DEV__) {
-    Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
-  }
-  const normalized = appUserId?.trim() ? appUserId.trim() : null;
 
-  if (configuredForUser === normalized) return;
-  if (configuredForUser === null) {
-    await Purchases.configure({
-      apiKey,
-      ...(normalized ? { appUserID: normalized } : {}),
+  const normalized = normalizeAppUserId(appUserId);
+  if (sdkConfigured && configuredForUser === normalized) {
+    return;
+  }
+
+  configureChain = configureChain
+    .then(async () => {
+      if (__DEV__) {
+        Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
+      }
+
+      if (!sdkConfigured) {
+        await Purchases.configure({
+          apiKey,
+          ...(normalized ? { appUserID: normalized } : {}),
+        });
+        sdkConfigured = true;
+        configuredForUser = normalized;
+        return;
+      }
+
+      if (normalized === configuredForUser) {
+        return;
+      }
+
+      if (normalized) {
+        await Purchases.logIn(normalized);
+        configuredForUser = normalized;
+        return;
+      }
+
+      if (configuredForUser !== null) {
+        await Purchases.logOut();
+        configuredForUser = null;
+      }
+    })
+    .catch((error) => {
+      throw error;
     });
-    configuredForUser = normalized;
-    return;
-  }
 
-  if (normalized) {
-    await Purchases.logIn(normalized);
-    configuredForUser = normalized;
-    return;
-  }
-
-  await Purchases.logOut();
-  configuredForUser = null;
+  await configureChain;
 }
 
-export async function getDefaultOffering(): Promise<PurchasesOffering | null> {
+async function ensurePurchasesReady(appUserId?: string): Promise<void> {
+  await configureRevenueCat(appUserId);
+  if (!sdkConfigured) {
+    throw new Error("RevenueCat is not configured for this build.");
+  }
+}
+
+export async function getDefaultOffering(appUserId?: string): Promise<PurchasesOffering | null> {
   if (Platform.OS === "web") return null;
   if (!getRevenueCatApiKey()) return null;
+  await ensurePurchasesReady(appUserId);
   const offerings = await Purchases.getOfferings();
   if (offerings.current) return offerings.current;
   const allOfferings = Object.values(offerings.all ?? {});
@@ -95,16 +132,12 @@ export function activeEntitlementExpiration(info: CustomerInfo): string | null {
   return ent?.expirationDate ?? null;
 }
 
-export async function restoreRevenueCatPurchases(): Promise<CustomerInfo> {
-  if (!getRevenueCatApiKey()) {
-    throw new Error("RevenueCat is not configured for this build.");
-  }
+export async function restoreRevenueCatPurchases(appUserId?: string): Promise<CustomerInfo> {
+  await ensurePurchasesReady(appUserId);
   return Purchases.restorePurchases();
 }
 
-export async function getRevenueCatCustomerInfo(): Promise<CustomerInfo> {
-  if (!getRevenueCatApiKey()) {
-    throw new Error("RevenueCat is not configured for this build.");
-  }
+export async function getRevenueCatCustomerInfo(appUserId?: string): Promise<CustomerInfo> {
+  await ensurePurchasesReady(appUserId);
   return Purchases.getCustomerInfo();
 }

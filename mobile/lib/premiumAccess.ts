@@ -55,7 +55,7 @@ async function refreshPremiumAccess(token: string, appUserId?: string | null): P
   if (userId) {
     try {
       await configureRevenueCat(userId);
-      const info = await getRevenueCatCustomerInfo();
+      const info = await getRevenueCatCustomerInfo(userId);
       const premium = isPremiumActive(info);
       if (premium) {
         await syncEntitlement(token, {
