@@ -1,6 +1,6 @@
 """drop legacy xp_ledger unique index superseded by partial idempotent index
 
-Revision ID: 0021_drop_xp_ledger_legacy_unique
+Revision ID: 0021_drop_xp_ledger_legacy_uq
 Revises: 0020_xp_ledger_idempotent_unique
 Create Date: 2026-06-11
 
@@ -9,17 +9,33 @@ Create Date: 2026-06-11
 from typing import Sequence, Union
 
 from alembic import op
+import sqlalchemy as sa
 from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
-revision: str = "0021_drop_xp_ledger_legacy_unique"
+revision: str = "0021_drop_xp_ledger_legacy_uq"
 down_revision: Union[str, tuple[str, ...], None] = "0020_xp_ledger_idempotent_unique"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _widen_alembic_version_column() -> None:
+    """Alembic defaults to varchar(32); some revision ids hit that limit on Postgres."""
+    bind = op.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    op.alter_column(
+        "alembic_version",
+        "version_num",
+        existing_type=sa.String(length=32),
+        type_=sa.String(length=128),
+        existing_nullable=False,
+    )
+
+
 def upgrade() -> None:
+    _widen_alembic_version_column()
     bind = op.get_bind()
     insp = inspect(bind)
     idxs = {i.get("name") for i in insp.get_indexes("xp_ledger")}
@@ -28,8 +44,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    import sqlalchemy as sa
-
     bind = op.get_bind()
     dialect = bind.dialect.name
     insp = inspect(bind)
