@@ -40,7 +40,7 @@ def test_seed_screenshot_account_job_accepts_valid_key(client, monkeypatch):
     monkeypatch.setattr("app.routers.jobs.settings.internal_job_key", "expected-key-123456789")
     monkeypatch.setattr(
         "app.routers.jobs.seed_screenshot_account",
-        lambda db: type(
+        lambda db, **kwargs: type(
             "Result",
             (),
             {
