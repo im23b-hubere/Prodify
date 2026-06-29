@@ -1,0 +1,74 @@
+---
+description: Use agent-device for Prodify iOS simulator QA and automation
+alwaysApply: false
+globs:
+  - mobile/**
+  - docs/qa/**
+---
+
+# agent-device — Prodify (iOS)
+
+Use `agent-device` only for app/device automation on the **iOS Simulator**. Do not use it for unrelated shell tasks.
+
+## Windows developers
+
+iOS Simulator and `xcodebuild` are **not available on Windows**. Do not run local iOS agent-device commands on Windows.
+
+Instead, trigger cloud QA on GitHub Actions (macOS runner):
+
+```powershell
+.\scripts\run-agent-device-qa.ps1 -Watch
+```
+
+See `docs/qa/agent-device-setup.md` § Windows.
+
+## Prodify targets
+
+- **Bundle ID:** `com.prodify.app`
+- **Platform:** `ios` (Prodify is iOS-only)
+- **Deep link scheme:** `prodify://`
+- **Setup docs:** `docs/qa/agent-device-setup.md`
+
+## Before planning commands
+
+1. Run `agent-device --version`
+2. Read `agent-device help workflow`
+3. For exploratory QA: `agent-device help dogfood`
+4. For logs, network, traces, crashes: `agent-device help debugging`
+5. For React Native overlays, Metro, Fast Refresh: `agent-device help react-native`
+6. For React DevTools / slow renders: `agent-device help react-devtools`
+
+If `agent-device` is not on PATH, resolve the absolute binary path from the user's global npm bin — do not silently fall back to `npx -y agent-device@latest`.
+
+## E2E builds
+
+Prodify supports `EXPO_PUBLIC_E2E_MODE=true` (see `mobile/lib/e2eMode.ts`). When enabled at **build time**, premium/paywall gates are bypassed for simulator QA. Never set this in production EAS profiles.
+
+Build with E2E env vars before opening the app in agent-device. See `docs/qa/agent-device-setup.md`.
+
+## Core loop
+
+```
+devices → open com.prodify.app --platform ios → snapshot -i → act → re-snapshot → verify → close
+```
+
+- Use refs from the **latest** `snapshot -i` output (e.g. `@e3`). Re-snapshot after navigation or scroll.
+- Prefer semantic selectors for durable replay: `agent-device find "Sign In" click`
+- Keep mutating commands against one session serial.
+- Capture screenshots, logs, recordings, and `.ad` replay scripts only when they add evidence.
+
+## Typical smoke flow
+
+1. Boot simulator if needed: `agent-device boot --platform ios --device "iPhone 16 Pro"`
+2. Open app: `agent-device open com.prodify.app --platform ios --relaunch`
+3. Dismiss RN dev overlays if present (`agent-device help react-native`)
+4. Snapshot and navigate: onboarding skip → login → dashboard tabs
+5. On failure: `agent-device screenshot`, `agent-device logs mark`, `agent-device record start`
+
+## Test credentials
+
+Use the E2E API user from `scripts/seed-e2e-user.sh` (defaults: `test@prodify.app` / `Test1234!`). See `mobile/maestro/README.md`.
+
+## MCP
+
+When MCP tools are available, prefer the same workflow via structured tools. CLI remains the auditable fallback.
