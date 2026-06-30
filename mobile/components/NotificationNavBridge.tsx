@@ -1,4 +1,3 @@
-import * as Notifications from "expo-notifications";
 import { type Href, useRouter } from "expo-router";
 import { useEffect } from "react";
 
@@ -38,49 +37,67 @@ export function NotificationNavBridge() {
   useEffect(() => {
     if (isE2eModeEnabled()) return;
 
-    const navigateFromResponse = (
-      response: Notifications.NotificationResponse | null | undefined,
-    ) => {
-      if (!response) return;
-      if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
-      const raw = response.notification.request.content.data;
-      const data =
-        raw && typeof raw === "object" && !Array.isArray(raw)
-          ? (raw as Record<string, unknown>)
-          : undefined;
-      const path = parsePathFromNotificationData(data);
-      if (!path) return;
-      const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
-      if (!isAllowedDeepLinkPath(normalizedPath)) {
-        debugNav("push_path_blocked", { path: normalizedPath });
-        return;
-      }
-      if (deepLinkRequiresAuth(normalizedPath) && !token) {
-        void setPendingDeepLinkPath(normalizedPath);
-        void readOnboardingComplete().then((onboardingComplete) => {
-          router.replace(
-            toHref({ pathname: resolveUnauthenticatedAuthHref(onboardingComplete) }) as Href,
-          );
+    let mounted = true;
+    let sub: { remove: () => void } | undefined;
+
+    void import("expo-notifications")
+      .then((Notifications) => {
+        if (!mounted) return;
+
+        const navigateFromResponse = (response: unknown) => {
+          const r = response as
+            | {
+                actionIdentifier?: string;
+                notification?: { request?: { content?: { data?: unknown } } };
+              }
+            | null
+            | undefined;
+          if (!r) return;
+          if (r.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+          const raw = r.notification?.request?.content?.data;
+          const data =
+            raw && typeof raw === "object" && !Array.isArray(raw)
+              ? (raw as Record<string, unknown>)
+              : undefined;
+          const path = parsePathFromNotificationData(data);
+          if (!path) return;
+          const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+          if (!isAllowedDeepLinkPath(normalizedPath)) {
+            debugNav("push_path_blocked", { path: normalizedPath });
+            return;
+          }
+          if (deepLinkRequiresAuth(normalizedPath) && !token) {
+            void setPendingDeepLinkPath(normalizedPath);
+            void readOnboardingComplete().then((onboardingComplete) => {
+              router.replace(
+                toHref({ pathname: resolveUnauthenticatedAuthHref(onboardingComplete) }) as Href,
+              );
+            });
+            return;
+          }
+          try {
+            router.push(toRoutableHref(normalizedPath) as Href);
+            void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : "navigation_failed";
+            debugNav("push_failed", { path, message: msg });
+          }
+        };
+
+        void Notifications.getLastNotificationResponseAsync().then((last) =>
+          navigateFromResponse(last),
+        );
+
+        sub = Notifications.addNotificationResponseReceivedListener((response) => {
+          navigateFromResponse(response);
         });
-        return;
-      }
-      try {
-        router.push(toRoutableHref(normalizedPath) as Href);
-        void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "navigation_failed";
-        debugNav("push_failed", { path, message: msg });
-      }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      mounted = false;
+      sub?.remove();
     };
-
-    void Notifications.getLastNotificationResponseAsync().then((last) =>
-      navigateFromResponse(last),
-    );
-
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      navigateFromResponse(response);
-    });
-    return () => sub.remove();
   }, [router, token]);
 
   return null;

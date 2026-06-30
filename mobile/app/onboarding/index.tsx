@@ -1,6 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
-import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import {
   BookOpen,
@@ -36,6 +35,7 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { savePendingWeeklyGoal } from "../../lib/onboardingGoalSync";
 import {
   experienceLabel,
@@ -231,7 +231,10 @@ export default function OnboardingScreen() {
   const requestNotif = useCallback(async () => {
     setBusy(true);
     try {
-      await Notifications.requestPermissionsAsync();
+      if (!isE2eModeEnabled()) {
+        const Notifications = await import("expo-notifications");
+        await Notifications.requestPermissionsAsync();
+      }
       await finish();
     } finally {
       setBusy(false);

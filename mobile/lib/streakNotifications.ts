@@ -1,6 +1,6 @@
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+import { isE2eModeEnabled } from "./e2eMode";
 import i18n from "./i18n";
 
 const DATA_KIND = "streak-risk";
@@ -9,21 +9,29 @@ let handlerConfigured = false;
 
 /** Call once at app root so foreground notifications behave correctly. */
 export function configureNotificationHandler() {
+  if (isE2eModeEnabled()) return;
   if (handlerConfigured) return;
   handlerConfigured = true;
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
+  void import("expo-notifications")
+    .then((Notifications) => {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+    })
+    .catch(() => {
+      handlerConfigured = false;
+    });
 }
 
 async function ensureAndroidChannel() {
-  if (Platform.OS !== "android") return;
+  if (Platform.OS !== "android" || isE2eModeEnabled()) return;
+  const Notifications = await import("expo-notifications");
   await Notifications.setNotificationChannelAsync("streak", {
     name: i18n.t("streakNotifications.channelName"),
     importance: Notifications.AndroidImportance.HIGH,
@@ -33,6 +41,8 @@ async function ensureAndroidChannel() {
 }
 
 async function cancelStreakRiskScheduled() {
+  if (isE2eModeEnabled()) return;
+  const Notifications = await import("expo-notifications");
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
     scheduled
@@ -66,11 +76,14 @@ function streakSlots(streakCount: number) {
 }
 
 export async function syncStreakRiskNotifications(atRisk: boolean, streakCount: number) {
+  if (isE2eModeEnabled()) return;
+
   await ensureAndroidChannel();
   await cancelStreakRiskScheduled();
 
   if (!atRisk || streakCount <= 0) return;
 
+  const Notifications = await import("expo-notifications");
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== "granted") {
     return;

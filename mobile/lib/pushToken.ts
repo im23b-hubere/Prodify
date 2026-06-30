@@ -1,5 +1,4 @@
 import Constants from "expo-constants";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 import { apiJson } from "./client";
@@ -10,6 +9,7 @@ export async function registerPushTokenWithBackend(authToken: string): Promise<v
   if (isE2eModeEnabled()) return;
 
   try {
+    const Notifications = await import("expo-notifications");
     const projectId =
       (Constants.expoConfig as { extra?: { eas?: { projectId?: string } } } | undefined)?.extra?.eas
         ?.projectId ?? (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId;

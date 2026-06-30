@@ -1,13 +1,15 @@
-import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
+
+import { isE2eModeEnabled } from "./e2eMode";
 
 let socialChannelReady = false;
 const SOCIAL_PUSH_THROTTLE_KEY = "prodify_social_push_throttle_v1";
 
 async function ensureSocialChannel() {
-  if (Platform.OS !== "android" || socialChannelReady) return;
+  if (Platform.OS !== "android" || socialChannelReady || isE2eModeEnabled()) return;
   socialChannelReady = true;
+  const Notifications = await import("expo-notifications");
   await Notifications.setNotificationChannelAsync("social", {
     name: "Social updates",
     importance: Notifications.AndroidImportance.HIGH,
@@ -17,6 +19,8 @@ async function ensureSocialChannel() {
 }
 
 async function ensureNotificationPermission() {
+  if (isE2eModeEnabled()) return false;
+  const Notifications = await import("expo-notifications");
   const { status } = await Notifications.getPermissionsAsync();
   return status === "granted";
 }
@@ -67,11 +71,14 @@ export async function sendLocalSocialNotification(input: {
   throttleKey?: string;
   throttleMs?: number;
 }) {
+  if (isE2eModeEnabled()) return;
+
   const skip = await shouldSkipByThrottle(input.throttleKey, input.throttleMs ?? 0);
   if (skip) return;
   await ensureSocialChannel();
   const granted = await ensureNotificationPermission();
   if (!granted) return;
+  const Notifications = await import("expo-notifications");
   await Notifications.scheduleNotificationAsync({
     content: {
       title: input.title,
