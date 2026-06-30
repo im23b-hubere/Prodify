@@ -127,7 +127,7 @@ jobs:
           xcodebuild \
             -workspace Prodify.xcworkspace \
             -scheme Prodify \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphonesimulator \
             -derivedDataPath build \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_udid }}" \
