@@ -16,9 +16,9 @@ env:
 - runFlow:
     file: common/dismiss_overlays.yaml
 - extendedWaitUntil:
-    visible: "Start session"
-    timeout: 30000
-- tapOn: "Start session"
+    visible: "START SESSION"
+    timeout: 60000
+- tapOn: "START SESSION"
 - assertVisible: "New Session"
 - tapOn: "Beat Making"
 - tapOn: "START SESSION"

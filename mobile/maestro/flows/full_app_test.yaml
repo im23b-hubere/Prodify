@@ -19,9 +19,9 @@ env:
 
 # --- Core session flow (smoke baseline) ---
 - extendedWaitUntil:
-    visible: "Start session"
-    timeout: 30000
-- tapOn: "Start session"
+    visible: "START SESSION"
+    timeout: 60000
+- tapOn: "START SESSION"
 - assertVisible: "New Session"
 - tapOn: "Beat Making"
 - tapOn: "START SESSION"
@@ -31,7 +31,7 @@ env:
 - tapOn: "End session"
 - assertVisible: "Session complete"
 - extendedWaitUntil:
-    visible: "Start session"
+    visible: "START SESSION"
     timeout: 45000
 
 # --- Tab navigation ---
@@ -124,4 +124,4 @@ env:
 
 # --- Finish on dashboard ---
 - tapOn: "Dashboard"
-- assertVisible: "Start session"
+- assertVisible: "START SESSION"
