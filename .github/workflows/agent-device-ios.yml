@@ -151,12 +151,17 @@ jobs:
           echo "Installing $APP_PATH on ${{ steps.sim.outputs.device_udid }}"
           xcrun simctl install "${{ steps.sim.outputs.device_udid }}" "$APP_PATH"
 
+      - name: Install Maestro CLI
+        run: curl -Ls "https://get.mobile.dev" | bash
+
       - name: Run agent-device Maestro replay
         env:
+          SIMULATOR_UDID: ${{ steps.sim.outputs.device_udid }}
           AGENT_DEVICE_IOS_DEVICE: ${{ steps.sim.outputs.device_name }}
           AGENT_DEVICE_DAEMON_TIMEOUT_MS: "900000"
           AGENT_DEVICE_IOS_BOOT_TIMEOUT_MS: "180000"
           AGENT_DEVICE_REPLAY_TIMEOUT_MS: ${{ contains(github.event.inputs.maestro_flow, 'full_app_test') && '900000' || '600000' }}
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
         run: bash scripts/agent-device/run-ios-smoke.sh
 
       - name: Upload agent-device artifacts

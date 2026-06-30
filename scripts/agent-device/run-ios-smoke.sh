@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run Prodify iOS smoke via agent-device Maestro replay (used on macOS CI runners).
+# Run Prodify iOS Maestro flows on macOS CI (native Maestro) or via agent-device replay locally.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -14,25 +14,48 @@ mkdir -p "$ARTIFACTS"
 
 cd "$ROOT/mobile"
 
-echo "agent-device replay: ${FLOW}"
+echo "Maestro flow: ${FLOW}"
 echo "Artifacts: ${ARTIFACTS}"
 
-on_failure() {
-  agent-device screenshot "${ARTIFACTS}/failure.png" --platform ios 2>/dev/null || true
-  agent-device logs dump 100 --platform ios > "${ARTIFACTS}/logs.txt" 2>/dev/null || true
-  agent-device close --platform ios 2>/dev/null || true
+capture_failure_artifacts() {
+  if [[ "${CI:-}" == "true" && -n "${SIMULATOR_UDID:-}" ]]; then
+    xcrun simctl io "${SIMULATOR_UDID}" screenshot "${ARTIFACTS}/failure.png" 2>/dev/null || true
+  else
+    agent-device screenshot "${ARTIFACTS}/failure.png" --platform ios 2>/dev/null || true
+    agent-device logs dump 100 --platform ios > "${ARTIFACTS}/logs.txt" 2>/dev/null || true
+    agent-device close --platform ios 2>/dev/null || true
+  fi
 }
 
-trap on_failure ERR
+capture_success_artifacts() {
+  if [[ "${CI:-}" == "true" && -n "${SIMULATOR_UDID:-}" ]]; then
+    xcrun simctl io "${SIMULATOR_UDID}" screenshot "${ARTIFACTS}/success.png" 2>/dev/null || true
+  else
+    agent-device screenshot "${ARTIFACTS}/success.png" --platform ios 2>/dev/null || true
+    agent-device close --platform ios 2>/dev/null || true
+  fi
+}
 
-agent-device replay "${FLOW}" \
-  --maestro \
-  --platform ios \
-  --timeout "${TIMEOUT_MS}" \
-  -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
-  -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}"
+trap capture_failure_artifacts ERR
 
-agent-device screenshot "${ARTIFACTS}/success.png" --platform ios 2>/dev/null || true
-agent-device close --platform ios 2>/dev/null || true
+if [[ "${CI:-}" == "true" && -n "${SIMULATOR_UDID:-}" ]]; then
+  echo "Running native Maestro on simulator ${SIMULATOR_UDID}"
+  export MAESTRO_DRIVER_STARTUP_TIMEOUT="${MAESTRO_DRIVER_STARTUP_TIMEOUT:-120000}"
+  maestro --device "${SIMULATOR_UDID}" test \
+    -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
+    -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
+    "${FLOW}"
+else
+  echo "agent-device replay: ${FLOW}"
+  agent-device replay "${FLOW}" \
+    --maestro \
+    --platform ios \
+    --timeout "${TIMEOUT_MS}" \
+    -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
+    -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}"
+fi
 
-echo "Maestro replay passed: ${FLOW}"
+trap - ERR
+capture_success_artifacts
+
+echo "Maestro passed: ${FLOW}"

@@ -23,7 +23,7 @@ function Resolve-GhCommand {
 }
 
 function Get-FailedStepLog {
-    param([string]$Gh, [int]$RunId)
+    param([string]$Gh, [string]$RunId)
     try {
         $lines = & $Gh run view $RunId --log-failed 2>&1
         if ($LASTEXITCODE -ne 0) { return ($lines | Out-String) }
