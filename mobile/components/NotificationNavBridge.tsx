@@ -11,6 +11,7 @@ import {
   resolveUnauthenticatedAuthHref,
   toHref,
 } from "../lib/postAuthNavigation";
+import { isE2eModeEnabled } from "../lib/e2eMode";
 
 function parsePathFromNotificationData(data: Record<string, unknown> | undefined): string | null {
   if (!data) return null;
@@ -35,6 +36,8 @@ export function NotificationNavBridge() {
   const { token } = useAuth();
 
   useEffect(() => {
+    if (isE2eModeEnabled()) return;
+
     const navigateFromResponse = (
       response: Notifications.NotificationResponse | null | undefined,
     ) => {
