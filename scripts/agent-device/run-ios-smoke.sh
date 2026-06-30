@@ -18,12 +18,19 @@ echo "agent-device replay: ${FLOW}"
 echo "Artifacts: ${ARTIFACTS}"
 
 on_failure() {
+  agent-device record stop --platform ios 2>/dev/null || true
   agent-device screenshot "${ARTIFACTS}/failure.png" --platform ios 2>/dev/null || true
   agent-device logs dump 100 --platform ios > "${ARTIFACTS}/logs.txt" 2>/dev/null || true
   agent-device close --platform ios 2>/dev/null || true
 }
 
 trap on_failure ERR
+
+RECORD_VIDEO=false
+if [[ "${MAESTRO_FLOW:-}" == *"full_app_test"* ]]; then
+  RECORD_VIDEO=true
+  agent-device record start "${ARTIFACTS}/full-app-run.mp4" --platform ios 2>/dev/null || RECORD_VIDEO=false
+fi
 
 agent-device replay "${FLOW}" \
   --maestro \
@@ -33,6 +40,9 @@ agent-device replay "${FLOW}" \
   -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}"
 
 agent-device screenshot "${ARTIFACTS}/success.png" --platform ios 2>/dev/null || true
+if [[ "${RECORD_VIDEO}" == "true" ]]; then
+  agent-device record stop --platform ios 2>/dev/null || true
+fi
 agent-device close --platform ios 2>/dev/null || true
 
 echo "Maestro replay passed: ${FLOW}"

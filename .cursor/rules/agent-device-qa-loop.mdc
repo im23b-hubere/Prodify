@@ -1,0 +1,72 @@
+---
+description: Automatic agent-device test-fix-retest loop until CI is green
+alwaysApply: false
+globs:
+  - mobile/**
+  - mobile/maestro/**
+  - scripts/run-agent-device*.ps1
+  - docs/qa/**
+---
+
+# agent-device Fix Loop (automatic)
+
+When the user asks to run the **fix loop**, **dogfood loop**, **test until green**, or **automatic QA loop**:
+
+## Roles
+
+| Tool | Job |
+|------|-----|
+| **agent-device + GitHub Actions** | Run Prodify on iOS Simulator, execute Maestro flow, capture screenshots/logs/video |
+| **Cursor Agent (you)** | On failure: diagnose, fix code or flows, push, re-trigger CI |
+
+agent-device does **not** edit the repo. You close the loop.
+
+## Windows — no local Mac
+
+Never run `agent-device` iOS commands locally on Windows. Use:
+
+```powershell
+.\scripts\run-agent-device-fix-loop.ps1 -FullApp -SkipSeed -Iteration <N>
+```
+
+## Loop algorithm (run autonomously until success or max 5 iterations)
+
+```
+iteration = 1
+loop:
+  run .\scripts\run-agent-device-fix-loop.ps1 -FullApp -SkipSeed -Iteration $iteration
+  if exit 0 → read artifacts/qa-loop/latest/report.md, tell user success, show video path if any, STOP
+  if exit 1 → read artifacts/qa-loop/latest/report.md
+           → read failure.png + logs.txt from ci-artifacts
+           → fix minimal change (mobile/ or mobile/maestro/flows/)
+           → git commit + git push
+           → iteration++, if iteration > 5 ask user; else goto loop
+```
+
+First iteration may omit `-SkipSeed` (script seeds on iteration 1 by default).
+
+## Fix priorities
+
+1. Maestro selector / timing / scroll (``mobile/maestro/flows/``)
+2. React Native a11y labels matching ``mobile/locales/en.json``
+3. App bugs only when logs/screenshots prove a real defect
+4. Never enable production paywall in E2E — use ``EXPO_PUBLIC_E2E_MODE=true`` (already in CI)
+
+## agent-device compatibility
+
+- Do **not** use Maestro ``inputText: id:`` — use ``tapOn: "Email"`` then ``inputText``
+- Prefer deep links: ``prodify://notifications``, ``prodify://progression-overview``, etc.
+
+## Success deliverables
+
+Tell the user:
+
+- CI run URL
+- Path to ``success.png`` and ``full-app-run.mp4`` (if full app flow)
+- Short list of screens covered by ``full_app_test.yaml``
+
+## User trigger phrases
+
+- "Starte den agent-device Fix-Loop"
+- "Teste und fixe bis alles grün ist"
+- "Run the dogfood loop until green"

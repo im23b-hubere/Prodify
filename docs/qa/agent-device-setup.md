@@ -4,9 +4,9 @@ This guide configures [agent-device](https://agent-device.dev/) for exploratory 
 
 Related: Maestro E2E flows live in `mobile/maestro/`; agent-device can replay them via `--maestro` and adds AI-driven exploration, evidence capture, and `.ad` replay scripts.
 
----
+See `docs/qa/agent-device-fix-loop.md` for the **automatic test → fix → retest loop** (Cursor Agent + CI).
 
-## Windows — start here
+---
 
 **You cannot run the iOS Simulator or `xcodebuild` on Windows.** That is expected — not a misconfiguration.
 
