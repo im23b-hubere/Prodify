@@ -41,6 +41,8 @@ jobs:
     timeout-minutes: 60
     env:
       AGENT_DEVICE_VERSION: "0.18.0"
+      MAESTRO_VERSION: "1.39.13"
+      MAESTRO_INSTALLER_SHA256: "40115b628eb491f29d02275bc7e3db5334024ba4fdff7210a334fd3cf4a8f306"
       E2E_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
       E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
       E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || 'Test1234!' }}
@@ -152,7 +154,19 @@ jobs:
           xcrun simctl install "${{ steps.sim.outputs.device_udid }}" "$APP_PATH"
 
       - name: Install Maestro CLI
-        run: curl -Ls "https://get.mobile.dev" | bash
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://get.maestro.mobile.dev" -o /tmp/maestro-installer.sh
+          echo "${MAESTRO_INSTALLER_SHA256}  /tmp/maestro-installer.sh" | shasum -a 256 -c -
+          chmod +x /tmp/maestro-installer.sh
+          MAESTRO_VERSION="${MAESTRO_VERSION}" /tmp/maestro-installer.sh
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Maestro CLI
+        run: |
+          set -euo pipefail
+          maestro --version
+          maestro --version | grep -Fq "${MAESTRO_VERSION}"
 
       - name: Run agent-device Maestro replay
         env:
