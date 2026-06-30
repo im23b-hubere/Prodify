@@ -141,9 +141,20 @@ Write-Host "URL:    $runUrl"
 Write-Host ""
 Write-Host "Waiting for CI (~15-25 min for full app)..."
 & $Gh run watch $runId
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "gh run watch exited with code $LASTEXITCODE; polling until complete..."
+    do {
+        Start-Sleep -Seconds 15
+        $status = & $Gh run view $runId --json status -q ".status"
+    } while ($status -eq "in_progress" -or $status -eq "queued" -or $status -eq "waiting" -or $status -eq "requested" -or $status -eq "pending")
+}
 
 $conclusion = & $Gh run view $runId --json conclusion -q ".conclusion"
 $status = & $Gh run view $runId --json status -q ".status"
+
+if (-not $conclusion) {
+    throw "Could not read CI conclusion for run $runId (status: $status)"
+}
 
 New-Item -ItemType Directory -Force -Path $IterDir | Out-Null
 if (Test-Path $LatestDir) { Remove-Item -Recurse -Force $LatestDir }
@@ -151,7 +162,11 @@ New-Item -ItemType Directory -Force -Path $LatestDir | Out-Null
 
 $downloadDir = Join-Path $IterDir "ci-artifacts"
 New-Item -ItemType Directory -Force -Path $downloadDir | Out-Null
-& $Gh run download $runId -D $downloadDir 2>&1 | Out-Null
+try {
+    & $Gh run download $runId -D $downloadDir 2>&1 | Out-Null
+} catch {
+    Write-Host "Artifact download warning: $_"
+}
 
 Copy-Item -Recurse -Force $IterDir\* $LatestDir\
 
