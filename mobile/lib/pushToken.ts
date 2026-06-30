@@ -3,9 +3,12 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 import { apiJson } from "./client";
+import { isE2eModeEnabled } from "./e2eMode";
 
 /** Best-effort: register Expo push token + (Android) native FCM token with API. */
 export async function registerPushTokenWithBackend(authToken: string): Promise<void> {
+  if (isE2eModeEnabled()) return;
+
   try {
     const projectId =
       (Constants.expoConfig as { extra?: { eas?: { projectId?: string } } } | undefined)?.extra?.eas
