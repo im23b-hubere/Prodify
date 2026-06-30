@@ -154,8 +154,9 @@ jobs:
       - name: Run agent-device Maestro replay
         env:
           AGENT_DEVICE_IOS_DEVICE: ${{ steps.sim.outputs.device_name }}
-          AGENT_DEVICE_DAEMON_TIMEOUT_MS: "180000"
+          AGENT_DEVICE_DAEMON_TIMEOUT_MS: "900000"
           AGENT_DEVICE_IOS_BOOT_TIMEOUT_MS: "180000"
+          AGENT_DEVICE_REPLAY_TIMEOUT_MS: ${{ contains(github.event.inputs.maestro_flow, 'full_app_test') && '900000' || '600000' }}
         run: bash scripts/agent-device/run-ios-smoke.sh
 
       - name: Upload agent-device artifacts
