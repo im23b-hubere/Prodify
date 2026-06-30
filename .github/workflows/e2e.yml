@@ -63,6 +63,7 @@ jobs:
       EXPO_PUBLIC_E2E_MODE: "true"
       EXPO_PUBLIC_REVENUECAT_API_KEY: appl_mnYqBJcSBBUEyNRCfULPzxMqpmX
       EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID: app_access
+      EX_UPDATES_NATIVE_DEBUG: "1"
       # Sentry native build scripts must not upload symbols or fail CI without auth.
       SENTRY_DISABLE_AUTO_UPLOAD: "true"
       SENTRY_ALLOW_FAILURE: "true"
@@ -87,6 +88,26 @@ jobs:
       - name: Install dependencies
         run: cd mobile && npm ci
 
+      - name: Configure fast standalone iOS QA build
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("fs");
+          const path = "package.json";
+          const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+          pkg.expo = pkg.expo || {};
+          pkg.expo.autolinking = pkg.expo.autolinking || {};
+          pkg.expo.autolinking.ios = pkg.expo.autolinking.ios || {};
+          pkg.expo.autolinking.ios.exclude = [
+            "expo-dev-client",
+            "expo-dev-launcher",
+            "expo-dev-menu",
+            "expo-dev-menu-interface"
+          ];
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
+          NODE
+
       - name: Install Maestro
         run: |
           set -euo pipefail
@@ -105,6 +126,12 @@ jobs:
       - name: Prebuild iOS
         working-directory: mobile
         run: npx expo prebuild --platform ios --clean
+
+      - name: Force bundled JS for Debug simulator build
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          sed -i '' 's/SKIP_BUNDLING/FORCE_BUNDLING/g' ios/Prodify.xcodeproj/project.pbxproj
 
       - name: Install CocoaPods
         working-directory: mobile/ios
@@ -143,7 +170,7 @@ jobs:
           xcodebuild \
             -workspace Prodify.xcworkspace \
             -scheme Prodify \
-            -configuration Release \
+            -configuration Debug \
             -sdk iphonesimulator \
             -derivedDataPath build \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_udid }}" \
