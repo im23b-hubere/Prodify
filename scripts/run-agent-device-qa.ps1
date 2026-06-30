@@ -4,6 +4,7 @@
 # Usage:
 #   .\scripts\run-agent-device-qa.ps1
 #   .\scripts\run-agent-device-qa.ps1 -Watch
+#   .\scripts\run-agent-device-qa.ps1 -FullApp -Watch
 #   .\scripts\run-agent-device-qa.ps1 -Flow "maestro/flows/onboarding_to_login.yaml"
 
 param(
@@ -12,6 +13,7 @@ param(
     [string]$TestPassword = "Test1234!",
     [string]$TestUsername = "e2euser",
     [string]$Flow = "maestro/flows/smoke_test.yaml",
+    [switch]$FullApp,
     [switch]$SkipSeed,
     [switch]$Watch,
     [switch]$DownloadArtifacts
@@ -44,6 +46,10 @@ function Resolve-GhCommand {
     throw "GitHub CLI (gh) not found. Run: .\scripts\setup-gh.ps1"
 }
 
+if ($FullApp) {
+    $Flow = "maestro/flows/full_app_test.yaml"
+}
+
 $Gh = Resolve-GhCommand
 Set-Location $RepoRoot
 
@@ -63,6 +69,7 @@ if (-not $SkipSeed) {
 }
 
 Write-Host ""
+Write-Host "Maestro flow: $Flow"
 Write-Host "Triggering workflow: $WorkflowFile"
 & $Gh workflow run $WorkflowFile `
     -f "api_url=$ApiUrl" `

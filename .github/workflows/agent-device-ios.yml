@@ -23,6 +23,10 @@ on:
         description: Maestro flow path (relative to mobile/)
         required: false
         default: maestro/flows/smoke_test.yaml
+        type: choice
+        options:
+          - maestro/flows/smoke_test.yaml
+          - maestro/flows/full_app_test.yaml
 
 permissions:
   contents: read
@@ -147,7 +151,7 @@ jobs:
           echo "Installing $APP_PATH on ${{ steps.sim.outputs.device_udid }}"
           xcrun simctl install "${{ steps.sim.outputs.device_udid }}" "$APP_PATH"
 
-      - name: Run agent-device smoke (Maestro replay)
+      - name: Run agent-device Maestro replay
         env:
           AGENT_DEVICE_IOS_DEVICE: ${{ steps.sim.outputs.device_name }}
           AGENT_DEVICE_DAEMON_TIMEOUT_MS: "180000"

@@ -6,6 +6,9 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ARTIFACTS="${ROOT}/artifacts/agent-device-ios"
 FLOW="${MAESTRO_FLOW:-maestro/flows/smoke_test.yaml}"
 TIMEOUT_MS="${AGENT_DEVICE_REPLAY_TIMEOUT_MS:-600000}"
+if [[ "${MAESTRO_FLOW:-}" == *"full_app_test"* ]]; then
+  TIMEOUT_MS="${AGENT_DEVICE_REPLAY_TIMEOUT_MS:-900000}"
+fi
 
 mkdir -p "$ARTIFACTS"
 
@@ -32,4 +35,4 @@ agent-device replay "${FLOW}" \
 agent-device screenshot "${ARTIFACTS}/success.png" --platform ios 2>/dev/null || true
 agent-device close --platform ios 2>/dev/null || true
 
-echo "Smoke passed."
+echo "Maestro replay passed: ${FLOW}"

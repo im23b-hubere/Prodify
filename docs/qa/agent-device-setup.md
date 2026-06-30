@@ -21,21 +21,26 @@ Prodify iOS QA from Windows runs on **GitHub Actions** (`macos-15` runner) via a
 ### Run QA from PowerShell
 
 ```powershell
-# From repo root — seeds E2E user, triggers CI, watches progress
+# Full app test (~15 min on GitHub's free macOS runner — no Mac needed)
+.\scripts\run-agent-device-qa.ps1 -FullApp -Watch
+
+# Fast smoke only (~10 min)
 .\scripts\run-agent-device-qa.ps1 -Watch
 
 # Download screenshots/logs after a run
 .\scripts\run-agent-device-qa.ps1 -SkipSeed -DownloadArtifacts
 ```
 
-Or manually in GitHub: **Actions → agent-device iOS QA → Run workflow**.
+**Cost:** You do not need a Mac or a paid cloud device farm. This workflow uses GitHub Actions `macos-15` runners. **Public repos** get macOS minutes included in the free tier. **Private repos** consume billable minutes (macOS counts ~10× Linux) — use `-FullApp` manually when you need deep coverage; keep smoke on PRs.
+
+Or manually in GitHub: **Actions → agent-device iOS QA → Run workflow** (set `maestro_flow` to `maestro/flows/full_app_test.yaml` for full coverage).
 
 ### What CI does
 
 1. Seeds E2E user (`test@prodify.app`)
 2. Builds Prodify for iOS Simulator with `EXPO_PUBLIC_E2E_MODE=true`
 3. Installs `agent-device` on the Mac runner
-4. Replays `mobile/maestro/flows/smoke_test.yaml` via `agent-device replay --maestro`
+4. Replays a Maestro flow via `agent-device replay --maestro` (default: smoke; use `-FullApp` or workflow input for full app)
 5. Uploads artifacts (`artifacts/agent-device-ios/`) — screenshots on success/failure
 
 ### Cursor on Windows
@@ -291,6 +296,29 @@ Suggested smoke path (aligns with `mobile/maestro/flows/smoke_test.yaml`):
 2. Login with E2E credentials
 3. Visit Dashboard, Stats, Friends, Profile tabs
 4. Open session setup (optional)
+
+### Full app test (Windows — no Mac)
+
+Flow: `mobile/maestro/flows/full_app_test.yaml`
+
+Covers everything in smoke **plus**:
+
+| Area | How |
+|------|-----|
+| Streak history | `prodify://streak/history` |
+| Notifications | deep link + Profile settings row |
+| Session trash | `prodify://session-trash` |
+| Session setup | `prodify://session/setup` |
+| Weekly recap | Stats → Open weekly recap |
+| Progression / ranks | `prodify://progression-overview` |
+| Public profile | Profile → View public profile |
+| Legal | Privacy + Terms of use |
+
+```powershell
+.\scripts\run-agent-device-qa.ps1 -FullApp -Watch
+```
+
+Runs on GitHub Actions macOS runners — free for public repos, no local Mac required.
 
 ---
 

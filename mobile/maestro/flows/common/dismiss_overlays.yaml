@@ -1,0 +1,6 @@
+appId: com.prodify.app
+---
+# First-run dashboard tutorial (SecureStore cleared by launchApp clearState).
+- tapOn:
+    text: "Got it"
+    optional: true

@@ -1,0 +1,127 @@
+appId: com.prodify.app
+env:
+  TEST_EMAIL: test@prodify.app
+  TEST_PASSWORD: Test1234!
+---
+# --- Bootstrap: onboarding + login ---
+- launchApp:
+    clearState: true
+- runFlow:
+    when:
+      visible: "Let's build your studio plan"
+    file: onboarding_to_login.yaml
+- runFlow:
+    when:
+      visible: "Welcome back"
+    file: login_with_credentials.yaml
+- runFlow:
+    file: common/dismiss_overlays.yaml
+
+# --- Core session flow (smoke baseline) ---
+- extendedWaitUntil:
+    visible: "Start session"
+    timeout: 30000
+- tapOn: "Start session"
+- assertVisible: "New Session"
+- tapOn: "Beat Making"
+- tapOn: "START SESSION"
+- assertVisible: "STOP SESSION"
+- waitForAnimationToEnd
+- tapOn: "STOP SESSION"
+- tapOn: "End session"
+- assertVisible: "Session complete"
+- extendedWaitUntil:
+    visible: "Start session"
+    timeout: 45000
+
+# --- Tab navigation ---
+- tapOn: "Stats"
+- assertVisible: "Your stats"
+- tapOn: "Friends"
+- assertVisible: "Friends"
+- tapOn: "Profile"
+- assertVisible: "Profile"
+- tapOn: "Dashboard"
+- assertVisible: "Dashboard"
+
+# --- Secondary screens (deep links + in-app navigation) ---
+- openLink: prodify://streak/history
+- extendedWaitUntil:
+    visible: "Streak history"
+    timeout: 20000
+- back
+
+- openLink: prodify://notifications
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 20000
+- assertVisible: "Preferences"
+- tapOn: "‹ Back"
+
+- openLink: prodify://session-trash
+- extendedWaitUntil:
+    visible: "Session trash"
+    timeout: 20000
+- back
+
+- openLink: prodify://session/setup
+- extendedWaitUntil:
+    visible: "New Session"
+    timeout: 20000
+- back
+
+# --- Stats: weekly recap ---
+- tapOn: "Stats"
+- extendedWaitUntil:
+    visible: "Your stats"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Open weekly recap"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "Open weekly recap"
+- extendedWaitUntil:
+    visible: "Weekly recap"
+    timeout: 20000
+- tapOn: "Close"
+
+# --- Progression overview ---
+- openLink: prodify://progression-overview
+- extendedWaitUntil:
+    visible: "Your rank"
+    timeout: 20000
+- assertVisible: "All ranks"
+- tapOn: "Back to dashboard"
+
+# --- Profile: public profile + legal ---
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: "Profile"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "View public profile"
+    file: common/view_public_profile.yaml
+- scrollUntilVisible:
+    element: "Privacy"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "Notifications"
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 20000
+- tapOn: "‹ Back"
+- tapOn: "Privacy"
+- extendedWaitUntil:
+    visible: "Privacy policy"
+    timeout: 15000
+- tapOn: "Back"
+- tapOn: "Terms of use"
+- extendedWaitUntil:
+    visible: "Terms of use"
+    timeout: 15000
+- tapOn: "Back"
+
+# --- Finish on dashboard ---
+- tapOn: "Dashboard"
+- assertVisible: "Start session"
