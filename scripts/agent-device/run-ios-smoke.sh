@@ -8,6 +8,8 @@ FLOW="${MAESTRO_FLOW:-maestro/flows/smoke_test.yaml}"
 TIMEOUT_MS="${AGENT_DEVICE_REPLAY_TIMEOUT_MS:-600000}"
 if [[ "${MAESTRO_FLOW:-}" == *"full_app_test"* ]]; then
   TIMEOUT_MS="${AGENT_DEVICE_REPLAY_TIMEOUT_MS:-900000}"
+elif [[ "${MAESTRO_FLOW:-}" == *"bootstrap_dashboard"* ]]; then
+  TIMEOUT_MS="${AGENT_DEVICE_REPLAY_TIMEOUT_MS:-300000}"
 fi
 
 mkdir -p "$ARTIFACTS"

@@ -16,34 +16,42 @@ When the user asks to run the **fix loop**, **dogfood loop**, **test until green
 
 | Tool | Job |
 |------|-----|
-| **agent-device + GitHub Actions** | Run Prodify on iOS Simulator, execute Maestro flow, capture screenshots/logs/video |
+| **GitHub Actions + Maestro** | Run Prodify on iOS Simulator, execute Maestro flow, capture screenshots/logs |
 | **Cursor Agent (you)** | On failure: diagnose, fix code or flows, push, re-trigger CI |
 
-agent-device does **not** edit the repo. You close the loop.
+You close the loop. CI does not edit the repo.
 
 ## Windows — no local Mac
 
 Never run `agent-device` iOS commands locally on Windows. Use:
 
 ```powershell
-.\scripts\run-agent-device-fix-loop.ps1 -FullApp -SkipSeed -Iteration <N>
+.\scripts\run-agent-device-fix-loop.ps1 -FullApp -Staged -SkipSeed -Iteration <N>
 ```
+
+**Auto mode is ON by default.** Only Maestro/script changes reuse the last `ios-simulator-app` artifact (~5–10 min). App code changes trigger a fresh build (~25–35 min).
 
 ## Loop algorithm (run autonomously until success or max 5 iterations)
 
 ```
 iteration = 1
 loop:
-  run .\scripts\run-agent-device-fix-loop.ps1 -FullApp -SkipSeed -Iteration $iteration
+  run .\scripts\run-agent-device-fix-loop.ps1 -FullApp -Staged -SkipSeed -Iteration $iteration
   if exit 0 → read artifacts/qa-loop/latest/report.md, tell user success, show video path if any, STOP
   if exit 1 → read artifacts/qa-loop/latest/report.md
-           → read failure.png + logs.txt from ci-artifacts
+           → read failure.png + logs from ci-artifacts
            → fix minimal change (mobile/ or mobile/maestro/flows/)
            → git commit + git push
            → iteration++, if iteration > 5 ask user; else goto loop
 ```
 
-First iteration may omit `-SkipSeed` (script seeds on iteration 1 by default).
+`-Staged` runs FastSmoke first (~3 min), then FullApp only if smoke passes. Both stages use Auto (replay when safe).
+
+For quick Maestro-only iteration without full coverage:
+
+```powershell
+.\scripts\run-agent-device-fix-loop.ps1 -FastSmoke -SkipSeed -Iteration <N>
+```
 
 ## Fix priorities
 
@@ -55,14 +63,15 @@ First iteration may omit `-SkipSeed` (script seeds on iteration 1 by default).
 ## agent-device compatibility
 
 - Do **not** use Maestro ``inputText: id:`` — use ``tapOn: "Email"`` then ``inputText``
-- Prefer deep links: ``prodify://notifications``, ``prodify://progression-overview``, etc.
+- Prefer E2E bootstrap: ``prodify://e2e/bootstrap?email=...&password=...``
 
 ## Success deliverables
 
 Tell the user:
 
 - CI run URL
-- Path to ``success.png`` and ``full-app-run.mp4`` (if full app flow)
+- QA mode used (build-and-test vs replay-only)
+- Path to ``success.png``
 - Short list of screens covered by ``full_app_test.yaml``
 
 ## User trigger phrases

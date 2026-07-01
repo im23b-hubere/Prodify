@@ -2,12 +2,11 @@
 # Use this from Windows - local iOS Simulator is not available.
 #
 # Usage:
-#   .\scripts\run-agent-device-qa.ps1
 #   .\scripts\run-agent-device-qa.ps1 -Watch
 #   .\scripts\run-agent-device-qa.ps1 -FullApp -Watch
-#   .\scripts\run-agent-device-qa.ps1 -Flow "maestro/flows/onboarding_to_login.yaml"
-#   .\scripts\run-agent-device-qa.ps1 -FullApp -ReplayOnly -AppArtifactRunId 123456789 -Watch
-#   .\scripts\run-agent-device-qa.ps1 -FastSmoke -Auto -Watch
+#   .\scripts\run-agent-device-qa.ps1 -FastSmoke -Watch
+#   .\scripts\run-agent-device-qa.ps1 -NoAuto -FullApp -Watch
+#   .\scripts\run-agent-device-qa.ps1 -ReplayOnly -AppArtifactRunId 123456789 -Watch
 
 param(
     [string]$ApiUrl = "https://prodify-api-46b1.onrender.com",
@@ -18,7 +17,7 @@ param(
     [string]$AppArtifactRunId,
     [switch]$FullApp,
     [switch]$FastSmoke,
-    [switch]$Auto,
+    [switch]$NoAuto,
     [switch]$ReplayOnly,
     [switch]$SkipSeed,
     [switch]$Watch,
@@ -28,6 +27,7 @@ param(
 $ErrorActionPreference = "Stop"
 $WorkflowFile = "agent-device-ios.yml"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "qa\Resolve-AgentDeviceQaMode.ps1")
 
 function Resolve-GhCommand {
     $gh = Get-Command gh -ErrorAction SilentlyContinue
@@ -52,75 +52,6 @@ function Resolve-GhCommand {
     throw "GitHub CLI (gh) not found. Run: .\scripts\setup-gh.ps1"
 }
 
-function Test-RunArtifact {
-    param([string]$Gh, [string]$RunId, [string]$Name)
-    try {
-        $artifacts = & $Gh api "repos/im23b-hubere/Prodify/actions/runs/$RunId/artifacts" 2>$null | ConvertFrom-Json
-        if ($LASTEXITCODE -ne 0 -or -not $artifacts) { return $false }
-        return @($artifacts.artifacts | Where-Object { $_.name -eq $Name -and -not $_.expired }).Count -gt 0
-    } catch {
-        return $false
-    }
-}
-
-function Get-LatestRunWithArtifact {
-    param([string]$Gh, [string]$WorkflowFile, [string]$ArtifactName)
-    $runs = & $Gh run list --workflow=$WorkflowFile --limit 20 --json databaseId,status,headSha,createdAt | ConvertFrom-Json
-    foreach ($run in $runs) {
-        if ($run.status -ne "completed") { continue }
-        $runId = [string]$run.databaseId
-        if (Test-RunArtifact -Gh $Gh -RunId $runId -Name $ArtifactName) {
-            return [pscustomobject]@{
-                RunId = $runId
-                HeadSha = [string]$run.headSha
-            }
-        }
-    }
-    return $null
-}
-
-function Test-NeedsFreshAppBuild {
-    param([string]$BaseSha)
-    if ([string]::IsNullOrWhiteSpace($BaseSha)) { return $true }
-    $headSha = (git rev-parse HEAD).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($headSha)) { return $true }
-    if ($headSha -eq $BaseSha) { return $false }
-
-    $changedFiles = @(git diff --name-only "$BaseSha..HEAD" 2>$null)
-    if ($LASTEXITCODE -ne 0) { return $true }
-    if ($changedFiles.Count -eq 0) { return $false }
-
-    $appImpactingPrefixes = @(
-        "mobile/app/",
-        "mobile/assets/",
-        "mobile/components/",
-        "mobile/constants/",
-        "mobile/context/",
-        "mobile/features/",
-        "mobile/hooks/",
-        "mobile/lib/",
-        "mobile/types/"
-    )
-    $appImpactingFiles = @(
-        "mobile/app.json",
-        "mobile/eas.json",
-        "mobile/package.json",
-        "mobile/package-lock.json",
-        "mobile/babel.config.js",
-        "mobile/metro.config.js"
-    )
-
-    foreach ($file in $changedFiles) {
-        $normalized = $file.Replace("\", "/")
-        if ($appImpactingFiles -contains $normalized) { return $true }
-        foreach ($prefix in $appImpactingPrefixes) {
-            if ($normalized.StartsWith($prefix)) { return $true }
-        }
-    }
-
-    return $false
-}
-
 if ($FullApp) {
     $Flow = "maestro/flows/full_app_test.yaml"
 }
@@ -128,26 +59,21 @@ if ($FastSmoke) {
     $Flow = "maestro/flows/bootstrap_dashboard.yaml"
 }
 
+$Auto = -not $NoAuto
 $Gh = Resolve-GhCommand
 Set-Location $RepoRoot
 
-if ($Auto) {
-    $latestArtifact = Get-LatestRunWithArtifact -Gh $Gh -WorkflowFile $WorkflowFile -ArtifactName "ios-simulator-app"
-    if ($latestArtifact) {
-        $needsBuild = Test-NeedsFreshAppBuild -BaseSha $latestArtifact.HeadSha
-        if (-not $needsBuild) {
-            $ReplayOnly = $true
-            $AppArtifactRunId = $latestArtifact.RunId
-        }
-    }
+$resolution = Resolve-AgentDeviceQaMode -Gh $Gh -WorkflowFile $WorkflowFile `
+    -Auto:$Auto -ReplayOnly:$ReplayOnly -AppArtifactRunId $AppArtifactRunId
+
+$QaMode = $resolution.QaMode
+$AppArtifactRunId = $resolution.AppArtifactRunId
+
+if ($QaMode -eq "replay-only" -and [string]::IsNullOrWhiteSpace($AppArtifactRunId)) {
+    throw "Replay-only requires a reusable ios-simulator-app artifact. Run a build-and-test once, or pass -AppArtifactRunId."
 }
 
-$QaMode = if ($ReplayOnly) { "replay-only" } else { "build-and-test" }
-$SeedApiUser = if ($SkipSeed) { "false" } else { "true" }
-
-if ($ReplayOnly -and [string]::IsNullOrWhiteSpace($AppArtifactRunId)) {
-    throw "-AppArtifactRunId is required when using -ReplayOnly"
-}
+$SeedApiUser = if ($SkipSeed -or $QaMode -eq "replay-only") { "false" } else { "true" }
 
 Write-Host "Using gh: $Gh"
 Write-Host "Checking gh authentication..."
@@ -158,21 +84,14 @@ if ($LASTEXITCODE -ne 0) {
     throw "Not logged in. Run: & `"$Gh`" auth login"
 }
 
-if (-not $SkipSeed) {
+if ($SeedApiUser -eq "true") {
     Write-Host ""
     Write-Host "Seeding E2E API user..."
     & "$PSScriptRoot\seed-e2e-user.ps1" -ApiUrl $ApiUrl -Email $TestEmail -Password $TestPassword -Username $TestUsername
 }
 
 Write-Host ""
-Write-Host "Maestro flow: $Flow"
-Write-Host "QA mode:      $QaMode"
-if ($Auto) {
-    Write-Host "Auto mode:    enabled"
-}
-if ($ReplayOnly) {
-    Write-Host "App artifact: previous run $AppArtifactRunId"
-}
+Write-AgentDeviceQaModeSummary -Resolution $resolution -Flow $Flow
 Write-Host "Triggering workflow: $WorkflowFile"
 & $Gh workflow run $WorkflowFile `
     -f "api_url=$ApiUrl" `

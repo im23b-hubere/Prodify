@@ -56,9 +56,8 @@ concurrency:
 jobs:
   agent-device-ios:
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: ${{ github.event.inputs.qa_mode == 'replay-only' && 15 || 45 }}
     env:
-      AGENT_DEVICE_VERSION: "0.18.0"
       MAESTRO_VERSION: "1.39.13"
       MAESTRO_INSTALLER_SHA256: "40115b628eb491f29d02275bc7e3db5334024ba4fdff7210a334fd3cf4a8f306"
       E2E_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
@@ -82,6 +81,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
 
       - name: Set up Node
         if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
@@ -98,17 +99,6 @@ jobs:
       - name: Install mobile dependencies
         if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         run: cd mobile && npm ci
-
-      - name: Install agent-device
-        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
-        run: npm install -g "agent-device@${AGENT_DEVICE_VERSION}"
-
-      - name: Verify agent-device CLI
-        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
-        run: |
-          set -euo pipefail
-          agent-device --version
-          agent-device --version | grep -Fq "${AGENT_DEVICE_VERSION}"
 
       - name: Configure fast standalone iOS QA build
         if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
@@ -143,10 +133,31 @@ jobs:
           set -euo pipefail
           sed -i '' 's/SKIP_BUNDLING/FORCE_BUNDLING/g' ios/Prodify.xcodeproj/project.pbxproj
 
+      - name: Cache CocoaPods
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
+        uses: actions/cache@1bd1e96a3ec124d8856201765433a65c7bfa37e8
+        id: pods-cache
+        with:
+          path: mobile/ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json') }}
+          restore-keys: |
+            pods-${{ runner.os }}-
+
       - name: Install CocoaPods
         if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         working-directory: mobile/ios
         run: pod install
+
+      - name: Cache xcodebuild derived data
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
+        uses: actions/cache@1bd1e96a3ec124d8856201765433a65c7bfa37e8
+        id: xcode-cache
+        with:
+          path: mobile/ios/build
+          key: xcode-${{ runner.os }}-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json') }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**') }}
+          restore-keys: |
+            xcode-${{ runner.os }}-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json') }}-
+            xcode-${{ runner.os }}-
 
       - name: Resolve simulator
         id: sim
@@ -172,13 +183,14 @@ jobs:
           set -euo pipefail
           xcrun simctl boot "${{ steps.sim.outputs.device_udid }}" || true
           xcrun simctl bootstatus "${{ steps.sim.outputs.device_udid }}" -b
-          sleep 5
 
       - name: Build app (simulator)
         if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
+        timeout-minutes: 30
         working-directory: mobile/ios
         run: |
           set -euo pipefail
+          JOBS=$(sysctl -n hw.ncpu)
           xcodebuild \
             -workspace Prodify.xcworkspace \
             -scheme Prodify \
@@ -186,9 +198,13 @@ jobs:
             -sdk iphonesimulator \
             -derivedDataPath build \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_udid }}" \
+            -parallelizeTargets \
+            -jobs "$JOBS" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            ONLY_ACTIVE_ARCH=YES \
+            DEBUG_INFORMATION_FORMAT=dwarf
 
       - name: Package iOS simulator app artifact
         if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
@@ -242,6 +258,17 @@ jobs:
           gh run download "${{ github.event.inputs.app_artifact_run_id }}" \
             -n ios-simulator-app \
             -D artifacts/replay-app
+          ARTIFACT_HEAD_SHA="$(jq -r '.head_sha // empty' artifacts/replay-app/metadata.json)"
+          if [[ -n "$ARTIFACT_HEAD_SHA" ]]; then
+            if ! bash scripts/qa/test-app-impacting-changes.sh "$ARTIFACT_HEAD_SHA" "$GITHUB_SHA"; then
+              echo "Replay-only rejected: app code changed since artifact was built."
+              echo "Re-run with qa_mode=build-and-test or push only Maestro/script changes."
+              exit 1
+            fi
+            echo "Artifact from $ARTIFACT_HEAD_SHA is compatible with $GITHUB_SHA"
+          else
+            echo "Warning: metadata.json missing head_sha; skipping compatibility check"
+          fi
           ditto -x -k artifacts/replay-app/Prodify.app.zip artifacts/replay-app
           APP_PATH=$(find artifacts/replay-app -name "Prodify.app" -type d | head -1)
           if [[ -z "${APP_PATH:-}" ]]; then
@@ -269,14 +296,26 @@ jobs:
           echo "Installing $APP_PATH on ${{ steps.sim.outputs.device_udid }}"
           xcrun simctl install "${{ steps.sim.outputs.device_udid }}" "$APP_PATH"
 
+      - name: Cache Maestro CLI
+        uses: actions/cache@1bd1e96a3ec124d8856201765433a65c7bfa37e8
+        id: maestro-cache
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+          restore-keys: |
+            maestro-${{ runner.os }}-
+
       - name: Install Maestro CLI
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           curl -fsSL "https://get.maestro.mobile.dev" -o /tmp/maestro-installer.sh
           echo "${MAESTRO_INSTALLER_SHA256}  /tmp/maestro-installer.sh" | shasum -a 256 -c -
           chmod +x /tmp/maestro-installer.sh
           MAESTRO_VERSION="${MAESTRO_VERSION}" /tmp/maestro-installer.sh
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Add Maestro to PATH
+        run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       - name: Verify Maestro CLI
         run: |
@@ -284,14 +323,11 @@ jobs:
           maestro --version
           maestro --version | grep -Fq "${MAESTRO_VERSION}"
 
-      - name: Run agent-device Maestro replay
+      - name: Run Maestro on iOS simulator
         env:
           SIMULATOR_UDID: ${{ steps.sim.outputs.device_udid }}
-          AGENT_DEVICE_IOS_DEVICE: ${{ steps.sim.outputs.device_name }}
-          AGENT_DEVICE_DAEMON_TIMEOUT_MS: "900000"
-          AGENT_DEVICE_IOS_BOOT_TIMEOUT_MS: "180000"
-          AGENT_DEVICE_REPLAY_TIMEOUT_MS: ${{ contains(github.event.inputs.maestro_flow, 'full_app_test') && '900000' || '600000' }}
-          MAESTRO_DRIVER_STARTUP_TIMEOUT: "300000"
+          AGENT_DEVICE_REPLAY_TIMEOUT_MS: ${{ contains(github.event.inputs.maestro_flow, 'full_app_test') && '900000' || contains(github.event.inputs.maestro_flow, 'bootstrap_dashboard') && '300000' || '600000' }}
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: ${{ github.event.inputs.qa_mode == 'replay-only' && '180000' || '300000' }}
         run: bash scripts/agent-device/run-ios-smoke.sh
 
       - name: Upload agent-device artifacts
@@ -300,16 +336,6 @@ jobs:
         with:
           name: agent-device-artifacts
           path: artifacts/agent-device-ios/
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Upload agent-device session logs on failure
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: agent-device-logs
-          path: |
-            ~/.agent-device/
           retention-days: 7
           if-no-files-found: ignore
 
@@ -326,7 +352,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload iOS build logs on failure
-        if: failure()
+        if: failure() && github.event.inputs.qa_mode != 'replay-only'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: agent-device-xcodebuild-logs

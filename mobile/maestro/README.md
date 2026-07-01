@@ -7,8 +7,10 @@ Automated iOS smoke tests for release candidates.
 | File | Purpose |
 |------|---------|
 | `flows/smoke_test.yaml` | Full smoke: onboarding skip → login → session → tabs |
+| `flows/full_app_test.yaml` | Extended coverage: smoke + secondary screens + legal |
 | `flows/onboarding_to_login.yaml` | Skip quiz onboarding and open login via `prodify://login` |
 | `flows/login_with_credentials.yaml` | Sign in with `TEST_EMAIL` / `TEST_PASSWORD` |
+| `flows/common/dismiss_overlays.yaml` | Dismiss first-run tutorial overlay |
 
 ## Prerequisites
 
@@ -40,6 +42,20 @@ maestro test \
   -e TEST_EMAIL=test@prodify.app \
   -e TEST_PASSWORD='Test1234!' \
   maestro/flows/smoke_test.yaml
+
+# Full app (macOS + simulator only)
+maestro test \
+  -e TEST_EMAIL=test@prodify.app \
+  -e TEST_PASSWORD='Test1234!' \
+  maestro/flows/full_app_test.yaml
+```
+
+## Windows (no Mac)
+
+Use GitHub Actions instead of local Maestro:
+
+```powershell
+.\scripts\run-agent-device-qa.ps1 -FullApp -Watch
 ```
 
 ## GitHub Actions

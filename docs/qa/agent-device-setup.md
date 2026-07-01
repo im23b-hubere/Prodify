@@ -21,15 +21,31 @@ Prodify iOS QA from Windows runs on **GitHub Actions** (`macos-15` runner) via a
 ### Run QA from PowerShell
 
 ```powershell
-# Full app test (~15 min on GitHub's free macOS runner — no Mac needed)
+# Auto mode (default): reuses last app build when only Maestro/scripts changed (~5-10 min)
+.\scripts\run-agent-device-qa.ps1 -Watch
+
+# Full app coverage (~8-10 min replay-only, ~30 min if app code changed)
 .\scripts\run-agent-device-qa.ps1 -FullApp -Watch
 
-# Fast smoke only (~10 min)
-.\scripts\run-agent-device-qa.ps1 -Watch
+# Fast bootstrap smoke only (~3-5 min replay-only)
+.\scripts\run-agent-device-qa.ps1 -FastSmoke -Watch
+
+# Force a fresh build (skip auto replay)
+.\scripts\run-agent-device-qa.ps1 -NoAuto -FullApp -Watch
 
 # Download screenshots/logs after a run
 .\scripts\run-agent-device-qa.ps1 -SkipSeed -DownloadArtifacts
 ```
+
+**Runtime guide**
+
+| Scenario | Typical duration |
+|----------|------------------|
+| Replay-only + FastSmoke | ~3–5 min |
+| Replay-only + smoke / full app | ~5–10 min |
+| Build-and-test (app code changed) | ~25–35 min |
+
+Auto mode compares your current commit to the last successful `ios-simulator-app` artifact. Changes under `mobile/maestro/` or `scripts/` do **not** trigger a rebuild.
 
 **Cost:** You do not need a Mac or a paid cloud device farm. This workflow uses GitHub Actions `macos-15` runners. **Public repos** get macOS minutes included in the free tier. **Private repos** consume billable minutes (macOS counts ~10× Linux) — use `-FullApp` manually when you need deep coverage; keep smoke on PRs.
 
@@ -37,11 +53,10 @@ Or manually in GitHub: **Actions → agent-device iOS QA → Run workflow** (set
 
 ### What CI does
 
-1. Seeds E2E user (`test@prodify.app`)
-2. Builds Prodify for iOS Simulator with `EXPO_PUBLIC_E2E_MODE=true`
-3. Installs `agent-device` on the Mac runner
-4. Replays a Maestro flow via `agent-device replay --maestro` (default: smoke; use `-FullApp` or workflow input for full app)
-5. Uploads artifacts (`artifacts/agent-device-ios/`) — screenshots on success/failure
+1. Seeds E2E user (`test@prodify.app`) when building a fresh app
+2. Builds Prodify for iOS Simulator with `EXPO_PUBLIC_E2E_MODE=true` **or** reuses a previous `.app` artifact (replay-only)
+3. Runs Maestro natively on the booted simulator (default: smoke; use `-FullApp` for full coverage)
+4. Uploads artifacts (`artifacts/agent-device-ios/`) — screenshots on success/failure
 
 ### Cursor on Windows
 

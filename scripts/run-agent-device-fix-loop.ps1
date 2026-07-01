@@ -1,11 +1,15 @@
 # One agent-device QA iteration for the fix loop (test -> diagnose -> fix -> retest).
 # Designed for Cursor Agent: run repeatedly until exit code 0.
+#
+# Auto mode is ON by default: reuses the last ios-simulator-app artifact when only
+# Maestro/scripts changed (~5-10 min). Use -Staged with -FullApp for fast smoke then full coverage.
 
 param(
     [switch]$FullApp,
     [switch]$FastSmoke,
+    [switch]$Staged,
     [switch]$SkipSeed,
-    [switch]$Auto,
+    [switch]$NoAuto,
     [switch]$ReplayOnly,
     [string]$AppArtifactRunId,
     [int]$Iteration = 1,
@@ -17,6 +21,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $LoopRoot = Join-Path $RepoRoot "artifacts\qa-loop"
 $LatestDir = Join-Path $LoopRoot "latest"
 $IterDir = Join-Path $LoopRoot ("iteration-{0:D2}" -f $Iteration)
+. (Join-Path $PSScriptRoot "qa\Resolve-AgentDeviceQaMode.ps1")
 
 function Resolve-GhCommand {
     $gh = Get-Command gh -ErrorAction SilentlyContinue
@@ -37,76 +42,6 @@ function Get-FailedStepLog {
     }
 }
 
-function Test-RunArtifact {
-    param([string]$Gh, [string]$RunId, [string]$Name)
-    try {
-        $artifacts = & $Gh api "repos/im23b-hubere/Prodify/actions/runs/$RunId/artifacts" 2>$null | ConvertFrom-Json
-        if ($LASTEXITCODE -ne 0 -or -not $artifacts) { return $false }
-        return @($artifacts.artifacts | Where-Object { $_.name -eq $Name -and -not $_.expired }).Count -gt 0
-    } catch {
-        return $false
-    }
-}
-
-function Get-LatestRunWithArtifact {
-    param([string]$Gh, [string]$WorkflowFile, [string]$ArtifactName)
-    $runs = & $Gh run list --workflow=$WorkflowFile --limit 20 --json databaseId,status,headSha,createdAt | ConvertFrom-Json
-    foreach ($run in $runs) {
-        if ($run.status -ne "completed") { continue }
-        $runId = [string]$run.databaseId
-        if (Test-RunArtifact -Gh $Gh -RunId $runId -Name $ArtifactName) {
-            return [pscustomobject]@{
-                RunId = $runId
-                HeadSha = [string]$run.headSha
-            }
-        }
-    }
-    return $null
-}
-
-function Test-NeedsFreshAppBuild {
-    param([string]$BaseSha)
-    if ([string]::IsNullOrWhiteSpace($BaseSha)) { return $true }
-
-    $headSha = (git rev-parse HEAD).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($headSha)) { return $true }
-    if ($headSha -eq $BaseSha) { return $false }
-
-    $changedFiles = @(git diff --name-only "$BaseSha..HEAD" 2>$null)
-    if ($LASTEXITCODE -ne 0) { return $true }
-    if ($changedFiles.Count -eq 0) { return $false }
-
-    $appImpactingPrefixes = @(
-        "mobile/app/",
-        "mobile/assets/",
-        "mobile/components/",
-        "mobile/constants/",
-        "mobile/context/",
-        "mobile/features/",
-        "mobile/hooks/",
-        "mobile/lib/",
-        "mobile/types/"
-    )
-    $appImpactingFiles = @(
-        "mobile/app.json",
-        "mobile/eas.json",
-        "mobile/package.json",
-        "mobile/package-lock.json",
-        "mobile/babel.config.js",
-        "mobile/metro.config.js"
-    )
-
-    foreach ($file in $changedFiles) {
-        $normalized = $file.Replace("\", "/")
-        if ($appImpactingFiles -contains $normalized) { return $true }
-        foreach ($prefix in $appImpactingPrefixes) {
-            if ($normalized.StartsWith($prefix)) { return $true }
-        }
-    }
-
-    return $false
-}
-
 function Write-SuccessReport {
     param(
         [string]$Path,
@@ -115,14 +50,20 @@ function Write-SuccessReport {
         [string]$Flow,
         [string]$Conclusion,
         [string]$DownloadDir,
-        [string[]]$VideoPaths
+        [string[]]$VideoPaths,
+        [string]$StageNote = ""
     )
     $lines = @(
         "# agent-device QA - SUCCESS (iteration $Iteration)",
         "",
         "- Run: $RunUrl",
         "- Flow: $Flow",
-        "- Conclusion: $Conclusion",
+        "- Conclusion: $Conclusion"
+    )
+    if ($StageNote) {
+        $lines += "- Stage: $StageNote"
+    }
+    $lines += @(
         "",
         "## Artifacts",
         "",
@@ -152,14 +93,13 @@ function Write-FailureReport {
         [string]$DownloadDir,
         [string]$FailedLog,
         [bool]$AppArtifactAvailable,
-        [string]$ReplayAppArtifactRunId
+        [string]$ReplayAppArtifactRunId,
+        [string]$StageNote = ""
     )
     $next = $Iteration + 1
     $flowSwitch = if ($FullApp) { "-FullApp " } elseif ($FastSmoke) { "-FastSmoke " } else { "" }
-    $rerunCommand = ".\scripts\run-agent-device-fix-loop.ps1 ${flowSwitch}-Auto -SkipSeed -Iteration $next"
-    if ($AppArtifactAvailable) {
-        $rerunCommand = ".\scripts\run-agent-device-fix-loop.ps1 ${flowSwitch}-Auto -SkipSeed -Iteration $next"
-    }
+    $stagedSwitch = if ($Staged) { "-Staged " } else { "" }
+    $rerunCommand = ".\scripts\run-agent-device-fix-loop.ps1 ${flowSwitch}${stagedSwitch}-SkipSeed -Iteration $next"
     $lines = @(
         "# agent-device QA - FAILURE (iteration $Iteration)",
         "",
@@ -168,7 +108,12 @@ function Write-FailureReport {
         "- Flow: $Flow",
         "- Status: $Status",
         "- Conclusion: $Conclusion",
-        "- Replay app artifact available: $AppArtifactAvailable",
+        "- Replay app artifact available: $AppArtifactAvailable"
+    )
+    if ($StageNote) {
+        $lines += "- Stage: $StageNote"
+    }
+    $lines += @(
         "",
         "## Failed step log (tail)",
         "",
@@ -193,86 +138,151 @@ function Write-FailureReport {
     $lines | Set-Content -Path $Path -Encoding UTF8
 }
 
-Set-Location $RepoRoot
-$Gh = Resolve-GhCommand
-$WorkflowFile = "agent-device-ios.yml"
-$Flow = if ($FullApp) { "maestro/flows/full_app_test.yaml" } else { "maestro/flows/smoke_test.yaml" }
-if ($FastSmoke) {
-    $Flow = "maestro/flows/bootstrap_dashboard.yaml"
-}
+function Invoke-AgentDeviceQaRun {
+    param(
+        [string]$Gh,
+        [string]$WorkflowFile,
+        [string]$Flow,
+        [string]$ApiUrl,
+        [bool]$Auto,
+        [switch]$ReplayOnly,
+        [string]$AppArtifactRunId,
+        [bool]$SkipSeed,
+        [int]$Iteration
+    )
 
-if ($Auto) {
-    $latestArtifact = Get-LatestRunWithArtifact -Gh $Gh -WorkflowFile $WorkflowFile -ArtifactName "ios-simulator-app"
-    if ($latestArtifact) {
-        $needsBuild = Test-NeedsFreshAppBuild -BaseSha $latestArtifact.HeadSha
-        if (-not $needsBuild) {
-            $ReplayOnly = $true
-            $AppArtifactRunId = $latestArtifact.RunId
-        }
+    $resolution = Resolve-AgentDeviceQaMode -Gh $Gh -WorkflowFile $WorkflowFile `
+        -Auto:$Auto -ReplayOnly:$ReplayOnly -AppArtifactRunId $AppArtifactRunId
+
+    $QaMode = $resolution.QaMode
+    $artifactRunId = $resolution.AppArtifactRunId
+
+    if ($QaMode -eq "replay-only" -and [string]::IsNullOrWhiteSpace($artifactRunId)) {
+        throw "Replay-only requires a reusable ios-simulator-app artifact. Run build-and-test once first."
+    }
+
+    $seedApiUser = if ($SkipSeed -or $QaMode -eq "replay-only") { "false" } else { "true" }
+    if (-not $SkipSeed -and $Iteration -eq 1 -and $QaMode -eq "build-and-test") {
+        & "$PSScriptRoot\seed-e2e-user.ps1" -ApiUrl $ApiUrl
+    }
+
+    Write-Host ""
+    Write-AgentDeviceQaModeSummary -Resolution $resolution -Flow $Flow
+    Write-Host "Triggering CI..."
+
+    & $Gh workflow run $WorkflowFile `
+        -f "api_url=$ApiUrl" `
+        -f "maestro_flow=$Flow" `
+        -f "qa_mode=$QaMode" `
+        -f "app_artifact_run_id=$artifactRunId" `
+        -f "seed_api_user=$seedApiUser"
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to trigger workflow $WorkflowFile"
+    }
+
+    Start-Sleep -Seconds 4
+    $runId = & $Gh run list --workflow=$WorkflowFile --limit 1 --json databaseId -q ".[0].databaseId"
+    $runUrl = & $Gh run view $runId --json url -q ".url"
+
+    Write-Host "Run ID: $runId"
+    Write-Host "URL:    $runUrl"
+    if ($QaMode -eq "replay-only") {
+        Write-Host "Waiting for CI (~5-10 min)..."
+    } else {
+        Write-Host "Waiting for CI (~25-35 min for build + test)..."
+    }
+
+    & $Gh run watch $runId
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "gh run watch exited with code $LASTEXITCODE; polling until complete..."
+        do {
+            Start-Sleep -Seconds 15
+            $status = & $Gh run view $runId --json status -q ".status"
+        } while ($status -eq "in_progress" -or $status -eq "queued" -or $status -eq "waiting" -or $status -eq "requested" -or $status -eq "pending")
+    }
+
+    $conclusion = & $Gh run view $runId --json conclusion -q ".conclusion"
+    $status = & $Gh run view $runId --json status -q ".status"
+    if (-not $conclusion) {
+        throw "Could not read CI conclusion for run $runId (status: $status)"
+    }
+
+    return [pscustomobject]@{
+        RunId = $runId
+        RunUrl = $runUrl
+        Conclusion = $conclusion
+        Status = $status
+        QaMode = $QaMode
+        AppArtifactRunId = $artifactRunId
+        Resolution = $resolution
     }
 }
 
-$QaMode = if ($ReplayOnly) { "replay-only" } else { "build-and-test" }
-$SeedApiUser = if ($SkipSeed) { "false" } else { "true" }
+Set-Location $RepoRoot
+$Gh = Resolve-GhCommand
+$WorkflowFile = "agent-device-ios.yml"
+$Auto = -not $NoAuto
 
-if ($ReplayOnly -and [string]::IsNullOrWhiteSpace($AppArtifactRunId)) {
-    throw "-AppArtifactRunId is required when using -ReplayOnly"
+$primaryFlow = if ($FullApp) {
+    "maestro/flows/full_app_test.yaml"
+} elseif ($FastSmoke) {
+    "maestro/flows/bootstrap_dashboard.yaml"
+} else {
+    "maestro/flows/smoke_test.yaml"
 }
 
 Write-Host ""
 Write-Host "=== agent-device QA iteration $Iteration ==="
-Write-Host "Flow: $Flow"
-Write-Host "QA mode: $QaMode"
-if ($Auto) {
-    Write-Host "Auto mode: enabled"
-}
-if ($ReplayOnly) {
-    Write-Host "App artifact run: $AppArtifactRunId"
-}
-Write-Host ""
 
-if (-not $SkipSeed -and $Iteration -eq 1) {
-    & "$PSScriptRoot\seed-e2e-user.ps1" -ApiUrl $ApiUrl
-}
+if ($Staged -and $FullApp) {
+    Write-Host "Staged mode: FastSmoke gate, then FullApp"
+    $smokeResult = Invoke-AgentDeviceQaRun -Gh $Gh -WorkflowFile $WorkflowFile `
+        -Flow "maestro/flows/bootstrap_dashboard.yaml" -ApiUrl $ApiUrl -Auto:$Auto `
+        -ReplayOnly:$ReplayOnly -AppArtifactRunId $AppArtifactRunId -SkipSeed:$true -Iteration $Iteration
 
-Write-Host "Triggering CI..."
-& $Gh workflow run $WorkflowFile `
-    -f "api_url=$ApiUrl" `
-    -f "maestro_flow=$Flow" `
-    -f "qa_mode=$QaMode" `
-    -f "app_artifact_run_id=$AppArtifactRunId" `
-    -f "seed_api_user=$SeedApiUser"
+    if ($smokeResult.Conclusion -ne "success") {
+        $failedLog = Get-FailedStepLog -Gh $Gh -RunId $smokeResult.RunId
+        New-Item -ItemType Directory -Force -Path $IterDir | Out-Null
+        if (Test-Path $LatestDir) { Remove-Item -Recurse -Force $LatestDir }
+        New-Item -ItemType Directory -Force -Path $LatestDir | Out-Null
+        $downloadDir = Join-Path $IterDir "ci-artifacts"
+        New-Item -ItemType Directory -Force -Path $downloadDir | Out-Null
+        try { & $Gh run download $smokeResult.RunId -D $downloadDir 2>&1 | Out-Null } catch {}
+        Copy-Item -Recurse -Force $IterDir\* $LatestDir\
+        $reportPath = Join-Path $LatestDir "report.md"
+        Write-FailureReport -Path $reportPath -Iteration $Iteration -RunUrl $smokeResult.RunUrl `
+            -Flow "maestro/flows/bootstrap_dashboard.yaml" -RunId $smokeResult.RunId `
+            -Status $smokeResult.Status -Conclusion $smokeResult.Conclusion -DownloadDir $downloadDir `
+            -FailedLog $failedLog -AppArtifactAvailable $true -ReplayAppArtifactRunId $smokeResult.RunId `
+            -StageNote "FastSmoke gate failed; FullApp skipped"
+        Write-Host "FAILURE at FastSmoke gate."
+        exit 1
+    }
 
-if ($LASTEXITCODE -ne 0) {
-    throw "Failed to trigger workflow $WorkflowFile"
-}
+    Write-Host ""
+    Write-Host "FastSmoke passed. Running FullApp..."
+    $fullResult = Invoke-AgentDeviceQaRun -Gh $Gh -WorkflowFile $WorkflowFile `
+        -Flow "maestro/flows/full_app_test.yaml" -ApiUrl $ApiUrl -Auto:$Auto `
+        -SkipSeed:$true -Iteration $Iteration
 
-Start-Sleep -Seconds 4
-$runId = & $Gh run list --workflow=$WorkflowFile --limit 1 --json databaseId -q ".[0].databaseId"
-$runUrl = & $Gh run view $runId --json url -q ".url"
-
-Write-Host "Run ID: $runId"
-Write-Host "URL:    $runUrl"
-Write-Host ""
-if ($ReplayOnly) {
-    Write-Host "Waiting for CI (~5-10 min for replay-only)..."
+    $runId = $fullResult.RunId
+    $runUrl = $fullResult.RunUrl
+    $conclusion = $fullResult.Conclusion
+    $status = $fullResult.Status
+    $primaryFlow = "maestro/flows/full_app_test.yaml"
+    $stageNote = "FastSmoke passed; FullApp $($fullResult.Conclusion)"
 } else {
-    Write-Host "Waiting for CI (~20-40 min for build-and-test full app)..."
-}
-& $Gh run watch $runId
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "gh run watch exited with code $LASTEXITCODE; polling until complete..."
-    do {
-        Start-Sleep -Seconds 15
-        $status = & $Gh run view $runId --json status -q ".status"
-    } while ($status -eq "in_progress" -or $status -eq "queued" -or $status -eq "waiting" -or $status -eq "requested" -or $status -eq "pending")
-}
+    $result = Invoke-AgentDeviceQaRun -Gh $Gh -WorkflowFile $WorkflowFile `
+        -Flow $primaryFlow -ApiUrl $ApiUrl -Auto:$Auto `
+        -ReplayOnly:$ReplayOnly -AppArtifactRunId $AppArtifactRunId `
+        -SkipSeed:($SkipSeed -or $Iteration -gt 1) -Iteration $Iteration
 
-$conclusion = & $Gh run view $runId --json conclusion -q ".conclusion"
-$status = & $Gh run view $runId --json status -q ".status"
-
-if (-not $conclusion) {
-    throw "Could not read CI conclusion for run $runId (status: $status)"
+    $runId = $result.RunId
+    $runUrl = $result.RunUrl
+    $conclusion = $result.Conclusion
+    $status = $result.Status
+    $stageNote = ""
 }
 
 New-Item -ItemType Directory -Force -Path $IterDir | Out-Null
@@ -292,39 +302,30 @@ Copy-Item -Recurse -Force $IterDir\* $LatestDir\
 $failedLog = Get-FailedStepLog -Gh $Gh -RunId $runId
 $reportPath = Join-Path $LatestDir "report.md"
 $appArtifactAvailable = Test-RunArtifact -Gh $Gh -RunId $runId -Name "ios-simulator-app"
-$replayAppArtifactRunId = if ($ReplayOnly) { $AppArtifactRunId } else { $runId }
-if ($ReplayOnly -and -not [string]::IsNullOrWhiteSpace($AppArtifactRunId)) {
-    $appArtifactAvailable = Test-RunArtifact -Gh $Gh -RunId $AppArtifactRunId -Name "ios-simulator-app"
-}
 
 if ($conclusion -eq "success") {
     $videoPaths = @(
         Get-ChildItem -Path $downloadDir -Recurse -Filter "*.mp4" -ErrorAction SilentlyContinue |
             ForEach-Object { $_.FullName }
     )
-    Write-SuccessReport -Path $reportPath -Iteration $Iteration -RunUrl $runUrl -Flow $Flow `
-        -Conclusion $conclusion -DownloadDir $downloadDir -VideoPaths $videoPaths
+    Write-SuccessReport -Path $reportPath -Iteration $Iteration -RunUrl $runUrl -Flow $primaryFlow `
+        -Conclusion $conclusion -DownloadDir $downloadDir -VideoPaths $videoPaths -StageNote $stageNote
     Write-Host ""
     Write-Host "SUCCESS - iteration $Iteration passed."
     Write-Host "Report: $reportPath"
     exit 0
 }
 
-Write-FailureReport -Path $reportPath -Iteration $Iteration -RunUrl $runUrl -Flow $Flow `
+Write-FailureReport -Path $reportPath -Iteration $Iteration -RunUrl $runUrl -Flow $primaryFlow `
     -RunId $runId -Status $status -Conclusion $conclusion -DownloadDir $downloadDir -FailedLog $failedLog `
-    -AppArtifactAvailable $appArtifactAvailable -ReplayAppArtifactRunId $replayAppArtifactRunId
+    -AppArtifactAvailable $appArtifactAvailable -ReplayAppArtifactRunId $runId -StageNote $stageNote
 
 Write-Host ""
 Write-Host "FAILURE - iteration $Iteration failed."
 Write-Host "Report: $reportPath"
 Write-Host ""
-if ($appArtifactAvailable) {
-    $flowSwitch = if ($FullApp) { "-FullApp " } elseif ($FastSmoke) { "-FastSmoke " } else { "" }
-    $nextReplayCommand = ".\scripts\run-agent-device-fix-loop.ps1 ${flowSwitch}-Auto -SkipSeed -Iteration $($Iteration + 1)"
-    Write-Host "Re-run after fix (auto build/replay): $nextReplayCommand"
-} else {
-    $flowSwitch = if ($FullApp) { "-FullApp " } elseif ($FastSmoke) { "-FastSmoke " } else { "" }
-    $nextBuildCommand = ".\scripts\run-agent-device-fix-loop.ps1 ${flowSwitch}-Auto -SkipSeed -Iteration $($Iteration + 1)"
-    Write-Host "Re-run after fix: $nextBuildCommand"
-}
+$flowSwitch = if ($FullApp) { "-FullApp " } elseif ($FastSmoke) { "-FastSmoke " } else { "" }
+$stagedSwitch = if ($Staged) { "-Staged " } else { "" }
+$nextCommand = ".\scripts\run-agent-device-fix-loop.ps1 ${flowSwitch}${stagedSwitch}-SkipSeed -Iteration $($Iteration + 1)"
+Write-Host "Re-run after fix (auto build/replay): $nextCommand"
 exit 1
