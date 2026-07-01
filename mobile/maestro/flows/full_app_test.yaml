@@ -8,6 +8,10 @@ env:
     clearState: true
 - runFlow:
     when:
+      visible: "Welcome to Prodify"
+    file: onboarding_to_login.yaml
+- runFlow:
+    when:
       visible: "Let's build your studio plan"
     file: onboarding_to_login.yaml
 - runFlow:
