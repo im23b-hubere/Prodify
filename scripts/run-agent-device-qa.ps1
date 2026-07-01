@@ -7,6 +7,7 @@
 #   .\scripts\run-agent-device-qa.ps1 -FullApp -Watch
 #   .\scripts\run-agent-device-qa.ps1 -Flow "maestro/flows/onboarding_to_login.yaml"
 #   .\scripts\run-agent-device-qa.ps1 -FullApp -ReplayOnly -AppArtifactRunId 123456789 -Watch
+#   .\scripts\run-agent-device-qa.ps1 -FastSmoke -Auto -Watch
 
 param(
     [string]$ApiUrl = "https://prodify-api-46b1.onrender.com",
@@ -16,6 +17,8 @@ param(
     [string]$Flow = "maestro/flows/smoke_test.yaml",
     [string]$AppArtifactRunId,
     [switch]$FullApp,
+    [switch]$FastSmoke,
+    [switch]$Auto,
     [switch]$ReplayOnly,
     [switch]$SkipSeed,
     [switch]$Watch,
@@ -49,12 +52,96 @@ function Resolve-GhCommand {
     throw "GitHub CLI (gh) not found. Run: .\scripts\setup-gh.ps1"
 }
 
+function Test-RunArtifact {
+    param([string]$Gh, [string]$RunId, [string]$Name)
+    try {
+        $artifacts = & $Gh api "repos/im23b-hubere/Prodify/actions/runs/$RunId/artifacts" 2>$null | ConvertFrom-Json
+        if ($LASTEXITCODE -ne 0 -or -not $artifacts) { return $false }
+        return @($artifacts.artifacts | Where-Object { $_.name -eq $Name -and -not $_.expired }).Count -gt 0
+    } catch {
+        return $false
+    }
+}
+
+function Get-LatestRunWithArtifact {
+    param([string]$Gh, [string]$WorkflowFile, [string]$ArtifactName)
+    $runs = & $Gh run list --workflow=$WorkflowFile --limit 20 --json databaseId,status,headSha,createdAt | ConvertFrom-Json
+    foreach ($run in $runs) {
+        if ($run.status -ne "completed") { continue }
+        $runId = [string]$run.databaseId
+        if (Test-RunArtifact -Gh $Gh -RunId $runId -Name $ArtifactName) {
+            return [pscustomobject]@{
+                RunId = $runId
+                HeadSha = [string]$run.headSha
+            }
+        }
+    }
+    return $null
+}
+
+function Test-NeedsFreshAppBuild {
+    param([string]$BaseSha)
+    if ([string]::IsNullOrWhiteSpace($BaseSha)) { return $true }
+    $headSha = (git rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($headSha)) { return $true }
+    if ($headSha -eq $BaseSha) { return $false }
+
+    $changedFiles = @(git diff --name-only "$BaseSha..HEAD" 2>$null)
+    if ($LASTEXITCODE -ne 0) { return $true }
+    if ($changedFiles.Count -eq 0) { return $false }
+
+    $appImpactingPrefixes = @(
+        "mobile/app/",
+        "mobile/assets/",
+        "mobile/components/",
+        "mobile/constants/",
+        "mobile/context/",
+        "mobile/features/",
+        "mobile/hooks/",
+        "mobile/lib/",
+        "mobile/types/"
+    )
+    $appImpactingFiles = @(
+        "mobile/app.json",
+        "mobile/eas.json",
+        "mobile/package.json",
+        "mobile/package-lock.json",
+        "mobile/babel.config.js",
+        "mobile/metro.config.js"
+    )
+
+    foreach ($file in $changedFiles) {
+        $normalized = $file.Replace("\", "/")
+        if ($appImpactingFiles -contains $normalized) { return $true }
+        foreach ($prefix in $appImpactingPrefixes) {
+            if ($normalized.StartsWith($prefix)) { return $true }
+        }
+    }
+
+    return $false
+}
+
 if ($FullApp) {
     $Flow = "maestro/flows/full_app_test.yaml"
+}
+if ($FastSmoke) {
+    $Flow = "maestro/flows/bootstrap_dashboard.yaml"
 }
 
 $Gh = Resolve-GhCommand
 Set-Location $RepoRoot
+
+if ($Auto) {
+    $latestArtifact = Get-LatestRunWithArtifact -Gh $Gh -WorkflowFile $WorkflowFile -ArtifactName "ios-simulator-app"
+    if ($latestArtifact) {
+        $needsBuild = Test-NeedsFreshAppBuild -BaseSha $latestArtifact.HeadSha
+        if (-not $needsBuild) {
+            $ReplayOnly = $true
+            $AppArtifactRunId = $latestArtifact.RunId
+        }
+    }
+}
+
 $QaMode = if ($ReplayOnly) { "replay-only" } else { "build-and-test" }
 $SeedApiUser = if ($SkipSeed) { "false" } else { "true" }
 
@@ -80,6 +167,9 @@ if (-not $SkipSeed) {
 Write-Host ""
 Write-Host "Maestro flow: $Flow"
 Write-Host "QA mode:      $QaMode"
+if ($Auto) {
+    Write-Host "Auto mode:    enabled"
+}
 if ($ReplayOnly) {
     Write-Host "App artifact: previous run $AppArtifactRunId"
 }

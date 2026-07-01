@@ -25,6 +25,7 @@ on:
         default: maestro/flows/smoke_test.yaml
         type: choice
         options:
+          - maestro/flows/bootstrap_dashboard.yaml
           - maestro/flows/smoke_test.yaml
           - maestro/flows/full_app_test.yaml
       qa_mode:
@@ -205,6 +206,15 @@ jobs:
           fi
           mkdir -p artifacts/ios-simulator-app
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" artifacts/ios-simulator-app/Prodify.app.zip
+          cat > artifacts/ios-simulator-app/metadata.json <<EOF
+          {
+            "head_sha": "${GITHUB_SHA}",
+            "app_path": "${APP_PATH}",
+            "created_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "e2e_mode": "${EXPO_PUBLIC_E2E_MODE}",
+            "workflow": "${GITHUB_WORKFLOW}"
+          }
+          EOF
           echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
           echo "Packaged $APP_PATH"
 
@@ -213,7 +223,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ios-simulator-app
-          path: artifacts/ios-simulator-app/Prodify.app.zip
+          path: artifacts/ios-simulator-app/
           retention-days: 7
           if-no-files-found: error
 

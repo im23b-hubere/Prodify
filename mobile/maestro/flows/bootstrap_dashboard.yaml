@@ -1,0 +1,9 @@
+appId: com.prodify.app
+env:
+  TEST_EMAIL: test@prodify.app
+  TEST_PASSWORD: Test1234!
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/e2e_bootstrap_dashboard.yaml
