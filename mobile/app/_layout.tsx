@@ -21,6 +21,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ProdifyWordmark } from "../components/brand/ProdifyWordmark";
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
 import { DeepLinkGuard } from "../components/DeepLinkGuard";
+import { E2eBootstrapBridge } from "../components/E2eBootstrapBridge";
 import { OfflineBanner } from "../components/OfflineBanner";
 import { AuthProvider } from "../context/AuthContext";
 import { colors, spacing } from "../constants/theme";
@@ -61,6 +62,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
+          <E2eBootstrapBridge />
           <DeepLinkGuard />
           <OfflineBanner />
           <NotificationNavBridge />

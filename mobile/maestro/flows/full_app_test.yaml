@@ -7,24 +7,11 @@ env:
 - launchApp:
     clearState: true
 - runFlow:
-    when:
-      visible: "Welcome to Prodify"
-    file: onboarding_to_login.yaml
-- runFlow:
-    when:
-      visible: "Let's build your studio plan"
-    file: onboarding_to_login.yaml
-- runFlow:
-    when:
-      visible: "Welcome back"
-    file: login_with_credentials.yaml
+    file: common/e2e_bootstrap_dashboard.yaml
 - runFlow:
     file: common/dismiss_overlays.yaml
 
 # --- Core session flow (smoke baseline) ---
-- extendedWaitUntil:
-    visible: "START SESSION"
-    timeout: 60000
 - tapOn: "START SESSION"
 - assertVisible: "New Session"
 - tapOn: "Beat Making"

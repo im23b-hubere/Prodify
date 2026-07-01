@@ -20,6 +20,10 @@ echo "Artifacts: ${ARTIFACTS}"
 capture_failure_artifacts() {
   if [[ "${CI:-}" == "true" && -n "${SIMULATOR_UDID:-}" ]]; then
     xcrun simctl io "${SIMULATOR_UDID}" screenshot "${ARTIFACTS}/failure.png" 2>/dev/null || true
+    if [[ -d "${HOME}/.maestro/tests" ]]; then
+      mkdir -p "${ARTIFACTS}/maestro-tests"
+      cp -R "${HOME}/.maestro/tests/." "${ARTIFACTS}/maestro-tests/" 2>/dev/null || true
+    fi
   else
     agent-device screenshot "${ARTIFACTS}/failure.png" --platform ios 2>/dev/null || true
     agent-device logs dump 100 --platform ios > "${ARTIFACTS}/logs.txt" 2>/dev/null || true

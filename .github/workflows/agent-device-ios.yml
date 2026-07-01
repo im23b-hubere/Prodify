@@ -303,6 +303,18 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Upload Maestro debug output on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: maestro-debug-output
+          path: |
+            ~/.maestro/tests/
+            artifacts/agent-device-ios/maestro-tests/
+            artifacts/agent-device-ios/maestro-output.log
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Upload iOS build logs on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

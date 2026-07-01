@@ -2,6 +2,7 @@ import * as Linking from "expo-linking";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 
+import { isE2eBootstrapDeepLink } from "./E2eBootstrapBridge";
 import { useAuth } from "../context/AuthContext";
 import {
   deepLinkRequiresAuth,
@@ -24,6 +25,10 @@ export function DeepLinkGuard() {
 
   useEffect(() => {
     const handleDeepLink = ({ url }: { url: string }) => {
+      if (isE2eBootstrapDeepLink(url)) {
+        return;
+      }
+
       const parsed = Linking.parse(url);
       const fromParsed = typeof parsed.path === "string" ? parsed.path : "";
       const targetPath = extractDeepLinkPath(url) || fromParsed;
