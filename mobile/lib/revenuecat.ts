@@ -8,6 +8,7 @@ import {
   getExpoPublicRevenueCatApiKey,
   getExpoPublicRevenueCatEntitlementId,
 } from "../constants/env";
+import { isE2eModeEnabled } from "./e2eMode";
 
 /** RevenueCat app user id currently associated with the SDK session. */
 let configuredForUser: string | null = null;
@@ -34,6 +35,10 @@ function normalizeAppUserId(appUserId?: string): string | null {
 
 /** Configure RevenueCat once, then logIn/logOut when the app user changes. */
 export async function configureRevenueCat(appUserId?: string): Promise<void> {
+  if (isE2eModeEnabled()) {
+    return;
+  }
+
   if (Platform.OS === "web") {
     return;
   }
@@ -91,6 +96,7 @@ async function ensurePurchasesReady(appUserId?: string): Promise<void> {
 }
 
 export async function getDefaultOffering(appUserId?: string): Promise<PurchasesOffering | null> {
+  if (isE2eModeEnabled()) return null;
   if (Platform.OS === "web") return null;
   if (!getRevenueCatApiKey()) return null;
   await ensurePurchasesReady(appUserId);

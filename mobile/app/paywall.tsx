@@ -17,6 +17,7 @@ import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import { seedEntitlementCache, syncEntitlement } from "../lib/billing";
 import { setDevBillingBypass } from "../lib/devBillingBypass";
+import { isE2eModeEnabled } from "../lib/e2eMode";
 import { replaceWithPendingDeepLinkOrDashboard } from "../lib/pendingDeepLink";
 import { resolvePaywallExitRoute, type PaywallSource } from "../lib/postAuthNavigation";
 import {
@@ -79,8 +80,9 @@ export default function PaywallScreen() {
   const [purchaseEnabled, setPurchaseEnabled] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const isExpoGo = Constants.appOwnership === "expo";
+  const e2ePreviewMode = isE2eModeEnabled();
   /** Dev + Expo Go only: screenshot-friendly layout (no IAP). Never active in release builds. */
-  const expoGoPreviewMode = __DEV__ && isExpoGo;
+  const expoGoPreviewMode = e2ePreviewMode || (__DEV__ && isExpoGo);
 
   const appUserId = useMemo(() => (user?.id != null ? String(user.id) : null), [user?.id]);
 
