@@ -40,11 +40,24 @@ trap capture_failure_artifacts ERR
 
 if [[ "${CI:-}" == "true" && -n "${SIMULATOR_UDID:-}" ]]; then
   echo "Running native Maestro on simulator ${SIMULATOR_UDID}"
-  export MAESTRO_DRIVER_STARTUP_TIMEOUT="${MAESTRO_DRIVER_STARTUP_TIMEOUT:-120000}"
-  maestro --device "${SIMULATOR_UDID}" test \
+  export MAESTRO_DRIVER_STARTUP_TIMEOUT="${MAESTRO_DRIVER_STARTUP_TIMEOUT:-300000}"
+  MAESTRO_LOG="${ARTIFACTS}/maestro-output.log"
+  if ! maestro --device "${SIMULATOR_UDID}" test \
     -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
     -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
-    "${FLOW}"
+    "${FLOW}" 2>&1 | tee "${MAESTRO_LOG}"; then
+    if grep -Fq "iOS driver not ready in time" "${MAESTRO_LOG}"; then
+      echo "Maestro iOS driver startup timed out; retrying once..."
+      xcrun simctl bootstatus "${SIMULATOR_UDID}" -b
+      sleep 15
+      maestro --device "${SIMULATOR_UDID}" test \
+        -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
+        -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
+        "${FLOW}"
+    else
+      exit 1
+    fi
+  fi
 else
   echo "agent-device replay: ${FLOW}"
   agent-device replay "${FLOW}" \
