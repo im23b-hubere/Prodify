@@ -98,13 +98,13 @@ function Get-LatestRunWithArtifact {
 
     foreach ($run in $runs) {
         if ($run.status -ne "completed") { continue }
-        if ($run.conclusion -ne "success") { continue }
 
         $runId = [string]$run.databaseId
         if (Test-RunArtifact -Gh $Gh -RunId $runId -Name $ArtifactName) {
             return [pscustomobject]@{
                 RunId = $runId
                 HeadSha = [string]$run.headSha
+                Conclusion = [string]$run.conclusion
             }
         }
     }
