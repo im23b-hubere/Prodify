@@ -135,7 +135,7 @@ jobs:
 
       - name: Cache CocoaPods
         if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
-        uses: actions/cache@1bd1e96a3ec124d8856201765433a65c7bfa37e8
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
         id: pods-cache
         with:
           path: mobile/ios/Pods
@@ -150,7 +150,7 @@ jobs:
 
       - name: Cache xcodebuild derived data
         if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
-        uses: actions/cache@1bd1e96a3ec124d8856201765433a65c7bfa37e8
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
         id: xcode-cache
         with:
           path: mobile/ios/build
@@ -297,7 +297,7 @@ jobs:
           xcrun simctl install "${{ steps.sim.outputs.device_udid }}" "$APP_PATH"
 
       - name: Cache Maestro CLI
-        uses: actions/cache@1bd1e96a3ec124d8856201765433a65c7bfa37e8
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
         id: maestro-cache
         with:
           path: ~/.maestro
