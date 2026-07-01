@@ -57,7 +57,10 @@ is_app_impacting() {
   return 1
 }
 
-mapfile -t CHANGED_FILES < <(git diff --name-only "$BASE_SHA..$HEAD_SHA" 2>/dev/null || true)
+CHANGED_FILES=()
+while IFS= read -r file; do
+  [[ -n "$file" ]] && CHANGED_FILES+=("$file")
+done < <(git diff --name-only "$BASE_SHA..$HEAD_SHA" 2>/dev/null || true)
 if [[ "${#CHANGED_FILES[@]}" -eq 0 ]]; then
   echo "Replay safe: no file changes between commits."
   exit 0
