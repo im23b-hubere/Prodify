@@ -54,11 +54,15 @@ if [[ "${CI:-}" == "true" && -n "${SIMULATOR_UDID:-}" ]]; then
       echo "Maestro iOS driver startup timed out; retrying once..."
       xcrun simctl bootstatus "${SIMULATOR_UDID}" -b
       sleep 15
-      maestro --device "${SIMULATOR_UDID}" test \
+      if ! maestro --device "${SIMULATOR_UDID}" test \
         -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
         -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
-        "${FLOW}"
+        "${FLOW}"; then
+        capture_failure_artifacts
+        exit 1
+      fi
     else
+      capture_failure_artifacts
       exit 1
     fi
   fi

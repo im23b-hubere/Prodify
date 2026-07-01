@@ -418,9 +418,8 @@ const styles = StyleSheet.create({
     borderColor: colors.secondary,
   },
   dayDotToday: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: colors.textPrimary,
   },
   milestoneHint: {
     color: colors.textSecondary,
