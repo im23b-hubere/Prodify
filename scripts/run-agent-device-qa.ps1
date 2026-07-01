@@ -6,6 +6,7 @@
 #   .\scripts\run-agent-device-qa.ps1 -Watch
 #   .\scripts\run-agent-device-qa.ps1 -FullApp -Watch
 #   .\scripts\run-agent-device-qa.ps1 -Flow "maestro/flows/onboarding_to_login.yaml"
+#   .\scripts\run-agent-device-qa.ps1 -FullApp -ReplayOnly -AppArtifactRunId 123456789 -Watch
 
 param(
     [string]$ApiUrl = "https://prodify-api-46b1.onrender.com",
@@ -13,7 +14,9 @@ param(
     [string]$TestPassword = "Test1234!",
     [string]$TestUsername = "e2euser",
     [string]$Flow = "maestro/flows/smoke_test.yaml",
+    [string]$AppArtifactRunId,
     [switch]$FullApp,
+    [switch]$ReplayOnly,
     [switch]$SkipSeed,
     [switch]$Watch,
     [switch]$DownloadArtifacts
@@ -52,6 +55,12 @@ if ($FullApp) {
 
 $Gh = Resolve-GhCommand
 Set-Location $RepoRoot
+$QaMode = if ($ReplayOnly) { "replay-only" } else { "build-and-test" }
+$SeedApiUser = if ($SkipSeed) { "false" } else { "true" }
+
+if ($ReplayOnly -and [string]::IsNullOrWhiteSpace($AppArtifactRunId)) {
+    throw "-AppArtifactRunId is required when using -ReplayOnly"
+}
 
 Write-Host "Using gh: $Gh"
 Write-Host "Checking gh authentication..."
@@ -70,13 +79,20 @@ if (-not $SkipSeed) {
 
 Write-Host ""
 Write-Host "Maestro flow: $Flow"
+Write-Host "QA mode:      $QaMode"
+if ($ReplayOnly) {
+    Write-Host "App artifact: previous run $AppArtifactRunId"
+}
 Write-Host "Triggering workflow: $WorkflowFile"
 & $Gh workflow run $WorkflowFile `
     -f "api_url=$ApiUrl" `
     -f "test_email=$TestEmail" `
     -f "test_password=$TestPassword" `
     -f "test_username=$TestUsername" `
-    -f "maestro_flow=$Flow"
+    -f "maestro_flow=$Flow" `
+    -f "qa_mode=$QaMode" `
+    -f "app_artifact_run_id=$AppArtifactRunId" `
+    -f "seed_api_user=$SeedApiUser"
 
 if ($LASTEXITCODE -ne 0) {
     throw "Failed to trigger workflow. Is '$WorkflowFile' pushed to GitHub?"
@@ -116,4 +132,5 @@ Write-Host "Next steps:"
 Write-Host "  Open the run URL above in your browser"
 Write-Host "  Watch locally:     & `"$Gh`" run watch $runId"
 Write-Host "  Download artifacts: .\scripts\run-agent-device-qa.ps1 -SkipSeed -DownloadArtifacts"
+Write-Host "  Replay same app:   .\scripts\run-agent-device-qa.ps1 -FullApp -ReplayOnly -AppArtifactRunId $runId -SkipSeed -Watch"
 Write-Host "  Docs: docs/qa/agent-device-setup.md"

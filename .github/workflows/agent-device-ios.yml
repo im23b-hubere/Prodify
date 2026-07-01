@@ -27,12 +27,29 @@ on:
         options:
           - maestro/flows/smoke_test.yaml
           - maestro/flows/full_app_test.yaml
+      qa_mode:
+        description: Build a fresh simulator app or replay Maestro against a previous app artifact
+        required: false
+        default: build-and-test
+        type: choice
+        options:
+          - build-and-test
+          - replay-only
+      app_artifact_run_id:
+        description: Previous workflow run ID containing the ios-simulator-app artifact (required for replay-only)
+        required: false
+      seed_api_user:
+        description: Seed the E2E API user inside CI
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: agent-device-ios-${{ github.ref }}
+  group: agent-device-ios-${{ github.ref }}-${{ github.event.inputs.qa_mode || 'build-and-test' }}
   cancel-in-progress: true
 
 jobs:
@@ -66,6 +83,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Set up Node
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22"
@@ -73,21 +91,26 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
 
       - name: Seed E2E API user
+        if: ${{ github.event.inputs.seed_api_user != 'false' }}
         run: bash scripts/seed-e2e-user.sh
 
       - name: Install mobile dependencies
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         run: cd mobile && npm ci
 
       - name: Install agent-device
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         run: npm install -g "agent-device@${AGENT_DEVICE_VERSION}"
 
       - name: Verify agent-device CLI
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         run: |
           set -euo pipefail
           agent-device --version
           agent-device --version | grep -Fq "${AGENT_DEVICE_VERSION}"
 
       - name: Configure fast standalone iOS QA build
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         working-directory: mobile
         run: |
           set -euo pipefail
@@ -108,16 +131,19 @@ jobs:
           NODE
 
       - name: Prebuild iOS
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         working-directory: mobile
         run: npx expo prebuild --platform ios --clean
 
       - name: Force bundled JS for Debug simulator build
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         working-directory: mobile
         run: |
           set -euo pipefail
           sed -i '' 's/SKIP_BUNDLING/FORCE_BUNDLING/g' ios/Prodify.xcodeproj/project.pbxproj
 
       - name: Install CocoaPods
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         working-directory: mobile/ios
         run: pod install
 
@@ -148,6 +174,7 @@ jobs:
           sleep 5
 
       - name: Build app (simulator)
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
         working-directory: mobile/ios
         run: |
           set -euo pipefail
@@ -162,11 +189,11 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO
 
-      - name: Install app on booted simulator
-        id: install
+      - name: Package iOS simulator app artifact
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
+        id: package_app
         run: |
           set -euo pipefail
-          xcrun simctl uninstall "${{ steps.sim.outputs.device_udid }}" com.prodify.app || true
           APP_PATH=$(find mobile/ios/build -path "*/Build/Products/*-iphonesimulator/Prodify.app" -type d | head -1)
           if [[ -z "${APP_PATH:-}" ]]; then
             APP_PATH=$(find mobile/ios/build -name "Prodify.app" -type d | head -1)
@@ -174,6 +201,58 @@ jobs:
           if [[ -z "${APP_PATH:-}" ]]; then
             echo "Prodify.app not found under mobile/ios/build"
             find mobile/ios/build -name "*.app" || true
+            exit 1
+          fi
+          mkdir -p artifacts/ios-simulator-app
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" artifacts/ios-simulator-app/Prodify.app.zip
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Packaged $APP_PATH"
+
+      - name: Upload iOS simulator app artifact
+        if: ${{ github.event.inputs.qa_mode != 'replay-only' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ios-simulator-app
+          path: artifacts/ios-simulator-app/Prodify.app.zip
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Download iOS simulator app artifact
+        if: ${{ github.event.inputs.qa_mode == 'replay-only' }}
+        id: replay_app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ github.event.inputs.app_artifact_run_id }}" ]]; then
+            echo "app_artifact_run_id is required when qa_mode=replay-only"
+            exit 1
+          fi
+          mkdir -p artifacts/replay-app
+          gh run download "${{ github.event.inputs.app_artifact_run_id }}" \
+            -n ios-simulator-app \
+            -D artifacts/replay-app
+          ditto -x -k artifacts/replay-app/Prodify.app.zip artifacts/replay-app
+          APP_PATH=$(find artifacts/replay-app -name "Prodify.app" -type d | head -1)
+          if [[ -z "${APP_PATH:-}" ]]; then
+            echo "Prodify.app not found in downloaded artifact"
+            find artifacts/replay-app -maxdepth 4 -print
+            exit 1
+          fi
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Using replay app artifact from run ${{ github.event.inputs.app_artifact_run_id }}: $APP_PATH"
+
+      - name: Install app on booted simulator
+        id: install
+        run: |
+          set -euo pipefail
+          xcrun simctl uninstall "${{ steps.sim.outputs.device_udid }}" com.prodify.app || true
+          APP_PATH="${{ steps.package_app.outputs.app_path }}"
+          if [[ -z "${APP_PATH:-}" ]]; then
+            APP_PATH="${{ steps.replay_app.outputs.app_path }}"
+          fi
+          if [[ -z "${APP_PATH:-}" ]]; then
+            echo "Prodify.app path was not resolved"
             exit 1
           fi
           echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"

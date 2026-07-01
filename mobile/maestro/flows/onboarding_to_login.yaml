@@ -11,4 +11,8 @@ appId: com.prodify.app
     visible: "Premium"
     timeout: 20000
 - openLink: prodify://login
-- assertVisible: "Welcome back"
+- runFlow:
+    file: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible: "Welcome back"
+    timeout: 20000

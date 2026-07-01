@@ -4,6 +4,8 @@
 param(
     [switch]$FullApp,
     [switch]$SkipSeed,
+    [switch]$ReplayOnly,
+    [string]$AppArtifactRunId,
     [int]$Iteration = 1,
     [string]$ApiUrl = "https://prodify-api-46b1.onrender.com"
 )
@@ -30,6 +32,17 @@ function Get-FailedStepLog {
         return ($lines | Select-Object -Last 60 | Out-String)
     } catch {
         return "Could not fetch failed logs: $_"
+    }
+}
+
+function Test-RunArtifact {
+    param([string]$Gh, [string]$RunId, [string]$Name)
+    try {
+        $artifacts = & $Gh api "repos/im23b-hubere/Prodify/actions/runs/$RunId/artifacts" 2>$null | ConvertFrom-Json
+        if ($LASTEXITCODE -ne 0 -or -not $artifacts) { return $false }
+        return @($artifacts.artifacts | Where-Object { $_.name -eq $Name -and -not $_.expired }).Count -gt 0
+    } catch {
+        return $false
     }
 }
 
@@ -70,21 +83,33 @@ function Write-FailureReport {
     param(
         [string]$Path,
         [int]$Iteration,
+        [string]$RunId,
         [string]$RunUrl,
         [string]$Flow,
         [string]$Status,
         [string]$Conclusion,
         [string]$DownloadDir,
-        [string]$FailedLog
+        [string]$FailedLog,
+        [bool]$AppArtifactAvailable,
+        [string]$ReplayAppArtifactRunId
     )
     $next = $Iteration + 1
+    $rerunCommand = ".\scripts\run-agent-device-fix-loop.ps1 -FullApp -SkipSeed -Iteration $next"
+    if (-not $FullApp) {
+        $rerunCommand = ".\scripts\run-agent-device-fix-loop.ps1 -SkipSeed -Iteration $next"
+    }
+    if ($AppArtifactAvailable) {
+        $rerunCommand = ".\scripts\run-agent-device-fix-loop.ps1 $(if ($FullApp) { '-FullApp ' })-SkipSeed -ReplayOnly -AppArtifactRunId $ReplayAppArtifactRunId -Iteration $next"
+    }
     $lines = @(
         "# agent-device QA - FAILURE (iteration $Iteration)",
         "",
         "- Run: $RunUrl",
+        "- Run ID: $RunId",
         "- Flow: $Flow",
         "- Status: $Status",
         "- Conclusion: $Conclusion",
+        "- Replay app artifact available: $AppArtifactAvailable",
         "",
         "## Failed step log (tail)",
         "",
@@ -103,7 +128,7 @@ function Write-FailureReport {
         "1. Read failure screenshot + logs + mobile/$Flow",
         "2. Fix in mobile/ or Maestro YAML",
         "3. git commit + git push",
-        "4. Re-run: .\scripts\run-agent-device-fix-loop.ps1 -FullApp -SkipSeed -Iteration $next",
+        "4. Re-run: $rerunCommand",
         "5. Repeat until exit 0 (max 5 iterations)"
     )
     $lines | Set-Content -Path $Path -Encoding UTF8
@@ -113,10 +138,20 @@ Set-Location $RepoRoot
 $Gh = Resolve-GhCommand
 $WorkflowFile = "agent-device-ios.yml"
 $Flow = if ($FullApp) { "maestro/flows/full_app_test.yaml" } else { "maestro/flows/smoke_test.yaml" }
+$QaMode = if ($ReplayOnly) { "replay-only" } else { "build-and-test" }
+$SeedApiUser = if ($SkipSeed) { "false" } else { "true" }
+
+if ($ReplayOnly -and [string]::IsNullOrWhiteSpace($AppArtifactRunId)) {
+    throw "-AppArtifactRunId is required when using -ReplayOnly"
+}
 
 Write-Host ""
 Write-Host "=== agent-device QA iteration $Iteration ==="
 Write-Host "Flow: $Flow"
+Write-Host "QA mode: $QaMode"
+if ($ReplayOnly) {
+    Write-Host "App artifact run: $AppArtifactRunId"
+}
 Write-Host ""
 
 if (-not $SkipSeed -and $Iteration -eq 1) {
@@ -126,7 +161,10 @@ if (-not $SkipSeed -and $Iteration -eq 1) {
 Write-Host "Triggering CI..."
 & $Gh workflow run $WorkflowFile `
     -f "api_url=$ApiUrl" `
-    -f "maestro_flow=$Flow"
+    -f "maestro_flow=$Flow" `
+    -f "qa_mode=$QaMode" `
+    -f "app_artifact_run_id=$AppArtifactRunId" `
+    -f "seed_api_user=$SeedApiUser"
 
 if ($LASTEXITCODE -ne 0) {
     throw "Failed to trigger workflow $WorkflowFile"
@@ -139,7 +177,11 @@ $runUrl = & $Gh run view $runId --json url -q ".url"
 Write-Host "Run ID: $runId"
 Write-Host "URL:    $runUrl"
 Write-Host ""
-Write-Host "Waiting for CI (~15-25 min for full app)..."
+if ($ReplayOnly) {
+    Write-Host "Waiting for CI (~5-10 min for replay-only)..."
+} else {
+    Write-Host "Waiting for CI (~20-40 min for build-and-test full app)..."
+}
 & $Gh run watch $runId
 if ($LASTEXITCODE -ne 0) {
     Write-Host "gh run watch exited with code $LASTEXITCODE; polling until complete..."
@@ -172,6 +214,11 @@ Copy-Item -Recurse -Force $IterDir\* $LatestDir\
 
 $failedLog = Get-FailedStepLog -Gh $Gh -RunId $runId
 $reportPath = Join-Path $LatestDir "report.md"
+$appArtifactAvailable = Test-RunArtifact -Gh $Gh -RunId $runId -Name "ios-simulator-app"
+$replayAppArtifactRunId = if ($ReplayOnly) { $AppArtifactRunId } else { $runId }
+if ($ReplayOnly -and -not [string]::IsNullOrWhiteSpace($AppArtifactRunId)) {
+    $appArtifactAvailable = Test-RunArtifact -Gh $Gh -RunId $AppArtifactRunId -Name "ios-simulator-app"
+}
 
 if ($conclusion -eq "success") {
     $videoPaths = @(
@@ -187,11 +234,18 @@ if ($conclusion -eq "success") {
 }
 
 Write-FailureReport -Path $reportPath -Iteration $Iteration -RunUrl $runUrl -Flow $Flow `
-    -Status $status -Conclusion $conclusion -DownloadDir $downloadDir -FailedLog $failedLog
+    -RunId $runId -Status $status -Conclusion $conclusion -DownloadDir $downloadDir -FailedLog $failedLog `
+    -AppArtifactAvailable $appArtifactAvailable -ReplayAppArtifactRunId $replayAppArtifactRunId
 
 Write-Host ""
 Write-Host "FAILURE - iteration $Iteration failed."
 Write-Host "Report: $reportPath"
 Write-Host ""
-Write-Host "Re-run after fix: .\scripts\run-agent-device-fix-loop.ps1 -FullApp -SkipSeed -Iteration $($Iteration + 1)"
+if ($appArtifactAvailable) {
+    $nextReplayCommand = ".\scripts\run-agent-device-fix-loop.ps1 $(if ($FullApp) { '-FullApp ' })-SkipSeed -ReplayOnly -AppArtifactRunId $replayAppArtifactRunId -Iteration $($Iteration + 1)"
+    Write-Host "Re-run after YAML-only fix: $nextReplayCommand"
+} else {
+    $nextBuildCommand = ".\scripts\run-agent-device-fix-loop.ps1 $(if ($FullApp) { '-FullApp ' })-SkipSeed -Iteration $($Iteration + 1)"
+    Write-Host "Re-run after fix: $nextBuildCommand"
+}
 exit 1
