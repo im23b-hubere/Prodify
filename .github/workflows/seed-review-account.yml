@@ -1,0 +1,49 @@
+name: Seed Apple review account
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: Production API base URL
+        required: false
+        default: https://prodify-api-46b1.onrender.com
+        type: string
+      internal_job_key:
+        description: Render INTERNAL_JOB_KEY (Environment → prodify-api → INTERNAL_JOB_KEY)
+        required: true
+        type: string
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Seed review account on production
+        env:
+          API_URL: ${{ inputs.api_url }}
+          INTERNAL_JOB_KEY: ${{ inputs.internal_job_key }}
+        run: |
+          set -euo pipefail
+          body=$(cat <<EOF
+          {
+            "main_email": "apple.review@prodify.app",
+            "main_username": "prodifyreview",
+            "main_password": "ProdifyReview2026!",
+            "days_back": 84,
+            "current_streak": 64,
+            "longest_streak": 71,
+            "main_level": 24
+          }
+          EOF
+          )
+          curl -sS -f -X POST "${API_URL%/}/jobs/seed-screenshot-account" \
+            -H "Content-Type: application/json" \
+            -H "X-Internal-Job-Key: ${INTERNAL_JOB_KEY}" \
+            -d "$body" | tee seed-result.json
+          echo ""
+          echo "Verifying login + entitlement..."
+          login=$(curl -sS -X POST "${API_URL%/}/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{"email":"apple.review@prodify.app","password":"ProdifyReview2026!"}')
+          token=$(echo "$login" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+          curl -sS "${API_URL%/}/billing/entitlement" -H "Authorization: Bearer ${token}" | tee entitlement.json
+          curl -sS "${API_URL%/}/streak/overview" -H "Authorization: Bearer ${token}" | tee streak.json

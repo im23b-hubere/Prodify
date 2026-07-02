@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { usePreventRemove } from "@react-navigation/native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, BackHandler, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import type { PurchasesPackage } from "react-native-purchases";
@@ -15,6 +15,7 @@ import { getExpoPublicRevenueCatApiKey } from "../constants/env";
 import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
+import { ApiError } from "../lib/client";
 import { seedEntitlementCache, syncEntitlement } from "../lib/billing";
 import { setDevBillingBypass } from "../lib/devBillingBypass";
 import { isE2eModeEnabled } from "../lib/e2eMode";
@@ -29,7 +30,11 @@ import {
   restoreRevenueCatPurchases,
 } from "../lib/revenuecat";
 import { loadOnboardingQuiz } from "../lib/onboardingQuiz";
-import { isOfferingsErrorKey, resolveOfferingsLoadError } from "../lib/paywallErrors";
+import {
+  isOfferingsErrorKey,
+  isPurchaseCancelledError,
+  resolveOfferingsLoadError,
+} from "../lib/paywallErrors";
 
 type Variant = "value" | "outcome" | "social_proof";
 const WEEKLY_PRODUCT_ID = "prodify_premium_weekly";
@@ -42,7 +47,7 @@ function packageMatchesProductId(pkg: PurchasesPackage, productId: string): bool
 export default function PaywallScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { token, user } = useAuth();
+  const { token, user, signOut, deleteAccount, refreshUser } = useAuth();
   const params = useLocalSearchParams<{ variant?: string; source?: string }>();
   const source: PaywallSource =
     params.source === "onboarding" || params.source === "post_auth" ? params.source : "in_app";
@@ -195,6 +200,7 @@ export default function PaywallScreen() {
           trial_active: false,
           expires_at: activeEntitlementExpiration(res.customerInfo),
         });
+        await refreshUser().catch(() => undefined);
       }
       Alert.alert(
         t("paywall.alerts.premiumUnlockedTitle"),
@@ -211,6 +217,9 @@ export default function PaywallScreen() {
       }
       router.back();
     } catch (e) {
+      if (isPurchaseCancelledError(e)) {
+        return;
+      }
       const message = e instanceof Error ? e.message : t("paywall.errors.purchaseFailed");
       Alert.alert(t("paywall.alerts.purchaseFailedTitle"), message);
     } finally {
@@ -249,6 +258,51 @@ export default function PaywallScreen() {
     }
   }
 
+  function confirmLogout() {
+    Alert.alert(t("profile.signOutConfirmTitle"), t("profile.signOutConfirmMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("profile.signOutConfirmButton"),
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            try {
+              await signOut();
+            } finally {
+              router.replace("/(auth)/login");
+            }
+          })();
+        },
+      },
+    ]);
+  }
+
+  function confirmDeleteAccount() {
+    Alert.alert(t("legal.deleteAccount.confirmTitle"), t("legal.deleteAccount.confirmMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("legal.deleteAccount.confirmDelete"),
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            try {
+              await deleteAccount();
+              router.replace("/(auth)/login");
+            } catch (e) {
+              const msg =
+                e instanceof ApiError
+                  ? e.message
+                  : e instanceof Error
+                    ? e.message
+                    : t("legal.deleteAccount.errorFallback");
+              Alert.alert(t("legal.deleteAccount.errorTitle"), msg);
+            }
+          })();
+        },
+      },
+    ]);
+  }
+
   async function onRestore() {
     setBusy(true);
     try {
@@ -261,6 +315,9 @@ export default function PaywallScreen() {
           expires_at: activeEntitlementExpiration(info),
         });
         await syncBackendFromCustomerInfo();
+        if (isPremiumActive(info)) {
+          await refreshUser().catch(() => undefined);
+        }
       }
       Alert.alert(
         t("paywall.alerts.restoreCompleteTitle"),
@@ -280,71 +337,121 @@ export default function PaywallScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.card}>
-        <Text style={styles.badge}>{t("paywall.badge")}</Text>
-        <Text style={styles.title}>{copy.title}</Text>
-        <Text style={styles.body}>{copy.body}</Text>
-        {loading ? <LoadingState message={t("paywall.loadingOfferings")} /> : null}
-        {error ? (
-          <ErrorState
-            title={t("paywall.errorTitle")}
-            message={error}
-            retryLabel={t("common.tryAgain")}
-            onRetry={() => {
-              setReloadKey((prev) => prev + 1);
-            }}
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <View style={styles.card}>
+          <Text style={styles.badge}>{t("paywall.badge")}</Text>
+          <Text style={styles.title}>{copy.title}</Text>
+          <Text style={styles.body}>{copy.body}</Text>
+          {loading ? <LoadingState message={t("paywall.loadingOfferings")} /> : null}
+          {error ? (
+            <ErrorState
+              title={t("paywall.errorTitle")}
+              message={error}
+              retryLabel={t("common.tryAgain")}
+              onRetry={() => {
+                setReloadKey((prev) => prev + 1);
+              }}
+            />
+          ) : null}
+          <PrimaryButton
+            label={
+              expoGoPreviewMode
+                ? t("paywall.cta.sixMonthWithPrice", { price: previewSixMonthPrice })
+                : sixMonthPkg
+                  ? t("paywall.cta.sixMonthWithPrice", {
+                      price: sixMonthPkg.product.priceString,
+                    })
+                  : t("paywall.cta.sixMonth")
+            }
+            onPress={() => void purchasePackage(sixMonthPkg)}
+            disabled={
+              busy ||
+              (!expoGoPreviewMode && !sixMonthPkg) ||
+              (!purchaseEnabled && !expoGoPreviewMode)
+            }
           />
-        ) : null}
-        <PrimaryButton
-          label={
-            expoGoPreviewMode
-              ? t("paywall.cta.sixMonthWithPrice", { price: previewSixMonthPrice })
-              : sixMonthPkg
-                ? t("paywall.cta.sixMonthWithPrice", {
-                    price: sixMonthPkg.product.priceString,
-                  })
-                : t("paywall.cta.sixMonth")
-          }
-          onPress={() => void purchasePackage(sixMonthPkg ?? weeklyPkg)}
-          disabled={busy || (!purchaseEnabled && !expoGoPreviewMode)}
-        />
-        <Text style={styles.sixMonthHint}>{t("paywall.cta.sixMonthHint")}</Text>
-        <PrimaryButton
-          label={
-            expoGoPreviewMode
-              ? t("paywall.cta.weeklyWithPrice", { price: previewWeeklyPrice })
-              : weeklyPkg
-                ? t("paywall.cta.weeklyWithPrice", { price: weeklyPkg.product.priceString })
-                : t("paywall.cta.weekly")
-          }
-          onPress={() => void purchasePackage(weeklyPkg)}
-          disabled={busy || (!purchaseEnabled && !expoGoPreviewMode)}
-        />
-        <Pressable
-          style={styles.restore}
-          onPress={() => void onRestore()}
-          disabled={busy || expoGoPreviewMode}
-          accessibilityRole="button"
-          accessibilityLabel={t("paywall.cta.restore")}
-        >
-          <Text style={styles.restoreText}>
-            {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore")}
-          </Text>
-        </Pressable>
-        {expoGoPreviewMode ? (
+          <Text style={styles.sixMonthHint}>{t("paywall.cta.sixMonthHint")}</Text>
+          <PrimaryButton
+            label={
+              expoGoPreviewMode
+                ? t("paywall.cta.weeklyWithPrice", { price: previewWeeklyPrice })
+                : weeklyPkg
+                  ? t("paywall.cta.weeklyWithPrice", { price: weeklyPkg.product.priceString })
+                  : t("paywall.cta.weekly")
+            }
+            onPress={() => void purchasePackage(weeklyPkg)}
+            disabled={
+              busy ||
+              (!expoGoPreviewMode && !weeklyPkg) ||
+              (!purchaseEnabled && !expoGoPreviewMode)
+            }
+          />
           <Pressable
-            style={styles.skipDev}
-            onPress={() => void onSkipSubscriptionForDev()}
-            disabled={busy}
+            style={styles.restore}
+            onPress={() => void onRestore()}
+            disabled={busy || expoGoPreviewMode}
             accessibilityRole="button"
-            accessibilityLabel={t("paywall.a11y.skipSubscription")}
+            accessibilityLabel={t("paywall.cta.restore")}
           >
-            <Text style={styles.skipDevText}>
-              {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.skipSubscriptionDev")}
+            <Text style={styles.restoreText}>
+              {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore")}
             </Text>
           </Pressable>
-        ) : null}
-      </View>
+          <Text style={styles.disclaimer}>{t("paywall.legal.disclaimer")}</Text>
+          <View style={styles.legalRow}>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={t("paywall.legal.privacyLink")}
+              onPress={() => router.push("/legal/privacy" as never)}
+            >
+              <Text style={styles.legalLink}>{t("paywall.legal.privacyLink")}</Text>
+            </Pressable>
+            <Text style={styles.legalSep}>·</Text>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={t("paywall.legal.termsLink")}
+              onPress={() => router.push("/legal/terms" as never)}
+            >
+              <Text style={styles.legalLink}>{t("paywall.legal.termsLink")}</Text>
+            </Pressable>
+          </View>
+          {token ? (
+            <View style={styles.accountActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("paywall.account.signOut")}
+                onPress={confirmLogout}
+                disabled={busy}
+              >
+                <Text style={styles.accountActionText}>{t("paywall.account.signOut")}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("paywall.account.deleteAccount")}
+                onPress={confirmDeleteAccount}
+                disabled={busy}
+              >
+                <Text style={styles.accountActionDestructive}>
+                  {t("paywall.account.deleteAccount")}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {expoGoPreviewMode ? (
+            <Pressable
+              style={styles.skipDev}
+              onPress={() => void onSkipSubscriptionForDev()}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={t("paywall.a11y.skipSubscription")}
+            >
+              <Text style={styles.skipDevText}>
+                {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.skipSubscriptionDev")}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -353,6 +460,9 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scroll: {
+    flexGrow: 1,
     justifyContent: "center",
     padding: spacing.lg,
   },
@@ -376,6 +486,44 @@ const styles = StyleSheet.create({
   restore: { alignItems: "center", paddingVertical: spacing.xs },
   restoreText: {
     color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyBold,
+  },
+  disclaimer: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    lineHeight: 18,
+    textAlign: "center",
+  },
+  legalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+  legalLink: {
+    color: colors.primary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyBold,
+  },
+  legalSep: {
+    color: colors.textSecondary,
+    ...typography.caption,
+  },
+  accountActions: {
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  accountActionText: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    fontFamily: fontFamily.bodyBold,
+  },
+  accountActionDestructive: {
+    color: colors.danger,
     ...typography.caption,
     fontFamily: fontFamily.bodyBold,
   },

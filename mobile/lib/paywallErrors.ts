@@ -21,3 +21,20 @@ export function resolveOfferingsLoadError(error: unknown, fallback: string): str
 export function isOfferingsErrorKey(value: string): boolean {
   return value === "appleProductsUnavailable";
 }
+
+/** True when the user dismissed the App Store purchase sheet (not a real failure). */
+export function isPurchaseCancelledError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const record = error as Record<string, unknown>;
+  if (record.userCancelled === true) return true;
+  const code = String(record.code ?? "").toUpperCase();
+  if (code.includes("CANCEL")) return true;
+  if (code.includes("PAYMENT_PENDING")) return false;
+  const message = String(record.message ?? (error instanceof Error ? error.message : "")).toLowerCase();
+  return (
+    message.includes("purchase was cancelled") ||
+    message.includes("purchase was canceled") ||
+    message.includes("user cancelled") ||
+    message.includes("user canceled")
+  );
+}

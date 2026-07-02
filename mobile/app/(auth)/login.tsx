@@ -19,6 +19,7 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { ApiError } from "../../lib/client";
 import { replaceWithPendingDeepLinkOrDashboard } from "../../lib/pendingDeepLink";
+import { resolvePostAuthRouteFromStorage, toHref } from "../../lib/postAuthNavigation";
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -44,7 +45,15 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(trimmedEmail, password);
-      await replaceWithPendingDeepLinkOrDashboard(router);
+      const route = await resolvePostAuthRouteFromStorage({
+        hasToken: true,
+        entryPoint: "login",
+      });
+      if (route.pathname === "/(tabs)/dashboard") {
+        await replaceWithPendingDeepLinkOrDashboard(router);
+        return;
+      }
+      router.replace(toHref(route));
     } catch (e) {
       if (e instanceof ApiError && e.status === 429) {
         setError(t("errors.tooManyRequests"));

@@ -16,7 +16,7 @@ Weekly goal setup (`/goals/*`) is always free.
 | Product ID | Plan | Notes |
 |------------|------|-------|
 | `prodify_premium_weekly` | Weekly | No free trial |
-| `prodify_premium_6months` | 6 months | Marketing: **1 month free** vs weekly; no intro/trial period in Store |
+| `prodify_premium_6months` | 6 months | Best-value plan vs weekly billing; no intro/trial period in Store |
 
 Disable **Introductory Offers / Free Trial** on both products in App Store Connect. Paywall copy uses live Store prices from RevenueCat.
 
