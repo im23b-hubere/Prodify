@@ -347,21 +347,20 @@
     "variants": {
       "value": {
         "title": "Know your week before it's lost",
-        "body": "Get early warnings when you fall behind pace, plus a Sunday review that turns sessions into progress."
+        "body": "Early warnings and a Sunday review to keep your week on track."
       },
       "outcome": {
         "title": "See progress, not just hours",
-        "body": "Track finished work, spot trends, and prove your consistency week after week."
+        "body": "Track finished work and spot what's actually working."
       },
       "social_proof": {
         "title": "Your crew keeps you consistent",
-        "body": "Buddy check-ins, challenges, and shared goals — so you don't disappear mid-week."
+        "body": "Buddy check-ins and challenges so you don't disappear mid-week."
       }
     },
     "cta": {
       "sixMonth": "6-month plan",
       "sixMonthWithPrice": "6 months · {{price}}",
-      "sixMonthHint": "Best value — save compared to paying weekly.",
       "weekly": "Weekly plan",
       "weeklyWithPrice": "Weekly · {{price}}",
       "restore": "Restore purchases",
@@ -369,9 +368,9 @@
       "skipSubscriptionDev": "Skip for now (dev)"
     },
     "legal": {
-      "disclaimer": "Payment is charged to your Apple ID account. Subscriptions renew automatically unless canceled at least 24 hours before the end of the current period. Manage subscriptions in Settings > Apple ID > Subscriptions.",
-      "privacyLink": "Privacy Policy",
-      "termsLink": "Terms of Use"
+      "disclaimer": "Auto-renews until canceled in Apple ID → Subscriptions.",
+      "privacyLink": "Privacy",
+      "termsLink": "Terms"
     },
     "account": {
       "signOut": "Sign out",

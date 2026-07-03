@@ -375,7 +375,9 @@ export default function PaywallScreen() {
         <View style={styles.card}>
           <Text style={styles.badge}>{t("paywall.badge")}</Text>
           <Text style={styles.title}>{copy.title}</Text>
-          <Text style={styles.body}>{copy.body}</Text>
+          <Text style={styles.body} numberOfLines={3}>
+            {copy.body}
+          </Text>
           {loading ? <LoadingState message={t("paywall.loadingOfferings")} /> : null}
           {error ? (
             <ErrorState
@@ -404,7 +406,6 @@ export default function PaywallScreen() {
               (!purchaseEnabled && !expoGoPreviewMode)
             }
           />
-          <Text style={styles.sixMonthHint}>{t("paywall.cta.sixMonthHint")}</Text>
           <PrimaryButton
             label={
               expoGoPreviewMode
@@ -431,46 +432,49 @@ export default function PaywallScreen() {
               {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore")}
             </Text>
           </Pressable>
-          <Text style={styles.disclaimer}>{t("paywall.legal.disclaimer")}</Text>
-          <View style={styles.legalRow}>
-            <Pressable
-              accessibilityRole="link"
-              accessibilityLabel={t("paywall.legal.privacyLink")}
-              onPress={() => router.push("/legal/privacy" as never)}
-            >
-              <Text style={styles.legalLink}>{t("paywall.legal.privacyLink")}</Text>
-            </Pressable>
-            <Text style={styles.legalSep}>·</Text>
-            <Pressable
-              accessibilityRole="link"
-              accessibilityLabel={t("paywall.legal.termsLink")}
-              onPress={() => router.push("/legal/terms" as never)}
-            >
-              <Text style={styles.legalLink}>{t("paywall.legal.termsLink")}</Text>
-            </Pressable>
-          </View>
-          {token ? (
-            <View style={styles.accountActions}>
+          <View style={styles.footer}>
+            <Text style={styles.disclaimer}>{t("paywall.legal.disclaimer")}</Text>
+            <View style={styles.legalRow}>
               <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("paywall.account.signOut")}
-                onPress={confirmLogout}
-                disabled={busy}
+                accessibilityRole="link"
+                accessibilityLabel={t("paywall.legal.privacyLink")}
+                onPress={() => router.push("/legal/privacy" as never)}
               >
-                <Text style={styles.accountActionText}>{t("paywall.account.signOut")}</Text>
+                <Text style={styles.legalLink}>{t("paywall.legal.privacyLink")}</Text>
               </Pressable>
+              <Text style={styles.legalSep}>·</Text>
               <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("paywall.account.deleteAccount")}
-                onPress={confirmDeleteAccount}
-                disabled={busy}
+                accessibilityRole="link"
+                accessibilityLabel={t("paywall.legal.termsLink")}
+                onPress={() => router.push("/legal/terms" as never)}
               >
-                <Text style={styles.accountActionDestructive}>
-                  {t("paywall.account.deleteAccount")}
-                </Text>
+                <Text style={styles.legalLink}>{t("paywall.legal.termsLink")}</Text>
               </Pressable>
             </View>
-          ) : null}
+            {token ? (
+              <View style={styles.legalRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("paywall.account.signOut")}
+                  onPress={confirmLogout}
+                  disabled={busy}
+                >
+                  <Text style={styles.accountActionText}>{t("paywall.account.signOut")}</Text>
+                </Pressable>
+                <Text style={styles.legalSep}>·</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("paywall.account.deleteAccount")}
+                  onPress={confirmDeleteAccount}
+                  disabled={busy}
+                >
+                  <Text style={styles.accountActionDestructive}>
+                    {t("paywall.account.deleteAccount")}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
           {expoGoPreviewMode ? (
             <Pressable
               style={styles.skipDev}
@@ -505,28 +509,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: spacing.lg,
-    gap: spacing.md,
+    padding: spacing.md,
+    gap: spacing.sm,
   },
   badge: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
-  body: { color: colors.textSecondary, ...typography.body },
-  sixMonthHint: {
-    color: colors.primary,
-    ...typography.caption,
-    textAlign: "center",
-    marginTop: -spacing.xs,
+  title: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.headline,
+    fontSize: 22,
+    lineHeight: 28,
   },
-  restore: { alignItems: "center", paddingVertical: spacing.xs },
+  body: {
+    color: colors.textSecondary,
+    ...typography.body,
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  restore: { alignItems: "center", paddingVertical: 2 },
   restoreText: {
     color: colors.textSecondary,
     ...typography.caption,
     fontFamily: fontFamily.bodyBold,
   },
+  footer: {
+    gap: spacing.xs,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   disclaimer: {
     color: colors.textSecondary,
-    ...typography.caption,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 15,
     textAlign: "center",
   },
   legalRow: {
@@ -544,21 +559,14 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     ...typography.caption,
   },
-  accountActions: {
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
   accountActionText: {
     color: colors.textSecondary,
-    ...typography.caption,
+    fontSize: 11,
     fontFamily: fontFamily.bodyBold,
   },
   accountActionDestructive: {
     color: colors.danger,
-    ...typography.caption,
+    fontSize: 11,
     fontFamily: fontFamily.bodyBold,
   },
   skipDev: {
