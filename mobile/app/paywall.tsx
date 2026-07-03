@@ -6,7 +6,7 @@ import { Alert, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } fro
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import type { PurchasesPackage } from "react-native-purchases";
-import Purchases from "react-native-purchases";
+import Purchases, { type CustomerInfo } from "react-native-purchases";
 
 import { ErrorState } from "../components/states/ErrorState";
 import { LoadingState } from "../components/states/LoadingState";
@@ -52,11 +52,29 @@ export default function PaywallScreen() {
   const source: PaywallSource =
     params.source === "onboarding" || params.source === "post_auth" ? params.source : "in_app";
   const blockExit = source === "post_auth" || source === "onboarding";
+  const [allowRemove, setAllowRemove] = useState(false);
+  const [pendingExit, setPendingExit] = useState<
+    "dashboard" | "login" | "register" | "back" | null
+  >(null);
 
   usePreventRemove(
-    blockExit,
+    blockExit && !allowRemove,
     useCallback(() => {}, []),
   );
+
+  useEffect(() => {
+    if (!allowRemove || pendingExit == null) return;
+    if (pendingExit === "dashboard") {
+      void replaceWithPendingDeepLinkOrDashboard(router);
+    } else if (pendingExit === "login") {
+      router.replace("/(auth)/login");
+    } else if (pendingExit === "register") {
+      router.replace("/(auth)/register");
+    } else if (pendingExit === "back") {
+      router.back();
+    }
+    setPendingExit(null);
+  }, [allowRemove, pendingExit, router]);
 
   useEffect(() => {
     if (!blockExit) return;
@@ -182,6 +200,52 @@ export default function PaywallScreen() {
     });
   }
 
+  function requestPaywallExit(exit: "dashboard" | "login" | "register" | "back") {
+    setPendingExit(exit);
+    setAllowRemove(true);
+  }
+
+  function resolvePendingExitAfterUnlock(): "dashboard" | "login" | "register" | "back" {
+    const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
+    if (exitRoute === "/(tabs)/dashboard") return "dashboard";
+    if (exitRoute === "/(auth)/register") return "register";
+    if (exitRoute === "/(auth)/login") return "login";
+    return "back";
+  }
+
+  async function finalizePremiumUnlock(info: CustomerInfo) {
+    if (token) {
+      seedEntitlementCache(token, {
+        provider: "revenuecat",
+        entitlement: "premium",
+        trial_active: false,
+        expires_at: activeEntitlementExpiration(info),
+      });
+    }
+    if (token && appUserId) {
+      const synced = await syncEntitlement(token, {
+        app_user_id: appUserId,
+        entitlement: "premium",
+        trial_active: false,
+        expires_at: activeEntitlementExpiration(info),
+      }).catch(() => null);
+      if (!synced || synced.entitlement !== "premium") {
+        seedEntitlementCache(token, {
+          provider: "revenuecat",
+          entitlement: "premium",
+          trial_active: false,
+          expires_at: activeEntitlementExpiration(info),
+        });
+      }
+      await refreshUser().catch(() => undefined);
+    }
+    requestPaywallExit(resolvePendingExitAfterUnlock());
+    Alert.alert(
+      t("paywall.alerts.premiumUnlockedTitle"),
+      t("paywall.alerts.premiumUnlockedBody"),
+    );
+  }
+
   async function purchasePackage(pkg: PurchasesPackage | null) {
     if (!pkg) {
       Alert.alert(t("paywall.alerts.unavailableTitle"), t("paywall.alerts.unavailableBody"));
@@ -193,29 +257,7 @@ export default function PaywallScreen() {
       if (!isPremiumActive(res.customerInfo)) {
         throw new Error(t("paywall.errors.entitlementNotActive"));
       }
-      if (token && appUserId) {
-        await syncEntitlement(token, {
-          app_user_id: appUserId,
-          entitlement: "premium",
-          trial_active: false,
-          expires_at: activeEntitlementExpiration(res.customerInfo),
-        });
-        await refreshUser().catch(() => undefined);
-      }
-      Alert.alert(
-        t("paywall.alerts.premiumUnlockedTitle"),
-        t("paywall.alerts.premiumUnlockedBody"),
-      );
-      const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
-      if (exitRoute) {
-        if (exitRoute === "/(tabs)/dashboard") {
-          await replaceWithPendingDeepLinkOrDashboard(router);
-        } else {
-          router.replace(exitRoute);
-        }
-        return;
-      }
-      router.back();
+      await finalizePremiumUnlock(res.customerInfo);
     } catch (e) {
       if (isPurchaseCancelledError(e)) {
         return;
@@ -243,16 +285,7 @@ export default function PaywallScreen() {
           expires_at: expiresAt,
         });
       }
-      const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
-      if (exitRoute === "/(tabs)/dashboard") {
-        await replaceWithPendingDeepLinkOrDashboard(router);
-        return;
-      }
-      if (exitRoute) {
-        router.replace(exitRoute);
-        return;
-      }
-      router.back();
+      requestPaywallExit(resolvePendingExitAfterUnlock());
     } finally {
       setBusy(false);
     }
@@ -269,7 +302,7 @@ export default function PaywallScreen() {
             try {
               await signOut();
             } finally {
-              router.replace("/(auth)/login");
+              requestPaywallExit("login");
             }
           })();
         },
@@ -287,7 +320,7 @@ export default function PaywallScreen() {
           void (async () => {
             try {
               await deleteAccount();
-              router.replace("/(auth)/login");
+              requestPaywallExit("login");
             } catch (e) {
               const msg =
                 e instanceof ApiError
@@ -313,17 +346,18 @@ export default function PaywallScreen() {
           entitlement: isPremiumActive(info) ? "premium" : "free",
           trial_active: false,
           expires_at: activeEntitlementExpiration(info),
-        });
-        await syncBackendFromCustomerInfo();
+        }).catch(() => undefined);
         if (isPremiumActive(info)) {
           await refreshUser().catch(() => undefined);
         }
       }
+      if (isPremiumActive(info)) {
+        await finalizePremiumUnlock(info);
+        return;
+      }
       Alert.alert(
         t("paywall.alerts.restoreCompleteTitle"),
-        isPremiumActive(info)
-          ? t("paywall.alerts.restoreCompletePremium")
-          : t("paywall.alerts.restoreCompleteNone"),
+        t("paywall.alerts.restoreCompleteNone"),
       );
     } catch (e) {
       Alert.alert(
