@@ -42,8 +42,7 @@ type Props = {
 };
 
 function WrappedSlideCard({ slide, width, height }: { slide: WrappedSlide; width: number; height: number }) {
-  const isStat = slide.kind === "stat" || slide.kind === "intro";
-  const isQuote = slide.kind === "quote";
+  const isNumericStat = slide.kind === "stat" || slide.kind === "intro";
 
   return (
     <LinearGradient
@@ -59,16 +58,19 @@ function WrappedSlideCard({ slide, width, height }: { slide: WrappedSlide; width
             styles.title,
             slide.kind === "intro" && styles.titleIntro,
             slide.kind === "stat" && styles.titleStat,
+            slide.kind === "label" && styles.titleLabel,
             slide.kind === "quote" && styles.titleQuote,
             slide.kind === "outro" && styles.titleOutro,
             slide.kind === "empty" && styles.titleEmpty,
           ]}
-          numberOfLines={isQuote ? 8 : 3}
+          numberOfLines={slide.kind === "quote" ? 8 : slide.kind === "label" ? 2 : 3}
+          adjustsFontSizeToFit={slide.kind === "label"}
+          minimumFontScale={slide.kind === "label" ? 0.55 : undefined}
         >
           {slide.title}
         </Text>
         {slide.subtitle ? (
-          <Text style={[styles.subtitle, isStat && styles.subtitleStat]} numberOfLines={isQuote ? 2 : 3}>
+          <Text style={[styles.subtitle, isNumericStat && styles.subtitleStat]} numberOfLines={slide.kind === "quote" ? 2 : 3}>
             {slide.subtitle}
           </Text>
         ) : null}
@@ -327,6 +329,12 @@ const styles = StyleSheet.create({
     fontSize: 92,
     lineHeight: 96,
     letterSpacing: -2.5,
+  },
+  titleLabel: {
+    fontSize: 52,
+    lineHeight: 58,
+    letterSpacing: -0.8,
+    maxWidth: "100%",
   },
   titleQuote: {
     fontSize: 28,

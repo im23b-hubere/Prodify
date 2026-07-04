@@ -7,6 +7,7 @@ import type { WeeklyReviewDto } from "../../types/outcomes";
 export type WrappedSlideKind =
   | "intro"
   | "stat"
+  | "label"
   | "quote"
   | "outro"
   | "empty"
@@ -30,6 +31,14 @@ type BuildArgs = {
   displayHours: string;
   weekRange: string;
 };
+
+function wrappedLabelTitle(label: string): string {
+  const trimmed = label.trim();
+  if (trimmed.length <= 20) {
+    return trimmed.replace(/ /g, "\u00A0");
+  }
+  return trimmed;
+}
 
 export function buildWrappedSlides({
   t,
@@ -118,10 +127,10 @@ export function buildWrappedSlides({
   if (topBreakdown && topBreakdown.sessions > 0) {
     slides.push({
       id: "top-type",
-      kind: "stat",
+      kind: "label",
       colors: ["#2d1b4e", "#a259ff", "#100818"],
       kicker: t("weeklyRecap.wrappedTopTypeKicker"),
-      title: sessionTypeLabel(String(topBreakdown.session_type), t),
+      title: wrappedLabelTitle(sessionTypeLabel(String(topBreakdown.session_type), t)),
       subtitle: t("weeklyRecap.wrappedTopTypeSubtitle"),
       footnote: t("weeklyRecap.wrappedTopTypeFoot", {
         percent: topBreakdown.percent,
