@@ -1,7 +1,6 @@
 import type { TFunction } from "i18next";
 import { StyleSheet, Text, View } from "react-native";
 
-import { AppCard } from "../ui/AppCard";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import type { ForecastComputed } from "../../lib/forecastEngine";
@@ -13,8 +12,22 @@ type Props = {
   weekSessionsCount: number;
   weeklyGoalTarget: number | null;
   paceForecast: ForecastComputed | null;
-  weekdayLabels: string[];
 };
+
+type QuestStatus = "goalComplete" | "ahead" | "onTrack" | "atRisk" | "offTrack";
+
+function resolveQuestStatus(
+  feedback: SessionFeedbackComputed,
+  paceForecast: ForecastComputed | null,
+): QuestStatus {
+  if (feedback.remainingSessionsToGoal === 0) return "goalComplete";
+  if (paceForecast?.forecastStatus === "ahead") return "ahead";
+  if (paceForecast?.forecastStatus === "at_risk" || paceForecast?.forecastStatus === "will_miss") {
+    return "atRisk";
+  }
+  if (feedback.newStatus === "off_track") return "offTrack";
+  return "onTrack";
+}
 
 export function SessionCompleteWeekCard({
   t,
@@ -22,27 +35,25 @@ export function SessionCompleteWeekCard({
   weekSessionsCount,
   weeklyGoalTarget,
   paceForecast,
-  weekdayLabels,
 }: Props) {
   const hasGoal = weeklyGoalTarget != null && weeklyGoalTarget > 0;
   const progressPct = paceForecast?.currentProgressPercent ?? feedback.progressPercent ?? 0;
-
-  const forecastTone =
-    paceForecast?.forecastStatus === "will_miss"
-      ? styles.forecastDanger
-      : paceForecast?.forecastStatus === "at_risk"
-        ? styles.forecastWarn
-        : paceForecast
-          ? styles.forecastGood
-          : null;
+  const questStatus = resolveQuestStatus(feedback, paceForecast);
 
   return (
-    <AppCard style={styles.card}>
-      <Text style={styles.title}>{t("sessionComplete.weekCardTitle")}</Text>
+    <View style={styles.card}>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>{t("sessionComplete.weekQuestTitle")}</Text>
+        {hasGoal ? (
+          <View style={[styles.statusChip, styles[`chip_${questStatus}`]]}>
+            <Text style={styles.statusChipText}>{t(`sessionComplete.questStatus.${questStatus}`)}</Text>
+          </View>
+        ) : null}
+      </View>
 
       {hasGoal ? (
         <>
-          <Text style={styles.progressLabel}>
+          <Text style={styles.progressNumbers}>
             {t("sessionComplete.weekProgress", {
               current: weekSessionsCount,
               target: weeklyGoalTarget,
@@ -63,51 +74,72 @@ export function SessionCompleteWeekCard({
       ) : (
         <Text style={styles.progressFallback}>{t("sessionFeedback.progressFallback")}</Text>
       )}
-
-      <Text style={styles.nextAction}>{t(feedback.nextActionKey, feedback.nextActionParams)}</Text>
-
-      {paceForecast ? (
-        <Text style={[styles.forecastLine, forecastTone]}>
-          {t(paceForecast.forecastMessageKey, paceForecast.forecastMessageParams)}
-        </Text>
-      ) : feedback.remainingSessionsToGoal != null && hasGoal ? (
-        <Text style={styles.forecastLine}>
-          {feedback.remainingSessionsToGoal > 0
-            ? t("sessionFeedback.remainingToGoal", { count: feedback.remainingSessionsToGoal })
-            : t("sessionFeedback.goalReached")}
-        </Text>
-      ) : null}
-
-      {paceForecast?.projectedHitDayIndex != null &&
-      (paceForecast.forecastStatus === "on_track" || paceForecast.forecastStatus === "ahead") ? (
-        <Text style={styles.forecastEta}>
-          {t("forecast.hitByDay", {
-            day:
-              weekdayLabels[Math.max(0, Math.min(6, paceForecast.projectedHitDayIndex - 1))] ??
-              weekdayLabels[0],
-          })}
-        </Text>
-      ) : null}
-    </AppCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
     width: "100%",
+    gap: spacing.sm,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: spacing.sm,
   },
   title: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  statusChip: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  statusChipText: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
+    fontSize: 11,
+    letterSpacing: 0.3,
   },
-  progressLabel: {
+  chip_goalComplete: {
+    borderColor: "rgba(0,255,136,0.45)",
+    backgroundColor: "rgba(0,255,136,0.12)",
+  },
+  chip_ahead: {
+    borderColor: "rgba(0,255,136,0.35)",
+    backgroundColor: "rgba(0,255,136,0.08)",
+  },
+  chip_onTrack: {
+    borderColor: "rgba(162,89,255,0.4)",
+    backgroundColor: "rgba(162,89,255,0.12)",
+  },
+  chip_atRisk: {
+    borderColor: "rgba(245,158,11,0.45)",
+    backgroundColor: "rgba(245,158,11,0.12)",
+  },
+  chip_offTrack: {
+    borderColor: "rgba(255,68,68,0.4)",
+    backgroundColor: "rgba(255,68,68,0.1)",
+  },
+  progressNumbers: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.5,
   },
   progressFallback: {
     color: colors.textSecondary,
@@ -115,7 +147,7 @@ const styles = StyleSheet.create({
   },
   goalProgressTrack: {
     width: "100%",
-    height: 9,
+    height: 10,
     borderRadius: radii.round,
     backgroundColor: colors.background,
     borderWidth: 1,
@@ -133,24 +165,6 @@ const styles = StyleSheet.create({
     bottom: -2,
     width: 2,
     backgroundColor: "#ffffff",
-    opacity: 0.9,
+    opacity: 0.85,
   },
-  nextAction: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.body,
-    lineHeight: 22,
-  },
-  forecastLine: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  forecastEta: {
-    color: colors.textSecondary,
-    ...typography.caption,
-  },
-  forecastDanger: { color: colors.danger },
-  forecastWarn: { color: "#f59e0b" },
-  forecastGood: { color: colors.success },
 });

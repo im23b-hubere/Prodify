@@ -17,7 +17,9 @@ env:
 - waitForAnimationToEnd
 - tapOn: "STOP SESSION"
 - tapOn: "End session"
-- assertVisible: "Session complete"
+- assertVisible: "Session logged"
+- tapOn: "Back to dashboard"
+- assertVisible: "START SESSION"
 - tapOn: "Stats"
 - assertVisible: "Your stats"
 - tapOn: "Friends"

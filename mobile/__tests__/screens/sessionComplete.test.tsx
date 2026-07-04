@@ -1,14 +1,11 @@
 import React from "react";
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import SessionCompleteScreen from "../../app/session/complete";
 
 const mockReplace = jest.fn();
 const mockApiJson = jest.fn();
 const translate = (key: string, options?: Record<string, unknown>) => {
-  if (key === "common.weekdaysFull") {
-    return ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  }
   if (options && Object.keys(options).length > 0) return key;
   return key;
 };
@@ -19,6 +16,14 @@ jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "Success" },
 }));
 
+jest.mock("expo-linear-gradient", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    LinearGradient: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+  };
+});
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({ replace: mockReplace }),
   useLocalSearchParams: () => ({ id: "12" }),
@@ -28,7 +33,9 @@ jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
   const { View } = require("react-native");
   return {
-    SafeAreaView: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+    SafeAreaView: ({ children, ...props }: { children: React.ReactNode }) => (
+      <View {...props}>{children}</View>
+    ),
   };
 });
 
@@ -44,10 +51,6 @@ jest.mock("../../context/AuthContext", () => ({
 
 jest.mock("../../lib/client", () => ({
   apiJson: (...args: unknown[]) => mockApiJson(...args),
-}));
-
-jest.mock("../../lib/billing", () => ({
-  fetchEntitlement: jest.fn().mockResolvedValue({ entitlement: "free", trial_active: false }),
 }));
 
 jest.mock("../../lib/progressionSync", () => ({
@@ -95,19 +98,11 @@ jest.mock("../../components/ui/TextButton", () => {
   };
 });
 
-jest.mock("../../components/ui/AppCard", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return {
-    AppCard: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
-  };
-});
-
-describe("SessionCompleteScreen tracking UX", () => {
+describe("SessionCompleteScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApiJson.mockImplementation((path: string, opts?: { method?: string }) => {
-      if (path === "/sessions/item/12" && (!opts || opts.method === undefined)) {
+    mockApiJson.mockImplementation((path: string) => {
+      if (path === "/sessions/item/12") {
         return Promise.resolve({
           id: 12,
           user_id: 1,
@@ -145,82 +140,27 @@ describe("SessionCompleteScreen tracking UX", () => {
       if (path === "/goals/current") {
         return Promise.resolve({ target_value: 4, current_sessions: 2 });
       }
-      if (path === "/sessions/item/12" && opts?.method === "PATCH") {
-        return Promise.reject(new Error("save failed"));
-      }
       return Promise.resolve(null);
     });
   });
 
-  it("shows save error for track outcome and enforces 160-char title limit", async () => {
-    const { findByPlaceholderText, getByText, getAllByText } = render(
-      <SessionCompleteScreen />,
-    );
+  it("renders the simplified completion screen with quest progress and action buttons", async () => {
+    const { findByTestId, getByText } = render(<SessionCompleteScreen />);
 
-    await waitFor(() => expect(getByText("sessionComplete.trackOutcomeTitle")).toBeTruthy());
-
-    const finishedOption = getAllByText("sessionComplete.trackOutcomeFinished", {
-      includeHiddenElements: true,
-    })[0];
-    fireEvent.press(finishedOption);
-    const titleInput = await findByPlaceholderText("sessionComplete.trackTitlePlaceholder");
-
-    expect(titleInput.props.maxLength).toBe(160);
-
-    fireEvent.changeText(titleInput, "My Track");
-    fireEvent.press(getByText("sessionComplete.trackSaveCta"));
-
-    await waitFor(() => expect(getByText("save failed")).toBeTruthy());
-  }, 15000);
-
-  it("pauses auto-return timer after track interaction", async () => {
-    jest.useFakeTimers();
-    try {
-      const { findByText, queryByText } = render(<SessionCompleteScreen />);
-
-      await findByText("sessionComplete.autoReturn");
-      expect(mockReplace).not.toHaveBeenCalledWith("/(tabs)/dashboard");
-
-      await act(async () => {
-        jest.advanceTimersByTime(3000);
-      });
-
-      const finishedOption = await findByText("sessionComplete.trackOutcomeFinished");
-      fireEvent.press(finishedOption);
-
-      await findByText("sessionComplete.autoReturnCancelled");
-
-      await act(async () => {
-        jest.advanceTimersByTime(20000);
-      });
-
-      expect(queryByText("sessionComplete.autoReturnCancelled")).toBeTruthy();
-      expect(mockReplace).not.toHaveBeenCalledWith("/(tabs)/dashboard");
-    } finally {
-      jest.runOnlyPendingTimers();
-      jest.useRealTimers();
-    }
+    expect(await findByTestId("session-complete-screen")).toBeTruthy();
+    expect(getByText("sessionComplete.heroEyebrow")).toBeTruthy();
+    expect(getByText("sessionComplete.weekQuestTitle")).toBeTruthy();
+    expect(getByText("sessionComplete.viewDetails")).toBeTruthy();
+    expect(getByText("sessionComplete.backToDashboard")).toBeTruthy();
   });
 
-  it("keeps user on completion screen after tapping stay here", async () => {
-    jest.useFakeTimers();
-    try {
-      const { findByText, queryByText } = render(<SessionCompleteScreen />);
+  it("navigates from the primary and secondary actions", async () => {
+    const { findByText } = render(<SessionCompleteScreen />);
 
-      const stayHereButton = await findByText("sessionComplete.stayHere");
-      fireEvent.press(stayHereButton);
+    fireEvent.press(await findByText("sessionComplete.viewDetails"));
+    expect(mockReplace).toHaveBeenCalledWith("/session/12");
 
-      await findByText("sessionComplete.autoReturnCancelled");
-
-      await act(async () => {
-        jest.advanceTimersByTime(20000);
-      });
-
-      expect(queryByText("sessionComplete.autoReturnCancelled")).toBeTruthy();
-      expect(mockReplace).not.toHaveBeenCalledWith("/(tabs)/dashboard");
-    } finally {
-      jest.runOnlyPendingTimers();
-      jest.useRealTimers();
-    }
+    fireEvent.press(await findByText("sessionComplete.backToDashboard"));
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
   });
 });

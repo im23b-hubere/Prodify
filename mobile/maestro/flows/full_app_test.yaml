@@ -20,10 +20,9 @@ env:
 - waitForAnimationToEnd
 - tapOn: "STOP SESSION"
 - tapOn: "End session"
-- assertVisible: "Session complete"
-- extendedWaitUntil:
-    visible: "START SESSION"
-    timeout: 45000
+- assertVisible: "Session logged"
+- tapOn: "Back to dashboard"
+- assertVisible: "START SESSION"
 
 # --- Tab navigation ---
 - tapOn: "Stats"
