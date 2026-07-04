@@ -5,11 +5,31 @@ module.exports = ({ config }) => {
   const revenueCatApiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY?.trim() ?? "";
   const revenueCatEntitlementId =
     process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID?.trim() || "app_access";
+  const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? "";
+  const appEnv =
+    process.env.EXPO_PUBLIC_APP_ENV?.trim() || process.env.EXPO_PUBLIC_ENV?.trim() || "";
+  const invalidSentryDsn =
+    !sentryDsn ||
+    sentryDsn.startsWith("@") ||
+    sentryDsn.includes("...") ||
+    sentryDsn.toLowerCase().includes("your-");
 
   if (process.env.EAS_BUILD === "true" && !revenueCatApiKey) {
     throw new Error(
       "EXPO_PUBLIC_REVENUECAT_API_KEY is missing during EAS build. Add it to eas.json production env or EAS Environment (production).",
     );
+  }
+
+  if (
+    process.env.EAS_BUILD === "true" &&
+    appEnv === "production" &&
+    process.env.EXPO_PUBLIC_E2E_MODE === "true"
+  ) {
+    throw new Error("EXPO_PUBLIC_E2E_MODE must never be enabled for production EAS builds.");
+  }
+
+  if (process.env.EAS_BUILD === "true" && appEnv === "production" && invalidSentryDsn) {
+    throw new Error("EXPO_PUBLIC_SENTRY_DSN must be a real DSN for production EAS builds.");
   }
 
   return {

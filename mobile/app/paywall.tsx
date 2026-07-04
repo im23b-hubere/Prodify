@@ -1,12 +1,11 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { usePreventRemove } from "@react-navigation/native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
-import type { PurchasesPackage } from "react-native-purchases";
-import Purchases, { type CustomerInfo } from "react-native-purchases";
+import type { CustomerInfo, PurchasesPackage } from "react-native-purchases";
 
 import { ErrorState } from "../components/states/ErrorState";
 import { LoadingState } from "../components/states/LoadingState";
@@ -27,11 +26,14 @@ import {
   getDefaultOffering,
   getRevenueCatCustomerInfo,
   isPremiumActive,
+  purchaseRevenueCatPackage,
   restoreRevenueCatPurchases,
 } from "../lib/revenuecat";
 import { loadOnboardingQuiz } from "../lib/onboardingQuiz";
 import {
   isOfferingsErrorKey,
+  isPaymentPendingError,
+  isPurchaseAlreadyOwnedError,
   isPurchaseCancelledError,
   resolveOfferingsLoadError,
 } from "../lib/paywallErrors";
@@ -56,6 +58,7 @@ export default function PaywallScreen() {
   const [pendingExit, setPendingExit] = useState<
     "dashboard" | "login" | "register" | "back" | null
   >(null);
+  const unlockAlertPendingRef = useRef(false);
 
   usePreventRemove(
     blockExit && !allowRemove,
@@ -64,17 +67,36 @@ export default function PaywallScreen() {
 
   useEffect(() => {
     if (!allowRemove || pendingExit == null) return;
-    if (pendingExit === "dashboard") {
-      void replaceWithPendingDeepLinkOrDashboard(router);
-    } else if (pendingExit === "login") {
-      router.replace("/(auth)/login");
-    } else if (pendingExit === "register") {
-      router.replace("/(auth)/register");
-    } else if (pendingExit === "back") {
-      router.back();
-    }
+    const exit = pendingExit;
     setPendingExit(null);
-  }, [allowRemove, pendingExit, router]);
+
+    // Brief delay so usePreventRemove releases the screen before programmatic replace.
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          if (exit === "dashboard") {
+            await replaceWithPendingDeepLinkOrDashboard(router);
+          } else if (exit === "login") {
+            router.replace("/(auth)/login");
+          } else if (exit === "register") {
+            router.replace("/(auth)/register");
+          } else if (exit === "back") {
+            router.back();
+          }
+        } finally {
+          if (unlockAlertPendingRef.current) {
+            unlockAlertPendingRef.current = false;
+            Alert.alert(
+              t("paywall.alerts.premiumUnlockedTitle"),
+              t("paywall.alerts.premiumUnlockedBody"),
+            );
+          }
+        }
+      })();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [allowRemove, pendingExit, router, t]);
 
   useEffect(() => {
     if (!blockExit) return;
@@ -132,6 +154,52 @@ export default function PaywallScreen() {
   const previewWeeklyPrice = t("paywall.expoPreview.weeklyPricePlaceholder");
   const previewSixMonthPrice = t("paywall.expoPreview.sixMonthPricePlaceholder");
 
+  const requestPaywallExit = useCallback((exit: "dashboard" | "login" | "register" | "back") => {
+    setPendingExit(exit);
+    setAllowRemove(true);
+  }, []);
+
+  const resolvePendingExitAfterUnlock = useCallback((): "dashboard" | "login" | "register" | "back" => {
+    const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
+    if (exitRoute === "/(tabs)/dashboard") return "dashboard";
+    if (exitRoute === "/(auth)/register") return "register";
+    if (exitRoute === "/(auth)/login") return "login";
+    return "back";
+  }, [source, token]);
+
+  const finalizePremiumUnlock = useCallback(
+    async (info: CustomerInfo) => {
+      if (token) {
+        seedEntitlementCache(token, {
+          provider: "revenuecat",
+          entitlement: "premium",
+          trial_active: false,
+          expires_at: activeEntitlementExpiration(info),
+        });
+      }
+      if (token && appUserId) {
+        const synced = await syncEntitlement(token, {
+          app_user_id: appUserId,
+          entitlement: "premium",
+          trial_active: false,
+          expires_at: activeEntitlementExpiration(info),
+        }).catch(() => null);
+        if (!synced || synced.entitlement !== "premium") {
+          seedEntitlementCache(token, {
+            provider: "revenuecat",
+            entitlement: "premium",
+            trial_active: false,
+            expires_at: activeEntitlementExpiration(info),
+          });
+        }
+        await refreshUser().catch(() => undefined);
+      }
+      unlockAlertPendingRef.current = true;
+      requestPaywallExit(resolvePendingExitAfterUnlock());
+    },
+    [appUserId, refreshUser, requestPaywallExit, resolvePendingExitAfterUnlock, token],
+  );
+
   useEffect(() => {
     let cancelled = false;
     async function loadOfferings() {
@@ -157,6 +225,12 @@ export default function PaywallScreen() {
           return;
         }
         await configureRevenueCat(appUserId ?? undefined);
+        const info = await getRevenueCatCustomerInfo(appUserId ?? undefined);
+        if (cancelled) return;
+        if (isPremiumActive(info)) {
+          await finalizePremiumUnlock(info);
+          return;
+        }
         const offering = await getDefaultOffering(appUserId ?? undefined);
         if (cancelled) return;
         const pkgs = offering?.availablePackages ?? [];
@@ -187,63 +261,28 @@ export default function PaywallScreen() {
     return () => {
       cancelled = true;
     };
-  }, [appUserId, expoGoPreviewMode, isExpoGo, reloadKey, t]);
+  }, [appUserId, expoGoPreviewMode, finalizePremiumUnlock, isExpoGo, reloadKey, t]);
 
-  async function syncBackendFromCustomerInfo() {
-    if (!token || !appUserId) return;
-    const info = await getRevenueCatCustomerInfo(appUserId ?? undefined);
-    await syncEntitlement(token, {
-      app_user_id: appUserId,
-      entitlement: isPremiumActive(info) ? "premium" : "free",
-      trial_active: false,
-      expires_at: activeEntitlementExpiration(info),
-    });
-  }
-
-  function requestPaywallExit(exit: "dashboard" | "login" | "register" | "back") {
-    setPendingExit(exit);
-    setAllowRemove(true);
-  }
-
-  function resolvePendingExitAfterUnlock(): "dashboard" | "login" | "register" | "back" {
-    const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
-    if (exitRoute === "/(tabs)/dashboard") return "dashboard";
-    if (exitRoute === "/(auth)/register") return "register";
-    if (exitRoute === "/(auth)/login") return "login";
-    return "back";
-  }
-
-  async function finalizePremiumUnlock(info: CustomerInfo) {
-    if (token) {
-      seedEntitlementCache(token, {
-        provider: "revenuecat",
-        entitlement: "premium",
-        trial_active: false,
-        expires_at: activeEntitlementExpiration(info),
-      });
+  async function recoverExistingSubscription(showFailureAlert: boolean): Promise<boolean> {
+    const customerInfo = await getRevenueCatCustomerInfo(appUserId ?? undefined).catch(() => null);
+    if (customerInfo && isPremiumActive(customerInfo)) {
+      await finalizePremiumUnlock(customerInfo);
+      return true;
     }
-    if (token && appUserId) {
-      const synced = await syncEntitlement(token, {
-        app_user_id: appUserId,
-        entitlement: "premium",
-        trial_active: false,
-        expires_at: activeEntitlementExpiration(info),
-      }).catch(() => null);
-      if (!synced || synced.entitlement !== "premium") {
-        seedEntitlementCache(token, {
-          provider: "revenuecat",
-          entitlement: "premium",
-          trial_active: false,
-          expires_at: activeEntitlementExpiration(info),
-        });
-      }
-      await refreshUser().catch(() => undefined);
+
+    const restoredInfo = await restoreRevenueCatPurchases(appUserId ?? undefined).catch(() => null);
+    if (restoredInfo && isPremiumActive(restoredInfo)) {
+      await finalizePremiumUnlock(restoredInfo);
+      return true;
     }
-    requestPaywallExit(resolvePendingExitAfterUnlock());
-    Alert.alert(
-      t("paywall.alerts.premiumUnlockedTitle"),
-      t("paywall.alerts.premiumUnlockedBody"),
-    );
+
+    if (showFailureAlert) {
+      Alert.alert(
+        t("paywall.alerts.restoreFailedTitle"),
+        t("paywall.errors.alreadySubscribedRestoreFailed"),
+      );
+    }
+    return false;
   }
 
   async function purchasePackage(pkg: PurchasesPackage | null) {
@@ -253,13 +292,21 @@ export default function PaywallScreen() {
     }
     setBusy(true);
     try {
-      const res = await Purchases.purchasePackage(pkg);
+      const res = await purchaseRevenueCatPackage(pkg);
       if (!isPremiumActive(res.customerInfo)) {
         throw new Error(t("paywall.errors.entitlementNotActive"));
       }
       await finalizePremiumUnlock(res.customerInfo);
     } catch (e) {
       if (isPurchaseCancelledError(e)) {
+        return;
+      }
+      if (isPurchaseAlreadyOwnedError(e)) {
+        const recovered = await recoverExistingSubscription(true);
+        if (recovered) return;
+      }
+      if (isPaymentPendingError(e)) {
+        Alert.alert(t("paywall.alerts.purchasePendingTitle"), t("paywall.alerts.purchasePendingBody"));
         return;
       }
       const message = e instanceof Error ? e.message : t("paywall.errors.purchaseFailed");
@@ -285,7 +332,7 @@ export default function PaywallScreen() {
           expires_at: expiresAt,
         });
       }
-      requestPaywallExit(resolvePendingExitAfterUnlock());
+      requestPaywallExit(token ? "dashboard" : resolvePendingExitAfterUnlock());
     } finally {
       setBusy(false);
     }

@@ -130,9 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await apiJson<Partial<TokenPair>>("/auth/login", {
         method: "POST",
         body: { email, password },
-        timeoutMs: 60_000,
-        retries: 2,
-        retryUnsafeMethods: ["POST"],
+        timeoutMs: 20_000,
+        retries: 0,
       });
       const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
       const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
@@ -149,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const ent = await fetchEntitlement(access);
           if (!hasPremiumAccess(ent)) {
             await configureRevenueCat(String(me.id));
-            const info = await getRevenueCatCustomerInfo();
+            const info = await getRevenueCatCustomerInfo(String(me.id));
             await syncEntitlement(access, {
               app_user_id: String(me.id),
               entitlement: isPremiumActive(info) ? "premium" : "free",
@@ -159,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           await configureRevenueCat(String(me.id));
-          const info = await getRevenueCatCustomerInfo();
+          const info = await getRevenueCatCustomerInfo(String(me.id));
           await syncEntitlement(access, {
             app_user_id: String(me.id),
             entitlement: isPremiumActive(info) ? "premium" : "free",
@@ -180,9 +179,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await apiJson<Partial<TokenPair>>("/auth/register", {
         method: "POST",
         body: { email, username, password },
-        timeoutMs: 60_000,
-        retries: 2,
-        retryUnsafeMethods: ["POST"],
+        timeoutMs: 20_000,
+        retries: 0,
       });
       const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
       const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
@@ -193,9 +191,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await syncPendingWeeklyGoal(access).catch(() => undefined);
       try {
         const me = await apiJson<UserMe>("/auth/me", { token: access });
+        setUser(me);
         await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
         await configureRevenueCat(String(me.id));
-        const info = await getRevenueCatCustomerInfo();
+        const info = await getRevenueCatCustomerInfo(String(me.id));
         await syncEntitlement(access, {
           app_user_id: String(me.id),
           entitlement: isPremiumActive(info) ? "premium" : "free",

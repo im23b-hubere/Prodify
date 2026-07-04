@@ -219,6 +219,13 @@ export default function OnboardingScreen() {
       }
       await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "1").catch(() => undefined);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      if (!token) {
+        router.replace({
+          pathname: "/(auth)/register",
+          params: { next: "paywall", source: "onboarding", variant: "outcome" },
+        });
+        return;
+      }
       router.replace({
         pathname: "/paywall",
         params: { source: "onboarding", variant: "outcome" },

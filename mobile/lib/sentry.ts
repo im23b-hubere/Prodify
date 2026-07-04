@@ -23,6 +23,28 @@ function isValidSentryDsn(raw: string): boolean {
   }
 }
 
+function redactSensitiveText(value: string): string {
+  return value
+    .replace(/([?&](?:email|password|token|refresh_token|access_token|secret)=)[^&\s]+/gi, "$1[redacted]")
+    .replace(/(Authorization:\s*Bearer\s+)[^\s]+/gi, "$1[redacted]");
+}
+
+function scrubObject(value: unknown): unknown {
+  if (typeof value === "string") return redactSensitiveText(value);
+  if (!value || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(scrubObject);
+
+  const next: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (/password|token|secret|authorization|email/i.test(key)) {
+      next[key] = "[redacted]";
+    } else {
+      next[key] = scrubObject(raw);
+    }
+  }
+  return next;
+}
+
 /** Call once at startup. No-op if EXPO_PUBLIC_SENTRY_DSN is unset. */
 export function initSentry(): void {
   const dsn = getExpoPublicSentryDsn();
@@ -46,6 +68,12 @@ export function initSentry(): void {
       release,
       tracesSampleRate: __DEV__ ? 0 : 0.15,
       enableAutoSessionTracking: true,
+      beforeSend(event) {
+        return scrubObject(event) as typeof event;
+      },
+      beforeBreadcrumb(breadcrumb) {
+        return scrubObject(breadcrumb) as typeof breadcrumb;
+      },
     });
   } catch (error) {
     console.warn(

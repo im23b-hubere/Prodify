@@ -338,6 +338,12 @@ describe("Dashboard Screen", () => {
   });
 
   it("hides today plan when user already has sessions today and is on track", () => {
+    const today = new Date();
+    const startedAt = new Date(today);
+    startedAt.setHours(9, 30, 0, 0);
+    const stoppedAt = new Date(today);
+    stoppedAt.setHours(10, 0, 0, 0);
+
     mockUseDashboardData.mockReturnValue(
       createDashboardState({
         weeklyGoalTarget: 5,
@@ -346,8 +352,8 @@ describe("Dashboard Screen", () => {
           {
             id: 101,
             session_type: "mixing",
-            stopped_at: "2026-06-29T10:00:00Z",
-            started_at: "2026-06-29T09:30:00Z",
+            stopped_at: stoppedAt.toISOString(),
+            started_at: startedAt.toISOString(),
             duration_seconds: 1800,
           },
         ],

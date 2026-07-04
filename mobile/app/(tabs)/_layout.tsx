@@ -13,6 +13,8 @@ import { isDevBillingBypassActive } from "../../lib/devBillingBypass";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
+const ENTITLEMENT_BOOT_TIMEOUT_MS = 7_000;
+
 type TabIconProps = {
   focused: boolean;
   color: string;
@@ -33,6 +35,12 @@ function TabIcon({ focused, color, icon }: TabIconProps) {
       <Icon size={20} color={color} strokeWidth={2.2} />
     </View>
   );
+}
+
+function timeoutAccessFallback(ms: number, fallback: boolean): Promise<boolean> {
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(fallback), ms);
+  });
 }
 
 export default function TabsLayout() {
@@ -66,16 +74,20 @@ export default function TabsLayout() {
       .catch(() => undefined);
 
     const cachedAccess = peekCachedHasPremiumAccess(token);
-    if (cachedAccess !== null) {
+    const fastAccess = user?.is_premium ? true : cachedAccess;
+    if (fastAccess !== null) {
       // Fast path: show UI from cache; refresh billing in background (b92b637).
-      setHasAccess(cachedAccess);
+      setHasAccess(fastAccess);
       setEntitlementLoading(false);
     } else {
       setHasAccess(null);
       setEntitlementLoading(true);
     }
 
-    void resolvePremiumAccess(token, user?.id != null ? String(user.id) : null)
+    void Promise.race([
+      resolvePremiumAccess(token, user?.id != null ? String(user.id) : null),
+      timeoutAccessFallback(ENTITLEMENT_BOOT_TIMEOUT_MS, fastAccess === true),
+    ])
       .then((access) => {
         if (!cancelled) {
           setHasAccess(access);
@@ -84,7 +96,7 @@ export default function TabsLayout() {
       .catch(async () => {
         if (!cancelled) {
           const bypass = await isDevBillingBypassActive().catch(() => false);
-          setHasAccess(bypass || cachedAccess === true);
+          setHasAccess(bypass || fastAccess === true);
         }
       })
       .finally(() => {
@@ -95,7 +107,7 @@ export default function TabsLayout() {
     return () => {
       cancelled = true;
     };
-  }, [token, user?.id]);
+  }, [token, user?.id, user?.is_premium]);
 
   const waitingForEntitlement = Boolean(token) && entitlementLoading && hasAccess == null;
 

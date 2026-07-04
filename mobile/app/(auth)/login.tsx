@@ -1,4 +1,4 @@
-import { Link, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -25,10 +25,14 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const { signIn } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{ next?: string; source?: string; variant?: string }>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const pendingPaywall = params.next === "paywall";
+  const paywallVariant =
+    params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
 
   async function onSubmit() {
     if (loading) return;
@@ -45,6 +49,13 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(trimmedEmail, password);
+      if (pendingPaywall) {
+        router.replace({
+          pathname: "/paywall",
+          params: { source: "post_auth", variant: paywallVariant },
+        });
+        return;
+      }
       const route = await resolvePostAuthRouteFromStorage({
         hasToken: true,
         entryPoint: "login",
@@ -110,15 +121,21 @@ export default function LoginScreen() {
           <PrimaryButton label={t("auth.login.signIn")} onPress={onSubmit} loading={loading} />
         </View>
 
-        <Link href="/(auth)/register" asChild>
-          <Pressable
-            style={styles.linkWrap}
-            accessibilityRole="button"
-            accessibilityLabel={t("auth.login.noAccount")}
-          >
-            <Text style={styles.link}>{t("auth.login.noAccount")}</Text>
-          </Pressable>
-        </Link>
+        <Pressable
+          style={styles.linkWrap}
+          accessibilityRole="button"
+          accessibilityLabel={t("auth.login.noAccount")}
+          onPress={() => {
+            router.push({
+              pathname: "/(auth)/register",
+              params: pendingPaywall
+                ? { next: "paywall", source: "onboarding", variant: paywallVariant }
+                : undefined,
+            });
+          }}
+        >
+          <Text style={styles.link}>{t("auth.login.noAccount")}</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );

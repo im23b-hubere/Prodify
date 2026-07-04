@@ -101,7 +101,7 @@ describe("OnboardingScreen", () => {
     jest.useRealTimers();
   });
 
-  it("skips quiz to weekly goal and routes to personalized paywall", async () => {
+  it("skips quiz to weekly goal and routes anonymous users to account creation before paywall", async () => {
     const { getByText } = render(<OnboardingScreen />);
 
     fireEvent.press(getByText("onboarding.skip"));
@@ -121,8 +121,8 @@ describe("OnboardingScreen", () => {
     });
     expect(apiJson).not.toHaveBeenCalled();
     expect(mockReplace).toHaveBeenCalledWith({
-      pathname: "/paywall",
-      params: { source: "onboarding", variant: "outcome" },
+      pathname: "/(auth)/register",
+      params: { next: "paywall", source: "onboarding", variant: "outcome" },
     });
   });
 });

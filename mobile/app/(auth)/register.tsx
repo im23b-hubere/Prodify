@@ -1,4 +1,4 @@
-import { Link, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,16 +18,21 @@ import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { ApiError } from "../../lib/client";
+import { readOnboardingComplete } from "../../lib/postAuthNavigation";
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
   const { signUp } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{ next?: string; source?: string; variant?: string }>();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const pendingPaywall = params.next === "paywall";
+  const paywallVariant =
+    params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
 
   async function onSubmit() {
     if (loading) return;
@@ -57,7 +62,14 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await signUp(trimmedEmail, trimmedUsername, password);
-      // New registrations must always complete onboarding for account setup.
+      const onboarded = await readOnboardingComplete();
+      if (pendingPaywall || onboarded) {
+        router.replace({
+          pathname: "/paywall",
+          params: { source: "post_auth", variant: paywallVariant },
+        });
+        return;
+      }
       router.replace("/onboarding");
     } catch (e) {
       if (e instanceof ApiError && e.status === 429) {
@@ -127,15 +139,21 @@ export default function RegisterScreen() {
           />
         </View>
 
-        <Link href="/(auth)/login" asChild>
-          <Pressable
-            style={styles.linkWrap}
-            accessibilityRole="button"
-            accessibilityLabel={t("auth.register.hasAccount")}
-          >
-            <Text style={styles.link}>{t("auth.register.hasAccount")}</Text>
-          </Pressable>
-        </Link>
+        <Pressable
+          style={styles.linkWrap}
+          accessibilityRole="button"
+          accessibilityLabel={t("auth.register.hasAccount")}
+          onPress={() => {
+            router.push({
+              pathname: "/(auth)/login",
+              params: pendingPaywall
+                ? { next: "paywall", source: "onboarding", variant: paywallVariant }
+                : undefined,
+            });
+          }}
+        >
+          <Text style={styles.link}>{t("auth.register.hasAccount")}</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );

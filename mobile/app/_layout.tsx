@@ -14,7 +14,6 @@ import {
 import { Syne_700Bold, useFonts as useSyneFonts } from "@expo-google-fonts/syne";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -22,10 +21,10 @@ import { ProdifyWordmark } from "../components/brand/ProdifyWordmark";
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
 import { DeepLinkGuard } from "../components/DeepLinkGuard";
 import { OfflineBanner } from "../components/OfflineBanner";
+import { CrashBoundary } from "../components/ui/CrashBoundary";
 import { AuthProvider } from "../context/AuthContext";
 import { colors, spacing } from "../constants/theme";
 import { initSentry } from "../lib/sentry";
-import { configureRevenueCat } from "../lib/revenuecat";
 import { configureNotificationHandler } from "../lib/streakNotifications";
 
 initSentry();
@@ -35,10 +34,6 @@ export default function RootLayout() {
   const [syneLoaded] = useSyneFonts({ Syne_700Bold });
   const [dmLoaded] = useDmSansFonts({ DMSans_400Regular, DMSans_500Medium, DMSans_700Bold });
   const fontsLoaded = syneLoaded && dmLoaded;
-
-  useEffect(() => {
-    void configureRevenueCat().catch(() => undefined);
-  }, []);
 
   if (!fontsLoaded) {
     return (
@@ -61,43 +56,45 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <DeepLinkGuard />
-          <OfflineBanner />
-          <NotificationNavBridge />
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="progression-overview"
-              options={{
-                animation: "slide_from_right",
-                gestureEnabled: true,
-                gestureDirection: "horizontal",
+          <CrashBoundary scope="root">
+            <DeepLinkGuard />
+            <OfflineBanner />
+            <NotificationNavBridge />
+            <StatusBar style="light" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
               }}
-            />
-            <Stack.Screen
-              name="challenge/[id]"
-              options={{
-                animation: "slide_from_right",
-                gestureEnabled: true,
-                gestureDirection: "horizontal",
-              }}
-            />
-            <Stack.Screen
-              name="session-active"
-              options={{
-                presentation: "fullScreenModal",
-                animation: "slide_from_bottom",
-                gestureDirection: "vertical",
-                gestureEnabled: true,
-              }}
-            />
-          </Stack>
+            >
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen
+                name="progression-overview"
+                options={{
+                  animation: "slide_from_right",
+                  gestureEnabled: true,
+                  gestureDirection: "horizontal",
+                }}
+              />
+              <Stack.Screen
+                name="challenge/[id]"
+                options={{
+                  animation: "slide_from_right",
+                  gestureEnabled: true,
+                  gestureDirection: "horizontal",
+                }}
+              />
+              <Stack.Screen
+                name="session-active"
+                options={{
+                  presentation: "fullScreenModal",
+                  animation: "slide_from_bottom",
+                  gestureDirection: "vertical",
+                  gestureEnabled: true,
+                }}
+              />
+            </Stack>
+          </CrashBoundary>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

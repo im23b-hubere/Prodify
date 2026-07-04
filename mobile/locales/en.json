@@ -382,6 +382,8 @@
       "premiumUnlockedTitle": "Premium unlocked",
       "premiumUnlockedBody": "Your premium plan is active.",
       "purchaseFailedTitle": "Purchase failed",
+      "purchasePendingTitle": "Purchase pending",
+      "purchasePendingBody": "Apple has not finished this purchase yet. We will unlock Premium as soon as the App Store confirms it.",
       "restoreCompleteTitle": "Restore complete",
       "restoreCompletePremium": "Premium restored.",
       "restoreCompleteNone": "No active premium found.",
@@ -399,6 +401,7 @@
       "loadOfferings": "Failed to load offerings.",
       "purchaseFailed": "Purchase failed.",
       "restoreFailed": "Could not restore purchases.",
+      "alreadySubscribedRestoreFailed": "Apple says this subscription already exists, but Prodify could not attach it to this account yet. Tap Restore purchases again, or manage the subscription in Apple ID > Subscriptions.",
       "entitlementNotActive": "Purchase did not activate premium entitlement."
     },
     "a11y": {

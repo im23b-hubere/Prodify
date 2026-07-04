@@ -38,3 +38,38 @@ export function isPurchaseCancelledError(error: unknown): boolean {
     message.includes("user canceled")
   );
 }
+
+function purchaseErrorCode(error: unknown): string {
+  if (!error || typeof error !== "object") return "";
+  return String((error as Record<string, unknown>).code ?? "").toUpperCase();
+}
+
+function purchaseErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message.toLowerCase();
+  if (!error || typeof error !== "object") return String(error ?? "").toLowerCase();
+  return String((error as Record<string, unknown>).message ?? "").toLowerCase();
+}
+
+/** StoreKit/RevenueCat can throw this when the Apple ID already owns the subscription. */
+export function isPurchaseAlreadyOwnedError(error: unknown): boolean {
+  const code = purchaseErrorCode(error);
+  const message = purchaseErrorMessage(error);
+  return (
+    code.includes("PRODUCT_ALREADY_PURCHASED") ||
+    code.includes("PURCHASE_ALREADY") ||
+    code.includes("ALREADY_PURCHASED") ||
+    code.includes("RECEIPT_ALREADY_IN_USE") ||
+    message.includes("already subscribed") ||
+    message.includes("already active") ||
+    message.includes("already purchased") ||
+    message.includes("currently subscribed") ||
+    message.includes("subscription is already active") ||
+    message.includes("receipt is already in use")
+  );
+}
+
+export function isPaymentPendingError(error: unknown): boolean {
+  const code = purchaseErrorCode(error);
+  const message = purchaseErrorMessage(error);
+  return code.includes("PAYMENT_PENDING") || message.includes("payment is pending");
+}

@@ -1,8 +1,10 @@
 import { Platform } from "react-native";
 import Purchases, {
   type CustomerInfo,
+  type MakePurchaseResult,
   type PurchasesEntitlementInfo,
   type PurchasesOffering,
+  type PurchasesPackage,
 } from "react-native-purchases";
 import {
   getExpoPublicRevenueCatApiKey,
@@ -15,6 +17,27 @@ let configuredForUser: string | null = null;
 /** Purchases.configure() may only run once per app process. */
 let sdkConfigured = false;
 let configureChain: Promise<void> = Promise.resolve();
+
+const REVENUECAT_CONFIGURE_TIMEOUT_MS = 8_000;
+const REVENUECAT_READ_TIMEOUT_MS = 10_000;
+const REVENUECAT_PURCHASE_TIMEOUT_MS = 45_000;
+
+function withRevenueCatTimeout<T>(
+  promise: Promise<T>,
+  operation: string,
+  timeoutMs: number,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`RevenueCat ${operation} timed out. Please try again.`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
 
 function getRevenueCatApiKey(): string | null {
   const key = getExpoPublicRevenueCatApiKey();
@@ -51,16 +74,21 @@ export async function configureRevenueCat(appUserId?: string): Promise<void> {
   }
 
   configureChain = configureChain
+    .catch(() => undefined)
     .then(async () => {
       if (__DEV__) {
         Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
       }
 
       if (!sdkConfigured) {
-        await Purchases.configure({
-          apiKey,
-          ...(normalized ? { appUserID: normalized } : {}),
-        });
+        await withRevenueCatTimeout(
+          Purchases.configure({
+            apiKey,
+            ...(normalized ? { appUserID: normalized } : {}),
+          }),
+          "configure",
+          REVENUECAT_CONFIGURE_TIMEOUT_MS,
+        );
         sdkConfigured = true;
         configuredForUser = normalized;
         return;
@@ -71,18 +99,19 @@ export async function configureRevenueCat(appUserId?: string): Promise<void> {
       }
 
       if (normalized) {
-        await Purchases.logIn(normalized);
+        await withRevenueCatTimeout(
+          Purchases.logIn(normalized).then(() => undefined),
+          "log in",
+          REVENUECAT_CONFIGURE_TIMEOUT_MS,
+        );
         configuredForUser = normalized;
         return;
       }
 
       if (configuredForUser !== null) {
-        await Purchases.logOut();
+        await withRevenueCatTimeout(Purchases.logOut(), "log out", REVENUECAT_CONFIGURE_TIMEOUT_MS);
         configuredForUser = null;
       }
-    })
-    .catch((error) => {
-      throw error;
     });
 
   await configureChain;
@@ -100,7 +129,11 @@ export async function getDefaultOffering(appUserId?: string): Promise<PurchasesO
   if (Platform.OS === "web") return null;
   if (!getRevenueCatApiKey()) return null;
   await ensurePurchasesReady(appUserId);
-  const offerings = await Purchases.getOfferings();
+  const offerings = await withRevenueCatTimeout(
+    Purchases.getOfferings(),
+    "offerings",
+    REVENUECAT_READ_TIMEOUT_MS,
+  );
   if (offerings.current) return offerings.current;
   const allOfferings = Object.values(offerings.all ?? {});
   return allOfferings[0] ?? null;
@@ -140,10 +173,29 @@ export function activeEntitlementExpiration(info: CustomerInfo): string | null {
 
 export async function restoreRevenueCatPurchases(appUserId?: string): Promise<CustomerInfo> {
   await ensurePurchasesReady(appUserId);
-  return Purchases.restorePurchases();
+  return withRevenueCatTimeout(
+    Purchases.restorePurchases(),
+    "restore purchases",
+    REVENUECAT_READ_TIMEOUT_MS,
+  );
 }
 
 export async function getRevenueCatCustomerInfo(appUserId?: string): Promise<CustomerInfo> {
   await ensurePurchasesReady(appUserId);
-  return Purchases.getCustomerInfo();
+  return withRevenueCatTimeout(
+    Purchases.getCustomerInfo(),
+    "customer info",
+    REVENUECAT_READ_TIMEOUT_MS,
+  );
+}
+
+export async function purchaseRevenueCatPackage(
+  pkg: PurchasesPackage,
+): Promise<MakePurchaseResult> {
+  await ensurePurchasesReady();
+  return withRevenueCatTimeout(
+    Purchases.purchasePackage(pkg),
+    "purchase",
+    REVENUECAT_PURCHASE_TIMEOUT_MS,
+  );
 }
