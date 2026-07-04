@@ -11,23 +11,17 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { ActiveSessionTimerBlock } from "../../features/dashboard/components/ActiveSessionTimerBlock";
 import { DashboardSessionSetupModal } from "../../features/dashboard/components/DashboardSessionSetupModal";
-import { SessionSkeleton } from "../../features/dashboard/components/SessionSkeleton";
 import { useDashboardData } from "../../features/dashboard/hooks/useDashboardData";
 import { useDashboardSessionSetupModal } from "../../features/dashboard/hooks/useDashboardSessionSetupModal";
 import { useDashboardSocialActions } from "../../features/dashboard/hooks/useDashboardSocialActions";
 import { useDashboardSocialNudges } from "../../features/dashboard/hooks/useDashboardSocialNudges";
 import { useDashboardStreakEvents } from "../../features/dashboard/hooks/useDashboardStreakEvents";
 
-import { glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
-import { DashboardSessionStarter } from "../../components/dashboard/DashboardSessionStarter";
+import { DashboardStudioHud } from "../../components/dashboard/DashboardStudioHud";
 import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
-import { TodayPlanCard } from "../../components/dashboard/TodayPlanCard";
-import { TodayProgressCard } from "../../components/dashboard/TodayProgressCard";
-import { WeeklyGoalInlineCard } from "../../components/dashboard/WeeklyGoalInlineCard";
+import { glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
-import { StreakHeroSection } from "../../components/streak/StreakHeroSection";
 import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { RankHudChip } from "../../components/progression/RankHudChip";
@@ -43,9 +37,12 @@ import {
 import { fontFamily } from "../../constants/fonts";
 import { colors, motion, radii, shadows, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
+import { useRankProgression } from "../../hooks/useRankProgression";
 import { apiJson } from "../../lib/client";
 import { debugLog } from "../../lib/debugLog";
+import { buildWeeklyForecast } from "../../lib/forecastEngine";
 import { setWeeklyGoal } from "../../lib/goals";
+import { buildSessionFeedback } from "../../lib/sessionFeedbackEngine";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { tryParseSessionDto } from "../../lib/sessionDto";
 import { buildTodayPlanRecommendation } from "../../lib/todayPlanEngine";
@@ -81,6 +78,7 @@ function startOfCurrentWeekMonday(now: Date): Date {
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
+  const { level } = useRankProgression(Boolean(token));
   const router = useRouter();
   const {
     sessions,
@@ -272,28 +270,6 @@ export default function DashboardScreen() {
       }),
     [weeklyGoalTarget, user?.created_at],
   );
-  const firstWeekTargetAdjusted = useMemo(
-    () =>
-      weeklyGoalTarget != null &&
-      effectiveWeeklyGoalTarget != null &&
-      effectiveWeeklyGoalTarget !== weeklyGoalTarget,
-    [weeklyGoalTarget, effectiveWeeklyGoalTarget],
-  );
-  const shortWeekSessionsCount = useMemo(() => {
-    const monday = startOfCurrentWeekMonday(new Date());
-    let shortCount = 0;
-    for (const s of visibleSessions) {
-      if (!s.started_at || s.stopped_at == null) continue;
-      const startedAt = parseApiDate(s.started_at);
-      if (!Number.isFinite(startedAt.getTime())) continue;
-      if (!isSameOrAfterMonday(startedAt, monday)) continue;
-      const duration = s.duration_seconds ?? 0;
-      if (duration > 0 && duration < GOAL_QUALIFY_MIN_SECONDS) {
-        shortCount += 1;
-      }
-    }
-    return shortCount;
-  }, [visibleSessions]);
 
   const todayPlan = useMemo(
     () =>
@@ -310,6 +286,32 @@ export default function DashboardScreen() {
       }),
     [effectiveWeeklyGoalTarget, weekSessionsForGoal, streakOverview, clientStreak, visibleSessions],
   );
+  const paceForecast = useMemo(
+    () =>
+      effectiveWeeklyGoalTarget != null && effectiveWeeklyGoalTarget > 0
+        ? buildWeeklyForecast({
+            weeklyGoalTarget: effectiveWeeklyGoalTarget,
+            completedThisWeek: weekSessionsForGoal,
+          })
+        : null,
+    [effectiveWeeklyGoalTarget, weekSessionsForGoal],
+  );
+  const sessionFeedback = useMemo(
+    () =>
+      buildSessionFeedback({
+        weeklyGoalTarget: effectiveWeeklyGoalTarget,
+        weekSessionsCount: weekSessionsForGoal,
+        currentStreak: streakOverview?.current_streak ?? clientStreak,
+        sessionDurationSeconds: 0,
+      }),
+    [effectiveWeeklyGoalTarget, weekSessionsForGoal, streakOverview, clientStreak],
+  );
+  const studioStatusLine = useMemo(() => {
+    if (!hasWeeklyGoal) return null;
+    if (streakOverview?.streak_at_risk) return t("streakHero.riskBanner");
+    if (paceForecast) return t(paceForecast.todayActionKey, paceForecast.todayActionParams);
+    return null;
+  }, [hasWeeklyGoal, streakOverview?.streak_at_risk, paceForecast, t]);
 
   const openSessionSetup = useCallback(() => {
     if (active) {
@@ -357,16 +359,6 @@ export default function DashboardScreen() {
     },
     [token, refreshDashboard, setError, t],
   );
-
-  const showTodayPlan = useMemo(() => {
-    if (!hasWeeklyGoal) return false;
-    if (streakOverview?.streak_at_risk) return true;
-    if (todayPlan.status === "off_track") return true;
-    if (todayStats.count === 0) return true;
-    return false;
-  }, [hasWeeklyGoal, streakOverview?.streak_at_risk, todayPlan.status, todayStats.count]);
-
-  const showTodayProgress = todayStats.count > 0;
 
   const displayOverview = useMemo((): StreakOverviewDto | null => {
     if (streakOverview) return streakOverview;
@@ -621,73 +613,35 @@ export default function DashboardScreen() {
               />
             </View>
 
-            {active ? (
-              <ActiveSessionTimerBlock
-                active={active}
-                onOpenFullscreen={openFullscreenActive}
-                onConfirmStop={confirmStop}
-                stopBusy={stopBusy}
-              />
-            ) : (
-              <DashboardSessionStarter onQuickStart={openSessionSetup} />
-            )}
-
-            {loading && !displayOverview ? <SessionSkeleton /> : null}
-
-            <StreakHeroSection
-              overview={displayOverview}
+            <DashboardStudioHud
+              t={t}
               loading={loading && !displayOverview}
-              compact
+              active={active}
+              stopBusy={stopBusy}
+              onQuickStart={openSessionSetup}
+              onOpenFullscreen={openFullscreenActive}
+              onConfirmStop={confirmStop}
+              hasWeeklyGoal={hasWeeklyGoal}
+              weekSessionsCount={weekSessionsForGoal}
+              weeklyGoalTarget={effectiveWeeklyGoalTarget}
+              goalSaving={goalSaving}
+              onSaveWeeklyGoal={saveWeeklyGoal}
+              feedback={sessionFeedback}
+              paceForecast={paceForecast}
+              streakOverview={displayOverview}
+              streakCount={displayOverview?.current_streak ?? clientStreak}
+              todaySessions={todayStats.count}
+              todayMinutes={todayStats.minutes}
+              level={level}
+              statusLine={studioStatusLine}
               freezeBusy={freezeBusy}
               onUseFreeze={onUseFreeze}
               onFreezeUnavailable={onFreezeUnavailable}
-              onOpenHistory={() => {
+              onOpenStreakHistory={() => {
                 Haptics.selectionAsync().catch(() => undefined);
                 router.push("/streak/history");
               }}
             />
-
-            {!hasWeeklyGoal ? (
-              <WeeklyGoalInlineCard mode="setup" busy={goalSaving} onSave={saveWeeklyGoal} />
-            ) : (
-              <WeeklyGoalInlineCard
-                mode="progress"
-                current={weekSessionsForGoal}
-                target={effectiveWeeklyGoalTarget ?? weeklyGoalTarget ?? 0}
-                busy={goalSaving}
-                onChangeTarget={saveWeeklyGoal}
-              />
-            )}
-
-            {showTodayPlan ? (
-              <TodayPlanCard
-                plan={todayPlan}
-                compact
-                showCta={false}
-                shortSessionsHint={
-                  shortWeekSessionsCount > 0
-                    ? t("todayPlan.shortSessionsHint", { count: shortWeekSessionsCount, min: 5 })
-                    : null
-                }
-                adjustedTargetHint={
-                  firstWeekTargetAdjusted
-                    ? t("todayPlan.adjustedTargetHint", {
-                        adjusted: effectiveWeeklyGoalTarget,
-                        original: weeklyGoalTarget,
-                      })
-                    : null
-                }
-                onStartSuggested={openSessionSetup}
-              />
-            ) : null}
-
-            {showTodayProgress ? (
-              <TodayProgressCard
-                todaySessions={todayStats.count}
-                todayMinutes={todayStats.minutes}
-                compact
-              />
-            ) : null}
 
             <FriendsActivityWidget
               currentUserId={user?.id ?? 0}

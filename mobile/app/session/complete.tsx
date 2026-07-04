@@ -6,11 +6,11 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AppFlame, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { SessionCompleteWeekCard } from "../../components/session/SessionCompleteWeekCard";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
-import { TextButton } from "../../components/ui/TextButton";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
+import { StatTile } from "../../components/ui/StatTile";
+import { TextButton } from "../../components/ui/TextButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
@@ -63,28 +63,6 @@ function estimateSessionXpGain(durationSeconds: number): number {
   if (minutes >= 45) raw += 5;
   if (minutes >= 75) raw += 7;
   return Math.max(0, Math.min(SESSION_XP_MAX, raw));
-}
-
-function StatTile({
-  label,
-  value,
-  accent = false,
-  icon,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-  icon?: "flame";
-}) {
-  return (
-    <View style={[styles.statTile, accent && styles.statTileAccent]}>
-      <Text style={styles.statTileLabel}>{label}</Text>
-      <View style={glyphRowStyle}>
-        {icon === "flame" ? <AppFlame size={14} /> : null}
-        <Text style={[styles.statTileValue, accent && styles.statTileValueAccent]}>{value}</Text>
-      </View>
-    </View>
-  );
 }
 
 export default function SessionCompleteScreen() {
@@ -396,37 +374,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     width: "100%",
     marginTop: spacing.sm,
-  },
-  statTile: {
-    minWidth: 88,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-    gap: 4,
-  },
-  statTileAccent: {
-    borderColor: "rgba(0,255,136,0.35)",
-    backgroundColor: "rgba(0,255,136,0.08)",
-  },
-  statTileLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 10,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-  statTileValue: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 20,
-    lineHeight: 24,
-  },
-  statTileValueAccent: {
-    color: colors.success,
   },
   xpHintInline: {
     color: "#f59e0b",

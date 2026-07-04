@@ -900,6 +900,8 @@
     "weekdayShort": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
     "heyUser": "Hey, {{name}}",
     "heyPrefix": "Hey,",
+    "studioTodayLabel": "Today",
+    "studioTodayValue": "{{sessions}} · {{minutes}}m",
     "notificationsA11y": "Notifications",
     "streakFallbackTagline": "Connect to unlock Streak Freeze and sync milestones.",
     "naturalCountingStart": "Just getting started…",

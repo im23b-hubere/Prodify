@@ -102,11 +102,18 @@ jest.mock("../../features/dashboard/hooks/useDashboardStreakEvents", () => ({
   }),
 }));
 
-jest.mock("../../components/dashboard/DashboardSessionStarter", () => ({
-  DashboardSessionStarter: () => {
+jest.mock("../../components/dashboard/DashboardStudioHud", () => ({
+  DashboardStudioHud: ({ hasWeeklyGoal }: { hasWeeklyGoal: boolean }) => {
     const React = require("react");
     const { View } = require("react-native");
-    return React.createElement(View, { testID: "dashboard-start-session" });
+    return React.createElement(
+      View,
+      { testID: "dashboard-studio-hud" },
+      React.createElement(View, {
+        testID: hasWeeklyGoal ? "dashboard-quest-progress" : "dashboard-quest-setup",
+      }),
+      React.createElement(View, { testID: "dashboard-start-session" }),
+    );
   },
 }));
 jest.mock("../../components/dashboard/FriendsActivityWidget", () => ({
@@ -116,38 +123,11 @@ jest.mock("../../components/dashboard/FriendsActivityWidget", () => ({
     return React.createElement(View);
   },
 }));
-jest.mock("../../components/dashboard/TodayPlanCard", () => ({
-  TodayPlanCard: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View, { testID: "today-plan-card" });
-  },
-}));
-jest.mock("../../components/dashboard/TodayProgressCard", () => ({
-  TodayProgressCard: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View);
-  },
-}));
-jest.mock("../../components/dashboard/WeeklyGoalInlineCard", () => ({
-  WeeklyGoalInlineCard: ({ mode }: { mode: "setup" | "progress" }) => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View, {
-      testID: mode === "setup" ? "weekly-goal-inline-setup" : "weekly-goal-inline-progress",
-    });
-  },
+jest.mock("../../hooks/useRankProgression", () => ({
+  useRankProgression: () => ({ level: 2 }),
 }));
 jest.mock("../../components/streak/StreakBreakModal", () => ({
   StreakBreakModal: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View);
-  },
-}));
-jest.mock("../../components/streak/StreakHeroSection", () => ({
-  StreakHeroSection: () => {
     const React = require("react");
     const { View } = require("react-native");
     return React.createElement(View);
@@ -221,6 +201,20 @@ jest.mock("../../lib/forecastEngine", () => ({
   buildWeeklyForecast: () => null,
 }));
 
+jest.mock("../../lib/sessionFeedbackEngine", () => ({
+  buildSessionFeedback: () => ({
+    progressPercent: 40,
+    remainingSessionsToGoal: 3,
+    previousStatus: null,
+    newStatus: "on_track",
+    statusMessageKey: "sessionFeedback.status.onTrack",
+    emotionalMessageKey: "sessionFeedback.emotion.solidConsistency",
+    nextActionKey: "sessionFeedback.nextAction.keepPace",
+    nextActionParams: { sessions: 1, minutes: 30 },
+    premiumPreview: { forecastReady: true, habitRiskReady: true, bestTimeReady: true },
+  }),
+}));
+
 jest.mock("../../lib/notificationInbox", () => ({
   getUnreadCount: jest.fn().mockResolvedValue(0),
   syncServerInbox: jest.fn().mockResolvedValue(undefined),
@@ -274,10 +268,10 @@ describe("Dashboard Screen", () => {
     mockUseDashboardData.mockReturnValue(createDashboardState());
   });
 
-  it("renders loading state initially", () => {
+  it("renders studio hud while dashboard data is loading", () => {
     mockUseDashboardData.mockReturnValue(createDashboardState({ loading: true }));
-    const { getByText } = render(<DashboardScreen />);
-    expect(getByText("Loading sessions...")).toBeTruthy();
+    const { getByTestId } = render(<DashboardScreen />);
+    expect(getByTestId("dashboard-studio-hud")).toBeTruthy();
   });
 
   it("renders recent session item after data load", () => {
@@ -322,7 +316,7 @@ describe("Dashboard Screen", () => {
       }),
     );
     const { getByTestId } = render(<DashboardScreen />);
-    expect(getByTestId("weekly-goal-inline-setup")).toBeTruthy();
+    expect(getByTestId("dashboard-quest-setup")).toBeTruthy();
   });
 
   it("shows weekly goal progress when a target exists", () => {
@@ -334,10 +328,10 @@ describe("Dashboard Screen", () => {
       }),
     );
     const { getByTestId } = render(<DashboardScreen />);
-    expect(getByTestId("weekly-goal-inline-progress")).toBeTruthy();
+    expect(getByTestId("dashboard-quest-progress")).toBeTruthy();
   });
 
-  it("hides today plan when user already has sessions today and is on track", () => {
+  it("does not render the removed today plan card", () => {
     const today = new Date();
     const startedAt = new Date(today);
     startedAt.setHours(9, 30, 0, 0);
