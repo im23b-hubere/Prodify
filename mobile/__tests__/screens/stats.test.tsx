@@ -72,7 +72,6 @@ jest.mock("../../lib/client", () => ({
     }
     if (path.includes("/stats/heatmap")) return Promise.resolve([]);
     if (path.includes("/stats/records")) return Promise.resolve([]);
-    if (path.includes("/motivational-messages")) return Promise.resolve(null);
     if (path.includes("/outcomes/goal-forecast")) {
       return Promise.resolve({
         week_start: "2026-06-23",
@@ -119,14 +118,6 @@ jest.mock("../../components/stats/YourWeekCard", () => ({
     const React = require("react");
     const { View } = require("react-native");
     return React.createElement(View, { testID: "your-week-hero" });
-  },
-}));
-
-jest.mock("../../components/dashboard/DashboardMotivationCard", () => ({
-  DashboardMotivationCard: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View);
   },
 }));
 

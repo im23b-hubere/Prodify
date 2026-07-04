@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { memo, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -15,28 +16,36 @@ export type KpiItem = {
 type Props = {
   items: KpiItem[];
   testID?: string;
+  variant?: "default" | "hero";
 };
 
-export const StatsKpiStrip = memo(function StatsKpiStrip({ items, testID }: Props) {
-  return (
-    <View style={styles.row} testID={testID}>
+export const StatsKpiStrip = memo(function StatsKpiStrip({
+  items,
+  testID,
+  variant = "default",
+}: Props) {
+  const isHero = variant === "hero";
+
+  const strip = (
+    <View style={[styles.row, isHero && styles.rowHero]}>
       {items.map((item, index) => (
         <View
           key={item.key}
-          style={[styles.cell, index < items.length - 1 && styles.cellBorder]}
+          style={[styles.cell, isHero && styles.cellHero, index < items.length - 1 && styles.cellBorder, isHero && index < items.length - 1 && styles.cellBorderHero]}
         >
           {typeof item.value === "string" || typeof item.value === "number" ? (
-            <Text style={styles.value}>{item.value}</Text>
+            <Text style={[styles.value, isHero && styles.valueHero]}>{item.value}</Text>
           ) : (
             <View style={styles.valueRow}>{item.value}</View>
           )}
-          <Text style={styles.label} numberOfLines={1}>
+          <Text style={[styles.label, isHero && styles.labelHero]} numberOfLines={1}>
             {item.label}
           </Text>
           {item.sublabel ? (
             <Text
               style={[
                 styles.sub,
+                isHero && styles.subHero,
                 item.subPositive === false ? styles.subNeg : styles.subPos,
               ]}
               numberOfLines={2}
@@ -48,9 +57,44 @@ export const StatsKpiStrip = memo(function StatsKpiStrip({ items, testID }: Prop
       ))}
     </View>
   );
+
+  if (isHero) {
+    return (
+      <LinearGradient
+        colors={["#3d1510", "#1a1010", "#0f0f0f"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroShell}
+        testID={testID}
+      >
+        {strip}
+      </LinearGradient>
+    );
+  }
+
+  return (
+    <View testID={testID} style={styles.defaultShell}>
+      {strip}
+    </View>
+  );
 });
 
 const styles = StyleSheet.create({
+  defaultShell: {
+    borderRadius: radii.lg,
+    overflow: "hidden",
+  },
+  heroShell: {
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
   row: {
     flexDirection: "row",
     borderRadius: radii.lg,
@@ -59,6 +103,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     overflow: "hidden",
   },
+  rowHero: {
+    borderWidth: 0,
+    backgroundColor: "transparent",
+  },
   cell: {
     flex: 1,
     alignItems: "center",
@@ -66,15 +114,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     gap: 2,
   },
+  cellHero: {
+    paddingVertical: spacing.md,
+  },
   cellBorder: {
     borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: colors.border,
+  },
+  cellBorderHero: {
+    borderRightColor: "rgba(255,255,255,0.1)",
   },
   value: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     fontSize: 20,
     lineHeight: 24,
+  },
+  valueHero: {
+    fontSize: 30,
+    lineHeight: 34,
+    letterSpacing: -0.5,
   },
   valueRow: {
     flexDirection: "row",
@@ -87,11 +146,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: "center",
   },
+  labelHero: {
+    color: "rgba(255,255,255,0.55)",
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
   sub: {
     fontFamily: fontFamily.body,
     fontSize: 10,
     textAlign: "center",
     lineHeight: 13,
+  },
+  subHero: {
+    fontSize: 11,
+    lineHeight: 14,
   },
   subPos: { color: colors.success },
   subNeg: { color: colors.danger },

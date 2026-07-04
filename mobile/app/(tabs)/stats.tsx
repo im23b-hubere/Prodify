@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
+import { DashboardRecentSessionRow } from "../../components/dashboard/DashboardRecentSessionRow";
 import { YourWeekCard } from "../../components/stats/YourWeekCard";
 import { StatsKpiStrip } from "../../components/stats/StatsKpiStrip";
 import { AppFlame, RecordGlyph, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
@@ -40,16 +40,6 @@ import { apiJson } from "../../lib/client";
 import { fetchCurrentGoal, setWeeklyGoal as saveWeeklyGoalApi } from "../../lib/goals";
 import { fetchCommitment } from "../../lib/social";
 import { debugLog } from "../../lib/debugLog";
-import {
-  parseMotivationalMessage,
-  translateMotivationalMessage,
-  type MotivationalMessageDto,
-} from "../../lib/motivationApi";
-import {
-  generateMotivationMessage,
-  getTimeBasedGreeting,
-  getTimeOfDay,
-} from "../../lib/motivationEngine";
 import {
   formatIsoDateShortLocal,
   formatSessionListDate,
@@ -157,7 +147,7 @@ function recordPriorityScore(key: string) {
   return 20;
 }
 
-const BAR_CHART_HEIGHT = 104;
+const BAR_CHART_HEIGHT = 132;
 
 type BarPoint = { x: string; y: number; label: string };
 
@@ -272,7 +262,7 @@ function SessionsPerDayChart({ data }: { data: BarPoint[] }) {
             <Text style={styles.barAxisLabel} numberOfLines={1}>
               {d.x}
             </Text>
-            <Text style={styles.barCount}>{d.y}</Text>
+            <Text style={[styles.barCount, d.y > 0 && styles.barCountActive]}>{d.y}</Text>
           </View>
         );
       }}
@@ -282,7 +272,7 @@ function SessionsPerDayChart({ data }: { data: BarPoint[] }) {
 
 export default function StatsScreen() {
   const { t } = useTranslation();
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams<{ focus?: string | string[] }>();
   const focusParam = Array.isArray(params.focus) ? params.focus[0] : params.focus;
@@ -309,9 +299,6 @@ export default function StatsScreen() {
   const [goalConfigured, setGoalConfigured] = useState(false);
   const [weekBusy, setWeekBusy] = useState(false);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
-  const [serverMotivationDto, setServerMotivationDto] = useState<MotivationalMessageDto | null>(
-    null,
-  );
   const loadSeq = useRef(0);
   const mounted = useRef(true);
   const lastStatsFetchRef = useRef<{ at: number; period: string } | null>(null);
@@ -379,12 +366,11 @@ export default function StatsScreen() {
         // Show core stats first, then hydrate secondary sections.
         if (mounted.current && seq === loadSeq.current) setLoading(false);
 
-        const [progressionRes, motivationRes, goalRes, commitmentRes, configuredRes, forecastRes] =
+        const [progressionRes, goalRes, commitmentRes, configuredRes, forecastRes] =
           await Promise.allSettled([
             forceProgressionSync
               ? syncProgression(token, { force: true })
               : fetchProgression(token),
-            apiJson<unknown>("/motivational-messages/random", { token }),
             fetchCurrentGoal(token),
             fetchCommitment(token),
             AsyncStorage.getItem(WEEKLY_GOAL_CONFIGURED_KEY),
@@ -393,7 +379,6 @@ export default function StatsScreen() {
         if (!mounted.current || seq !== loadSeq.current) return;
 
         const progressionRaw = progressionRes.status === "fulfilled" ? progressionRes.value : null;
-        const motivationRaw = motivationRes.status === "fulfilled" ? motivationRes.value : null;
         const goalRaw = goalRes.status === "fulfilled" ? goalRes.value : null;
         const commitmentRaw = commitmentRes.status === "fulfilled" ? commitmentRes.value : null;
         const configuredRaw = configuredRes.status === "fulfilled" ? configuredRes.value : null;
@@ -412,7 +397,6 @@ export default function StatsScreen() {
           void AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1");
         }
         setProgression(progressionRaw);
-        setServerMotivationDto(parseMotivationalMessage(motivationRaw));
         lastStatsFetchRef.current = { at: Date.now(), period: periodParam };
       } catch (e) {
         if (!mounted.current || seq !== loadSeq.current) return;
@@ -580,41 +564,6 @@ export default function StatsScreen() {
 
   const recent = useMemo(() => stats?.recent_sessions ?? [], [stats?.recent_sessions]);
 
-  const todaySessionCount = useMemo(() => {
-    const todayKey = localDateKey(new Date());
-    return recent.filter((session) => {
-      if (!session.started_at) return false;
-      const startedAt = new Date(session.started_at);
-      if (!Number.isFinite(startedAt.getTime())) return false;
-      return localDateKey(startedAt) === todayKey;
-    }).length;
-  }, [recent]);
-
-  const weekSessionCount = useMemo(() => {
-    if (filter.period === "week" && stats?.summary) {
-      return Math.max(0, stats.summary.total_sessions ?? 0);
-    }
-    return chartData.reduce((sum, point) => sum + point.y, 0);
-  }, [chartData, filter.period, stats?.summary]);
-
-  const serverMotivationLine = useMemo(() => {
-    if (!serverMotivationDto) return null;
-    return translateMotivationalMessage(serverMotivationDto, t);
-  }, [serverMotivationDto, t]);
-
-  const motivationMessage = useMemo(
-    () =>
-      generateMotivationMessage({
-        streak: summary.streak,
-        todayCount: todaySessionCount,
-        weekCount: weekSessionCount,
-        friends: { activeNow: 0, topThisWeek: null },
-        timeOfDay: getTimeOfDay(),
-        lastSessionFocus: recent[0]?.focus_score ?? null,
-      }),
-    [recent, summary.streak, todaySessionCount, weekSessionCount],
-  );
-
   const showInitialLoading = loading && !refreshing && !stats && !error;
   const showInlineLoading = loading && !refreshing && !!stats;
 
@@ -686,8 +635,8 @@ export default function StatsScreen() {
         label: t("stats.currentStreak"),
         value: (
           <View style={glyphRowStyle}>
-            <AppFlame size={16} />
-            <Text style={styles.statValueText}>{summary.streak}</Text>
+            <AppFlame size={18} />
+            <Text style={styles.heroStatValue}>{summary.streak}</Text>
           </View>
         ),
         sublabel: t("stats.bestStreakSub", { days: summary.bestStreak }),
@@ -697,32 +646,13 @@ export default function StatsScreen() {
     [summary, t],
   );
 
-  const renderRecent = useCallback(
-    ({ item }: { item: SessionDto }) => {
-      const sid = item.id;
-      const canOpen = typeof sid === "number" && Number.isFinite(sid) && sid > 0;
-      return (
-        <Pressable
-          style={({ pressed }) => [styles.recentRow, pressed && styles.recentRowPressed]}
-          onPress={() => {
-            if (!canOpen) return;
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-            router.push(`/session/${sid}`);
-          }}
-          disabled={!canOpen}
-        >
-          <Text style={styles.recentType}>
-            {sessionTypeLabel(String(item.session_type ?? "beat_making"), t)}
-          </Text>
-          <View style={styles.recentMid}>
-            <Text style={styles.recentDur}>{formatDuration(item.duration_seconds ?? 0)}</Text>
-            <Text style={styles.recentDate}>{formatSessionListDate(item.started_at)}</Text>
-          </View>
-          <Text style={styles.recentChev}>›</Text>
-        </Pressable>
-      );
+  const openRecentSession = useCallback(
+    (session: SessionDto) => {
+      const sid = session.id;
+      if (typeof sid !== "number" || !Number.isFinite(sid) || sid <= 0) return;
+      router.push(`/session/${sid}`);
     },
-    [router, t],
+    [router],
   );
 
   return (
@@ -761,7 +691,6 @@ export default function StatsScreen() {
               </Pressable>
             ))}
           </View>
-          <Text style={styles.filterHint}>{t("stats.filterScopeShort")}</Text>
         </View>
 
         {showInitialLoading ? <StatsSkeleton /> : null}
@@ -802,7 +731,7 @@ export default function StatsScreen() {
               </View>
             ) : null}
 
-            <StatsKpiStrip items={statCarouselItems} testID="stats-kpi-strip" />
+            <StatsKpiStrip items={statCarouselItems} variant="hero" testID="stats-kpi-strip" />
 
             {productivityHintText ? (
               <AppCard style={styles.hintCard} testID="stats-ai-insight">
@@ -811,45 +740,27 @@ export default function StatsScreen() {
               </AppCard>
             ) : null}
 
-            {token ? (
-              <View style={styles.motivationWrap} testID="stats-section-motivation">
-                <Text style={styles.sectionGroupTitle}>{t("stats.motivationSectionTitle")}</Text>
-                <DashboardMotivationCard
-                  greeting={getTimeBasedGreeting()}
-                  userName={user?.username ?? t("dashboard.defaultUserName")}
-                  message={motivationMessage}
-                  serverMessage={serverMotivationLine}
-                  todaySessionCount={todaySessionCount}
-                />
-              </View>
-            ) : null}
-
-            <Text style={styles.sectionGroupTitle}>{t("stats.sectionInsights")}</Text>
-
             <StatsSection
               title={t("stats.trendsSectionTitle")}
               subtitle={t("stats.trendsSectionSubtitle")}
               testID="stats-section-trends"
             >
-              <View style={styles.nestedBlock}>
-                <Text style={styles.nestedTitle}>{t("stats.perDayTitle")}</Text>
-                {chartData.length === 0 ? (
-                  <EmptyState
-                    compact
-                    title={t("stats.perDayEmptyTitle")}
-                    message={t("stats.perDayEmpty")}
-                    actionLabel={t("common.startSession")}
-                    onAction={handleStartSession}
-                  />
-                ) : (
-                  <View style={styles.chartInner}>
-                    <SessionsPerDayChart data={chartData} />
-                  </View>
-                )}
-              </View>
-              <View style={styles.nestedBlock}>
-                <Text style={styles.nestedTitle}>{t("stats.typeMixTitle")}</Text>
-                {breakdownData.length > 0 ? (
+              {chartData.length === 0 ? (
+                <EmptyState
+                  compact
+                  title={t("stats.perDayEmptyTitle")}
+                  message={t("stats.perDayEmpty")}
+                  actionLabel={t("common.startSession")}
+                  onAction={handleStartSession}
+                />
+              ) : (
+                <View style={styles.chartInner}>
+                  <SessionsPerDayChart data={chartData} />
+                </View>
+              )}
+              {breakdownData.length > 0 ? (
+                <>
+                  <View style={styles.sectionDivider} />
                   <View style={styles.breakdownWrap}>
                     {breakdownData.map((item) => (
                       <View key={item.label} style={styles.breakdownRow}>
@@ -871,7 +782,10 @@ export default function StatsScreen() {
                       </View>
                     ))}
                   </View>
-                ) : (
+                </>
+              ) : chartData.length > 0 ? (
+                <>
+                  <View style={styles.sectionDivider} />
                   <EmptyState
                     compact
                     title={t("stats.typeMixEmptyTitle")}
@@ -879,35 +793,9 @@ export default function StatsScreen() {
                     actionLabel={t("common.startSession")}
                     onAction={handleStartSession}
                   />
-                )}
-              </View>
+                </>
+              ) : null}
             </StatsSection>
-
-            <View style={styles.recentBlock} testID="stats-section-recent">
-              <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
-              {recent.length === 0 ? (
-                <EmptyState
-                  compact
-                  title={t("stats.recentEmptyTitle")}
-                  message={t("stats.recentEmpty")}
-                  actionLabel={t("common.startSession")}
-                  onAction={handleStartSession}
-                />
-              ) : (
-                <View style={styles.recentList}>
-                  {recent.slice(0, 5).map((item) => (
-                    <View
-                      key={`top-${typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}`}
-                      style={styles.recentItem}
-                    >
-                      {renderRecent({ item })}
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            <Text style={styles.sectionGroupTitle}>{t("stats.sectionHistory")}</Text>
 
             <StatsSection
               title={t("stats.heatmapTitle")}
@@ -976,7 +864,9 @@ export default function StatsScreen() {
                             ) : null}
                           </View>
                         </View>
-                        <Text style={styles.recordVal}>{r.value}</Text>
+                        <Text style={[styles.recordVal, idx === 0 && styles.recordValFeatured]}>
+                          {r.value}
+                        </Text>
                         {displayContext ? (
                           <Text style={styles.recordCtx}>{displayContext}</Text>
                         ) : null}
@@ -988,11 +878,8 @@ export default function StatsScreen() {
               )}
             </StatsSection>
 
-            <Text style={styles.sectionGroupTitle}>{t("stats.sectionExtras")}</Text>
-
             <StatsSection
               title={t("stats.progressionSectionTitle")}
-              subtitle={t("stats.progressionSectionSubtitle")}
               testID="stats-section-progression"
             >
               <View style={styles.progressionInner}>
@@ -1002,6 +889,39 @@ export default function StatsScreen() {
                 />
               </View>
             </StatsSection>
+
+            <View style={styles.recentBlock} testID="stats-section-recent">
+              <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
+              {recent.length === 0 ? (
+                <EmptyState
+                  compact
+                  title={t("stats.recentEmptyTitle")}
+                  message={t("stats.recentEmpty")}
+                  actionLabel={t("common.startSession")}
+                  onAction={handleStartSession}
+                />
+              ) : (
+                <View style={styles.recentList}>
+                  {recent.slice(0, 8).map((item) => {
+                    const typeLabel = sessionTypeLabel(String(item.session_type ?? "beat_making"), t);
+                    const sid =
+                      typeof item.id === "number" && Number.isFinite(item.id) && item.id > 0
+                        ? item.id
+                        : null;
+                    return (
+                      <DashboardRecentSessionRow
+                        key={sid != null ? `recent-${sid}` : `recent-${item.started_at}`}
+                        session={item}
+                        typeLabel={typeLabel}
+                        accessibilityLabel={`${typeLabel}, ${formatSessionListDate(item.started_at)}`}
+                        accessibilityHint={t("dashboard.openSessionDetailsA11y")}
+                        onPress={() => openRecentSession(item)}
+                      />
+                    );
+                  })}
+                </View>
+              )}
+            </View>
 
             <View style={styles.weeklyRecapBottomCta}>
               <SecondaryButton label={t("stats.openWeeklyRecap")} onPress={openWeeklyRecap} />
@@ -1095,24 +1015,22 @@ const styles = StyleSheet.create({
   filterLabelActive: { color: colors.textPrimary },
   cardRow: { gap: spacing.sm, paddingBottom: spacing.lg },
   contentFadeWrap: {
-    gap: spacing.md,
+    gap: spacing.lg,
   },
-  motivationWrap: {
-    marginBottom: spacing.xs,
+  heroStatValue: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 30,
+    lineHeight: 34,
+    letterSpacing: -0.5,
+  },
+  sectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginVertical: spacing.sm,
   },
   heroWrap: {
     marginBottom: spacing.xs,
-  },
-  sectionGroupTitle: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginTop: spacing.xs,
-  },
-  nestedBlock: {
-    gap: spacing.sm,
   },
   staticSection: {
     gap: spacing.md,
@@ -1122,8 +1040,8 @@ const styles = StyleSheet.create({
   },
   staticSectionTitle: {
     color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.body,
+    fontFamily: fontFamily.heading,
+    ...typography.sectionTitle,
   },
   staticSectionSubtitle: {
     color: colors.textSecondary,
@@ -1132,15 +1050,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   staticSectionBody: {
-    gap: spacing.sm,
-  },
-  nestedTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
+    gap: spacing.md,
   },
   recentBlock: {
     gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   progressionInner: {
     marginTop: -spacing.md,
@@ -1230,13 +1144,13 @@ const styles = StyleSheet.create({
   heatmapGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 3,
+    gap: 4,
     marginTop: spacing.sm,
   },
   heatCell: {
-    width: 10,
-    height: 10,
-    borderRadius: 2,
+    width: 11,
+    height: 11,
+    borderRadius: 3,
   },
   recordsWrap: {
     gap: spacing.sm,
@@ -1250,11 +1164,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   recordCardFeatured: {
-    borderColor: "rgba(255,61,0,0.5)",
-    backgroundColor: "rgba(255,61,0,0.08)",
-    shadowColor: colors.primary,
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
+    borderColor: "rgba(162,89,255,0.45)",
+    backgroundColor: "rgba(162,89,255,0.08)",
+    shadowColor: colors.secondary,
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
@@ -1269,11 +1183,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs,
     flexShrink: 1,
-  },
-  statValueText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.subheadline,
   },
   recordBadge: {
     borderRadius: radii.round,
@@ -1309,6 +1218,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 30,
   },
+  recordValFeatured: {
+    fontSize: 32,
+    lineHeight: 38,
+    letterSpacing: -0.5,
+  },
   recordCtx: {
     color: colors.textSecondary,
     ...typography.meta,
@@ -1329,7 +1243,7 @@ const styles = StyleSheet.create({
     paddingRight: spacing.sm,
   },
   barColumn: {
-    width: 40,
+    width: 44,
     alignItems: "center",
   },
   barTrack: {
@@ -1339,9 +1253,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   barFill: {
-    width: 24,
-    borderTopLeftRadius: 5,
-    borderTopRightRadius: 5,
+    width: 28,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
   },
   barAxisLabel: {
     marginTop: 6,
@@ -1352,10 +1266,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   barCount: {
-    marginTop: 1,
+    marginTop: 2,
     color: colors.textSecondary,
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: fontFamily.bodyMedium,
+  },
+  barCountActive: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 12,
   },
   breakdownWrap: {
     gap: spacing.sm,
@@ -1384,8 +1303,8 @@ const styles = StyleSheet.create({
   },
   breakdownTrack: {
     flex: 1,
-    height: 10,
-    borderRadius: 5,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: "#222222",
     overflow: "hidden",
   },
@@ -1435,39 +1354,11 @@ const styles = StyleSheet.create({
   recentTitle: {
     marginBottom: spacing.xs,
     color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
+    fontFamily: fontFamily.heading,
     ...typography.sectionTitle,
   },
-  recentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  recentRowPressed: {
-    opacity: motion.pressOpacity,
-    transform: [{ scale: motion.pressScale }],
-    borderColor: "rgba(255,255,255,0.16)",
-  },
-  recentType: {
-    flex: 1,
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.body,
-  },
-  recentMid: { alignItems: "flex-end", marginRight: spacing.md },
-  recentDur: { color: colors.textPrimary, ...typography.meta },
-  recentDate: { color: colors.textSecondary, ...typography.meta, marginTop: 2 },
-  recentChev: { color: colors.primary, fontSize: 20, marginLeft: spacing.xs },
   recentList: {
     marginBottom: spacing.xs,
-  },
-  recentItem: {
-    marginBottom: spacing.sm,
   },
   weeklyRecapBottomCta: {
     marginTop: spacing.xs,
