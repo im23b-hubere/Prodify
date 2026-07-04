@@ -3,7 +3,7 @@ import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
+import { colors, motion, spacing, typography, ui } from "../../constants/theme";
 import { formatSessionListDate } from "../../lib/sessionTime";
 import type { SessionDto } from "../../types/session";
 
@@ -45,16 +45,14 @@ export const DashboardRecentSessionRow = memo(function DashboardRecentSessionRow
         onPress();
       }}
     >
-      <View style={styles.typePill}>
-        <Text style={styles.typePillText} numberOfLines={1}>
-          {typeLabel}
-        </Text>
-      </View>
       <View style={styles.copy}>
-        <Text style={styles.duration}>{duration}</Text>
+        <Text style={styles.typeLabel}>{typeLabel}</Text>
         <Text style={styles.date}>{dateLabel}</Text>
       </View>
-      <Text style={styles.chevron}>›</Text>
+      <View style={styles.trailing}>
+        <Text style={styles.duration}>{duration}</Text>
+        <Text style={styles.chevron}>›</Text>
+      </View>
     </Pressable>
   );
 });
@@ -63,11 +61,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: spacing.md,
     borderRadius: ui.cardRadius,
     borderWidth: ui.cardBorderWidth,
-    borderColor: "rgba(255,61,0,0.18)",
-    backgroundColor: "rgba(255,255,255,0.03)",
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
@@ -75,43 +73,41 @@ const styles = StyleSheet.create({
   rowPressed: {
     opacity: motion.pressOpacity,
     transform: [{ scale: motion.pressScale }],
-    borderColor: "rgba(255,61,0,0.32)",
-  },
-  typePill: {
-    maxWidth: 108,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: "rgba(255,61,0,0.4)",
-    backgroundColor: "rgba(255,61,0,0.12)",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  typePillText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
+    borderColor: "rgba(255,255,255,0.16)",
   },
   copy: {
     flex: 1,
     minWidth: 0,
     gap: 2,
   },
-  duration: {
+  typeLabel: {
     color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 22,
-    lineHeight: 26,
-    letterSpacing: -0.4,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.body,
+    flexShrink: 1,
   },
   date: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
     ...typography.caption,
   },
+  trailing: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    flexShrink: 0,
+  },
+  duration: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 20,
+    lineHeight: 24,
+    letterSpacing: -0.3,
+  },
   chevron: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
-    fontSize: 22,
+    fontSize: 20,
     lineHeight: 24,
   },
 });
