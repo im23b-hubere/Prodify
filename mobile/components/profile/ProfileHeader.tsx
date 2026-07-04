@@ -13,7 +13,6 @@ type Props = {
   currentStreak: number;
   friendsCount: number;
   status: "self" | "none" | "pending" | "accepted";
-  isPremium?: boolean;
   identityTags?: string[];
   streakStatusLabel?: string;
   streakStatusEmoji?: string;
@@ -34,7 +33,6 @@ export const ProfileHeader = memo(function ProfileHeader({
   currentStreak,
   friendsCount,
   status,
-  isPremium = false,
   identityTags = [],
   streakStatusLabel,
   streakStatusEmoji,
@@ -55,7 +53,6 @@ export const ProfileHeader = memo(function ProfileHeader({
         </View>
         <View style={styles.nameRow}>
           <Text style={styles.username}>{username}</Text>
-          {isPremium ? <Text style={styles.premiumBadge}>PRO</Text> : null}
         </View>
         {identityTags.length > 0 ? (
           <View style={styles.identityRow}>
@@ -156,17 +153,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
-  },
-  premiumBadge: {
-    color: "#fcd34d",
-    borderWidth: 1,
-    borderColor: "rgba(251,191,36,0.45)",
-    backgroundColor: "rgba(251,191,36,0.1)",
-    borderRadius: radii.round,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    fontSize: 10,
-    fontFamily: fontFamily.bodyBold,
   },
   statusPill: {
     alignSelf: "center",

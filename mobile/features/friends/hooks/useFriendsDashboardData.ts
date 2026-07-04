@@ -30,7 +30,6 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
     setCommitment,
     setRecap,
     setFeedMetricsBySession,
-    setUpsellMessage,
     setRefreshing,
   } = state;
 
@@ -70,7 +69,6 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
           };
         }
         setFeedMetricsBySession(metricsSeed);
-        setUpsellMessage(null);
         lastFetchRef.current = Date.now();
       } catch (e) {
         if (!mounted.current || seq !== loadSeq.current) return;
@@ -106,7 +104,6 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
       setCommitment,
       setRecap,
       setFeedMetricsBySession,
-      setUpsellMessage,
       setRefreshing,
     ],
   );

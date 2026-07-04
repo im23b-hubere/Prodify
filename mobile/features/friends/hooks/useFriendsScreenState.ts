@@ -39,7 +39,6 @@ export function useFriendsScreenState() {
   const [reactionUsers, setReactionUsers] = useState<SocialReactionUserDto[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [entitlement, setEntitlement] = useState<EntitlementDto | null>(null);
-  const [upsellMessage, setUpsellMessage] = useState<string | null>(null);
   const [challengeCreateOpen, setChallengeCreateOpen] = useState(false);
   const [challengeTitle, setChallengeTitle] = useState("");
   const [challengeKind, setChallengeKind] = useState<"duel" | "team" | "group">("duel");
@@ -120,8 +119,6 @@ export function useFriendsScreenState() {
     toastMessage,
     entitlement,
     setEntitlement,
-    upsellMessage,
-    setUpsellMessage,
     challengeCreateOpen,
     setChallengeCreateOpen,
     challengeTitle,

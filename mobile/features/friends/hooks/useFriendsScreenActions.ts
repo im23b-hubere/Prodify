@@ -4,7 +4,7 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo } from "react";
 import { Alert } from "react-native";
 
-import { type ApiError, apiJson } from "../../../lib/client";
+import { apiJson } from "../../../lib/client";
 import { recordMomentumAction } from "../../../lib/momentum";
 import {
   createChallenge,
@@ -131,9 +131,6 @@ export function useFriendsScreenActions({
         state.showToast(t("friendsScreen.toastChallengeJoined"));
       } catch (e) {
         const msg = e instanceof Error ? e.message : t("common.tryAgain");
-        if ((e as ApiError).status === 402) {
-          state.setUpsellMessage(msg);
-        }
         Alert.alert(t("friendsScreen.errorGeneric"), msg);
       } finally {
         state.setBusyActionKey(null);
@@ -249,9 +246,6 @@ export function useFriendsScreenActions({
       state.showToast(t("friendsScreen.toastChallengeLive"));
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("common.tryAgain");
-      if (msg.toLowerCase().includes("upgrade")) {
-        state.setUpsellMessage(msg);
-      }
       Alert.alert(t("friendsScreen.couldNotCreateChallenge"), msg);
     } finally {
       state.setChallengeCreateBusy(false);

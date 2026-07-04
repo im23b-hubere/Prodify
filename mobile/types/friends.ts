@@ -92,7 +92,6 @@ export type SocialChallengeDto = {
   completion_reason?: string | null;
   your_rank?: number | null;
   premium_detail_locked?: boolean;
-  upsell_hint?: string | null;
   members: SocialChallengeMemberDto[];
 };
 
@@ -104,7 +103,6 @@ export type CommitmentDto = {
   current_sessions: number;
   status: "on_track" | "behind" | "completed";
   visibility: string;
-  upsell_hint?: string | null;
   witness_user_ids?: number[];
   witness_usernames?: string[];
 };
@@ -134,7 +132,6 @@ export type SocialRecapDto = {
   identity_tag?: string | null;
   trend_vs_last_week_percent?: number | null;
   premium_detail_locked?: boolean;
-  upsell_hint?: string | null;
 };
 
 export type SocialCommentDto = {

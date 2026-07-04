@@ -13,7 +13,7 @@ import {
   isPremiumActive,
 } from "./revenuecat";
 
-/** Resolve whether the user may access premium-gated tabs (RevenueCat + server). */
+/** Resolve whether the user may access subscription-gated tabs (RevenueCat + server). */
 export async function resolvePremiumAccess(
   token: string,
   appUserId?: string | null,

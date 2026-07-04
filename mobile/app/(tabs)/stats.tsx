@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import {
@@ -22,9 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DashboardMotivationCard } from "../../components/dashboard/DashboardMotivationCard";
 import { YourWeekCard } from "../../components/stats/YourWeekCard";
-import { StatsCollapsibleSection } from "../../components/stats/StatsCollapsibleSection";
 import { StatsKpiStrip } from "../../components/stats/StatsKpiStrip";
-import { StatsPremiumTeaser } from "../../components/stats/StatsPremiumTeaser";
 import { AppFlame, RecordGlyph, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
@@ -222,6 +220,28 @@ function StatsSkeleton() {
         </AppCard>
       ))}
     </View>
+  );
+}
+
+function StatsSection({
+  title,
+  subtitle,
+  testID,
+  children,
+}: {
+  title: string;
+  subtitle?: string | null;
+  testID?: string;
+  children: ReactNode;
+}) {
+  return (
+    <AppCard style={styles.staticSection} testID={testID}>
+      <View style={styles.staticSectionHeader}>
+        <Text style={styles.staticSectionTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.staticSectionSubtitle}>{subtitle}</Text> : null}
+      </View>
+      <View style={styles.staticSectionBody}>{children}</View>
+    </AppCard>
   );
 }
 
@@ -677,30 +697,6 @@ export default function StatsScreen() {
     [summary, t],
   );
 
-  const hasRecentHeatmapActivity = useMemo(() => {
-    const cutoff = Date.now() - 14 * CALENDAR_DAY_MS;
-    return heatmapDays.some((d) => {
-      if ((d.intensity ?? 0) <= 0 && (d.seconds ?? 0) <= 0) return false;
-      const ms = new Date(d.date).getTime();
-      return Number.isFinite(ms) && ms >= cutoff;
-    });
-  }, [heatmapDays]);
-
-  const hasFreshRecords = useMemo(
-    () => decoratedRecords.some((record) => record.isFresh),
-    [decoratedRecords],
-  );
-
-  const showPremiumTeaser = useMemo(
-    () =>
-      !user?.is_premium &&
-      forecast != null &&
-      (forecast.risk_level === "at_risk" || forecast.risk_level === "off_track"),
-    [user?.is_premium, forecast],
-  );
-
-  const trendsStartExpanded = filter.period === "week";
-
   const renderRecent = useCallback(
     ({ item }: { item: SessionDto }) => {
       const sid = item.id;
@@ -815,14 +811,9 @@ export default function StatsScreen() {
               </AppCard>
             ) : null}
 
-            <Text style={styles.sectionGroupTitle}>{t("stats.sectionInsights")}</Text>
-
-            <StatsCollapsibleSection
-              title={t("stats.motivationSectionTitle")}
-              subtitle={serverMotivationLine ?? motivationMessage}
-              testID="stats-section-motivation"
-            >
-              {token ? (
+            {token ? (
+              <View style={styles.motivationWrap} testID="stats-section-motivation">
+                <Text style={styles.sectionGroupTitle}>{t("stats.motivationSectionTitle")}</Text>
                 <DashboardMotivationCard
                   greeting={getTimeBasedGreeting()}
                   userName={user?.username ?? t("dashboard.defaultUserName")}
@@ -830,14 +821,14 @@ export default function StatsScreen() {
                   serverMessage={serverMotivationLine}
                   todaySessionCount={todaySessionCount}
                 />
-              ) : null}
-            </StatsCollapsibleSection>
+              </View>
+            ) : null}
 
-            <StatsCollapsibleSection
+            <Text style={styles.sectionGroupTitle}>{t("stats.sectionInsights")}</Text>
+
+            <StatsSection
               title={t("stats.trendsSectionTitle")}
               subtitle={t("stats.trendsSectionSubtitle")}
-              defaultExpanded={trendsStartExpanded}
-              startExpanded={trendsStartExpanded}
               testID="stats-section-trends"
             >
               <View style={styles.nestedBlock}>
@@ -890,14 +881,37 @@ export default function StatsScreen() {
                   />
                 )}
               </View>
-            </StatsCollapsibleSection>
+            </StatsSection>
+
+            <View style={styles.recentBlock} testID="stats-section-recent">
+              <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
+              {recent.length === 0 ? (
+                <EmptyState
+                  compact
+                  title={t("stats.recentEmptyTitle")}
+                  message={t("stats.recentEmpty")}
+                  actionLabel={t("common.startSession")}
+                  onAction={handleStartSession}
+                />
+              ) : (
+                <View style={styles.recentList}>
+                  {recent.slice(0, 5).map((item) => (
+                    <View
+                      key={`top-${typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}`}
+                      style={styles.recentItem}
+                    >
+                      {renderRecent({ item })}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
 
             <Text style={styles.sectionGroupTitle}>{t("stats.sectionHistory")}</Text>
 
-            <StatsCollapsibleSection
+            <StatsSection
               title={t("stats.heatmapTitle")}
               subtitle={t("stats.heatmapCaptionShort")}
-              startExpanded={hasRecentHeatmapActivity}
               testID="stats-section-heatmap"
             >
               <View style={styles.heatmapGrid}>
@@ -909,16 +923,15 @@ export default function StatsScreen() {
                 ))}
               </View>
               <ActivityHeatmapLegend />
-            </StatsCollapsibleSection>
+            </StatsSection>
 
-            <StatsCollapsibleSection
+            <StatsSection
               title={t("stats.recordsTitle")}
               subtitle={
                 decoratedRecords.length > 0
                   ? decoratedRecords[0]?.value
                   : t("stats.recordsEmpty")
               }
-              startExpanded={hasFreshRecords}
               testID="stats-section-records"
             >
               {decoratedRecords.length === 0 ? (
@@ -973,35 +986,11 @@ export default function StatsScreen() {
                   })}
                 </View>
               )}
-            </StatsCollapsibleSection>
-
-            <View style={styles.recentBlock} testID="stats-section-recent">
-              <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
-              {recent.length === 0 ? (
-                <EmptyState
-                  compact
-                  title={t("stats.recentEmptyTitle")}
-                  message={t("stats.recentEmpty")}
-                  actionLabel={t("common.startSession")}
-                  onAction={handleStartSession}
-                />
-              ) : (
-                <View style={styles.recentList}>
-                  {recent.slice(0, 5).map((item) => (
-                    <View
-                      key={`top-${typeof item.id === "number" && item.id > 0 ? item.id : `r-${item.started_at}`}`}
-                      style={styles.recentItem}
-                    >
-                      {renderRecent({ item })}
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
+            </StatsSection>
 
             <Text style={styles.sectionGroupTitle}>{t("stats.sectionExtras")}</Text>
 
-            <StatsCollapsibleSection
+            <StatsSection
               title={t("stats.progressionSectionTitle")}
               subtitle={t("stats.progressionSectionSubtitle")}
               testID="stats-section-progression"
@@ -1012,9 +1001,7 @@ export default function StatsScreen() {
                   onPress={() => router.push(progressionOverviewHref("stats"))}
                 />
               </View>
-            </StatsCollapsibleSection>
-
-            {showPremiumTeaser ? <StatsPremiumTeaser testID="stats-premium-teaser" /> : null}
+            </StatsSection>
 
             <View style={styles.weeklyRecapBottomCta}>
               <SecondaryButton label={t("stats.openWeeklyRecap")} onPress={openWeeklyRecap} />
@@ -1110,6 +1097,9 @@ const styles = StyleSheet.create({
   contentFadeWrap: {
     gap: spacing.md,
   },
+  motivationWrap: {
+    marginBottom: spacing.xs,
+  },
   heroWrap: {
     marginBottom: spacing.xs,
   },
@@ -1122,6 +1112,26 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   nestedBlock: {
+    gap: spacing.sm,
+  },
+  staticSection: {
+    gap: spacing.md,
+  },
+  staticSectionHeader: {
+    gap: 4,
+  },
+  staticSectionTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
+  staticSectionSubtitle: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+    lineHeight: 18,
+  },
+  staticSectionBody: {
     gap: spacing.sm,
   },
   nestedTitle: {

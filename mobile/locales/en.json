@@ -145,19 +145,19 @@
           "finish_tracks": "Finish mode on — {{count}} sessions/week moves projects across the line.",
           "learn_skills": "Skill growth mode — {{count}} sessions/week compounds fast."
         },
-        "premium": {
-          "more_output": "Premium adds pace forecasts so you catch slippage before the week is gone.",
-          "consistency": "Premium adds streak protection nudges and a Sunday review to keep you on track.",
-          "finish_tracks": "Premium adds weekly insights that turn sessions into a clear next-week plan.",
-          "learn_skills": "Premium adds deeper stats so you see which sessions actually move the needle."
+        "access": {
+          "more_output": "Prodify tracks your pace so you catch slippage before the week is gone.",
+          "consistency": "Prodify adds streak nudges and a Sunday review to keep you on track.",
+          "finish_tracks": "Prodify turns your sessions into a clear next-week plan.",
+          "learn_skills": "Prodify shows which sessions actually move the needle."
         },
-        "premiumFallback": "Premium unlocks forecast warnings and a Sunday review built from your sessions.",
+        "accessFallback": "Prodify includes forecast warnings and a Sunday review built from your sessions.",
         "cta": "Continue"
       },
       "paywall": {
         "more_output": {
           "title": "Protect your output pace",
-          "body": "Premium warns you early when you slip off {{weekly}} sessions/week — before the week is lost."
+          "body": "Prodify warns you early when you slip off {{weekly}} sessions/week — before the week is lost."
         },
         "consistency": {
           "title": "Make consistency automatic",
@@ -165,11 +165,11 @@
         },
         "finish_tracks": {
           "title": "Finish what you start",
-          "body": "{{weekly}} sessions/week plus Premium insights — so tracks cross the finish line, not the backlog."
+          "body": "{{weekly}} sessions/week plus session insights — so tracks cross the finish line, not the backlog."
         },
         "learn_skills": {
           "title": "Grow with every session",
-          "body": "Track {{weekly}} sessions/week with Premium trends that show what is actually working."
+          "body": "Track {{weekly}} sessions/week with trends that show what is actually working."
         }
       }
     }
@@ -247,7 +247,7 @@
         },
         {
           "heading": "3. Subscriptions",
-          "body": "Prodify requires an active Premium subscription. Payment is charged to your Apple ID account at confirmation of purchase. Subscriptions renew automatically unless canceled at least 24 hours before the end of the current billing period. Manage or cancel in Settings > Apple ID > Subscriptions."
+          "body": "Prodify requires an active subscription. Payment is charged to your Apple ID account at confirmation of purchase. Subscriptions renew automatically unless canceled at least 24 hours before the end of the current billing period. Manage or cancel in Settings > Apple ID > Subscriptions."
         },
         {
           "heading": "4. Availability",
@@ -341,7 +341,7 @@
     "gotIt": "Got it"
   },
   "paywall": {
-    "badge": "Premium",
+    "badge": "App access",
     "loadingOfferings": "Loading subscription options...",
     "errorTitle": "Could not load plans",
     "variants": {
@@ -379,14 +379,13 @@
     "alerts": {
       "unavailableTitle": "Unavailable",
       "unavailableBody": "This package is not available right now.",
-      "premiumUnlockedTitle": "Premium unlocked",
-      "premiumUnlockedBody": "Your premium plan is active.",
+      "premiumUnlockedTitle": "Access active",
+      "premiumUnlockedBody": "Your Prodify subscription is active.",
       "purchaseFailedTitle": "Purchase failed",
       "purchasePendingTitle": "Purchase pending",
-      "purchasePendingBody": "Apple has not finished this purchase yet. We will unlock Premium as soon as the App Store confirms it.",
+      "purchasePendingBody": "Apple has not finished this purchase yet. Prodify will unlock as soon as the App Store confirms it.",
       "restoreCompleteTitle": "Restore complete",
-      "restoreCompletePremium": "Premium restored.",
-      "restoreCompleteNone": "No active premium found.",
+      "restoreCompleteNone": "No active subscription found.",
       "restoreFailedTitle": "Restore failed"
     },
     "expoPreview": {
@@ -402,7 +401,7 @@
       "purchaseFailed": "Purchase failed.",
       "restoreFailed": "Could not restore purchases.",
       "alreadySubscribedRestoreFailed": "Apple says this subscription already exists, but Prodify could not attach it to this account yet. Tap Restore purchases again, or manage the subscription in Apple ID > Subscriptions.",
-      "entitlementNotActive": "Purchase did not activate premium entitlement."
+      "entitlementNotActive": "Purchase did not activate app access."
     },
     "a11y": {
       "skipSubscription": "Skip subscription"
@@ -544,12 +543,8 @@
     "toastChallengeLeft": "You left the challenge.",
     "toastLockedIn": "Locked in. Keep the creative run alive.",
     "toastCollaborativeMove": "That was a strong collaborative move.",
-    "upsellInviteFriend": "Invite a friend to try this with you.",
-    "upsellTrackMoreGoals": "Track more goals with Premium.",
     "invalidChallengeTitle": "Invalid challenge",
     "invalidChallengeBody": "Please set a valid title and target.",
-    "premiumBoost": "Premium boost",
-    "unlockPremiumCta": "View premium plans",
     "createCreativeChallenge": "Start a friend challenge",
     "joinThisChallenge": "Join challenge",
     "challengeJoinToSeeProgress": "Join to track your progress against friends.",
@@ -563,7 +558,7 @@
     "buddyPendingIncoming": "Pending invite from {{buddy}}",
     "buddyPendingOutgoing": "Invite sent to {{buddy}}",
     "buddyPickOne": "Pick one producer friend as your buddy.",
-    "premiumActive": "Premium active",
+    "premiumActive": "Subscription active",
     "inviteBuddy": "Invite buddy",
     "acceptBuddyInvite": "Accept buddy invite",
     "studioActivity": "Studio activity",
@@ -666,7 +661,6 @@
       "locked_in": "You were in a strong creative flow.",
       "building_momentum": "You rebuilt momentum this week."
     },
-    "unlockPremiumInsights": "Unlock full insights with Premium.",
     "commentsTitle": "Comments",
     "reactionsTitle": "Reactions",
     "noReactionsYet": "No reactions yet",
@@ -976,7 +970,6 @@
     "inviteProducer": "Invite producer",
     "couldNotSendSupport": "Could not send support",
     "couldNotStartProducing": "Could not start producing",
-    "unlockPremiumOutcomes": "Stay on track every week",
     "weeklyGoalNudgeTitle": "Set your weekly target",
     "weeklyGoalInlineHint": "Pick a target for this week — tap to save.",
     "weeklyGoalProgress": "{{current}} / {{target}} sessions this week",
@@ -995,7 +988,7 @@
     "filter7d": "7D",
     "filter30d": "30D",
     "filterAll": "All",
-    "filterScopeShort": "Filter applies to KPIs and trends below.",
+    "filterScopeShort": "Filter applies to KPIs, trends, and recent sessions below.",
     "sessionFilterScope": "Filter applies to totals below. Heatmap always shows 90 days.",
     "heatmapCaptionShort": "90 days · brighter = more studio time",
     "heatmapCaption": "Each tile is one day. Brighter orange = more studio time (last 90 days).",
@@ -1088,9 +1081,6 @@
     "forecastWeekLabel": "Week starting {{date}}",
     "forecastProgress": "{{done}} / {{target}} sessions this week",
     "forecastRemaining": "{{n}} remaining · {{days}} days left in the week",
-    "premiumForecastTeaserTitle": "Know before your week slips",
-    "premiumForecastTeaserBody": "Unlock early warnings when you fall behind on your weekly goal.",
-    "premiumForecastCta": "See Premium",
     "yourWeek": {
       "eyebrow": "Your week",
       "setupTitle": "Set your weekly target",
@@ -1404,9 +1394,6 @@
     "needSignInTitle": "Sign in to see your recap",
     "needSignInBody": "Weekly reviews use your account data after you log in.",
     "signInCta": "Go to sign in",
-    "premiumTeaserTitle": "Sunday review, built for producers",
-    "premiumTeaserBody": "Unlock insights, blockers, and a clear plan for next week.",
-    "premiumTeaserCta": "See Premium",
     "shareHeadline": "My Prodify week",
     "shareInsightsIntro": "Highlights:",
     "generateCta": "Generate this week's recap",

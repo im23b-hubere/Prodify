@@ -14,7 +14,7 @@ let entitlementInFlight: { token: string; promise: Promise<EntitlementDto> } | n
 
 const ENTITLEMENT_TTL_MS = 60_000;
 
-/** True when the user may use premium-gated APIs (paid subscription only). */
+/** True when the user may use subscription-gated APIs. */
 export function hasPremiumAccess(ent: EntitlementDto | null | undefined): boolean {
   if (!ent) return false;
   return ent.entitlement === "premium";
@@ -36,7 +36,7 @@ export function getCachedEntitlement(token: string): EntitlementDto | null {
   return cachedEntitlement.value;
 }
 
-/** Synchronous premium check from cache; null when cache is unavailable. */
+/** Synchronous subscription access check from cache; null when cache is unavailable. */
 export function peekCachedHasPremiumAccess(token: string): boolean | null {
   const ent = getCachedEntitlement(token);
   if (!ent) return null;

@@ -285,7 +285,6 @@ export default function FriendProfileScreen() {
               currentStreak={profile.current_streak}
               friendsCount={profile.friends_count}
               status={status === "self" ? "self" : "accepted"}
-              isPremium={Boolean(profile.is_premium)}
               identityTags={profile.identity_tags ?? []}
               streakStatusLabel={profile.streak_status_label}
               streakStatusEmoji={profile.streak_status_emoji}

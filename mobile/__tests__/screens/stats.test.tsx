@@ -149,8 +149,4 @@ describe("Stats Screen", () => {
     expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
   });
 
-  it("shows premium teaser when forecast is at risk and user is free", async () => {
-    const { findByTestId } = render(<StatsScreen />);
-    expect(await findByTestId("stats-premium-teaser")).toBeTruthy();
-  });
 });

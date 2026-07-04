@@ -153,7 +153,6 @@ export function FriendsOverviewSection({
                 <View style={styles.userCopy}>
                   <View style={styles.nameRow}>
                     <Text style={styles.userName}>{entry.username}</Text>
-                    {entry.is_premium ? <Text style={styles.premiumTag}>PRO</Text> : null}
                     {currentUserId === entry.user_id ? (
                       <View style={styles.youPill}>
                         <Text style={styles.youPillText}>{t("friendsScreen.youPill")}</Text>

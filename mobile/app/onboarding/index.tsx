@@ -282,11 +282,11 @@ export default function OnboardingScreen() {
     return t("onboarding.quiz.plan.insightFallback", { count: goal });
   }, [answers.producerGoal, goal, t]);
 
-  const planPremiumLine = useMemo(() => {
+  const planAccessLine = useMemo(() => {
     if (answers.producerGoal) {
-      return t(`onboarding.quiz.plan.premium.${answers.producerGoal}`);
+      return t(`onboarding.quiz.plan.access.${answers.producerGoal}`);
     }
-    return t("onboarding.quiz.plan.premiumFallback");
+    return t("onboarding.quiz.plan.accessFallback");
   }, [answers.producerGoal, t]);
 
   if (step === "intro") {
@@ -528,7 +528,7 @@ export default function OnboardingScreen() {
           <OnboardingPlanSummary
             rows={planRows}
             insight={planInsight}
-            premiumLine={planPremiumLine}
+              accessLine={planAccessLine}
           />
         </ScrollView>
       </OnboardingQuizShell>

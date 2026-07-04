@@ -15,10 +15,10 @@ type PlanRow = {
 type Props = {
   rows: PlanRow[];
   insight: string;
-  premiumLine: string;
+  accessLine: string;
 };
 
-export function OnboardingPlanSummary({ rows, insight, premiumLine }: Props) {
+export function OnboardingPlanSummary({ rows, insight, accessLine }: Props) {
   return (
     <View style={styles.wrap}>
       <Animated.View entering={FadeInDown.duration(320)} style={styles.heroCard}>
@@ -50,8 +50,8 @@ export function OnboardingPlanSummary({ rows, insight, premiumLine }: Props) {
         })}
       </View>
 
-      <Animated.View entering={FadeInDown.delay(320).duration(300)} style={styles.premiumCard}>
-        <Text style={styles.premiumLine}>{premiumLine}</Text>
+      <Animated.View entering={FadeInDown.delay(320).duration(300)} style={styles.accessCard}>
+        <Text style={styles.accessLine}>{accessLine}</Text>
       </Animated.View>
     </View>
   );
@@ -124,14 +124,14 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.bodyStrong,
   },
-  premiumCard: {
+  accessCard: {
     borderRadius: radii.md,
     padding: spacing.md,
     backgroundColor: "rgba(255,255,255,0.03)",
     borderWidth: 1,
     borderColor: colors.border,
   },
-  premiumLine: {
+  accessLine: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
     ...typography.body,
