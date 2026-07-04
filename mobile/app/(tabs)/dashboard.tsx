@@ -19,6 +19,7 @@ import { useDashboardSocialNudges } from "../../features/dashboard/hooks/useDash
 import { useDashboardStreakEvents } from "../../features/dashboard/hooks/useDashboardStreakEvents";
 
 import { DashboardStudioHud } from "../../components/dashboard/DashboardStudioHud";
+import { DashboardRecentSessionRow } from "../../components/dashboard/DashboardRecentSessionRow";
 import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
 import { glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
@@ -497,24 +498,16 @@ export default function DashboardScreen() {
     ({ item, index }: { item: SessionDto; index: number }) => (
       <Animated.View entering={FadeInUp.delay(100 + index * 70).duration(400)}>
         <Swipeable renderRightActions={() => renderRightActions(item.id)}>
-          <Pressable
-            accessibilityRole="button"
+          <DashboardRecentSessionRow
+            session={item}
+            typeLabel={sessionTypeLabel(String(item.session_type || "beat_making"), t)}
             accessibilityLabel={`${sessionTypeLabel(String(item.session_type || "beat_making"), t)}, ${t("dashboard.sessionMinutes", { n: Math.round((item.duration_seconds ?? 0) / 60) })}`}
             accessibilityHint={t("dashboard.openSessionDetailsA11y")}
-            style={({ pressed }) => [styles.sessionRow, pressed && styles.sessionRowPressed]}
             onPress={() => {
               if (typeof item.id !== "number" || !Number.isFinite(item.id) || item.id <= 0) return;
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
               router.push(`/session/${item.id}`);
             }}
-          >
-            <Text style={styles.sessionType}>
-              {sessionTypeLabel(String(item.session_type || "beat_making"), t)}
-            </Text>
-            <Text style={styles.sessionMeta}>
-              {t("dashboard.sessionMinutes", { n: Math.round((item.duration_seconds ?? 0) / 60) })}
-            </Text>
-          </Pressable>
+          />
         </Swipeable>
       </Animated.View>
     ),
@@ -922,32 +915,6 @@ const styles = StyleSheet.create({
   trashLink: {
     color: colors.primary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
-  sessionRow: {
-    borderRadius: ui.cardRadius,
-    borderWidth: ui.cardBorderWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: ui.cardPadding,
-    marginBottom: spacing.sm,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    ...shadows.card,
-  },
-  sessionRowPressed: {
-    opacity: motion.pressOpacity,
-    transform: [{ scale: motion.pressScale }],
-    borderColor: "rgba(255,255,255,0.16)",
-  },
-  sessionType: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.body,
-  },
-  sessionMeta: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
     ...typography.meta,
   },
   deleteAction: {
