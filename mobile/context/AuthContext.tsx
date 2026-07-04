@@ -15,6 +15,7 @@ import { clearLevelCatalogCache } from "../lib/progressionLevelCatalog";
 import { clearProgressionSyncCache } from "../lib/progressionSync";
 import { clearDevBillingBypass } from "../lib/devBillingBypass";
 import { clearNotificationInbox, setNotificationUserContext } from "../lib/notificationInbox";
+import { cancelWeeklyRecapScheduled } from "../lib/weeklyRecapNotifications";
 import { clearPendingDeepLinkPath } from "../lib/pendingDeepLink";
 import { syncPendingWeeklyGoal } from "../lib/onboardingGoalSync";
 import {
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
       await clearNotificationInbox().catch(() => undefined);
+      await cancelWeeklyRecapScheduled().catch(() => undefined);
       await setNotificationUserContext(null).catch(() => undefined);
       setToken(null);
       setUser(null);
@@ -216,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
     await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
     await clearNotificationInbox().catch(() => undefined);
+    await cancelWeeklyRecapScheduled().catch(() => undefined);
     await setNotificationUserContext(null).catch(() => undefined);
     await clearPendingDeepLinkPath();
     await clearDevBillingBypass();
@@ -238,6 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY).catch(() => undefined);
     await clearNotificationInbox().catch(() => undefined);
+    await cancelWeeklyRecapScheduled().catch(() => undefined);
     await setNotificationUserContext(null).catch(() => undefined);
     await clearPendingDeepLinkPath();
     await clearDevBillingBypass();

@@ -34,6 +34,10 @@ jest.mock("../../lib/streakNotifications", () => ({
   syncStreakRiskNotifications: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock("../../lib/weeklyRecapNotifications", () => ({
+  syncWeeklyRecapReminder: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockApiJson = apiJson as jest.MockedFunction<typeof apiJson>;
 const mockFetchCurrentGoal = fetchCurrentGoal as jest.MockedFunction<typeof fetchCurrentGoal>;
 

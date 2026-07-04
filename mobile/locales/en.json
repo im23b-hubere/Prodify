@@ -863,7 +863,8 @@
     "streakReminders": "Streak reminders",
     "achievements": "Achievements",
     "socialUpdates": "Social updates",
-    "tipsAndNudges": "Tips & nudges",
+    "tipsAndNudges": "Tips & Sunday recap",
+    "tipsAndNudgesHint": "Includes your Sunday evening weekly recap reminder.",
     "quietHours": "Quiet hours (23:00–07:00)",
     "deliveryMode": "Delivery mode",
     "modeAll": "All",
@@ -1450,6 +1451,11 @@
     "shareSubtitleDefault": "Show up and build momentum.",
     "setGoals": "Set goals for next week",
     "close": "Close"
+  },
+  "weeklyRecapNotifications": {
+    "channelName": "Weekly recap",
+    "sundayTitle": "Your week is ready",
+    "sundayBody": "Swipe through your studio recap before the new week starts."
   },
   "streakNotifications": {
     "channelName": "Streak reminders",

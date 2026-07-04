@@ -12,6 +12,7 @@ import {
 } from "../../../lib/social";
 import { parseSessionList, tryParseSessionDto } from "../../../lib/sessionDto";
 import { syncStreakRiskNotifications } from "../../../lib/streakNotifications";
+import { syncWeeklyRecapReminder } from "../../../lib/weeklyRecapNotifications";
 import type {
   BuddyRiskDto,
   CheckinStatusDto,
@@ -155,6 +156,7 @@ export function useDashboardData(token: string | null) {
       }
       try {
         await Promise.all([loadSessions(), loadStreakOverview(), loadWeeklyGoal()]);
+        await syncWeeklyRecapReminder(true);
         lastDashboardFetchRef.current = Date.now();
         if (withLoading) {
           setLoading(false);

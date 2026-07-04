@@ -28,6 +28,7 @@ import {
   type NotificationPriority,
   type NotificationSettings,
 } from "../lib/notificationInbox";
+import { syncWeeklyRecapReminder } from "../lib/weeklyRecapNotifications";
 
 const CAT_META: Record<NotificationCategory, { icon: typeof Flame }> = {
   streak: { icon: Flame },
@@ -147,6 +148,9 @@ export default function NotificationsScreen() {
     const next = { ...settings, ...patch };
     setSettings(next);
     await saveSettings(next);
+    if ("tips" in patch || "frequency" in patch) {
+      void syncWeeklyRecapReminder(Boolean(token) && next.tips && next.frequency !== "off");
+    }
     Haptics.selectionAsync().catch(() => undefined);
   };
 
@@ -351,7 +355,10 @@ export default function NotificationsScreen() {
             />
           </View>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>{t("notificationsUi.tipsAndNudges")}</Text>
+            <View style={styles.rowCopy}>
+              <Text style={styles.rowLabel}>{t("notificationsUi.tipsAndNudges")}</Text>
+              <Text style={styles.rowHint}>{t("notificationsUi.tipsAndNudgesHint")}</Text>
+            </View>
             <Switch
               value={settings.tips}
               onValueChange={(v) =>
@@ -550,7 +557,9 @@ const styles = StyleSheet.create({
     ...typography.caption,
   },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  rowCopy: { flex: 1, paddingRight: spacing.sm, gap: 2 },
   rowLabel: { color: colors.textPrimary, ...typography.body },
+  rowHint: { color: colors.textSecondary, ...typography.caption },
   modeChip: {
     borderRadius: radii.round,
     borderWidth: 1,
