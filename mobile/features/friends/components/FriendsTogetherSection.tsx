@@ -121,49 +121,49 @@ export function FriendsTogetherSection({
               onCatchUp={onOpenSessionSetup}
             />
           ) : (
-          <View style={styles.cardElevated}>
-            {buddy?.status === "pending_incoming" ? (
-              <>
+            <View style={styles.cardElevated}>
+              {buddy?.status === "pending_incoming" ? (
+                <>
+                  <Text style={styles.userMeta}>
+                    {t("friendsScreen.buddyPendingIncoming", {
+                      buddy: buddy.buddy_username ?? "buddy",
+                    })}
+                  </Text>
+                  {pendingBuddyInviteId != null ? (
+                    <PrimaryButton
+                      label={
+                        busyActionKey === "buddy_accept"
+                          ? t("friendsScreen.loading")
+                          : t("friendsScreen.acceptBuddyInvite")
+                      }
+                      onPress={() => void onAcceptBuddyInvite(pendingBuddyInviteId)}
+                      disabled={busyActionKey === "buddy_accept"}
+                    />
+                  ) : null}
+                </>
+              ) : buddy?.status === "pending_outgoing" ? (
                 <Text style={styles.userMeta}>
-                  {t("friendsScreen.buddyPendingIncoming", {
+                  {t("friendsScreen.buddyPendingOutgoing", {
                     buddy: buddy.buddy_username ?? "buddy",
                   })}
                 </Text>
-                {pendingBuddyInviteId != null ? (
+              ) : (
+                <>
+                  <Text style={styles.userMeta}>{t("friendsScreen.togetherBuddyEmpty")}</Text>
                   <PrimaryButton
                     label={
-                      busyActionKey === "buddy_accept"
+                      busyActionKey === "buddy_invite"
                         ? t("friendsScreen.loading")
-                        : t("friendsScreen.acceptBuddyInvite")
+                        : hasOtherFriends
+                          ? t("friendsScreen.togetherPickBuddy")
+                          : t("friendsScreen.feedEmptyCta")
                     }
-                    onPress={() => void onAcceptBuddyInvite(pendingBuddyInviteId)}
-                    disabled={busyActionKey === "buddy_accept"}
+                    onPress={hasOtherFriends ? onOpenBuddyPicker : onOpenAddFriend}
+                    disabled={busyActionKey === "buddy_invite"}
                   />
-                ) : null}
-              </>
-            ) : buddy?.status === "pending_outgoing" ? (
-              <Text style={styles.userMeta}>
-                {t("friendsScreen.buddyPendingOutgoing", {
-                  buddy: buddy.buddy_username ?? "buddy",
-                })}
-              </Text>
-            ) : (
-              <>
-                <Text style={styles.userMeta}>{t("friendsScreen.togetherBuddyEmpty")}</Text>
-                <PrimaryButton
-                  label={
-                    busyActionKey === "buddy_invite"
-                      ? t("friendsScreen.loading")
-                      : hasOtherFriends
-                        ? t("friendsScreen.togetherPickBuddy")
-                        : t("friendsScreen.feedEmptyCta")
-                  }
-                  onPress={hasOtherFriends ? onOpenBuddyPicker : onOpenAddFriend}
-                  disabled={busyActionKey === "buddy_invite"}
-                />
-              </>
-            )}
-          </View>
+                </>
+              )}
+            </View>
           )}
         </View>
       ) : null}

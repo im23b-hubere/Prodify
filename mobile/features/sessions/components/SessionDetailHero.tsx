@@ -114,7 +114,11 @@ export function SessionDetailHero({
       {!isActiveSession ? (
         <View style={styles.actionRow}>
           <Pressable
-            style={({ pressed }) => [styles.actionBtn, styles.actionBtnPrimary, pressed && { opacity: 0.9 }]}
+            style={({ pressed }) => [
+              styles.actionBtn,
+              styles.actionBtnPrimary,
+              pressed && { opacity: 0.9 },
+            ]}
             accessibilityRole="button"
             accessibilityLabel={t("sessionDetail.shareSessionImage")}
             onPress={onShareStory}

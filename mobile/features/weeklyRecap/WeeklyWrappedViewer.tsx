@@ -41,7 +41,15 @@ type Props = {
   statsWarning?: string | null;
 };
 
-function WrappedSlideCard({ slide, width, height }: { slide: WrappedSlide; width: number; height: number }) {
+function WrappedSlideCard({
+  slide,
+  width,
+  height,
+}: {
+  slide: WrappedSlide;
+  width: number;
+  height: number;
+}) {
   const isNumericStat = slide.kind === "stat" || slide.kind === "intro";
 
   return (
@@ -70,7 +78,10 @@ function WrappedSlideCard({ slide, width, height }: { slide: WrappedSlide; width
           {slide.title}
         </Text>
         {slide.subtitle ? (
-          <Text style={[styles.subtitle, isNumericStat && styles.subtitleStat]} numberOfLines={slide.kind === "quote" ? 2 : 3}>
+          <Text
+            style={[styles.subtitle, isNumericStat && styles.subtitleStat]}
+            numberOfLines={slide.kind === "quote" ? 2 : 3}
+          >
             {slide.subtitle}
           </Text>
         ) : null}
@@ -146,7 +157,10 @@ export const WeeklyWrappedViewer = memo(function WeeklyWrappedViewer({
             {slides.map((slide, index) => (
               <View
                 key={slide.id}
-                style={[styles.progressSegment, index <= activeIndex && styles.progressSegmentActive]}
+                style={[
+                  styles.progressSegment,
+                  index <= activeIndex && styles.progressSegmentActive,
+                ]}
               />
             ))}
           </View>

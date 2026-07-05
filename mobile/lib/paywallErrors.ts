@@ -30,7 +30,9 @@ export function isPurchaseCancelledError(error: unknown): boolean {
   const code = String(record.code ?? "").toUpperCase();
   if (code.includes("CANCEL")) return true;
   if (code.includes("PAYMENT_PENDING")) return false;
-  const message = String(record.message ?? (error instanceof Error ? error.message : "")).toLowerCase();
+  const message = String(
+    record.message ?? (error instanceof Error ? error.message : ""),
+  ).toLowerCase();
   return (
     message.includes("purchase was cancelled") ||
     message.includes("purchase was canceled") ||

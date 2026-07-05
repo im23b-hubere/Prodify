@@ -30,8 +30,7 @@ export function StatsSection({
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const showBody = !collapsible || expanded;
-  const headerSubtitle =
-    collapsible && !expanded && collapsedHint ? collapsedHint : subtitle;
+  const headerSubtitle = collapsible && !expanded && collapsedHint ? collapsedHint : subtitle;
 
   return (
     <AppCard style={styles.shell} testID={testID}>

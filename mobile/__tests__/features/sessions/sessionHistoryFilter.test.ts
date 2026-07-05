@@ -4,7 +4,11 @@ import {
   filterSessionsByStatsPeriod,
 } from "../../../features/sessions/utils/sessionHistoryFilter";
 
-function session(id: number, startedAt: string, stoppedAt: string | null = "2026-07-01T12:00:00Z"): SessionDto {
+function session(
+  id: number,
+  startedAt: string,
+  stoppedAt: string | null = "2026-07-01T12:00:00Z",
+): SessionDto {
   return {
     id,
     user_id: 1,
@@ -18,10 +22,7 @@ function session(id: number, startedAt: string, stoppedAt: string | null = "2026
 
 describe("sessionHistoryFilter", () => {
   it("keeps only completed sessions", () => {
-    const sessions = [
-      session(1, "2026-07-01T10:00:00Z"),
-      session(2, "2026-07-02T10:00:00Z", null),
-    ];
+    const sessions = [session(1, "2026-07-01T10:00:00Z"), session(2, "2026-07-02T10:00:00Z", null)];
     expect(filterCompletedSessions(sessions).map((item) => item.id)).toEqual([1]);
   });
 
@@ -33,10 +34,7 @@ describe("sessionHistoryFilter", () => {
     const outsideWeek = new Date(today);
     outsideWeek.setDate(today.getDate() - 10);
 
-    const sessions = [
-      session(1, withinWeek.toISOString()),
-      session(2, outsideWeek.toISOString()),
-    ];
+    const sessions = [session(1, withinWeek.toISOString()), session(2, outsideWeek.toISOString())];
 
     expect(filterSessionsByStatsPeriod(sessions, "week").map((item) => item.id)).toEqual([1]);
   });

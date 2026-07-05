@@ -213,8 +213,7 @@ export default function SessionCompleteScreen() {
   }
 
   const sessionType = session?.session_type ?? "beat_making";
-  const moodLabel =
-    session?.mood_level != null ? sessionMoodLabel(session.mood_level, t) : null;
+  const moodLabel = session?.mood_level != null ? sessionMoodLabel(session.mood_level, t) : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]} testID="session-complete-screen">

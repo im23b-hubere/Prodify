@@ -73,7 +73,9 @@ function WeekDots({
           const isToday = index === 6;
           return (
             <View key={`${label}-${index}`} style={styles.dayColumn}>
-              <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>{label.slice(0, 1)}</Text>
+              <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
+                {label.slice(0, 1)}
+              </Text>
               <View
                 style={[
                   styles.dayDot,

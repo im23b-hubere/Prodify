@@ -3,14 +3,7 @@ import * as Haptics from "expo-haptics";
 import { ChevronLeft, History } from "lucide-react-native";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 
@@ -155,9 +148,7 @@ export default function SessionHistoryScreen() {
                 <Text style={styles.link}>{t("sessionHistory.viewTrash")}</Text>
               </Pressable>
             </View>
-            {loading && !refreshing ? (
-              <LoadingState message={t("sessionHistory.loading")} />
-            ) : null}
+            {loading && !refreshing ? <LoadingState message={t("sessionHistory.loading")} /> : null}
             {error ? (
               <ErrorState
                 title={t("common.oops")}

@@ -36,9 +36,7 @@ describe("TodayPlanCard", () => {
   });
 
   it("renders recommendation without CTA in compact mode", () => {
-    render(
-      <TodayPlanCard plan={basePlan} compact showCta={false} onStartSuggested={jest.fn()} />,
-    );
+    render(<TodayPlanCard plan={basePlan} compact showCta={false} onStartSuggested={jest.fn()} />);
 
     expect(screen.getByText("todayPlan.title")).toBeTruthy();
     expect(

@@ -64,7 +64,9 @@ export const FriendsSocialSummaryStrip = memo(function FriendsSocialSummaryStrip
             <View style={styles.metric}>
               <Text style={styles.metricValue}>#{summary.rank}</Text>
               <Text style={styles.metricLabel}>
-                {mode === "week" ? t("friendsScreen.summaryRankLabelWeek") : t("friendsScreen.summaryRankLabelAll")}
+                {mode === "week"
+                  ? t("friendsScreen.summaryRankLabelWeek")
+                  : t("friendsScreen.summaryRankLabelAll")}
               </Text>
             </View>
           </>

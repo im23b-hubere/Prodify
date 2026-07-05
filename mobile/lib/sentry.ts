@@ -25,7 +25,10 @@ function isValidSentryDsn(raw: string): boolean {
 
 function redactSensitiveText(value: string): string {
   return value
-    .replace(/([?&](?:email|password|token|refresh_token|access_token|secret)=)[^&\s]+/gi, "$1[redacted]")
+    .replace(
+      /([?&](?:email|password|token|refresh_token|access_token|secret)=)[^&\s]+/gi,
+      "$1[redacted]",
+    )
     .replace(/(Authorization:\s*Bearer\s+)[^\s]+/gi, "$1[redacted]");
 }
 

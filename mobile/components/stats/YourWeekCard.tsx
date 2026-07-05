@@ -176,9 +176,7 @@ export function YourWeekCard({
           <Text style={[styles.setupTitle, hero && styles.setupTitleHero]}>
             {t("stats.yourWeek.setupTitle")}
           </Text>
-          {!hero ? (
-            <Text style={styles.setupHint}>{t("stats.yourWeek.setupHint")}</Text>
-          ) : null}
+          {!hero ? <Text style={styles.setupHint}>{t("stats.yourWeek.setupHint")}</Text> : null}
           <View style={styles.chipRow}>
             {GOAL_CHIPS.map((n) => (
               <Pressable
@@ -316,15 +314,11 @@ export function YourWeekCard({
   return (
     <>
       <View testID={hero ? "your-week-hero" : undefined}>
-      {hero && embedded ? (
-        <View style={styles.embeddedShell}>
-          {cardBody}
-        </View>
-      ) : (
-      <AppCard style={[styles.card, hero ? styles.cardHero : undefined]}>
-        {cardBody}
-      </AppCard>
-      )}
+        {hero && embedded ? (
+          <View style={styles.embeddedShell}>{cardBody}</View>
+        ) : (
+          <AppCard style={[styles.card, hero ? styles.cardHero : undefined]}>{cardBody}</AppCard>
+        )}
       </View>
 
       <Modal

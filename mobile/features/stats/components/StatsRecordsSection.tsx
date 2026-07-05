@@ -6,11 +6,7 @@ import { EmptyState } from "../../../components/states/EmptyState";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
 import type { DecoratedRecord } from "../types";
-import {
-  formatRecordContext,
-  formatRecordDate,
-  recordTitle,
-} from "../utils/records";
+import { formatRecordContext, formatRecordDate, recordTitle } from "../utils/records";
 import { StatsSection } from "./StatsSection";
 
 type Props = {
@@ -64,7 +60,9 @@ export function StatsRecordsSection({ t, records, onStartSession }: Props) {
                     ) : null}
                   </View>
                 </View>
-                <Text style={[styles.value, idx === 0 && styles.valueFeatured]}>{record.value}</Text>
+                <Text style={[styles.value, idx === 0 && styles.valueFeatured]}>
+                  {record.value}
+                </Text>
                 {displayContext ? <Text style={styles.ctx}>{displayContext}</Text> : null}
                 {meta ? <Text style={styles.meta}>{meta}</Text> : null}
               </View>

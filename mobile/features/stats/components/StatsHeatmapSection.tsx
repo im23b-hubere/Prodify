@@ -37,10 +37,7 @@ export function StatsHeatmapSection({ t, days }: Props) {
             {recentDays.map((day) => (
               <View key={`preview-${day.date}`} style={styles.previewCell}>
                 <View
-                  style={[
-                    styles.previewDot,
-                    { backgroundColor: heatmapCellColor(day.intensity) },
-                  ]}
+                  style={[styles.previewDot, { backgroundColor: heatmapCellColor(day.intensity) }]}
                 />
                 <Text style={styles.previewLabel}>{weekdayLetterFromIsoDay(day.date)}</Text>
               </View>

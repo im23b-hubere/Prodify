@@ -159,7 +159,11 @@ export default function PaywallScreen() {
     setAllowRemove(true);
   }, []);
 
-  const resolvePendingExitAfterUnlock = useCallback((): "dashboard" | "login" | "register" | "back" => {
+  const resolvePendingExitAfterUnlock = useCallback(():
+    | "dashboard"
+    | "login"
+    | "register"
+    | "back" => {
     const exitRoute = resolvePaywallExitRoute(source, Boolean(token));
     if (exitRoute === "/(tabs)/dashboard") return "dashboard";
     if (exitRoute === "/(auth)/register") return "register";
@@ -306,7 +310,10 @@ export default function PaywallScreen() {
         if (recovered) return;
       }
       if (isPaymentPendingError(e)) {
-        Alert.alert(t("paywall.alerts.purchasePendingTitle"), t("paywall.alerts.purchasePendingBody"));
+        Alert.alert(
+          t("paywall.alerts.purchasePendingTitle"),
+          t("paywall.alerts.purchasePendingBody"),
+        );
         return;
       }
       const message = e instanceof Error ? e.message : t("paywall.errors.purchaseFailed");
@@ -463,9 +470,7 @@ export default function PaywallScreen() {
             }
             onPress={() => void purchasePackage(weeklyPkg)}
             disabled={
-              busy ||
-              (!expoGoPreviewMode && !weeklyPkg) ||
-              (!purchaseEnabled && !expoGoPreviewMode)
+              busy || (!expoGoPreviewMode && !weeklyPkg) || (!purchaseEnabled && !expoGoPreviewMode)
             }
           />
           <Pressable

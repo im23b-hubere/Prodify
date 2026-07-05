@@ -178,10 +178,7 @@ export function FriendsActivityFeedItem({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("friendsScreen.feedOpenSessionA11y")}
-              style={({ pressed }) => [
-                styles.feedReplyChip,
-                pressed && styles.feedReplyChipActive,
-              ]}
+              style={({ pressed }) => [styles.feedReplyChip, pressed && styles.feedReplyChipActive]}
               onPress={onOpenSession}
             >
               <Text style={styles.feedReplyChipText}>{t("friendsScreen.feedOpenSessionCta")}</Text>

@@ -18,7 +18,18 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { Easing, FadeIn, FadeInDown, FadeInUp, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
@@ -301,8 +312,15 @@ export default function OnboardingScreen() {
             {introIndex + 1}/{INTRO_SLIDE_COUNT}
           </Text>
         </View>
-        <Animated.View key={`intro-${introIndex}`} entering={FadeInDown.duration(320)} style={styles.introSlide}>
-          <Animated.View style={[styles.introVisualWrap, visualFloat]} entering={FadeInUp.duration(360)}>
+        <Animated.View
+          key={`intro-${introIndex}`}
+          entering={FadeInDown.duration(320)}
+          style={styles.introSlide}
+        >
+          <Animated.View
+            style={[styles.introVisualWrap, visualFloat]}
+            entering={FadeInUp.duration(360)}
+          >
             <Animated.Image
               key={`intro-visual-${introIndex}`}
               source={slide.image}
@@ -336,7 +354,9 @@ export default function OnboardingScreen() {
           </View>
           <PrimaryButton
             label={
-              introIndex === introSlides.length - 1 ? t("onboarding.continue") : t("onboarding.next")
+              introIndex === introSlides.length - 1
+                ? t("onboarding.continue")
+                : t("onboarding.next")
             }
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -528,7 +548,7 @@ export default function OnboardingScreen() {
           <OnboardingPlanSummary
             rows={planRows}
             insight={planInsight}
-              accessLine={planAccessLine}
+            accessLine={planAccessLine}
           />
         </ScrollView>
       </OnboardingQuizShell>
@@ -574,7 +594,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  introSkip: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  introSkip: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   introDots: { color: colors.textSecondary, ...typography.caption },
   introSlide: { flex: 1, justifyContent: "flex-start", gap: spacing.sm, paddingTop: spacing.sm },
   introVisualWrap: {

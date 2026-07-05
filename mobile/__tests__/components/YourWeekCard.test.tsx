@@ -40,7 +40,7 @@ describe("YourWeekCard", () => {
     );
 
     expect(screen.getByTestId("your-week-hero")).toBeTruthy();
-    expect(screen.getByText("stats.yourWeek.nextStepRemaining:{\"n\":3}")).toBeTruthy();
+    expect(screen.getByText('stats.yourWeek.nextStepRemaining:{"n":3}')).toBeTruthy();
     expect(screen.queryByText("stats.yourWeek.studioDays")).toBeNull();
   });
 });

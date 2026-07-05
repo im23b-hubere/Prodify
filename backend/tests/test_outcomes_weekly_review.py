@@ -85,8 +85,7 @@ def test_weekly_review_generate_logs_provider_errors_and_uses_fallback(client, m
     assert any("weekly_review_ai_provider_error" in record.message for record in caplog.records)
 
 
-def test_weekly_review_blocked_for_free_user_without_trial(client, monkeypatch):
-    monkeypatch.setattr("app.dependencies_subscription.settings.onboarding_trial_days", 0)
+def test_weekly_review_blocked_for_free_user_without_trial(client):
     headers = _auth_headers(client, "review-free@example.com", "review-free-user")
 
     current = client.get("/outcomes/weekly-review/current", headers=headers)
@@ -96,8 +95,7 @@ def test_weekly_review_blocked_for_free_user_without_trial(client, monkeypatch):
     assert generated.status_code == 402
 
 
-def test_weekly_review_available_with_premium_sync_without_trial(client, monkeypatch):
-    monkeypatch.setattr("app.dependencies_subscription.settings.onboarding_trial_days", 0)
+def test_weekly_review_available_with_premium_sync_without_trial(client):
     headers = _premium_auth_headers(client, "review-premium@example.com", "review-premium-user")
 
     generated = client.post("/outcomes/weekly-review/generate", headers=headers)

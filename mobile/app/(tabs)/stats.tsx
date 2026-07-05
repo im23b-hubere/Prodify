@@ -32,7 +32,10 @@ import { useAuth } from "../../context/AuthContext";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
 import { progressionOverviewHref } from "../../lib/progressionNavigation";
-import { WeeklyRecapTeaser, isWeeklyRecapTeaserVisible } from "../../features/weeklyRecap/WeeklyRecapTeaser";
+import {
+  WeeklyRecapTeaser,
+  isWeeklyRecapTeaserVisible,
+} from "../../features/weeklyRecap/WeeklyRecapTeaser";
 import { STATS_BREAKDOWN_COLORS } from "../../features/stats/constants";
 import { StatsHeatmapSection } from "../../features/stats/components/StatsHeatmapSection";
 import { StatsRecordsSection } from "../../features/stats/components/StatsRecordsSection";
@@ -229,7 +232,11 @@ export default function StatsScreen() {
         contentContainerStyle={styles.content}
         nestedScrollEnabled
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
         }
       >
         <View style={styles.headerRow}>
@@ -254,7 +261,9 @@ export default function StatsScreen() {
               </Pressable>
             ))}
           </View>
-          <Text style={styles.filterHint}>{t("stats.filterScopeHint", { period: filter.label })}</Text>
+          <Text style={styles.filterHint}>
+            {t("stats.filterScopeHint", { period: filter.label })}
+          </Text>
         </View>
 
         {showInitialLoading ? <StatsSkeleton /> : null}
@@ -264,7 +273,9 @@ export default function StatsScreen() {
             title={t("common.oops")}
             message={error}
             retryLabel={t("common.tryAgain")}
-            onRetry={() => loadStats({ force: true, forceProgressionSync: true }).catch(() => undefined)}
+            onRetry={() =>
+              loadStats({ force: true, forceProgressionSync: true }).catch(() => undefined)
+            }
           />
         ) : null}
 

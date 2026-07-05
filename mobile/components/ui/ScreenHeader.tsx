@@ -26,12 +26,7 @@ export function ScreenHeader({
     <View style={styles.wrap}>
       <View style={styles.textWrap}>
         {titleNode ?? (
-          <Text
-            style={styles.title}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.82}
-          >
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>
             {title}
           </Text>
         )}

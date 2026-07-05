@@ -118,7 +118,10 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
   const collapsedHeader = collapsible && !expanded;
 
   return (
-    <View style={styles.wrap} testID={collapsedHeader ? "friends-widget-collapsed" : "friends-widget-expanded"}>
+    <View
+      style={styles.wrap}
+      testID={collapsedHeader ? "friends-widget-collapsed" : "friends-widget-expanded"}
+    >
       <Pressable
         accessibilityRole="button"
         onPress={collapsible ? toggleExpanded : undefined}
@@ -127,9 +130,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
       >
         <Text style={styles.title}>{t("friendsWidget.title")}</Text>
         <View style={styles.headerActions}>
-          {primaryAction && collapsedHeader ? (
-            <View style={styles.nudgeDot} />
-          ) : null}
+          {primaryAction && collapsedHeader ? <View style={styles.nudgeDot} /> : null}
           <Pressable
             onPress={() => {
               Haptics.selectionAsync().catch(() => undefined);

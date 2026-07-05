@@ -75,12 +75,7 @@ const session: SessionDto = {
 describe("SessionShareImageModal", () => {
   it("renders English i18n copy instead of hardcoded strings", () => {
     render(
-      <SessionShareImageModal
-        visible
-        onClose={jest.fn()}
-        session={session}
-        producerName="eric"
-      />,
+      <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
     );
 
     expect(screen.getByText("sessionInsights.shareModalTitle")).toBeTruthy();

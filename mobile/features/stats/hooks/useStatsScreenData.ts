@@ -23,7 +23,11 @@ import type { HeatmapDay, PersonalRecord } from "../types";
 
 type LoadOpts = { force?: boolean; forceProgressionSync?: boolean };
 
-export function useStatsScreenData(token: string | null | undefined, periodParam: string, t: TFunction) {
+export function useStatsScreenData(
+  token: string | null | undefined,
+  periodParam: string,
+  t: TFunction,
+) {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<SessionStatsDto | null>(null);

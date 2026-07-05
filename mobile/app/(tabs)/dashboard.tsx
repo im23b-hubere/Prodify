@@ -317,14 +317,10 @@ export default function DashboardScreen() {
       setGoalSaving(true);
       try {
         await setWeeklyGoal(token, target);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-          () => undefined,
-        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
         await refreshDashboard({ force: true });
       } catch (e) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
-          () => undefined,
-        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
         setError(e instanceof Error ? e.message : t("dashboard.weeklyGoalSaveFailed"));
       } finally {
         setGoalSaving(false);

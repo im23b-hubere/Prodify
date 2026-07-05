@@ -42,7 +42,9 @@ export const StatsKpiStrip = memo(function StatsKpiStrip({
           ]}
         >
           {typeof item.value === "string" || typeof item.value === "number" ? (
-            <Text style={[styles.value, useHeroRow && styles.valueHero, isInset && styles.valueInset]}>
+            <Text
+              style={[styles.value, useHeroRow && styles.valueHero, isInset && styles.valueInset]}
+            >
               {item.value}
             </Text>
           ) : (

@@ -56,9 +56,7 @@ jest.mock("../../components/ui/PrimaryButton", () => {
 describe("StreakBreakModal", () => {
   it("renders i18n copy and calls onStartFresh when dismissed", () => {
     const onStartFresh = jest.fn();
-    render(
-      <StreakBreakModal visible brokenStreak={5} onStartFresh={onStartFresh} />,
-    );
+    render(<StreakBreakModal visible brokenStreak={5} onStartFresh={onStartFresh} />);
 
     expect(screen.getByText("streakBreak.title:5")).toBeTruthy();
     expect(screen.getByText("streakBreak.subtitle")).toBeTruthy();

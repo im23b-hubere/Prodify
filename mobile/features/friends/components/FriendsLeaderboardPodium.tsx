@@ -79,9 +79,7 @@ export const FriendsLeaderboardPodium = memo(function FriendsLeaderboardPodium({
                 <Image source={{ uri }} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatar}>
-                  <Text style={styles.avatarLabel}>
-                    {entry.username.slice(0, 2).toUpperCase()}
-                  </Text>
+                  <Text style={styles.avatarLabel}>{entry.username.slice(0, 2).toUpperCase()}</Text>
                 </View>
               )}
               <Text style={styles.userName} numberOfLines={1}>

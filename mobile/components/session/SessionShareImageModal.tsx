@@ -158,9 +158,7 @@ export function SessionShareImageModal({
           </View>
 
           <PrimaryButton
-            label={
-              busy ? t("sessionInsights.sharePngBusy") : t("sessionInsights.sharePngCta")
-            }
+            label={busy ? t("sessionInsights.sharePngBusy") : t("sessionInsights.sharePngCta")}
             onPress={captureAndShare}
             loading={busy}
           />

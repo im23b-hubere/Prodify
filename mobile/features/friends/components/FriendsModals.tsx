@@ -124,7 +124,9 @@ export function FriendsModals({
             <View style={styles.memberChips}>
               {friendCandidates.length === 0 ? (
                 <View style={styles.modalEmpty}>
-                  <Text style={styles.modalEmptyTitle}>{t("friendsScreen.buddyPickerEmptyTitle")}</Text>
+                  <Text style={styles.modalEmptyTitle}>
+                    {t("friendsScreen.buddyPickerEmptyTitle")}
+                  </Text>
                   <Text style={styles.userMeta}>{t("friendsScreen.buddyPickerEmptyMessage")}</Text>
                   <PrimaryButton
                     label={t("friendsScreen.buddyPickerEmptyCta")}
@@ -197,7 +199,9 @@ export function FriendsModals({
                   <Text style={styles.modalEmptyTitle}>
                     {t("friendsScreen.challengeMemberEmptyTitle")}
                   </Text>
-                  <Text style={styles.userMeta}>{t("friendsScreen.challengeMemberEmptyMessage")}</Text>
+                  <Text style={styles.userMeta}>
+                    {t("friendsScreen.challengeMemberEmptyMessage")}
+                  </Text>
                   <PrimaryButton
                     label={t("friendsScreen.challengeMemberEmptyCta")}
                     onPress={() => {

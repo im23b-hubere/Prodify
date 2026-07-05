@@ -57,7 +57,12 @@ export function useDashboardSocialNudges({
   const nudgeCandidates = useMemo(() => {
     const out: {
       key: string;
-      category: "buddy_risk" | "challenge_close" | "commitment_behind" | "checkin_behind" | "streak_psych";
+      category:
+        | "buddy_risk"
+        | "challenge_close"
+        | "commitment_behind"
+        | "checkin_behind"
+        | "streak_psych";
       message: string;
       priority: number;
       ctaLabel: string;

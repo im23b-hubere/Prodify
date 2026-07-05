@@ -69,7 +69,10 @@ export function StreakHeroSection({
           const kind = kinds[index] ?? "none";
           const isToday = index === 6;
           return (
-            <View key={`${label}-${index}`} style={[styles.dayColumn, compact && styles.dayColumnCompact]}>
+            <View
+              key={`${label}-${index}`}
+              style={[styles.dayColumn, compact && styles.dayColumnCompact]}
+            >
               {!compact ? (
                 <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
                   {label.slice(0, 1)}

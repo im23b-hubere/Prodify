@@ -32,9 +32,7 @@ describe("WeeklyGoalInlineCard", () => {
     render(<WeeklyGoalInlineCard mode="progress" current={2} target={5} />);
 
     expect(screen.getByTestId("weekly-goal-inline-progress")).toBeTruthy();
-    expect(
-      screen.getByText('dashboard.weeklyGoalProgress:{"current":2,"target":5}'),
-    ).toBeTruthy();
+    expect(screen.getByText('dashboard.weeklyGoalProgress:{"current":2,"target":5}')).toBeTruthy();
   });
 
   it("shows edit chips when edit is pressed", () => {

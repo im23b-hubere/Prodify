@@ -1,7 +1,4 @@
-import {
-  formatIsoDateShortLocal,
-  weekdayLetterFromIsoDay,
-} from "../../../lib/sessionTime";
+import { formatIsoDateShortLocal, weekdayLetterFromIsoDay } from "../../../lib/sessionTime";
 import type { SessionStatsDto } from "../../../types/session";
 import type { BarPoint, StatsPeriod, StatsSummaryView } from "../types";
 import { formatStatsDuration, localStatsDateKey } from "./format";

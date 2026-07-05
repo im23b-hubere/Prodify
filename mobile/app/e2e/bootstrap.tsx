@@ -3,10 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import {
-  ONBOARDING_COMPLETE_KEY,
-  WEEKLY_GOAL_CONFIGURED_KEY,
-} from "../../constants/storageKeys";
+import { ONBOARDING_COMPLETE_KEY, WEEKLY_GOAL_CONFIGURED_KEY } from "../../constants/storageKeys";
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { isE2eModeEnabled } from "../../lib/e2eMode";

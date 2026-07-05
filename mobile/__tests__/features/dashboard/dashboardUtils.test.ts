@@ -1,4 +1,9 @@
-import { getLast7DaysProgress, getStreak, parseApiDate, toDateKey } from "../../../features/dashboard/utils";
+import {
+  getLast7DaysProgress,
+  getStreak,
+  parseApiDate,
+  toDateKey,
+} from "../../../features/dashboard/utils";
 import type { SessionDto } from "../../../types/session";
 
 function session(startedAt: string, id = 1): SessionDto {

@@ -4,14 +4,7 @@ import { sessionTypeLabel } from "../../lib/sessionI18n";
 import type { SessionStatsDto } from "../../types/session";
 import type { WeeklyReviewDto } from "../../types/outcomes";
 
-export type WrappedSlideKind =
-  | "intro"
-  | "stat"
-  | "label"
-  | "quote"
-  | "outro"
-  | "empty"
-  | "signin";
+export type WrappedSlideKind = "intro" | "stat" | "label" | "quote" | "outro" | "empty" | "signin";
 
 export type WrappedSlide = {
   id: string;
@@ -188,7 +181,11 @@ export function buildWrappedSlides({
   return slides;
 }
 
-function buildOutroSlide(t: TFunction, displaySessions: number, displayHours: string): WrappedSlide {
+function buildOutroSlide(
+  t: TFunction,
+  displaySessions: number,
+  displayHours: string,
+): WrappedSlide {
   return {
     id: "outro",
     kind: "outro",

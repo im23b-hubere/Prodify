@@ -104,7 +104,9 @@ export const WeeklyQuestCard = memo(function WeeklyQuestCard(props: Props) {
         <Text style={styles.title}>{t("sessionComplete.weekQuestTitle")}</Text>
         <View style={styles.headerRight}>
           <View style={[styles.statusChip, styles[`chip_${questStatus}`]]}>
-            <Text style={styles.statusChipText}>{t(`sessionComplete.questStatus.${questStatus}`)}</Text>
+            <Text style={styles.statusChipText}>
+              {t(`sessionComplete.questStatus.${questStatus}`)}
+            </Text>
           </View>
           {onChangeTarget ? (
             <Pressable
@@ -162,7 +164,9 @@ export const WeeklyQuestCard = memo(function WeeklyQuestCard(props: Props) {
               {busy ? (
                 <ActivityIndicator color={colors.primary} size="small" />
               ) : (
-                <Text style={[styles.chipText, value === weeklyGoalTarget && styles.chipTextActive]}>
+                <Text
+                  style={[styles.chipText, value === weeklyGoalTarget && styles.chipTextActive]}
+                >
                   {value}
                 </Text>
               )}

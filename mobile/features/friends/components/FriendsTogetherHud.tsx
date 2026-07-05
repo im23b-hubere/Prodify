@@ -33,8 +33,7 @@ export const FriendsTogetherHud = memo(function FriendsTogetherHud({
     return t("friendsScreen.crewHudBuddyEmpty");
   }, [buddy, t]);
 
-  const yourWeekSessions =
-    buddy?.status === "active" ? String(buddy.this_week_sessions ?? 0) : "—";
+  const yourWeekSessions = buddy?.status === "active" ? String(buddy.this_week_sessions ?? 0) : "—";
 
   const commitmentLabel =
     commitment != null ? `${commitment.current_sessions ?? 0}/${commitment.target_sessions}` : "—";
@@ -69,7 +68,10 @@ export const FriendsTogetherHud = memo(function FriendsTogetherHud({
           value={yourWeekSessions}
           accent={buddy?.status === "active"}
         />
-        <StatTile label={t("friendsScreen.crewHudChallengesLabel")} value={`${activeChallengeCount}`} />
+        <StatTile
+          label={t("friendsScreen.crewHudChallengesLabel")}
+          value={`${activeChallengeCount}`}
+        />
       </View>
       {commitment ? (
         <Pressable

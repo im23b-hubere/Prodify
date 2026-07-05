@@ -44,7 +44,11 @@ import {
   fetchSessionReactions,
   toggleSessionReaction,
 } from "../../lib/social";
-import { sessionMoodLabel, sessionTrackOutcomeLabel, sessionTypeLabel } from "../../lib/sessionI18n";
+import {
+  sessionMoodLabel,
+  sessionTrackOutcomeLabel,
+  sessionTypeLabel,
+} from "../../lib/sessionI18n";
 import { sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { formatDurationWords, parseSessionDate } from "../../lib/sessionTime";
 import { formatTimeAgo } from "../../lib/timeAgo";
@@ -429,10 +433,9 @@ export default function SessionDetailScreen() {
     insights?.timeline?.filter((segment) => segment.kind === "paused").length ?? 0;
   const pauseCount = hasMeaningfulPause ? Math.max(1, pauseCountRaw) : 0;
   const isActiveSession = session.stopped_at == null;
-  const dateLine =
-    startOk
-      ? `${start.toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}${endOk && end ? ` – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : ""}`
-      : "—";
+  const dateLine = startOk
+    ? `${start.toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}${endOk && end ? ` – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : ""}`
+    : "—";
   const heroFocusScore = insights?.focus_score ?? session.focus_score ?? null;
   const trackOutcomeLabel = sessionTrackOutcomeLabel(session.track_outcome, t);
 

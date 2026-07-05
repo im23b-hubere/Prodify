@@ -35,7 +35,10 @@ export const TodayPlanCard = memo(function TodayPlanCard({
         : null;
 
   return (
-    <AppCard style={[styles.card, compact ? styles.cardCompact : undefined]} testID="today-plan-card">
+    <AppCard
+      style={[styles.card, compact ? styles.cardCompact : undefined]}
+      testID="today-plan-card"
+    >
       <View style={styles.headerRow}>
         <Text style={styles.kicker}>{t("todayPlan.title")}</Text>
         <View
@@ -68,7 +71,9 @@ export const TodayPlanCard = memo(function TodayPlanCard({
           })}
         </Text>
       ) : null}
-      {!compact && shortSessionsHint ? <Text style={styles.shortHint}>{shortSessionsHint}</Text> : null}
+      {!compact && shortSessionsHint ? (
+        <Text style={styles.shortHint}>{shortSessionsHint}</Text>
+      ) : null}
       {!compact && adjustedTargetHint ? (
         <Text style={styles.adjustedHint}>{adjustedTargetHint}</Text>
       ) : null}

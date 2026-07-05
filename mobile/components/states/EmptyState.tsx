@@ -38,9 +38,7 @@ export function EmptyState({
       {!iconNode && icon ? <Text style={styles.iconEmoji}>{icon}</Text> : null}
       <Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}
-      {actionLabel && onAction ? (
-        <PrimaryButton label={actionLabel} onPress={onAction} />
-      ) : null}
+      {actionLabel && onAction ? <PrimaryButton label={actionLabel} onPress={onAction} /> : null}
       {secondaryActionLabel && onSecondaryAction ? (
         <TextButton label={secondaryActionLabel} onPress={onSecondaryAction} subdued />
       ) : null}

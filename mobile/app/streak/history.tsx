@@ -149,9 +149,7 @@ export default function StreakHistoryScreen() {
           ) : undefined
         }
       >
-        {loading && !refreshing ? (
-          <LoadingState message={t("streakHistory.loading")} />
-        ) : null}
+        {loading && !refreshing ? <LoadingState message={t("streakHistory.loading")} /> : null}
 
         {showSignIn ? (
           <AppCard>
@@ -212,8 +210,7 @@ export default function StreakHistoryScreen() {
               >
                 <View style={styles.cardHeader}>
                   <Text style={styles.days}>
-                    {run.length_days}{" "}
-                    {t("streakHistory.dayUnit", { count: run.length_days })}
+                    {run.length_days} {t("streakHistory.dayUnit", { count: run.length_days })}
                   </Text>
                   {isCurrent ? (
                     <View style={styles.currentBadge}>
