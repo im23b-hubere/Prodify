@@ -43,13 +43,8 @@ jest.mock("expo-linear-gradient", () => {
   const React = require("react");
   const { View } = require("react-native");
   return {
-    LinearGradient: ({
-      children,
-      testID,
-    }: {
-      children: React.ReactNode;
-      testID?: string;
-    }) => React.createElement(View, { testID }, children),
+    LinearGradient: ({ children, testID }: { children: React.ReactNode; testID?: string }) =>
+      React.createElement(View, { testID }, children),
   };
 });
 
@@ -204,16 +199,12 @@ describe("Stats Screen", () => {
     });
   });
 
-  it(
-    "renders hero and KPI strip after load",
-    async () => {
-      const { findByTestId } = render(<StatsScreen />);
-      expect(await findByTestId("your-week-hero")).toBeTruthy();
-      expect(await findByTestId("stats-merged-hero")).toBeTruthy();
-      expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
-    },
-    15_000,
-  );
+  it("renders hero and KPI strip after load", async () => {
+    const { findByTestId } = render(<StatsScreen />);
+    expect(await findByTestId("your-week-hero")).toBeTruthy();
+    expect(await findByTestId("stats-merged-hero")).toBeTruthy();
+    expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
+  }, 15_000);
 
   it("shows filter scope hint under period chips", async () => {
     const { findByText } = render(<StatsScreen />);
