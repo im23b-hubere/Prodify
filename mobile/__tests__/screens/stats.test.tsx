@@ -151,4 +151,9 @@ describe("Stats Screen", () => {
     expect(await findByTestId("stats-section-recent")).toBeTruthy();
     expect(await findByTestId("stats-section-records")).toBeTruthy();
   });
+
+  it("renders collapsed heatmap preview strip", async () => {
+    const { findByTestId } = render(<StatsScreen />);
+    expect(await findByTestId("stats-heatmap-preview")).toBeTruthy();
+  });
 });

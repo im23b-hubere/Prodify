@@ -1,17 +1,12 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
-import type { TFunction } from "i18next";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import {
   Animated,
   Easing,
-  FlatList,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -21,296 +16,34 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { DashboardRecentSessionRow } from "../../components/dashboard/DashboardRecentSessionRow";
 import { YourWeekCard } from "../../components/stats/YourWeekCard";
 import { StatsKpiStrip } from "../../components/stats/StatsKpiStrip";
-import { AppFlame, RecordGlyph, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
+import { AppFlame, glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
-import { EmptyState } from "../../components/states/EmptyState";
 import { AppCard } from "../../components/ui/AppCard";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
 import { RankHudChip } from "../../components/progression/RankHudChip";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { fontFamily } from "../../constants/fonts";
-import { WEEKLY_GOAL_CONFIGURED_KEY } from "../../constants/storageKeys";
 import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-import { apiJson } from "../../lib/client";
-import { fetchCurrentGoal, setWeeklyGoal as saveWeeklyGoalApi } from "../../lib/goals";
-import { fetchCommitment } from "../../lib/social";
-import { debugLog } from "../../lib/debugLog";
-import {
-  formatIsoDateShortLocal,
-  formatSessionListDate,
-  weekdayLetterFromIsoDay,
-} from "../../lib/sessionTime";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
 import { progressionOverviewHref } from "../../lib/progressionNavigation";
-import { isScreenDataStale } from "../../lib/screenDataStale";
 import { WeeklyRecapTeaser, isWeeklyRecapTeaserVisible } from "../../features/weeklyRecap/WeeklyRecapTeaser";
-import { fetchProgression, syncProgression } from "../../lib/progressionSync";
-import { ActivityHeatmapLegend } from "../../components/charts/ActivityHeatmapLegend";
-import { heatmapCellColor } from "../../lib/heatmapStyle";
-import { tryParseGoalForecastDto } from "../../lib/outcomesDto";
-import {
-  tryParseHeatmapDays,
-  tryParsePersonalRecords,
-  tryParseSessionStatsDto,
-} from "../../lib/statsDto";
-import type { CommitmentDto } from "../../types/friends";
-import type { GoalCurrentDto } from "../../types/goals";
-import type { SessionDto, SessionStatsDto } from "../../types/session";
-import type { GoalForecastDto, ProgressionDto } from "../../types/outcomes";
-
-type HeatmapDay = { date: string; seconds: number; intensity: number };
-type PersonalRecord = {
-  key: string;
-  label: string;
-  value: string;
-  context: string | null;
-  occurred_at: string | null;
-};
-
-const BREAKDOWN_COLORS = [colors.primary, colors.secondary, colors.success];
-const CALENDAR_DAY_MS = 24 * 60 * 60 * 1000;
-type TTranslate = TFunction;
-type DecoratedRecord = PersonalRecord & { score: number; isFresh: boolean };
-
-function formatDuration(seconds: number) {
-  const s = Number.isFinite(seconds) && seconds >= 0 ? seconds : 0;
-  const mins = Math.round(s / 60);
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  const rest = mins % 60;
-  return `${hours}h ${rest}m`;
-}
-
-function formatRecordDate(value: string | null, t: (key: string) => string) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return `${t("stats.recordAchieved")} ${date.toLocaleDateString()}`;
-}
-
-function parseIsoDate(value: string | null): Date | null {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function localDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function formatRecordContext(record: PersonalRecord, t: TTranslate) {
-  if (!record.context) return null;
-  if (record.key === "longest_session") {
-    return sessionTypeLabel(record.context, t);
-  }
-  if (record.key === "most_sessions_day") {
-    const date = new Date(record.context);
-    return Number.isNaN(date.getTime())
-      ? record.context
-      : t("stats.recordOnDate", { date: date.toLocaleDateString() });
-  }
-  if (record.key === "productive_week") {
-    const rawDate = record.context.replace("Week of ", "").trim();
-    const date = new Date(rawDate);
-    return Number.isNaN(date.getTime())
-      ? record.context
-      : t("stats.recordWeekOf", { date: date.toLocaleDateString() });
-  }
-  if (record.context === "Now") return t("stats.recordNow");
-  if (record.context === "All-time") return t("stats.recordAllTime");
-  return record.context;
-}
-
-function recordTitle(key: string, fallback: string, t: TTranslate) {
-  if (key === "longest_session") return t("stats.recordLongestSession");
-  if (key === "most_sessions_day") return t("stats.recordMostSessionsDay");
-  if (key === "longest_streak") return t("stats.recordLongestStreak");
-  if (key === "current_streak") return t("stats.recordCurrentStreak");
-  if (key === "productive_week") return t("stats.recordProductiveWeek");
-  return fallback;
-}
-
-function recordPriorityScore(key: string) {
-  if (key === "current_streak") return 100;
-  if (key === "longest_streak") return 90;
-  if (key === "productive_week") return 80;
-  if (key === "most_sessions_day") return 70;
-  if (key === "longest_session") return 60;
-  return 20;
-}
-
-const BAR_CHART_HEIGHT = 132;
-const SESSION_LOG_PREVIEW = 5;
-
-type BarPoint = { x: string; y: number; label: string };
-
-function SkeletonLine({
-  style,
-  durationMs = 850,
-  minOpacity = 0.5,
-}: {
-  style?: object;
-  durationMs?: number;
-  minOpacity?: number;
-}) {
-  const pulse = useRef(new Animated.Value(0.5)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: durationMs,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: minOpacity,
-          duration: durationMs,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [durationMs, minOpacity, pulse]);
-
-  return <Animated.View style={[styles.skeletonLine, { opacity: pulse }, style]} />;
-}
-
-function StatsSkeleton() {
-  return (
-    <View style={styles.skeletonWrap}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.cardRow}
-      >
-        {[0, 1, 2].map((idx) => (
-          <AppCard key={`sk-stat-${idx}`} style={styles.skeletonStatCard}>
-            <SkeletonLine style={styles.skeletonLabel} durationMs={760} minOpacity={0.56} />
-            <SkeletonLine style={styles.skeletonValue} durationMs={760} minOpacity={0.56} />
-            <SkeletonLine style={styles.skeletonSub} durationMs={760} minOpacity={0.56} />
-          </AppCard>
-        ))}
-      </ScrollView>
-      {[0, 1, 2].map((idx) => (
-        <AppCard key={`sk-card-${idx}`} style={styles.skeletonBlockCard}>
-          <SkeletonLine style={styles.skeletonTitle} durationMs={980} minOpacity={0.5} />
-          <SkeletonLine style={styles.skeletonBody} durationMs={980} minOpacity={0.5} />
-          <SkeletonLine style={styles.skeletonBodyShort} durationMs={980} minOpacity={0.5} />
-        </AppCard>
-      ))}
-    </View>
-  );
-}
-
-function StatsSection({
-  title,
-  subtitle,
-  testID,
-  collapsible = false,
-  defaultExpanded = true,
-  collapsedHint,
-  children,
-}: {
-  title: string;
-  subtitle?: string | null;
-  testID?: string;
-  collapsible?: boolean;
-  defaultExpanded?: boolean;
-  collapsedHint?: string | null;
-  children: ReactNode;
-}) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  const showBody = !collapsible || expanded;
-  const headerSubtitle =
-    collapsible && !expanded && collapsedHint ? collapsedHint : subtitle;
-
-  return (
-    <AppCard style={styles.staticSection} testID={testID}>
-      <Pressable
-        accessibilityRole={collapsible ? "button" : undefined}
-        accessibilityState={collapsible ? { expanded } : undefined}
-        disabled={!collapsible}
-        onPress={
-          collapsible
-            ? () => {
-                Haptics.selectionAsync().catch(() => undefined);
-                setExpanded((value) => !value);
-              }
-            : undefined
-        }
-        style={({ pressed }) => [
-          styles.staticSectionHeader,
-          collapsible && styles.staticSectionHeaderPressable,
-          collapsible && pressed && { opacity: 0.88 },
-        ]}
-      >
-        <View style={styles.staticSectionHeaderCopy}>
-          <Text style={styles.staticSectionTitle}>{title}</Text>
-          {headerSubtitle ? (
-            <Text style={styles.staticSectionSubtitle}>{headerSubtitle}</Text>
-          ) : null}
-        </View>
-        {collapsible ? (
-          expanded ? (
-            <ChevronUp color={colors.textSecondary} size={18} />
-          ) : (
-            <ChevronDown color={colors.textSecondary} size={18} />
-          )
-        ) : null}
-      </Pressable>
-      {showBody ? <View style={styles.staticSectionBody}>{children}</View> : null}
-    </AppCard>
-  );
-}
-
-function SessionsPerDayChart({ data }: { data: BarPoint[] }) {
-  if (data.length === 0) return null;
-  const maxY = Math.max(1, ...data.map((d) => d.y));
-  const todayIso = new Date().toISOString().slice(0, 10);
-
-  return (
-    <FlatList
-      horizontal
-      nestedScrollEnabled={Platform.OS === "android"}
-      data={data}
-      keyExtractor={(d, i) => `${d.label}-${i}`}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.barScrollContent}
-      renderItem={({ item: d }) => {
-        const h = Math.max(3, (d.y / maxY) * BAR_CHART_HEIGHT);
-        const isToday = d.label === todayIso;
-        return (
-          <View style={styles.barColumn}>
-            <View style={styles.barTrack}>
-              <LinearGradient
-                colors={isToday ? ["#ff8f66", colors.primary] : ["#ff5a1f", colors.primary]}
-                style={[styles.barFill, { height: h }]}
-              />
-            </View>
-            <Text style={styles.barAxisLabel} numberOfLines={1}>
-              {d.x}
-            </Text>
-            <Text style={[styles.barCount, d.y > 0 && styles.barCountActive]}>{d.y}</Text>
-          </View>
-        );
-      }}
-    />
-  );
-}
+import { STATS_BREAKDOWN_COLORS } from "../../features/stats/constants";
+import { StatsHeatmapSection } from "../../features/stats/components/StatsHeatmapSection";
+import { StatsRecordsSection } from "../../features/stats/components/StatsRecordsSection";
+import { StatsSection } from "../../features/stats/components/StatsSection";
+import { StatsSessionLogSection } from "../../features/stats/components/StatsSessionLogSection";
+import { StatsSkeleton } from "../../features/stats/components/StatsSkeleton";
+import { StatsTrendsSection } from "../../features/stats/components/StatsTrendsSection";
+import { useStatsScreenData } from "../../features/stats/hooks/useStatsScreenData";
+import type { StatsFilter } from "../../features/stats/types";
+import { buildChartData, buildStatsSummary } from "../../features/stats/utils/chartData";
+import { decorateRecords } from "../../features/stats/utils/records";
 
 export default function StatsScreen() {
   const { t } = useTranslation();
@@ -318,140 +51,44 @@ export default function StatsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ focus?: string | string[] }>();
   const focusParam = Array.isArray(params.focus) ? params.focus[0] : params.focus;
-  const filters = useMemo(
-    () =>
-      [
-        { key: "7d" as const, label: t("stats.filter7d"), period: "week" as const },
-        { key: "30d" as const, label: t("stats.filter30d"), period: "month" as const },
-        { key: "all" as const, label: t("stats.filterAll"), period: "all" as const },
-      ] as const,
+
+  const filters = useMemo<readonly StatsFilter[]>(
+    () => [
+      { key: "7d", label: t("stats.filter7d"), period: "week" },
+      { key: "30d", label: t("stats.filter30d"), period: "month" },
+      { key: "all", label: t("stats.filterAll"), period: "all" },
+    ],
     [t],
   );
+
   const [filterIdx, setFilterIdx] = useState(0);
   const filter = filters[filterIdx];
-  const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<SessionStatsDto | null>(null);
-  const [heatmapDays, setHeatmapDays] = useState<HeatmapDay[]>([]);
-  const [records, setRecords] = useState<PersonalRecord[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [forecast, setForecast] = useState<GoalForecastDto | null>(null);
-  const [weeklyGoal, setWeeklyGoal] = useState<GoalCurrentDto | null>(null);
-  const [commitment, setCommitment] = useState<CommitmentDto | null>(null);
-  const [goalConfigured, setGoalConfigured] = useState(false);
-  const [weekBusy, setWeekBusy] = useState(false);
-  const [progression, setProgression] = useState<ProgressionDto | null>(null);
-  const loadSeq = useRef(0);
-  const mounted = useRef(true);
-  const lastStatsFetchRef = useRef<{ at: number; period: string } | null>(null);
-  const lastPeriodParamRef = useRef<string | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
-  const yourWeekOffsetY = useRef(0);
-  const pendingYourWeekFocus = useRef(false);
-  const contentFade = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      loadSeq.current += 1;
-    };
-  }, []);
-
   const periodParam =
     filter.period === "week" ? "week" : filter.period === "month" ? "month" : "all";
 
-  const loadStats = useCallback(
-    async (opts: { force?: boolean; forceProgressionSync?: boolean } = {}) => {
-      const force = Boolean(opts.force);
-      const forceProgressionSync = Boolean(opts.forceProgressionSync);
-      if (!token) return;
+  const {
+    refreshing,
+    loading,
+    stats,
+    heatmapDays,
+    records,
+    error,
+    forecast,
+    weeklyGoal,
+    commitment,
+    goalConfigured,
+    weekBusy,
+    progression,
+    loadStats,
+    onRefresh,
+    saveWeeklyGoal,
+  } = useStatsScreenData(token, periodParam, t);
 
-      const lastFetch = lastStatsFetchRef.current;
-      if (
-        !force &&
-        !forceProgressionSync &&
-        lastFetch &&
-        lastFetch.period === periodParam &&
-        !isScreenDataStale(lastFetch.at)
-      ) {
-        return;
-      }
-
-      const seq = ++loadSeq.current;
-      if (mounted.current) setLoading(true);
-      if (mounted.current) setError(null);
-      try {
-        const [rawStats, rawHm, rawRec] = await Promise.all([
-          apiJson<unknown>(`/sessions/stats?period=${periodParam}`, { token }),
-          apiJson<unknown>(`/stats/heatmap`, { token }),
-          apiJson<unknown>(`/stats/records`, { token }),
-        ]);
-        if (!mounted.current || seq !== loadSeq.current) return;
-        const parsed = tryParseSessionStatsDto(rawStats);
-        if (!parsed) {
-          debugLog("stats", "invalid_stats_payload", { period: periodParam });
-          if (mounted.current) {
-            setStats(null);
-            setHeatmapDays([]);
-            setRecords([]);
-            setProgression(null);
-            setError(t("stats.invalidResponse"));
-          }
-          return;
-        }
-        if (mounted.current) {
-          setStats(parsed);
-          setHeatmapDays(tryParseHeatmapDays(rawHm));
-          setRecords(tryParsePersonalRecords(rawRec));
-        }
-        // Show core stats first, then hydrate secondary sections.
-        if (mounted.current && seq === loadSeq.current) setLoading(false);
-
-        const [progressionRes, goalRes, commitmentRes, configuredRes, forecastRes] =
-          await Promise.allSettled([
-            forceProgressionSync
-              ? syncProgression(token, { force: true })
-              : fetchProgression(token),
-            fetchCurrentGoal(token),
-            fetchCommitment(token),
-            AsyncStorage.getItem(WEEKLY_GOAL_CONFIGURED_KEY),
-            apiJson<unknown>("/outcomes/goal-forecast/current", { token }),
-          ]);
-        if (!mounted.current || seq !== loadSeq.current) return;
-
-        const progressionRaw = progressionRes.status === "fulfilled" ? progressionRes.value : null;
-        const goalRaw = goalRes.status === "fulfilled" ? goalRes.value : null;
-        const commitmentRaw = commitmentRes.status === "fulfilled" ? commitmentRes.value : null;
-        const configuredRaw = configuredRes.status === "fulfilled" ? configuredRes.value : null;
-        const forecastRaw = forecastRes.status === "fulfilled" ? forecastRes.value : null;
-
-        if (mounted.current && seq === loadSeq.current) {
-          setForecast(forecastRaw ? tryParseGoalForecastDto(forecastRaw) : null);
-        }
-        setWeeklyGoal(goalRaw);
-        setCommitment(commitmentRaw);
-        const hasConfiguredFlag = configuredRaw === "1";
-        const hasWeekActivity = (goalRaw?.current_sessions ?? 0) > 0;
-        const isConfigured = hasConfiguredFlag || hasWeekActivity;
-        setGoalConfigured(isConfigured);
-        if (isConfigured && !hasConfiguredFlag) {
-          void AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1");
-        }
-        setProgression(progressionRaw);
-        lastStatsFetchRef.current = { at: Date.now(), period: periodParam };
-      } catch (e) {
-        if (!mounted.current || seq !== loadSeq.current) return;
-        const msg = e instanceof Error ? e.message : t("stats.loadFailed");
-        debugLog("stats", "stats_fetch_failed", { period: periodParam, message: msg });
-        if (mounted.current) setError(msg);
-      } finally {
-        if (!mounted.current || seq !== loadSeq.current) return;
-        setLoading(false);
-      }
-    },
-    [periodParam, token, t],
-  );
+  const scrollRef = useRef<ScrollView>(null);
+  const yourWeekOffsetY = useRef(0);
+  const pendingYourWeekFocus = useRef(false);
+  const lastPeriodParamRef = useRef<string | null>(null);
+  const contentFade = useRef(new Animated.Value(0)).current;
 
   const tryScrollToYourWeek = useCallback(() => {
     if (!pendingYourWeekFocus.current || yourWeekOffsetY.current <= 0) return;
@@ -484,49 +121,10 @@ export default function StatsScreen() {
     loadStats({ force: true }).catch(() => undefined);
   }, [loadStats, periodParam]);
 
-  const onRefresh = useCallback(async () => {
-    if (mounted.current) setRefreshing(true);
+  const handleRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    await loadStats({ force: true, forceProgressionSync: true }).catch((e) => {
-      if (mounted.current) setError(e instanceof Error ? e.message : t("stats.loadFailed"));
-    });
-    if (mounted.current) setRefreshing(false);
-  }, [loadStats, t]);
-
-  const handleSaveWeeklyGoal = useCallback(
-    async (target: number, shareWithFriends: boolean) => {
-      if (!token) return;
-      setWeekBusy(true);
-      try {
-        const updated = await saveWeeklyGoalApi(token, target);
-        setWeeklyGoal(updated);
-        await AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1").catch(() => undefined);
-        setGoalConfigured(true);
-        if (shareWithFriends) {
-          await apiJson("/social/commitment", {
-            token,
-            method: "POST",
-            body: {
-              target_sessions: target,
-              visibility: "friends",
-              commitment_key: "sessions",
-              period_days: 7,
-              witness_user_ids: [],
-            },
-          });
-          const nextCommitment = await fetchCommitment(token);
-          setCommitment(nextCommitment);
-        }
-        const nextForecastRaw = await apiJson<unknown>("/outcomes/goal-forecast/current", {
-          token,
-        }).catch(() => null);
-        setForecast(nextForecastRaw ? tryParseGoalForecastDto(nextForecastRaw) : null);
-      } finally {
-        setWeekBusy(false);
-      }
-    },
-    [token],
-  );
+    void onRefresh();
+  }, [onRefresh]);
 
   const handleStartSession = useCallback(() => {
     router.push("/session/setup" as Href);
@@ -536,121 +134,20 @@ export default function StatsScreen() {
     router.push("/weekly-recap");
   }, [router]);
 
-  const summary = useMemo(() => {
-    const s = stats?.summary;
-    if (!s) {
-      return {
-        hours: "0h",
-        sessions: "0",
-        avgSession: "0m",
-        streak: 0,
-        bestStreak: 0,
-        delta: null as number | null,
-      };
-    }
-    const sec = Number.isFinite(s.total_seconds) && s.total_seconds >= 0 ? s.total_seconds : 0;
-    const hours = (sec / 3600).toFixed(1);
-    const delta = s.hours_delta_vs_prior_period;
-    return {
-      hours: `${hours}h`,
-      sessions: String(s.total_sessions),
-      avgSession: formatDuration(s.avg_session_seconds),
-      streak: s.current_streak_days,
-      bestStreak: s.best_streak_days,
-      delta,
-    };
-  }, [stats]);
-
-  const chartData = useMemo((): BarPoint[] => {
-    const points = stats?.trend ?? [];
-    if (filter.period === "week") {
-      const sessionsByDay = new Map<string, number>();
-      for (const point of points) {
-        if (point?.label) {
-          sessionsByDay.set(
-            point.label,
-            Number.isFinite(point.sessions) && point.sessions >= 0 ? point.sessions : 0,
-          );
-        }
-      }
-      return Array.from({ length: 7 }, (_, index) => {
-        const date = new Date();
-        date.setHours(0, 0, 0, 0);
-        date.setDate(date.getDate() - (6 - index));
-        const isoLabel = localDateKey(date);
-        return {
-          x: weekdayLetterFromIsoDay(isoLabel),
-          y: sessionsByDay.get(isoLabel) ?? 0,
-          label: isoLabel,
-        };
-      });
-    }
-    if (points.length === 0) return [];
-    return points.map((p) => ({
-      x: formatIsoDateShortLocal(p.label),
-      y: Number.isFinite(p.sessions) && p.sessions >= 0 ? p.sessions : 0,
-      label: p.label,
-    }));
-  }, [filter.period, stats]);
-
+  const summary = useMemo(() => buildStatsSummary(stats), [stats]);
+  const chartData = useMemo(() => buildChartData(stats, filter.period), [filter.period, stats]);
   const breakdownData = useMemo(
     () =>
       (stats?.breakdown ?? []).map((item, idx) => ({
         label: sessionTypeLabel(String(item.session_type), t),
         value: Math.max(0, Math.round(item.percent)),
         sessions: item.sessions,
-        color: BREAKDOWN_COLORS[idx % BREAKDOWN_COLORS.length],
+        color: STATS_BREAKDOWN_COLORS[idx % STATS_BREAKDOWN_COLORS.length],
       })),
     [stats, t],
   );
-
-  const recent = useMemo(() => stats?.recent_sessions ?? [], [stats?.recent_sessions]);
-
-  const recentPreview = useMemo(() => recent.slice(0, SESSION_LOG_PREVIEW), [recent]);
-
-  const heatmapActiveDays = useMemo(
-    () => heatmapDays.filter((day) => (day.intensity ?? 0) > 0 || (day.seconds ?? 0) > 0).length,
-    [heatmapDays],
-  );
-
-  const showInitialLoading = loading && !refreshing && !stats && !error;
-  const showInlineLoading = loading && !refreshing && !!stats;
-
-  useEffect(() => {
-    if (!pendingYourWeekFocus.current || showInitialLoading || !token) return;
-    tryScrollToYourWeek();
-  }, [showInitialLoading, token, tryScrollToYourWeek]);
-
-  useEffect(() => {
-    if (showInitialLoading) {
-      contentFade.setValue(0);
-      return;
-    }
-    Animated.timing(contentFade, {
-      toValue: 1,
-      duration: 180,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [contentFade, showInitialLoading]);
-
-  const decoratedRecords = useMemo<DecoratedRecord[]>(() => {
-    const now = Date.now();
-    const FRESH_MS = 14 * CALENDAR_DAY_MS;
-    return records
-      .map((record) => {
-        const occurredDate = parseIsoDate(record.occurred_at);
-        const occurredMs = occurredDate?.getTime() ?? 0;
-        const isFresh = occurredDate ? now - occurredMs <= FRESH_MS : false;
-        return {
-          ...record,
-          score: recordPriorityScore(record.key) + (isFresh ? 1000 : 0),
-          isFresh,
-        };
-      })
-      .sort((a, b) => b.score - a.score);
-  }, [records]);
-
+  const recentSessions = useMemo(() => stats?.recent_sessions ?? [], [stats?.recent_sessions]);
+  const decoratedRecords = useMemo(() => decorateRecords(records), [records]);
   const productivityHintText = useMemo(() => {
     if (stats?.productivity_hint_item) {
       return translateInsightItem(stats.productivity_hint_item, t);
@@ -704,14 +201,26 @@ export default function StatsScreen() {
     ];
   }, [filter.period, summary, t]);
 
-  const openRecentSession = useCallback(
-    (session: SessionDto) => {
-      const sid = session.id;
-      if (typeof sid !== "number" || !Number.isFinite(sid) || sid <= 0) return;
-      router.push(`/session/${sid}`);
-    },
-    [router],
-  );
+  const showInitialLoading = loading && !refreshing && !stats && !error;
+  const showInlineLoading = loading && !refreshing && !!stats;
+
+  useEffect(() => {
+    if (!pendingYourWeekFocus.current || showInitialLoading || !token) return;
+    tryScrollToYourWeek();
+  }, [showInitialLoading, token, tryScrollToYourWeek]);
+
+  useEffect(() => {
+    if (showInitialLoading) {
+      contentFade.setValue(0);
+      return;
+    }
+    Animated.timing(contentFade, {
+      toValue: 1,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [contentFade, showInitialLoading]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -720,31 +229,27 @@ export default function StatsScreen() {
         contentContainerStyle={styles.content}
         nestedScrollEnabled
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
         }
       >
         <View style={styles.headerRow}>
           <ScreenHeader title={t("stats.title")} actionNode={<RankHudChip from="stats" />} />
           <View style={styles.filterRow}>
-            {filters.map((f, i) => (
+            {filters.map((item, index) => (
               <Pressable
-                key={f.key}
+                key={item.key}
                 style={({ pressed }) => [
                   styles.filterChip,
-                  filterIdx === i && styles.filterChipActive,
+                  filterIdx === index && styles.filterChipActive,
                   pressed && styles.filterChipPressed,
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                  setFilterIdx(i);
+                  setFilterIdx(index);
                 }}
               >
-                <Text style={[styles.filterLabel, filterIdx === i && styles.filterLabelActive]}>
-                  {f.label}
+                <Text style={[styles.filterLabel, filterIdx === index && styles.filterLabelActive]}>
+                  {item.label}
                 </Text>
               </Pressable>
             ))}
@@ -759,9 +264,7 @@ export default function StatsScreen() {
             title={t("common.oops")}
             message={error}
             retryLabel={t("common.tryAgain")}
-            onRetry={() =>
-              loadStats({ force: true, forceProgressionSync: true }).catch(() => undefined)
-            }
+            onRetry={() => loadStats({ force: true, forceProgressionSync: true }).catch(() => undefined)}
           />
         ) : null}
 
@@ -792,7 +295,7 @@ export default function StatsScreen() {
                     busy={weekBusy}
                     hero
                     embedded
-                    onSaveGoal={handleSaveWeeklyGoal}
+                    onSaveGoal={saveWeeklyGoal}
                     onStartSession={handleStartSession}
                   />
                   <View style={styles.mergedHeroDivider} />
@@ -814,192 +317,26 @@ export default function StatsScreen() {
               </AppCard>
             ) : null}
 
-            <StatsSection
-              title={t("stats.trendsSectionTitle")}
-              subtitle={t("stats.trendsSectionSubtitle")}
-              testID="stats-section-trends"
-            >
-              {chartData.length === 0 ? (
-                <EmptyState
-                  compact
-                  title={t("stats.perDayEmptyTitle")}
-                  message={t("stats.perDayEmpty")}
-                  actionLabel={t("common.startSession")}
-                  onAction={handleStartSession}
-                />
-              ) : (
-                <View style={styles.chartInner}>
-                  <SessionsPerDayChart data={chartData} />
-                </View>
-              )}
-              {breakdownData.length > 0 ? (
-                <>
-                  <View style={styles.sectionDivider} />
-                  <View style={styles.breakdownWrap}>
-                    {breakdownData.map((item) => (
-                      <View key={item.label} style={styles.breakdownRow}>
-                        <View style={styles.breakdownLabelWrap}>
-                          <View style={[styles.breakdownDot, { backgroundColor: item.color }]} />
-                          <Text style={styles.breakdownLabel}>{item.label}</Text>
-                        </View>
-                        <View style={styles.breakdownTrack}>
-                          <View
-                            style={[
-                              styles.breakdownFill,
-                              { width: `${item.value}%`, backgroundColor: item.color },
-                            ]}
-                          />
-                        </View>
-                        <Text style={styles.breakdownValue}>
-                          {item.sessions} · {item.value}%
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              ) : chartData.length > 0 ? (
-                <>
-                  <View style={styles.sectionDivider} />
-                  <EmptyState
-                    compact
-                    title={t("stats.typeMixEmptyTitle")}
-                    message={t("stats.typeMixEmpty")}
-                    actionLabel={t("common.startSession")}
-                    onAction={handleStartSession}
-                  />
-                </>
-              ) : null}
-            </StatsSection>
+            <StatsTrendsSection
+              t={t}
+              chartData={chartData}
+              breakdownData={breakdownData}
+              onStartSession={handleStartSession}
+            />
 
-            <StatsSection
-              title={t("stats.recentTitle")}
-              subtitle={recent.length > 0 ? t("stats.recentSubtitle") : undefined}
-              testID="stats-section-recent"
-            >
-              {recent.length === 0 ? (
-                <EmptyState
-                  compact
-                  title={t("stats.recentEmptyTitle")}
-                  message={t("stats.recentEmpty")}
-                  actionLabel={t("common.startSession")}
-                  onAction={handleStartSession}
-                />
-              ) : (
-                <>
-                  <View style={styles.recentList}>
-                    {recentPreview.map((item) => {
-                      const typeLabel = sessionTypeLabel(
-                        String(item.session_type ?? "beat_making"),
-                        t,
-                      );
-                      const sid =
-                        typeof item.id === "number" && Number.isFinite(item.id) && item.id > 0
-                          ? item.id
-                          : null;
-                      return (
-                        <DashboardRecentSessionRow
-                          key={sid != null ? `recent-${sid}` : `recent-${item.started_at}`}
-                          session={item}
-                          typeLabel={typeLabel}
-                          accessibilityLabel={`${typeLabel}, ${formatSessionListDate(item.started_at)}`}
-                          accessibilityHint={t("dashboard.openSessionDetailsA11y")}
-                          onPress={() => openRecentSession(item)}
-                        />
-                      );
-                    })}
-                  </View>
-                  {recent.length > SESSION_LOG_PREVIEW ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => router.push("/(tabs)/dashboard" as Href)}
-                      style={({ pressed }) => [styles.viewAllLink, pressed && { opacity: 0.88 }]}
-                    >
-                      <Text style={styles.viewAllLinkText}>{t("stats.viewAllSessions")}</Text>
-                    </Pressable>
-                  ) : null}
-                </>
-              )}
-            </StatsSection>
+            <StatsSessionLogSection
+              t={t}
+              sessions={recentSessions}
+              onStartSession={handleStartSession}
+            />
 
-            <StatsSection
-              title={t("stats.recordsTitle")}
-              subtitle={decoratedRecords.length > 0 ? t("stats.recordsSubtitle") : undefined}
-              testID="stats-section-records"
-            >
-              {decoratedRecords.length === 0 ? (
-                <EmptyState
-                  compact
-                  title={t("stats.recordsEmptyTitle")}
-                  message={t("stats.recordsEmpty")}
-                  actionLabel={t("common.startSession")}
-                  onAction={handleStartSession}
-                />
-              ) : (
-                <View style={styles.recordsWrap}>
-                  {decoratedRecords.slice(0, 3).map((r, idx) => {
-                    const meta = formatRecordDate(r.occurred_at, t);
-                    const displayContext = formatRecordContext(r, t);
-                    return (
-                      <View
-                        key={`top-${r.key}${r.occurred_at ?? ""}`}
-                        style={[styles.recordCard, idx === 0 && styles.recordCardFeatured]}
-                      >
-                        <View style={styles.recordTitleRow}>
-                          <View style={styles.recordLabelWrap}>
-                            <RecordGlyph recordKey={r.key} size={16} />
-                            <Text style={styles.recordLabel}>
-                              {recordTitle(r.key, r.label, t)}
-                            </Text>
-                          </View>
-                          <View style={styles.recordBadgesRow}>
-                            {r.isFresh ? (
-                              <View style={[styles.recordBadge, styles.recordBadgeFresh]}>
-                                <Text
-                                  style={[styles.recordBadgeText, styles.recordBadgeTextFresh]}
-                                >
-                                  {t("stats.recordFresh")}
-                                </Text>
-                              </View>
-                            ) : null}
-                            {idx === 0 ? (
-                              <View style={styles.recordBadge}>
-                                <Text style={styles.recordBadgeText}>{t("stats.recordBest")}</Text>
-                              </View>
-                            ) : null}
-                          </View>
-                        </View>
-                        <Text style={[styles.recordVal, idx === 0 && styles.recordValFeatured]}>
-                          {r.value}
-                        </Text>
-                        {displayContext ? (
-                          <Text style={styles.recordCtx}>{displayContext}</Text>
-                        ) : null}
-                        {meta ? <Text style={styles.recordMeta}>{meta}</Text> : null}
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-            </StatsSection>
+            <StatsRecordsSection
+              t={t}
+              records={decoratedRecords}
+              onStartSession={handleStartSession}
+            />
 
-            <StatsSection
-              title={t("stats.heatmapTitle")}
-              subtitle={t("stats.heatmapCaptionShort")}
-              testID="stats-section-heatmap"
-              collapsible
-              defaultExpanded={false}
-              collapsedHint={t("stats.heatmapCollapsedSummary", { count: heatmapActiveDays })}
-            >
-              <View style={styles.heatmapGrid}>
-                {heatmapDays.map((d) => (
-                  <View
-                    key={d.date}
-                    style={[styles.heatCell, { backgroundColor: heatmapCellColor(d.intensity) }]}
-                  />
-                ))}
-              </View>
-              <ActivityHeatmapLegend />
-            </StatsSection>
+            <StatsHeatmapSection t={t} days={heatmapDays} />
 
             <StatsSection
               title={t("stats.progressionSectionTitle")}
@@ -1039,58 +376,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: spacing.xs,
   },
-  skeletonWrap: {
-    gap: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  skeletonStatCard: {
-    width: 162,
-    gap: spacing.sm,
-  },
-  skeletonBlockCard: {
-    marginBottom: spacing.xs,
-    gap: spacing.sm,
-  },
-  skeletonLine: {
-    height: 12,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  skeletonLabel: {
-    width: "46%",
-  },
-  skeletonValue: {
-    width: "62%",
-    height: 24,
-    backgroundColor: "rgba(255,255,255,0.11)",
-  },
-  skeletonSub: {
-    width: "55%",
-  },
-  skeletonTitle: {
-    width: "40%",
-  },
-  skeletonBody: {
-    width: "100%",
-  },
-  skeletonBodyShort: {
-    width: "72%",
-  },
-  inlineLoadingRow: {
-    marginBottom: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.03)",
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  inlineLoadingText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-  },
-  title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.screenTitle },
   filterRow: { flexDirection: "row", gap: spacing.sm },
   filterChip: {
     borderRadius: radii.round,
@@ -1108,7 +393,6 @@ const styles = StyleSheet.create({
     ...typography.meta,
   },
   filterLabelActive: { color: colors.textPrimary },
-  cardRow: { gap: spacing.sm, paddingBottom: spacing.lg },
   contentFadeWrap: {
     gap: spacing.lg,
   },
@@ -1118,11 +402,6 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 34,
     letterSpacing: -0.5,
-  },
-  sectionDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginVertical: spacing.sm,
   },
   heroWrap: {
     marginBottom: spacing.xs,
@@ -1143,319 +422,8 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: "rgba(255,255,255,0.1)",
   },
-  staticSection: {
-    gap: spacing.md,
-  },
-  staticSectionHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  staticSectionHeaderPressable: {
-    marginHorizontal: -spacing.xs,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radii.md,
-  },
-  staticSectionHeaderCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  staticSectionTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.sectionTitle,
-  },
-  staticSectionSubtitle: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.caption,
-    lineHeight: 18,
-  },
-  staticSectionBody: {
-    gap: spacing.md,
-  },
   progressionInner: {
     marginTop: -spacing.md,
-  },
-  goalCard: {
-    marginBottom: spacing.lg,
-  },
-  goalHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  goalTitle: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  goalSub: { color: colors.textSecondary, marginTop: 4, ...typography.meta },
-  goalProgressTrack: {
-    marginTop: spacing.sm,
-    width: "100%",
-    height: 8,
-    borderRadius: radii.round,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-  },
-  goalProgressFill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-  },
-  goalSubtle: { color: colors.textSecondary, marginTop: spacing.sm, ...typography.meta },
-  forecastBlock: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    gap: spacing.xs,
-  },
-  forecastRiskPill: {
-    alignSelf: "flex-start",
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radii.round,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyBold,
-  },
-  forecastRiskOnTrack: {
-    color: colors.success,
-    backgroundColor: "rgba(34,197,94,0.15)",
-  },
-  forecastRiskAtRisk: {
-    color: colors.primary,
-    backgroundColor: "rgba(255,61,0,0.15)",
-  },
-  forecastRiskOffTrack: {
-    color: colors.danger,
-    backgroundColor: "rgba(239,68,68,0.12)",
-  },
-  forecastProgressLine: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.body,
-    marginTop: spacing.xs,
-  },
-  forecastWarning: {
-    color: colors.textPrimary,
-    marginTop: spacing.sm,
-    ...typography.meta,
-    lineHeight: 20,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  chartCard: {
-    marginBottom: spacing.lg,
-  },
-  cardTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.cardTitle,
-  },
-  cardCaption: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    fontFamily: fontFamily.body,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  heatmapGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 4,
-    marginTop: spacing.sm,
-  },
-  heatCell: {
-    width: 11,
-    height: 11,
-    borderRadius: 3,
-  },
-  recordsWrap: {
-    gap: spacing.sm,
-  },
-  recordCard: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    padding: spacing.md,
-    gap: 6,
-  },
-  recordCardFeatured: {
-    borderColor: "rgba(162,89,255,0.45)",
-    backgroundColor: "rgba(162,89,255,0.08)",
-    shadowColor: colors.secondary,
-    shadowOpacity: 0.2,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  recordTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  recordLabelWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    flexShrink: 1,
-  },
-  recordBadge: {
-    borderRadius: radii.round,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    backgroundColor: "rgba(255,61,0,0.2)",
-  },
-  recordBadgeFresh: {
-    backgroundColor: "rgba(162,89,255,0.2)",
-  },
-  recordBadgesRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  recordLabel: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    fontFamily: fontFamily.bodyMedium,
-    flexShrink: 1,
-  },
-  recordBadgeText: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 11,
-  },
-  recordBadgeTextFresh: {
-    color: colors.secondary,
-  },
-  recordVal: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 24,
-    lineHeight: 30,
-  },
-  recordValFeatured: {
-    fontSize: 32,
-    lineHeight: 38,
-    letterSpacing: -0.5,
-  },
-  recordCtx: {
-    color: colors.textSecondary,
-    ...typography.meta,
-  },
-  recordMeta: {
-    marginTop: 2,
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 11,
-  },
-  chartInner: { marginTop: spacing.xs },
-  barScrollContent: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 8,
-    paddingTop: spacing.xs,
-    paddingBottom: 2,
-    paddingRight: spacing.sm,
-  },
-  barColumn: {
-    width: 44,
-    alignItems: "center",
-  },
-  barTrack: {
-    height: BAR_CHART_HEIGHT,
-    width: "100%",
-    justifyContent: "flex-end",
-    alignItems: "center",
-  },
-  barFill: {
-    width: 28,
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-  },
-  barAxisLabel: {
-    marginTop: 6,
-    color: colors.textSecondary,
-    fontSize: 10,
-    fontFamily: fontFamily.body,
-    maxWidth: 40,
-    textAlign: "center",
-  },
-  barCount: {
-    marginTop: 2,
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  barCountActive: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 12,
-  },
-  breakdownWrap: {
-    gap: spacing.sm,
-  },
-  breakdownRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  breakdownLabelWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: 132,
-    gap: spacing.xs,
-  },
-  breakdownDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  breakdownLabel: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-    flexShrink: 1,
-  },
-  breakdownTrack: {
-    flex: 1,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#222222",
-    overflow: "hidden",
-  },
-  breakdownFill: {
-    height: "100%",
-    borderRadius: 5,
-  },
-  breakdownValue: {
-    color: colors.textSecondary,
-    width: 72,
-    textAlign: "right",
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-  },
-  errorText: {
-    marginTop: spacing.sm,
-    color: colors.danger,
-    fontFamily: fontFamily.body,
-    ...typography.caption,
-  },
-  emptyWrap: {
-    marginTop: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    backgroundColor: colors.background,
-  },
-  emptyText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.caption,
   },
   hintCard: {
     backgroundColor: "rgba(162,89,255,0.12)",
@@ -1470,18 +438,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   hintText: { color: colors.textSecondary, ...typography.meta, lineHeight: 20 },
-  recentList: {
-    marginBottom: spacing.xs,
-  },
-  viewAllLink: {
-    alignSelf: "flex-start",
-    paddingVertical: spacing.xs,
-  },
-  viewAllLinkText: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
   weeklyRecapBottomCta: {
     marginTop: spacing.xs,
     marginBottom: spacing.md,
