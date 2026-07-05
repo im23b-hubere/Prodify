@@ -35,6 +35,7 @@ describe("stats summary utils", () => {
   it("builds summary from stats payload", () => {
     expect(
       buildStatsSummary({
+        period: "week",
         summary: {
           total_seconds: 3600,
           total_sessions: 2,
@@ -46,6 +47,7 @@ describe("stats summary utils", () => {
         trend: [],
         breakdown: [],
         recent_sessions: [],
+        productivity_hint: null,
       }),
     ).toEqual({
       hours: "1.0h",
@@ -60,6 +62,7 @@ describe("stats summary utils", () => {
   it("builds week chart data with seven points", () => {
     const chart = buildChartData(
       {
+        period: "week",
         summary: {
           total_seconds: 0,
           total_sessions: 0,
@@ -68,9 +71,10 @@ describe("stats summary utils", () => {
           best_streak_days: 0,
           hours_delta_vs_prior_period: null,
         },
-        trend: [{ label: new Date().toISOString().slice(0, 10), sessions: 2 }],
+        trend: [{ label: new Date().toISOString().slice(0, 10), sessions: 2, seconds: 7200 }],
         breakdown: [],
         recent_sessions: [],
+        productivity_hint: null,
       },
       "week",
     );

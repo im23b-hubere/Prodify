@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { SessionFeedbackComputed } from "../../lib/sessionFeedbackEngine";
 import type { ForecastComputed } from "../../lib/forecastEngine";
 import { StyleSheet, View } from "react-native";
@@ -6,7 +7,7 @@ import { spacing } from "../../constants/theme";
 import { WeeklyQuestCard } from "../studio/WeeklyQuestCard";
 
 type Props = {
-  t: (key: string, options?: Record<string, unknown>) => string;
+  t: TFunction;
   feedback: SessionFeedbackComputed;
   weekSessionsCount: number;
   weeklyGoalTarget: number | null;

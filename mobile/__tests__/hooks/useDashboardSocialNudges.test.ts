@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react-native";
 
 import { useDashboardSocialNudges } from "../../features/dashboard/hooks/useDashboardSocialNudges";
+import { mockTFunction } from "../helpers/mockTFunction";
 
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn().mockResolvedValue(null),
@@ -16,7 +17,7 @@ jest.mock("../../lib/momentum", () => ({
   recordMomentumAction: jest.fn(),
 }));
 
-const mockT = (key: string) => key;
+const mockT = mockTFunction();
 
 describe("useDashboardSocialNudges", () => {
   it("includes a checkin-behind nudge when weekly rhythm is off track", async () => {

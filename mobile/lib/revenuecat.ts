@@ -82,10 +82,12 @@ export async function configureRevenueCat(appUserId?: string): Promise<void> {
 
       if (!sdkConfigured) {
         await withRevenueCatTimeout(
-          Purchases.configure({
-            apiKey,
-            ...(normalized ? { appUserID: normalized } : {}),
-          }),
+          Promise.resolve(
+            Purchases.configure({
+              apiKey,
+              ...(normalized ? { appUserID: normalized } : {}),
+            }),
+          ),
           "configure",
           REVENUECAT_CONFIGURE_TIMEOUT_MS,
         );

@@ -6,11 +6,12 @@ import {
   formatStreakStatusLabel,
   rankColor,
 } from "../../../features/friends/utils/friendsScreenFormat";
+import { mockTFunction } from "../../helpers/mockTFunction";
 
-const mockT = (key: string, opts?: Record<string, unknown>) => {
+const mockT = mockTFunction((key, opts) => {
   if (opts) return `${key}:${JSON.stringify(opts)}`;
   return key;
-};
+});
 
 describe("friendsScreenFormat", () => {
   it("maps rank colors for podium tiers", () => {
