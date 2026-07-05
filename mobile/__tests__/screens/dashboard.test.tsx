@@ -1,7 +1,13 @@
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 
 import DashboardScreen from "../../app/(tabs)/dashboard";
+
+const mockPush = jest.fn();
+
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush, replace: jest.fn() }),
+}));
 
 jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
@@ -39,10 +45,6 @@ jest.mock("expo-haptics", () => ({
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn().mockResolvedValue(null),
   deleteItemAsync: jest.fn().mockResolvedValue(undefined),
-}));
-
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
 }));
 
 jest.mock("@react-navigation/native", () => ({
@@ -120,8 +122,16 @@ jest.mock("../../components/dashboard/FriendsActivityWidget", () => ({
   FriendsActivityWidget: () => {
     const React = require("react");
     const { View } = require("react-native");
-    return React.createElement(View);
+    return React.createElement(View, { testID: "dashboard-friends-widget" });
   },
+}));
+jest.mock("../../features/weeklyRecap/WeeklyRecapTeaser", () => ({
+  WeeklyRecapTeaser: () => {
+    const React = require("react");
+    const { View } = require("react-native");
+    return React.createElement(View, { testID: "weekly-recap-teaser" });
+  },
+  isWeeklyRecapTeaserVisible: () => true,
 }));
 jest.mock("../../hooks/useRankProgression", () => ({
   useRankProgression: () => ({ level: 2 }),
@@ -134,10 +144,16 @@ jest.mock("../../components/streak/StreakBreakModal", () => ({
   },
 }));
 jest.mock("../../components/ui/ScreenHeader", () => ({
-  ScreenHeader: ({ title }: { title: string }) => {
+  ScreenHeader: ({
+    titleNode,
+    actionNode,
+  }: {
+    titleNode?: React.ReactNode;
+    actionNode?: React.ReactNode;
+  }) => {
     const React = require("react");
-    const { Text } = require("react-native");
-    return React.createElement(Text, null, title);
+    const { View } = require("react-native");
+    return React.createElement(View, null, titleNode, actionNode);
   },
 }));
 jest.mock("../../components/ui/PrimaryButton", () => ({
@@ -267,6 +283,7 @@ const createDashboardState = (overrides: Record<string, unknown> = {}) => ({
 describe("Dashboard Screen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPush.mockClear();
     mockUseDashboardData.mockReturnValue(createDashboardState());
   });
 
@@ -351,5 +368,88 @@ describe("Dashboard Screen", () => {
     const { getByText } = render(<DashboardScreen />);
     expect(getByText("dashboard.socialLoadFailed")).toBeTruthy();
     expect(getByText("mixing")).toBeTruthy();
+  });
+
+  it("shows username in greeting", () => {
+    const { getByText } = render(<DashboardScreen />);
+    expect(getByText("alice")).toBeTruthy();
+    expect(getByText("dashboard.heyPrefix")).toBeTruthy();
+  });
+
+  it("renders weekly recap teaser and friends widget", () => {
+    const { getByTestId } = render(<DashboardScreen />);
+    expect(getByTestId("weekly-recap-teaser")).toBeTruthy();
+    expect(getByTestId("dashboard-friends-widget")).toBeTruthy();
+  });
+
+  it("shows section navigation links for sessions", () => {
+    const { getByText } = render(<DashboardScreen />);
+    expect(getByText("dashboard.allSessionsLink")).toBeTruthy();
+    expect(getByText("dashboard.trashLink")).toBeTruthy();
+    expect(getByText("dashboard.statsLink")).toBeTruthy();
+  });
+
+  it("navigates to session history from all sessions link", () => {
+    const { getByText } = render(<DashboardScreen />);
+    fireEvent.press(getByText("dashboard.allSessionsLink"));
+    expect(mockPush).toHaveBeenCalledWith("/session/history");
+  });
+
+  it("shows empty state when there are no completed sessions", () => {
+    mockUseDashboardData.mockReturnValue(createDashboardState({ sessions: [], active: null }));
+    const { getByText } = render(<DashboardScreen />);
+    expect(getByText("dashboard.emptyStreakTitle")).toBeTruthy();
+    expect(getByText("dashboard.startSession")).toBeTruthy();
+  });
+
+  it("hides empty state when an active session exists", () => {
+    mockUseDashboardData.mockReturnValue(
+      createDashboardState({
+        sessions: [],
+        active: {
+          id: 55,
+          session_type: "beat_making",
+          started_at: "2026-07-05T10:00:00Z",
+          stopped_at: null,
+          duration_seconds: null,
+        },
+      }),
+    );
+    const { queryByText } = render(<DashboardScreen />);
+    expect(queryByText("dashboard.emptyStreakTitle")).toBeNull();
+  });
+
+  it("limits recent sessions preview to three items", () => {
+    mockUseDashboardData.mockReturnValue(
+      createDashboardState({
+        sessions: [1, 2, 3, 4, 5].map((id) => ({
+          id,
+          session_type: `type-${id}`,
+          stopped_at: "2026-04-20T10:00:00Z",
+          started_at: "2026-04-20T09:30:00Z",
+          duration_seconds: 1800,
+        })),
+      }),
+    );
+    const { getByText, queryByText } = render(<DashboardScreen />);
+    expect(getByText("type-1")).toBeTruthy();
+    expect(getByText("type-3")).toBeTruthy();
+    expect(queryByText("type-4")).toBeNull();
+  });
+
+  it("retries social load from warning banner", () => {
+    const loadSocial = jest.fn().mockResolvedValue(undefined);
+    const setSocialError = jest.fn();
+    mockUseDashboardData.mockReturnValue(
+      createDashboardState({
+        socialError: "dashboard.socialLoadFailed",
+        loadSocial,
+        setSocialError,
+      }),
+    );
+    const { getByText } = render(<DashboardScreen />);
+    fireEvent.press(getByText("common.tryAgain"));
+    expect(setSocialError).toHaveBeenCalledWith(null);
+    expect(loadSocial).toHaveBeenCalled();
   });
 });
