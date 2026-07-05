@@ -145,4 +145,10 @@ describe("Stats Screen", () => {
     const { findByText } = render(<StatsScreen />);
     expect(await findByText("stats.filterScopeHint")).toBeTruthy();
   });
+
+  it("renders session log before records section", async () => {
+    const { findByTestId } = render(<StatsScreen />);
+    expect(await findByTestId("stats-section-recent")).toBeTruthy();
+    expect(await findByTestId("stats-section-records")).toBeTruthy();
+  });
 });

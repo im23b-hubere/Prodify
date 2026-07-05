@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { ChevronDown, ChevronUp } from "lucide-react-native";
 import type { TFunction } from "i18next";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
@@ -149,6 +150,7 @@ function recordPriorityScore(key: string) {
 }
 
 const BAR_CHART_HEIGHT = 132;
+const SESSION_LOG_PREVIEW = 5;
 
 type BarPoint = { x: string; y: number; label: string };
 
@@ -218,20 +220,59 @@ function StatsSection({
   title,
   subtitle,
   testID,
+  collapsible = false,
+  defaultExpanded = true,
+  collapsedHint,
   children,
 }: {
   title: string;
   subtitle?: string | null;
   testID?: string;
+  collapsible?: boolean;
+  defaultExpanded?: boolean;
+  collapsedHint?: string | null;
   children: ReactNode;
 }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const showBody = !collapsible || expanded;
+  const headerSubtitle =
+    collapsible && !expanded && collapsedHint ? collapsedHint : subtitle;
+
   return (
     <AppCard style={styles.staticSection} testID={testID}>
-      <View style={styles.staticSectionHeader}>
-        <Text style={styles.staticSectionTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.staticSectionSubtitle}>{subtitle}</Text> : null}
-      </View>
-      <View style={styles.staticSectionBody}>{children}</View>
+      <Pressable
+        accessibilityRole={collapsible ? "button" : undefined}
+        accessibilityState={collapsible ? { expanded } : undefined}
+        disabled={!collapsible}
+        onPress={
+          collapsible
+            ? () => {
+                Haptics.selectionAsync().catch(() => undefined);
+                setExpanded((value) => !value);
+              }
+            : undefined
+        }
+        style={({ pressed }) => [
+          styles.staticSectionHeader,
+          collapsible && styles.staticSectionHeaderPressable,
+          collapsible && pressed && { opacity: 0.88 },
+        ]}
+      >
+        <View style={styles.staticSectionHeaderCopy}>
+          <Text style={styles.staticSectionTitle}>{title}</Text>
+          {headerSubtitle ? (
+            <Text style={styles.staticSectionSubtitle}>{headerSubtitle}</Text>
+          ) : null}
+        </View>
+        {collapsible ? (
+          expanded ? (
+            <ChevronUp color={colors.textSecondary} size={18} />
+          ) : (
+            <ChevronDown color={colors.textSecondary} size={18} />
+          )
+        ) : null}
+      </Pressable>
+      {showBody ? <View style={styles.staticSectionBody}>{children}</View> : null}
     </AppCard>
   );
 }
@@ -565,6 +606,13 @@ export default function StatsScreen() {
 
   const recent = useMemo(() => stats?.recent_sessions ?? [], [stats?.recent_sessions]);
 
+  const recentPreview = useMemo(() => recent.slice(0, SESSION_LOG_PREVIEW), [recent]);
+
+  const heatmapActiveDays = useMemo(
+    () => heatmapDays.filter((day) => (day.intensity ?? 0) > 0 || (day.seconds ?? 0) > 0).length,
+    [heatmapDays],
+  );
+
   const showInitialLoading = loading && !refreshing && !stats && !error;
   const showInlineLoading = loading && !refreshing && !!stats;
 
@@ -759,8 +807,6 @@ export default function StatsScreen() {
               <StatsKpiStrip items={statCarouselItems} variant="hero" testID="stats-kpi-strip" />
             )}
 
-            <WeeklyRecapTeaser t={t} onPress={openWeeklyRecap} />
-
             {productivityHintText ? (
               <AppCard style={styles.hintCard} testID="stats-ai-insight">
                 <Text style={styles.hintLabel}>{t("stats.aiInsightLabel")}</Text>
@@ -826,26 +872,58 @@ export default function StatsScreen() {
             </StatsSection>
 
             <StatsSection
-              title={t("stats.heatmapTitle")}
-              subtitle={t("stats.heatmapCaptionShort")}
-              testID="stats-section-heatmap"
+              title={t("stats.recentTitle")}
+              subtitle={recent.length > 0 ? t("stats.recentSubtitle") : undefined}
+              testID="stats-section-recent"
             >
-              <View style={styles.heatmapGrid}>
-                {heatmapDays.map((d) => (
-                  <View
-                    key={d.date}
-                    style={[styles.heatCell, { backgroundColor: heatmapCellColor(d.intensity) }]}
-                  />
-                ))}
-              </View>
-              <ActivityHeatmapLegend />
+              {recent.length === 0 ? (
+                <EmptyState
+                  compact
+                  title={t("stats.recentEmptyTitle")}
+                  message={t("stats.recentEmpty")}
+                  actionLabel={t("common.startSession")}
+                  onAction={handleStartSession}
+                />
+              ) : (
+                <>
+                  <View style={styles.recentList}>
+                    {recentPreview.map((item) => {
+                      const typeLabel = sessionTypeLabel(
+                        String(item.session_type ?? "beat_making"),
+                        t,
+                      );
+                      const sid =
+                        typeof item.id === "number" && Number.isFinite(item.id) && item.id > 0
+                          ? item.id
+                          : null;
+                      return (
+                        <DashboardRecentSessionRow
+                          key={sid != null ? `recent-${sid}` : `recent-${item.started_at}`}
+                          session={item}
+                          typeLabel={typeLabel}
+                          accessibilityLabel={`${typeLabel}, ${formatSessionListDate(item.started_at)}`}
+                          accessibilityHint={t("dashboard.openSessionDetailsA11y")}
+                          onPress={() => openRecentSession(item)}
+                        />
+                      );
+                    })}
+                  </View>
+                  {recent.length > SESSION_LOG_PREVIEW ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => router.push("/(tabs)/dashboard" as Href)}
+                      style={({ pressed }) => [styles.viewAllLink, pressed && { opacity: 0.88 }]}
+                    >
+                      <Text style={styles.viewAllLinkText}>{t("stats.viewAllSessions")}</Text>
+                    </Pressable>
+                  ) : null}
+                </>
+              )}
             </StatsSection>
 
             <StatsSection
               title={t("stats.recordsTitle")}
-              subtitle={
-                decoratedRecords.length > 0 ? t("stats.recordsSubtitle") : undefined
-              }
+              subtitle={decoratedRecords.length > 0 ? t("stats.recordsSubtitle") : undefined}
               testID="stats-section-records"
             >
               {decoratedRecords.length === 0 ? (
@@ -905,7 +983,27 @@ export default function StatsScreen() {
             </StatsSection>
 
             <StatsSection
+              title={t("stats.heatmapTitle")}
+              subtitle={t("stats.heatmapCaptionShort")}
+              testID="stats-section-heatmap"
+              collapsible
+              defaultExpanded={false}
+              collapsedHint={t("stats.heatmapCollapsedSummary", { count: heatmapActiveDays })}
+            >
+              <View style={styles.heatmapGrid}>
+                {heatmapDays.map((d) => (
+                  <View
+                    key={d.date}
+                    style={[styles.heatCell, { backgroundColor: heatmapCellColor(d.intensity) }]}
+                  />
+                ))}
+              </View>
+              <ActivityHeatmapLegend />
+            </StatsSection>
+
+            <StatsSection
               title={t("stats.progressionSectionTitle")}
+              subtitle={t("stats.progressionSectionSubtitle")}
               testID="stats-section-progression"
             >
               <View style={styles.progressionInner}>
@@ -916,38 +1014,7 @@ export default function StatsScreen() {
               </View>
             </StatsSection>
 
-            <View style={styles.recentBlock} testID="stats-section-recent">
-              <Text style={styles.recentTitle}>{t("stats.recentTitle")}</Text>
-              {recent.length === 0 ? (
-                <EmptyState
-                  compact
-                  title={t("stats.recentEmptyTitle")}
-                  message={t("stats.recentEmpty")}
-                  actionLabel={t("common.startSession")}
-                  onAction={handleStartSession}
-                />
-              ) : (
-                <View style={styles.recentList}>
-                  {recent.slice(0, 8).map((item) => {
-                    const typeLabel = sessionTypeLabel(String(item.session_type ?? "beat_making"), t);
-                    const sid =
-                      typeof item.id === "number" && Number.isFinite(item.id) && item.id > 0
-                        ? item.id
-                        : null;
-                    return (
-                      <DashboardRecentSessionRow
-                        key={sid != null ? `recent-${sid}` : `recent-${item.started_at}`}
-                        session={item}
-                        typeLabel={typeLabel}
-                        accessibilityLabel={`${typeLabel}, ${formatSessionListDate(item.started_at)}`}
-                        accessibilityHint={t("dashboard.openSessionDetailsA11y")}
-                        onPress={() => openRecentSession(item)}
-                      />
-                    );
-                  })}
-                </View>
-              )}
-            </View>
+            <WeeklyRecapTeaser t={t} onPress={openWeeklyRecap} />
 
             {!isWeeklyRecapTeaserVisible() ? (
               <View style={styles.weeklyRecapBottomCta}>
@@ -1080,6 +1147,18 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   staticSectionHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  staticSectionHeaderPressable: {
+    marginHorizontal: -spacing.xs,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radii.md,
+  },
+  staticSectionHeaderCopy: {
+    flex: 1,
     gap: 4,
   },
   staticSectionTitle: {
@@ -1095,10 +1174,6 @@ const styles = StyleSheet.create({
   },
   staticSectionBody: {
     gap: spacing.md,
-  },
-  recentBlock: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
   },
   progressionInner: {
     marginTop: -spacing.md,
@@ -1395,14 +1470,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   hintText: { color: colors.textSecondary, ...typography.meta, lineHeight: 20 },
-  recentTitle: {
-    marginBottom: spacing.xs,
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.sectionTitle,
-  },
   recentList: {
     marginBottom: spacing.xs,
+  },
+  viewAllLink: {
+    alignSelf: "flex-start",
+    paddingVertical: spacing.xs,
+  },
+  viewAllLinkText: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
   },
   weeklyRecapBottomCta: {
     marginTop: spacing.xs,
