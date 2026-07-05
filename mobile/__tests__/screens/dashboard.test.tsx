@@ -240,6 +240,8 @@ const createDashboardState = (overrides: Record<string, unknown> = {}) => ({
   loading: false,
   error: null,
   setError: jest.fn(),
+  socialError: null,
+  setSocialError: jest.fn(),
   refreshing: false,
   setRefreshing: jest.fn(),
   lastUpdated: null,
@@ -331,29 +333,23 @@ describe("Dashboard Screen", () => {
     expect(getByTestId("dashboard-quest-progress")).toBeTruthy();
   });
 
-  it("does not render the removed today plan card", () => {
-    const today = new Date();
-    const startedAt = new Date(today);
-    startedAt.setHours(9, 30, 0, 0);
-    const stoppedAt = new Date(today);
-    stoppedAt.setHours(10, 0, 0, 0);
-
+  it("shows social warning banner without blocking session list", () => {
     mockUseDashboardData.mockReturnValue(
       createDashboardState({
-        weeklyGoalTarget: 5,
-        hasWeeklyGoal: true,
+        socialError: "dashboard.socialLoadFailed",
         sessions: [
           {
             id: 101,
             session_type: "mixing",
-            stopped_at: stoppedAt.toISOString(),
-            started_at: startedAt.toISOString(),
+            stopped_at: "2026-04-20T10:00:00Z",
+            started_at: "2026-04-20T09:30:00Z",
             duration_seconds: 1800,
           },
         ],
       }),
     );
-    const { queryByTestId } = render(<DashboardScreen />);
-    expect(queryByTestId("today-plan-card")).toBeNull();
+    const { getByText } = render(<DashboardScreen />);
+    expect(getByText("dashboard.socialLoadFailed")).toBeTruthy();
+    expect(getByText("mixing")).toBeTruthy();
   });
 });

@@ -33,6 +33,7 @@ export function useDashboardData(token: string | null) {
   const [active, setActive] = useState<SessionDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [socialError, setSocialError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [streakOverview, setStreakOverview] = useState<StreakOverviewDto | null>(null);
@@ -55,7 +56,7 @@ export function useDashboardData(token: string | null) {
     if (!token) return;
     const seq = ++loadSessionsSeq.current;
     try {
-      const listRaw = await apiJson<unknown>("/sessions/list", { token });
+      const listRaw = await apiJson<unknown>("/sessions/list?limit=200", { token });
       if (seq !== loadSessionsSeq.current) return;
       const list = parseSessionList(listRaw);
       setSessions(list);
@@ -96,6 +97,7 @@ export function useDashboardData(token: string | null) {
   const loadSocial = useCallback(async () => {
     if (!token) return;
     setSocialLoading(true);
+    setSocialError(null);
     try {
       const [lbRaw, actRaw, buddyRiskRaw, checkinRaw, commitmentRaw, challengesRaw, identityRaw] =
         await Promise.all([
@@ -119,8 +121,8 @@ export function useDashboardData(token: string | null) {
       setSocialChallenges(Array.isArray(challengesRaw) ? challengesRaw : []);
       setIdentityState(identityRaw);
     } catch {
-      // Preserve last known social snapshot and surface a clear partial-load error.
-      setError(t("dashboard.socialLoadFailed"));
+      // Preserve last known social snapshot; surface a non-blocking warning in the UI.
+      setSocialError(t("dashboard.socialLoadFailed"));
     } finally {
       setSocialLoading(false);
     }
@@ -187,6 +189,8 @@ export function useDashboardData(token: string | null) {
     setLoading,
     error,
     setError,
+    socialError,
+    setSocialError,
     refreshing,
     setRefreshing,
     lastUpdated,

@@ -45,7 +45,7 @@ describe("useDashboardData", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockApiJson.mockImplementation(async (path: string) => {
-      if (path === "/sessions/list") return [];
+      if (path === "/sessions/list?limit=200") return [];
       if (path === "/sessions/active") throw new Error("no active");
       if (path === "/streak/reconcile") return {};
       if (path === "/streak/overview") {
@@ -112,5 +112,46 @@ describe("useDashboardData", () => {
     });
 
     expect(mockFetchCurrentGoal.mock.calls.length).toBeGreaterThan(callsBefore);
+  });
+
+  it("loads sessions with a higher list limit for streak fallbacks", async () => {
+    mockFetchCurrentGoal.mockResolvedValue(null);
+
+    renderHook(() => useDashboardData("token"));
+
+    await waitFor(() => {
+      expect(mockApiJson).toHaveBeenCalledWith("/sessions/list?limit=200", { token: "token" });
+    });
+  });
+
+  it("stores social load failures separately from core dashboard errors", async () => {
+    mockFetchCurrentGoal.mockResolvedValue(null);
+    mockApiJson.mockImplementation(async (path: string) => {
+      if (path === "/sessions/list?limit=200") return [];
+      if (path === "/sessions/active") throw new Error("no active");
+      if (path === "/streak/overview") {
+        return {
+          current_streak: 0,
+          best_streak: 0,
+          streak_at_risk: false,
+          freezes_remaining: 0,
+        };
+      }
+      if (path.startsWith("/friends/")) throw new Error("social down");
+      return null;
+    });
+
+    const { result } = renderHook(() => useDashboardData("token"));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadSocial();
+    });
+
+    expect(result.current.socialError).toBe("dashboard.socialLoadFailed");
+    expect(result.current.error).toBeNull();
   });
 });

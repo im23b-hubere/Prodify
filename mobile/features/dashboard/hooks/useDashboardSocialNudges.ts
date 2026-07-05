@@ -57,7 +57,7 @@ export function useDashboardSocialNudges({
   const nudgeCandidates = useMemo(() => {
     const out: {
       key: string;
-      category: "buddy_risk" | "challenge_close" | "commitment_behind" | "streak_psych";
+      category: "buddy_risk" | "challenge_close" | "commitment_behind" | "checkin_behind" | "streak_psych";
       message: string;
       priority: number;
       ctaLabel: string;
@@ -107,14 +107,28 @@ export function useDashboardSocialNudges({
         actionKey: "start_session",
       });
     }
+    if (
+      checkinStatus &&
+      !checkinStatus.on_track &&
+      checkinStatus.done_count < checkinStatus.target_checkins
+    ) {
+      out.push({
+        key: "checkin_behind",
+        category: "checkin_behind",
+        message: t("dashboard.nudgeCheckinBehind"),
+        priority: 4,
+        ctaLabel: t("dashboard.nudgeCtaJumpTrack"),
+        actionKey: "start_session",
+      });
+    }
     return out.sort((a, b) => a.priority - b.priority);
-  }, [buddyRisk, socialChallenges, commitmentStatus, userId, t]);
+  }, [buddyRisk, socialChallenges, commitmentStatus, checkinStatus, userId, t]);
 
   const weightedNudgeCandidates = useMemo(() => {
     const preferredByState: Record<MomentumState, string[]> = {
-      low: ["commitment_behind", "buddy_risk"],
-      mid: ["challenge_close", "commitment_behind", "buddy_risk"],
-      high: ["buddy_risk", "challenge_close"],
+      low: ["commitment_behind", "checkin_behind", "buddy_risk"],
+      mid: ["challenge_close", "commitment_behind", "checkin_behind", "buddy_risk"],
+      high: ["buddy_risk", "challenge_close", "checkin_behind"],
     };
     return nudgeCandidates
       .map((n) => ({
@@ -183,10 +197,10 @@ export function useDashboardSocialNudges({
           const cooldowns = cdRaw ? (JSON.parse(cdRaw) as Record<string, number>) : {};
           const now = Date.now();
           const chainPreference: Record<string, string[]> = {
-            rescue: ["challenge_close", "commitment_behind"],
-            social: ["commitment_behind", "challenge_close"],
-            session: ["buddy_risk", "challenge_close"],
-            challenge: ["buddy_risk", "commitment_behind"],
+            rescue: ["challenge_close", "commitment_behind", "checkin_behind"],
+            social: ["commitment_behind", "checkin_behind", "challenge_close"],
+            session: ["buddy_risk", "challenge_close", "checkin_behind"],
+            challenge: ["buddy_risk", "commitment_behind", "checkin_behind"],
           };
           const preferred = momentum.lastAction ? (chainPreference[momentum.lastAction] ?? []) : [];
           const boosted = weightedNudgeCandidates

@@ -62,21 +62,6 @@ import {
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
 
-const GOAL_QUALIFY_MIN_SECONDS = 5 * 60;
-
-function isSameOrAfterMonday(date: Date, mondayStart: Date): boolean {
-  return date.getTime() >= mondayStart.getTime();
-}
-
-function startOfCurrentWeekMonday(now: Date): Date {
-  const start = new Date(now);
-  const day = now.getDay();
-  const offsetToMonday = day === 0 ? 6 : day - 1;
-  start.setHours(0, 0, 0, 0);
-  start.setDate(now.getDate() - offsetToMonday);
-  return start;
-}
-
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
@@ -90,6 +75,8 @@ export default function DashboardScreen() {
     loading,
     error,
     setError,
+    socialError,
+    setSocialError,
     refreshing,
     setRefreshing,
     lastUpdated,
@@ -244,26 +231,10 @@ export default function DashboardScreen() {
     const mins = Math.round(today.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60);
     return { count: today.length, minutes: mins };
   }, [visibleSessions]);
-  const effectiveWeekSessionsCount = useMemo(() => {
-    const monday = startOfCurrentWeekMonday(new Date());
-    let qualified = 0;
-    for (const s of visibleSessions) {
-      if (!s.started_at || s.stopped_at == null) continue;
-      const startedAt = parseApiDate(s.started_at);
-      if (!Number.isFinite(startedAt.getTime())) continue;
-      if (!isSameOrAfterMonday(startedAt, monday)) continue;
-      if ((s.duration_seconds ?? 0) < GOAL_QUALIFY_MIN_SECONDS) continue;
-      qualified += 1;
-    }
-    return qualified;
-  }, [visibleSessions]);
   const weekSessionsForGoal = useMemo(() => {
-    if (weeklyGoalTarget != null) {
-      const safeCount = Number.isFinite(weekSessionsCount) ? weekSessionsCount : 0;
-      return Math.max(0, safeCount);
-    }
-    return effectiveWeekSessionsCount;
-  }, [weeklyGoalTarget, weekSessionsCount, effectiveWeekSessionsCount]);
+    const safeCount = Number.isFinite(weekSessionsCount) ? weekSessionsCount : 0;
+    return Math.max(0, safeCount);
+  }, [weekSessionsCount]);
   const effectiveWeeklyGoalTarget = useMemo(
     () =>
       adjustedWeeklyTargetForSignupWeek({
@@ -550,6 +521,7 @@ export default function DashboardScreen() {
         onStartFresh={() => {
           dismissBreakModal();
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+          openSessionSetup();
         }}
       />
       <FlatList
@@ -638,6 +610,20 @@ export default function DashboardScreen() {
             />
 
             <WeeklyRecapTeaser t={t} onPress={() => router.push("/weekly-recap")} />
+
+            {socialError ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setSocialError(null);
+                  void loadSocial();
+                }}
+                style={({ pressed }) => [styles.socialWarning, pressed && { opacity: 0.92 }]}
+              >
+                <Text style={styles.socialWarningText}>{socialError}</Text>
+                <Text style={styles.socialWarningAction}>{t("common.tryAgain")}</Text>
+              </Pressable>
+            ) : null}
 
             <FriendsActivityWidget
               currentUserId={user?.id ?? 0}
@@ -787,6 +773,26 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontFamily: fontFamily.bodyBold,
     textAlign: "center",
+  },
+  socialWarning: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: "rgba(255,170,0,0.35)",
+    backgroundColor: "rgba(255,170,0,0.08)",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: 4,
+  },
+  socialWarningText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+    lineHeight: 18,
+  },
+  socialWarningAction: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
   },
   milestoneToastInner: {
     borderRadius: radii.md,
