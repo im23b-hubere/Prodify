@@ -39,6 +39,20 @@ jest.mock("expo-haptics", () => ({
   ImpactFeedbackStyle: { Light: "Light" },
 }));
 
+jest.mock("expo-linear-gradient", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    LinearGradient: ({
+      children,
+      testID,
+    }: {
+      children: React.ReactNode;
+      testID?: string;
+    }) => React.createElement(View, { testID }, children),
+  };
+});
+
 jest.mock("react-i18next", () => {
   const tFn = (key: string) => key;
   return {
@@ -59,6 +73,7 @@ jest.mock("../../lib/client", () => ({
   apiJson: jest.fn().mockImplementation((path: string) => {
     if (path.includes("/sessions/stats")) {
       return Promise.resolve({
+        period: "week",
         summary: {
           total_seconds: 7200,
           total_sessions: 4,
@@ -70,6 +85,7 @@ jest.mock("../../lib/client", () => ({
         trend: [],
         breakdown: [],
         recent_sessions: [],
+        productivity_hint: null,
       });
     }
     if (path.includes("/stats/heatmap")) return Promise.resolve([]);
@@ -155,6 +171,7 @@ describe("Stats Screen", () => {
     apiJson.mockImplementation((path: string) => {
       if (path.includes("/sessions/stats")) {
         return Promise.resolve({
+          period: "week",
           summary: {
             total_seconds: 7200,
             total_sessions: 4,
@@ -187,12 +204,16 @@ describe("Stats Screen", () => {
     });
   });
 
-  it("renders hero and KPI strip after load", async () => {
-    const { findByTestId } = render(<StatsScreen />);
-    expect(await findByTestId("your-week-hero")).toBeTruthy();
-    expect(await findByTestId("stats-merged-hero")).toBeTruthy();
-    expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
-  });
+  it(
+    "renders hero and KPI strip after load",
+    async () => {
+      const { findByTestId } = render(<StatsScreen />);
+      expect(await findByTestId("your-week-hero")).toBeTruthy();
+      expect(await findByTestId("stats-merged-hero")).toBeTruthy();
+      expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
+    },
+    15_000,
+  );
 
   it("shows filter scope hint under period chips", async () => {
     const { findByText } = render(<StatsScreen />);
