@@ -27,6 +27,7 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   /^session\/active$/,
   /^session-active$/,
   /^session\/complete$/,
+  /^session\/history$/,
   /^session\/\d+$/,
   /^profile\/\d+$/,
   /^challenge\/\d+$/,

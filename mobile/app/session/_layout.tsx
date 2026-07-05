@@ -25,6 +25,7 @@ export default function SessionStackLayout() {
         }}
       />
       <Stack.Screen name="complete" />
+      <Stack.Screen name="history" />
       <Stack.Screen name="[id]" />
     </Stack>
   );

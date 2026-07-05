@@ -668,6 +668,12 @@ export default function DashboardScreen() {
               <Text style={styles.sectionTitle}>{t("dashboard.recentSessions")}</Text>
               <View style={styles.sectionHeaderRight}>
                 <Pressable
+                  onPress={() => router.push("/session/history")}
+                  style={({ pressed }) => pressed && styles.linkPressed}
+                >
+                  <Text style={styles.viewAllLink}>{t("dashboard.allSessionsLink")}</Text>
+                </Pressable>
+                <Pressable
                   onPress={() => router.push("/(tabs)/session-trash")}
                   style={({ pressed }) => pressed && styles.linkPressed}
                 >

@@ -1,4 +1,4 @@
-import { type Href, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -10,15 +10,17 @@ import { formatSessionListDate } from "../../../lib/sessionTime";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
 import type { SessionDto } from "../../../types/session";
 import { STATS_SESSION_LOG_PREVIEW } from "../constants";
+import type { StatsPeriod } from "../types";
 import { StatsSection } from "./StatsSection";
 
 type Props = {
   t: TFunction;
   sessions: SessionDto[];
+  statsPeriod: StatsPeriod;
   onStartSession: () => void;
 };
 
-export function StatsSessionLogSection({ t, sessions, onStartSession }: Props) {
+export function StatsSessionLogSection({ t, sessions, statsPeriod, onStartSession }: Props) {
   const router = useRouter();
   const preview = sessions.slice(0, STATS_SESSION_LOG_PREVIEW);
   const subtitle =
@@ -68,7 +70,12 @@ export function StatsSessionLogSection({ t, sessions, onStartSession }: Props) {
           {sessions.length > STATS_SESSION_LOG_PREVIEW ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(tabs)/dashboard" as Href)}
+              onPress={() =>
+                router.push({
+                  pathname: "/session/history",
+                  params: { period: statsPeriod },
+                })
+              }
               style={({ pressed }) => [styles.viewAll, pressed && { opacity: 0.88 }]}
             >
               <Text style={styles.viewAllText}>{t("stats.viewAllSessions")}</Text>

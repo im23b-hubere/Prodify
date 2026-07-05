@@ -327,6 +327,7 @@ export default function StatsScreen() {
             <StatsSessionLogSection
               t={t}
               sessions={recentSessions}
+              statsPeriod={filter.period}
               onStartSession={handleStartSession}
             />
 
