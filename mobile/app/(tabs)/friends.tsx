@@ -256,7 +256,7 @@ export default function FriendsScreen() {
               onChangeTab={setSectionTab}
               addFriendA11y={t("friendsScreen.addFriendA11y")}
             />
-            {!loading && !actions.hasOtherFriends ? (
+            {!loading && !actions.hasOtherFriends && sectionTab === "overview" ? (
               <EmptyState
                 iconNode={<UserPlus color={colors.primary} size={36} />}
                 title={t("friendsScreen.feedEmptyTitle")}

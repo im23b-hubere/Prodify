@@ -66,6 +66,12 @@ export function FriendsActivityFeedItem({
       : isOpenableSession
         ? t("friendsScreen.activityOpenSessionA11y", { name: item.username })
         : t("friendsScreen.activityCardA11y", { name: item.username });
+  const reactionLabel =
+    reactionTotal > 0
+      ? String(reactionTotal)
+      : reactedByMe
+        ? t("friendsScreen.reactedShort")
+        : t("friendsScreen.reactShort");
 
   return (
     <Animated.View
@@ -124,77 +130,63 @@ export function FriendsActivityFeedItem({
         </Pressable>
 
         {!isEventCard ? (
-          <>
-            <View style={styles.feedActionsRow}>
-              <Pressable
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.feedReactPrimaryChip,
-                  reactedByMe && styles.feedReactPrimaryChipActive,
-                  pressed && { opacity: 0.88 },
+          <View style={styles.feedActionsRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("friendsScreen.activityReactionsA11y", {
+                count: reactionTotal,
+              })}
+              style={({ pressed }) => [
+                styles.feedReactPrimaryChip,
+                reactedByMe && styles.feedReactPrimaryChipActive,
+                pressed && { opacity: 0.88 },
+              ]}
+              disabled={reactionBusy}
+              onPress={onToggleThumb}
+              onLongPress={reactionTotal > 0 ? onOpenReactionUsers : undefined}
+            >
+              <ThumbsUp
+                color={reactedByMe ? colors.textPrimary : colors.textSecondary}
+                size={16}
+                strokeWidth={2}
+              />
+              <Text
+                style={[
+                  styles.feedReactPrimaryChipText,
+                  reactedByMe && styles.feedReactPrimaryChipTextActive,
                 ]}
-                disabled={reactionBusy}
-                onPress={onToggleThumb}
               >
-                <ThumbsUp
-                  color={reactedByMe ? colors.textPrimary : colors.textSecondary}
-                  size={16}
-                  strokeWidth={2}
-                />
-                <Text
-                  style={[
-                    styles.feedReactPrimaryChipText,
-                    reactedByMe && styles.feedReactPrimaryChipTextActive,
-                  ]}
-                >
-                  {reactedByMe ? t("friendsScreen.reactedShort") : t("friendsScreen.reactShort")}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("friendsScreen.activityReactionsA11y", {
-                  count: reactionTotal,
-                })}
-                style={({ pressed }) => [
-                  styles.feedActionChip,
-                  pressed && styles.feedActionChipPressed,
-                ]}
-                onPress={onOpenReactionUsers}
-              >
-                <ThumbsUp color={colors.textSecondary} size={16} strokeWidth={2} />
-                <Text style={styles.feedActionChipText}>
-                  {t("friendsScreen.reactionsCount", { count: reactionTotal })}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("friendsScreen.activityCommentsA11y", {
-                  count: commentCount,
-                })}
-                style={({ pressed }) => [
-                  styles.feedActionChip,
-                  pressed && styles.feedActionChipPressed,
-                ]}
-                onPress={onOpenSession}
-              >
-                <MessageCircle color={colors.textSecondary} size={16} strokeWidth={2} />
-                <Text style={styles.feedActionChipText}>
-                  {t("friendsScreen.commentsCount", { count: commentCount })}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                style={({ pressed }) => [styles.feedReplyChip, pressed && { opacity: 0.88 }]}
-                onPress={onOpenSession}
-              >
-                <Text style={styles.feedReplyChipText}>
-                  {commentCount > 0
-                    ? t("friendsScreen.viewCommentsCount", { count: commentCount })
-                    : t("friendsScreen.beFirstToComment")}
-                </Text>
-              </Pressable>
-            </View>
-          </>
+                {reactionLabel}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("friendsScreen.activityCommentsA11y", {
+                count: commentCount,
+              })}
+              style={({ pressed }) => [
+                styles.feedActionChip,
+                pressed && styles.feedActionChipPressed,
+              ]}
+              onPress={onOpenSession}
+            >
+              <MessageCircle color={colors.textSecondary} size={16} strokeWidth={2} />
+              <Text style={styles.feedActionChipText}>
+                {t("friendsScreen.commentsCount", { count: commentCount })}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("friendsScreen.feedOpenSessionA11y")}
+              style={({ pressed }) => [
+                styles.feedReplyChip,
+                pressed && styles.feedReplyChipActive,
+              ]}
+              onPress={onOpenSession}
+            >
+              <Text style={styles.feedReplyChipText}>{t("friendsScreen.feedOpenSessionCta")}</Text>
+            </Pressable>
+          </View>
         ) : isStreakBroken ? (
           <View style={styles.feedActionsRow}>
             {currentUserId === item.user_id ? (

@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { Search } from "lucide-react-native";
+import { UserPlus } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { RankHudChip } from "../../../components/progression/RankHudChip";
@@ -45,7 +45,7 @@ export function FriendsScreenHeader({
               onOpenAddFriend();
             }}
           >
-            <Search color={colors.textPrimary} size={18} />
+            <UserPlus color={colors.textPrimary} size={18} />
           </Pressable>
         </View>
       </View>

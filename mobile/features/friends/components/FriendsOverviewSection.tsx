@@ -11,7 +11,6 @@ import { EmptyState } from "../../../components/states/EmptyState";
 import { LoadingState } from "../../../components/states/LoadingState";
 import { colors, spacing } from "../../../constants/theme";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../../types/friends";
-import { formatStreakStatusLabel } from "../utils/friendsScreenFormat";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 
@@ -159,20 +158,26 @@ export function FriendsOverviewSection({
                       </View>
                     ) : null}
                   </View>
-                  <Text style={styles.userMeta}>
-                    {mode === "week"
-                      ? t("friendsScreen.metaWeek", {
-                          sessions: entry.sessions_in_period,
-                          days: entry.current_streak_days,
-                        })
-                      : t("friendsScreen.metaAll", {
-                          sessions: entry.sessions_in_period,
+                  <View style={styles.leaderMetricsRow}>
+                    <View style={styles.leaderMetricPill}>
+                      <Text style={styles.leaderMetricLabel}>
+                        {mode === "week"
+                          ? t("friendsScreen.leaderMetricSessionsWeek")
+                          : t("friendsScreen.leaderMetricSessionsAll")}
+                      </Text>
+                      <Text style={styles.leaderMetricValue}>{entry.sessions_in_period}</Text>
+                    </View>
+                    <View style={styles.leaderMetricPill}>
+                      <Text style={styles.leaderMetricLabel}>
+                        {t("friendsScreen.statStreakLabel")}
+                      </Text>
+                      <Text style={styles.leaderMetricValue}>
+                        {t("friendsScreen.leaderMetricStreakDays", {
                           days: entry.current_streak_days,
                         })}
-                  </Text>
-                  <Text style={styles.userMeta}>
-                    {formatStreakStatusLabel(entry.streak_status_key, entry.streak_status_label, t)}
-                  </Text>
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               </Pressable>
             </Animated.View>
@@ -193,7 +198,6 @@ export function FriendsOverviewSection({
             ) : null
           }
         />
-        <Text style={styles.activityFeedHeaderHint}>{t("friendsScreen.activityTitle")}</Text>
         {activeTriggerCard ? (
           <View style={styles.cardElevated}>
             <View key={activeTriggerCard.key} style={styles.triggerCardPrimary}>
