@@ -16,6 +16,7 @@ import { FriendsIncomingSection } from "../../features/friends/components/Friend
 import { FriendsModals } from "../../features/friends/components/FriendsModals";
 import { FriendsOverviewSection } from "../../features/friends/components/FriendsOverviewSection";
 import { FriendsScreenHeader } from "../../features/friends/components/FriendsScreenHeader";
+import { FriendsSocialSummaryStrip } from "../../features/friends/components/FriendsSocialSummaryStrip";
 import { FriendsTogetherSection } from "../../features/friends/components/FriendsTogetherSection";
 import { useFriendsDashboardData } from "../../features/friends/hooks/useFriendsDashboardData";
 import { useFriendsScreenActions } from "../../features/friends/hooks/useFriendsScreenActions";
@@ -279,6 +280,14 @@ export default function FriendsScreen() {
 
             {!(loading && !refreshing) && !error ? (
               <>
+                {sectionTab === "overview" && actions.hasOtherFriends ? (
+                  <FriendsSocialSummaryStrip
+                    t={t}
+                    mode={mode}
+                    entries={actions.entries}
+                    currentUserId={user?.id}
+                  />
+                ) : null}
                 <FriendsIncomingSection
                   t={t}
                   incoming={incoming}

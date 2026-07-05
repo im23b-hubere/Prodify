@@ -11,6 +11,7 @@ import { EmptyState } from "../../../components/states/EmptyState";
 import { LoadingState } from "../../../components/states/LoadingState";
 import { colors, spacing } from "../../../constants/theme";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../../types/friends";
+import { FriendsLeaderboardPodium } from "./FriendsLeaderboardPodium";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 
@@ -54,6 +55,11 @@ export function FriendsOverviewSection({
   const visibleEntries = useMemo(() => entries.slice(0, 8), [entries]);
   const showSoloState =
     !loading && visibleEntries.length === 1 && currentUserId === visibleEntries[0]?.user_id;
+  const showPodium = !showSoloState && visibleEntries.length >= 2;
+  const listEntries = useMemo(
+    () => (showPodium ? visibleEntries.filter((entry) => entry.rank > 3) : visibleEntries),
+    [showPodium, visibleEntries],
+  );
 
   const modeOptions = useMemo(
     () => [
@@ -110,7 +116,15 @@ export function FriendsOverviewSection({
               onAction={onAddFriendFromEmptyFeed}
             />
           ) : null}
-          {visibleEntries.map((entry, idx) => (
+          {showPodium ? (
+            <FriendsLeaderboardPodium
+              t={t}
+              mode={mode}
+              entries={visibleEntries}
+              currentUserId={currentUserId}
+            />
+          ) : null}
+          {listEntries.map((entry, idx) => (
             <Animated.View
               key={`${entry.user_id}-${entry.rank}`}
               entering={FadeInDown.delay(idx * 35).duration(320)}
