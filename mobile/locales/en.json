@@ -854,7 +854,14 @@
     "noNotes": "No notes for this session.",
     "commentsLoadFailed": "Comments are temporarily unavailable.",
     "reactionsLoadFailed": "Reactions are temporarily unavailable.",
-    "reactionToggleFailed": "Could not update reaction. Please try again."
+    "reactionToggleFailed": "Could not update reaction. Please try again.",
+    "insightsLoadFailed": "Session insights are temporarily unavailable.",
+    "returnToActive": "Return to active session",
+    "yourSessionBadge": "Your session",
+    "friendSessionBadge": "Friend session",
+    "focusBadge": "Focus {{score}}%",
+    "trackOutcomeWip": "Work in progress",
+    "trackOutcomeFinished": "Track finished"
   },
   "sessionTrash": {
     "title": "Session trash",

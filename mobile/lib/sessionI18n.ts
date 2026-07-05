@@ -60,3 +60,12 @@ export function sessionMoodLabel(level: number | null | undefined, tr: TFunction
   if (level == null || level < 1 || level > 5) return "—";
   return tr(`sessionDetail.${MOOD_KEYS[level - 1]}`);
 }
+
+export function sessionTrackOutcomeLabel(
+  outcome: string | null | undefined,
+  tr: TFunction,
+): string | null {
+  if (outcome === "wip") return tr("sessionDetail.trackOutcomeWip");
+  if (outcome === "finished") return tr("sessionDetail.trackOutcomeFinished");
+  return null;
+}

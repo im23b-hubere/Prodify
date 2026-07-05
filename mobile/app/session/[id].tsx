@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Check } from "lucide-react-native";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Animated, {
   interpolateColor,
@@ -19,7 +19,6 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -29,6 +28,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionInsightSections } from "../../components/session/SessionInsightSections";
 import { SessionShareImageModal } from "../../components/session/SessionShareImageModal";
+import { SessionDetailHero } from "../../features/sessions/components/SessionDetailHero";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
@@ -44,7 +44,7 @@ import {
   fetchSessionReactions,
   toggleSessionReaction,
 } from "../../lib/social";
-import { sessionMoodLabel, sessionTypeLabel } from "../../lib/sessionI18n";
+import { sessionMoodLabel, sessionTrackOutcomeLabel, sessionTypeLabel } from "../../lib/sessionI18n";
 import { sessionTagsList, tryParseSessionDto } from "../../lib/sessionDto";
 import { formatDurationWords, parseSessionDate } from "../../lib/sessionTime";
 import { formatTimeAgo } from "../../lib/timeAgo";
@@ -66,7 +66,15 @@ function resolveAvatarUri(uri?: string | null): string | null {
   return uri.startsWith("http") ? uri : `${API_BASE_URL}${uri}`;
 }
 
-function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highlighted: boolean }) {
+function CommentRow({
+  comment,
+  highlighted,
+  timeAgo,
+}: {
+  comment: SocialCommentDto;
+  highlighted: boolean;
+  timeAgo: string;
+}) {
   const pulse = useSharedValue(highlighted ? 1 : 0);
 
   useEffect(() => {
@@ -104,7 +112,7 @@ function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highl
       <View style={styles.commentContent}>
         <View style={styles.commentHeaderRow}>
           <Text style={styles.commentAuthor}>{comment.author_username}</Text>
-          {/* keep existing relative time style from parent rendering */}
+          <Text style={styles.commentTime}>{timeAgo}</Text>
         </View>
         <Text style={styles.commentBody}>{comment.body}</Text>
       </View>
@@ -147,6 +155,7 @@ export default function SessionDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [insights, setInsights] = useState<SessionDetailInsightsDto | null>(null);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
   const [comments, setComments] = useState<SocialCommentDto[]>([]);
   const [commentInput, setCommentInput] = useState("");
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -232,11 +241,14 @@ export default function SessionDetailScreen() {
           token,
         });
         setInsights(ins);
+        setInsightsError(null);
       } catch {
         setInsights(null);
+        setInsightsError(t("sessionDetail.insightsLoadFailed"));
       }
     } else {
       setInsights(null);
+      setInsightsError(null);
     }
   }, [id, token, t]);
 
@@ -331,7 +343,7 @@ export default function SessionDetailScreen() {
       setSession(updated);
       setNote(updated.notes ?? "");
       setSelectedType((updated.session_type as SessionType) || DEFAULT_SESSION_TYPE);
-      router.replace("/(tabs)/dashboard");
+      router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("sessionDetail.saveFailed"));
     } finally {
@@ -352,7 +364,7 @@ export default function SessionDetailScreen() {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
               () => undefined,
             );
-            router.replace("/(tabs)/dashboard");
+            router.back();
           } catch (e) {
             setError(e instanceof Error ? e.message : t("sessionDetail.deleteFailed"));
           }
@@ -360,6 +372,13 @@ export default function SessionDetailScreen() {
       },
     ]);
   }, [id, router, token, t]);
+
+  const isDirty = useMemo(() => {
+    if (!session || user?.id == null || session.user_id !== user.id) return false;
+    const savedType = (session.session_type as SessionType) || DEFAULT_SESSION_TYPE;
+    const savedNote = session.notes?.trim() ?? "";
+    return selectedType !== savedType || note.trim() !== savedNote;
+  }, [session, note, selectedType, user?.id]);
 
   if (!session) {
     return (
@@ -409,6 +428,13 @@ export default function SessionDetailScreen() {
   const pauseCountRaw =
     insights?.timeline?.filter((segment) => segment.kind === "paused").length ?? 0;
   const pauseCount = hasMeaningfulPause ? Math.max(1, pauseCountRaw) : 0;
+  const isActiveSession = session.stopped_at == null;
+  const dateLine =
+    startOk
+      ? `${start.toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}${endOk && end ? ` – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : ""}`
+      : "—";
+  const heroFocusScore = insights?.focus_score ?? session.focus_score ?? null;
+  const trackOutcomeLabel = sessionTrackOutcomeLabel(session.track_outcome, t);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -442,65 +468,43 @@ export default function SessionDetailScreen() {
             <Text style={styles.backText}>{t("sessionDetail.back")}</Text>
           </Pressable>
 
-          <View style={styles.hero}>
-            <Text style={styles.heroType}>{sessionTypeLabel(session.session_type, t)}</Text>
-            <Text style={styles.heroDur}>{durationLabel}</Text>
-            <Text style={styles.heroMeta}>
-              {startOk
-                ? `${start.toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric" })} · ${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
-                : "—"}
-              {endOk && end
-                ? ` – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`
-                : ""}
-            </Text>
+          <SessionDetailHero
+            t={t}
+            session={session}
+            durationLabel={durationLabel}
+            dateLine={dateLine}
+            isOwnSession={isOwnSession}
+            isActiveSession={isActiveSession}
+            producerDisplayName={producerDisplayName}
+            focusScore={heroFocusScore}
+            trackOutcomeLabel={trackOutcomeLabel}
+            onShareStory={() => setSessionImageShareOpen(true)}
+            onResumeActive={() => {
+              if (typeof session.id !== "number" || !Number.isFinite(session.id)) return;
+              router.push({
+                pathname: "/session-active",
+                params: { id: String(session.id), source: "session_detail" },
+              });
+            }}
+            onOpenProfile={() => {
+              Haptics.selectionAsync().catch(() => undefined);
+              router.push(`/profile/${session.user_id}`);
+            }}
+          />
+
+          {insightsError ? (
             <Pressable
-              style={styles.shareSessionBtn}
               accessibilityRole="button"
-              accessibilityLabel={t("sessionDetail.shareSessionImage")}
               onPress={() => {
-                setSessionImageShareOpen(true);
+                setInsightsError(null);
+                void load();
               }}
+              style={({ pressed }) => [styles.insightsWarning, pressed && { opacity: 0.92 }]}
             >
-              <Text style={styles.shareSessionBtnText}>{t("sessionDetail.shareSessionImage")}</Text>
+              <Text style={styles.insightsWarningText}>{insightsError}</Text>
+              <Text style={styles.insightsWarningAction}>{t("common.tryAgain")}</Text>
             </Pressable>
-            <Pressable
-              style={styles.shareSessionBtn}
-              accessibilityRole="button"
-              accessibilityLabel={t("sessionDetail.shareSession")}
-              onPress={() => {
-                const message = t("sessionDetail.shareSessionMessage", {
-                  type: sessionTypeLabel(session.session_type, t),
-                  duration: durationLabel,
-                });
-                Share.share({ message }).catch(() => undefined);
-              }}
-            >
-              <Text style={styles.shareSessionBtnText}>{t("sessionDetail.shareSession")}</Text>
-            </Pressable>
-            {!isOwnSession ? (
-              <>
-                <Text style={styles.friendReadOnlyHint}>
-                  {t("sessionDetail.friendSessionReadOnly")}
-                </Text>
-                <Pressable
-                  accessibilityRole="link"
-                  accessibilityLabel={t("sessionDetail.viewProfileA11y", {
-                    name: producerDisplayName,
-                  })}
-                  style={({ pressed }) => [styles.producerLink, pressed && { opacity: 0.85 }]}
-                  onPress={() => {
-                    Haptics.selectionAsync().catch(() => undefined);
-                    router.push(`/profile/${session.user_id}`);
-                  }}
-                >
-                  <Text style={styles.producerLinkName}>
-                    {t("sessionDetail.byProducer", { name: producerDisplayName })}
-                  </Text>
-                  <Text style={styles.producerLinkCta}>{t("sessionDetail.viewProfile")}</Text>
-                </Pressable>
-              </>
-            ) : null}
-          </View>
+          ) : null}
 
           {insights ? (
             <SessionInsightSections
@@ -519,22 +523,6 @@ export default function SessionDetailScreen() {
           ) : null}
 
           <View style={styles.grid}>
-            <View style={styles.gridCell}>
-              <Text style={styles.gridLabel}>{t("sessionDetail.start")}</Text>
-              <Text style={styles.gridVal}>
-                {startOk
-                  ? start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-                  : "—"}
-              </Text>
-            </View>
-            <View style={styles.gridCell}>
-              <Text style={styles.gridLabel}>{t("sessionDetail.end")}</Text>
-              <Text style={styles.gridVal}>
-                {endOk && end
-                  ? end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-                  : "—"}
-              </Text>
-            </View>
             <View style={styles.gridCell}>
               <Text style={styles.gridLabel}>{t("sessionDetail.mood")}</Text>
               <Text style={styles.gridVal}>
@@ -656,12 +644,12 @@ export default function SessionDetailScreen() {
               <Text style={styles.mutedNote}>{t("friendsScreen.beFirstToComment")}</Text>
             ) : (
               comments.map((comment) => (
-                <View key={comment.id}>
-                  <CommentRow comment={comment} highlighted={newCommentId === comment.id} />
-                  <View style={styles.commentMetaRow}>
-                    <Text style={styles.commentTime}>{formatCommentAgo(comment.created_at)}</Text>
-                  </View>
-                </View>
+                <CommentRow
+                  key={comment.id}
+                  comment={comment}
+                  highlighted={newCommentId === comment.id}
+                  timeAgo={formatCommentAgo(comment.created_at)}
+                />
               ))
             )}
             <View style={styles.commentComposerRow}>
@@ -703,15 +691,21 @@ export default function SessionDetailScreen() {
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {isOwnSession ? (
-            <>
-              <PrimaryButton label={t("sessionDetail.saveChanges")} onPress={save} loading={busy} />
-              <Pressable style={styles.dangerBtn} onPress={confirmDelete}>
-                <Text style={styles.dangerTxt}>{t("sessionDetail.deleteSession")}</Text>
-              </Pressable>
-            </>
+          {isOwnSession && !isDirty ? (
+            <Pressable style={styles.dangerBtn} onPress={confirmDelete}>
+              <Text style={styles.dangerTxt}>{t("sessionDetail.deleteSession")}</Text>
+            </Pressable>
           ) : null}
         </ScrollView>
+
+        {isOwnSession && isDirty ? (
+          <View style={styles.stickyFooter}>
+            <PrimaryButton label={t("sessionDetail.saveChanges")} onPress={save} loading={busy} />
+            <Pressable style={styles.dangerBtnCompact} onPress={confirmDelete}>
+              <Text style={styles.dangerTxt}>{t("sessionDetail.deleteSession")}</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -721,61 +715,48 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   keyboardWrap: { flex: 1 },
   content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  insightsWarning: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: "rgba(255,170,0,0.35)",
+    backgroundColor: "rgba(255,170,0,0.08)",
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: 4,
+  },
+  insightsWarningText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+    lineHeight: 18,
+  },
+  insightsWarningAction: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
+  stickyFooter: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  dangerBtnCompact: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+    backgroundColor: "rgba(255,59,48,0.1)",
+  },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.lg },
   loadingText: { color: colors.textSecondary, fontFamily: fontFamily.body, ...typography.body },
   backRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: spacing.sm },
   backChevron: { color: colors.primary, fontSize: 28, lineHeight: 32 },
   backText: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  hero: { marginBottom: spacing.md },
-  heroType: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  heroDur: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 40,
-    marginTop: spacing.xs,
-  },
-  heroMeta: { color: colors.textSecondary, marginTop: spacing.sm, ...typography.caption },
-  shareSessionBtn: {
-    marginTop: spacing.sm,
-    alignSelf: "flex-start",
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  shareSessionBtnText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  friendReadOnlyHint: {
-    marginTop: spacing.sm,
-    color: colors.textSecondary,
-    ...typography.caption,
-    fontFamily: fontFamily.bodyMedium,
-  },
-  producerLink: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    gap: 4,
-  },
-  producerLinkName: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.body,
-  },
-  producerLinkCta: {
-    color: colors.secondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
   readOnlyVal: {
     color: colors.textPrimary,
     fontFamily: fontFamily.body,

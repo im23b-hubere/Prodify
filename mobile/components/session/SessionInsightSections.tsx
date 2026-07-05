@@ -1,9 +1,7 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { Mic, Share2 } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
 import { fontFamily } from "../../constants/fonts";
@@ -24,8 +22,6 @@ import { formatDurationWords } from "../../lib/sessionTime";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import type { SessionDto } from "../../types/session";
 
-import { SessionShareImageModal } from "./SessionShareImageModal";
-
 type Props = {
   session: SessionDto;
   insights: SessionDetailInsightsDto;
@@ -40,10 +36,9 @@ function focusRing(score: number) {
   return { size, stroke, r, c, p: Math.max(0.02, Math.min(1, score / 100)) };
 }
 
-export function SessionInsightSections({ session, insights, producerName }: Props) {
+export function SessionInsightSections({ session, insights, producerName: _producerName }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [shareImageOpen, setShareImageOpen] = useState(false);
   const ring = useMemo(() => focusRing(insights.focus_score), [insights.focus_score]);
   const ringColor = useMemo(() => getFocusColor(insights.focus_score), [insights.focus_score]);
 
@@ -64,31 +59,7 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
   );
 
   const typeLabel = sessionTypeLabel(String(session.session_type), t);
-  const durWords = formatDurationWords(session.duration_seconds ?? 0);
-
-  const shareMinimal = useMemo(
-    () => t("sessionInsights.shareMinimal", { type: typeLabel, duration: durWords }),
-    [t, typeLabel, durWords],
-  );
-
-  const shareBold = useMemo(
-    () =>
-      t("sessionInsights.shareBold", {
-        type: typeLabel.toUpperCase(),
-        duration: durWords,
-      }),
-    [t, typeLabel, durWords],
-  );
-
-  const shareGradient = useMemo(
-    () =>
-      t("sessionInsights.shareGradient", {
-        type: typeLabel,
-        duration: durWords,
-        focus: insights.focus_score,
-      }),
-    [t, typeLabel, durWords, insights.focus_score],
-  );
+  void typeLabel;
 
   const focusSubText = useMemo(() => {
     const tier = insights.focus_tier ?? deriveFocusTier(insights.focus_score);
@@ -111,30 +82,16 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
     return insights.productivity_insights;
   }, [insights.productivity_items, insights.productivity_insights, t]);
 
-  const onShare = async (body: string) => {
-    await Share.share({ message: body });
-  };
-
   return (
     <View style={styles.wrap}>
-      <SessionShareImageModal
-        visible={shareImageOpen}
-        onClose={() => setShareImageOpen(false)}
-        session={session}
-        insights={insights}
-        producerName={producerName}
-      />
-      <LinearGradient
-        colors={["rgba(255,61,0,0.15)", "rgba(162,89,255,0.12)"]}
-        style={styles.impactCard}
-      >
+      <View style={[styles.impactCard, styles.impactCardSurface]}>
         <Text style={styles.sectionLabel}>{t("sessionInsights.impact")}</Text>
         {impactLines.map((line, idx) => (
           <Text key={`${idx}-${line}`} style={styles.impactLine}>
             {line}
           </Text>
         ))}
-      </LinearGradient>
+      </View>
 
       <View style={styles.focusCard}>
         <Text style={styles.sectionLabel}>{t("sessionInsights.focusScore")}</Text>
@@ -245,40 +202,6 @@ export function SessionInsightSections({ session, insights, producerName }: Prop
           </ScrollView>
         </View>
       ) : null}
-
-      <View style={styles.card}>
-        <Text style={styles.sectionLabel}>{t("sessionInsights.audio")}</Text>
-        <Pressable style={styles.audioBtn} disabled>
-          <Mic color={colors.textSecondary} size={20} />
-          <Text style={styles.audioTxt}>{t("sessionInsights.addAudioSnippet")}</Text>
-          <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonTxt}>{t("sessionInsights.comingSoon")}</Text>
-          </View>
-        </Pressable>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionLabel}>{t("sessionInsights.share")}</Text>
-        <Pressable style={styles.storyBtn} onPress={() => setShareImageOpen(true)}>
-          <Share2 size={18} color={colors.textPrimary} />
-          <Text style={styles.storyBtnTxt}>{t("sessionInsights.storyPng")}</Text>
-        </Pressable>
-        <View style={styles.shareRow}>
-          <Pressable style={styles.shareChip} onPress={() => onShare(shareMinimal)}>
-            <Share2 size={16} color={colors.textPrimary} />
-            <Text style={styles.shareChipTxt}>{t("sessionInsights.shareTextMinimal")}</Text>
-          </Pressable>
-          <Pressable style={styles.shareChip} onPress={() => onShare(shareBold)}>
-            <Text style={styles.shareChipTxt}>{t("sessionInsights.shareTextBold")}</Text>
-          </Pressable>
-          <Pressable style={styles.shareChip} onPress={() => onShare(shareGradient)}>
-            <Text style={styles.shareChipTxt}>{t("sessionInsights.shareTextLong")}</Text>
-          </Pressable>
-        </View>
-        <Pressable style={styles.copyBtn} onPress={() => onShare(shareMinimal)}>
-          <Text style={styles.copyBtnTxt}>{t("sessionInsights.copyStats")}</Text>
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -290,6 +213,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  impactCardSurface: {
+    backgroundColor: "rgba(255,61,0,0.08)",
   },
   sectionLabel: {
     color: colors.textSecondary,
@@ -348,50 +274,4 @@ const styles = StyleSheet.create({
   },
   relType: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   relDur: { color: colors.textSecondary, ...typography.caption, marginTop: 4 },
-  audioBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    opacity: 0.65,
-  },
-  audioTxt: { color: colors.textSecondary, ...typography.body, flex: 1 },
-  comingSoon: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radii.round,
-    backgroundColor: "rgba(162,89,255,0.2)",
-  },
-  comingSoonTxt: { color: colors.secondary, ...typography.caption, fontSize: 11 },
-  storyBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: "rgba(162,89,255,0.18)",
-    borderWidth: 1,
-    borderColor: colors.secondary,
-    marginBottom: spacing.md,
-  },
-  storyBtnTxt: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  shareRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  shareChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  shareChipTxt: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  copyBtn: { marginTop: spacing.sm, alignItems: "center", paddingVertical: spacing.sm },
-  copyBtnTxt: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.body },
 });
