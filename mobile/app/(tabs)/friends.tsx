@@ -18,7 +18,6 @@ import { FriendsOverviewSection } from "../../features/friends/components/Friend
 import { FriendsScreenHeader } from "../../features/friends/components/FriendsScreenHeader";
 import { FriendsSocialSummaryStrip } from "../../features/friends/components/FriendsSocialSummaryStrip";
 import { FriendsTogetherSection } from "../../features/friends/components/FriendsTogetherSection";
-import { FriendsWeeklyRecapTeaser } from "../../features/friends/components/FriendsWeeklyRecapTeaser";
 import { useFriendsDashboardData } from "../../features/friends/hooks/useFriendsDashboardData";
 import { useFriendsScreenActions } from "../../features/friends/hooks/useFriendsScreenActions";
 import { useFriendsScreenState } from "../../features/friends/hooks/useFriendsScreenState";
@@ -95,10 +94,6 @@ export default function FriendsScreen() {
   );
   const openSessionSetup = useCallback(() => {
     router.push("/session/setup" as Href);
-  }, [router]);
-
-  const openWeeklyRecap = useCallback(() => {
-    router.push("/weekly-recap" as Href);
   }, [router]);
 
   const actions = useFriendsScreenActions({
@@ -282,15 +277,12 @@ export default function FriendsScreen() {
         {!(loading && !refreshing) && !error ? (
           <>
             {sectionTab === "overview" && actions.hasOtherFriends ? (
-              <>
-                <FriendsSocialSummaryStrip
-                  t={t}
-                  mode={mode}
-                  entries={actions.entries}
-                  currentUserId={user?.id}
-                />
-                <FriendsWeeklyRecapTeaser t={t} onPress={openWeeklyRecap} />
-              </>
+              <FriendsSocialSummaryStrip
+                t={t}
+                mode={mode}
+                entries={actions.entries}
+                currentUserId={user?.id}
+              />
             ) : null}
             <FriendsIncomingSection
               t={t}

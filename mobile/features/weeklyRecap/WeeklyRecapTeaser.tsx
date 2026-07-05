@@ -5,8 +5,8 @@ import type { TFunction } from "i18next";
 import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { fontFamily } from "../../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../../constants/theme";
+import { fontFamily } from "../../constants/fonts";
+import { colors, radii, spacing, typography } from "../../constants/theme";
 
 type Props = {
   t: TFunction;
@@ -20,22 +20,19 @@ export function isWeeklyRecapTeaserVisible(now: Date = new Date()): boolean {
   return false;
 }
 
-export const FriendsWeeklyRecapTeaser = memo(function FriendsWeeklyRecapTeaser({
-  t,
-  onPress,
-}: Props) {
+export const WeeklyRecapTeaser = memo(function WeeklyRecapTeaser({ t, onPress }: Props) {
   if (!isWeeklyRecapTeaserVisible()) return null;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t("friendsScreen.recapTeaserA11y")}
+      accessibilityLabel={t("weeklyRecap.teaserA11y")}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
         onPress();
       }}
       style={({ pressed }) => [pressed && { opacity: 0.92 }]}
-      testID="friends-weekly-recap-teaser"
+      testID="weekly-recap-teaser"
     >
       <LinearGradient
         colors={["#1a0a2e", "#4a148c", "#141414"]}
@@ -44,9 +41,9 @@ export const FriendsWeeklyRecapTeaser = memo(function FriendsWeeklyRecapTeaser({
         style={styles.card}
       >
         <View style={styles.copy}>
-          <Text style={styles.kicker}>{t("friendsScreen.recapTeaserKicker")}</Text>
-          <Text style={styles.title}>{t("friendsScreen.recapTeaserTitle")}</Text>
-          <Text style={styles.subtitle}>{t("friendsScreen.recapTeaserSubtitle")}</Text>
+          <Text style={styles.kicker}>{t("weeklyRecap.teaserKicker")}</Text>
+          <Text style={styles.title}>{t("weeklyRecap.teaserTitle")}</Text>
+          <Text style={styles.subtitle}>{t("weeklyRecap.teaserSubtitle")}</Text>
         </View>
         <ChevronRight color={colors.textPrimary} size={22} />
       </LinearGradient>

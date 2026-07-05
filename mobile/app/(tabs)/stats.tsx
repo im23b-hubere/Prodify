@@ -49,6 +49,7 @@ import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { translateInsightItem } from "../../lib/sessionInsightsI18n";
 import { progressionOverviewHref } from "../../lib/progressionNavigation";
 import { isScreenDataStale } from "../../lib/screenDataStale";
+import { WeeklyRecapTeaser, isWeeklyRecapTeaserVisible } from "../../features/weeklyRecap/WeeklyRecapTeaser";
 import { fetchProgression, syncProgression } from "../../lib/progressionSync";
 import { ActivityHeatmapLegend } from "../../components/charts/ActivityHeatmapLegend";
 import { heatmapCellColor } from "../../lib/heatmapStyle";
@@ -733,6 +734,8 @@ export default function StatsScreen() {
 
             <StatsKpiStrip items={statCarouselItems} variant="hero" testID="stats-kpi-strip" />
 
+            <WeeklyRecapTeaser t={t} onPress={openWeeklyRecap} />
+
             {productivityHintText ? (
               <AppCard style={styles.hintCard} testID="stats-ai-insight">
                 <Text style={styles.hintLabel}>{t("stats.aiInsightLabel")}</Text>
@@ -923,9 +926,11 @@ export default function StatsScreen() {
               )}
             </View>
 
-            <View style={styles.weeklyRecapBottomCta}>
-              <SecondaryButton label={t("stats.openWeeklyRecap")} onPress={openWeeklyRecap} />
-            </View>
+            {!isWeeklyRecapTeaserVisible() ? (
+              <View style={styles.weeklyRecapBottomCta}>
+                <SecondaryButton label={t("stats.openWeeklyRecap")} onPress={openWeeklyRecap} />
+              </View>
+            ) : null}
           </Animated.View>
         ) : null}
       </ScrollView>

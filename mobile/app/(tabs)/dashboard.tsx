@@ -21,6 +21,7 @@ import { useDashboardStreakEvents } from "../../features/dashboard/hooks/useDash
 import { DashboardStudioHud } from "../../components/dashboard/DashboardStudioHud";
 import { DashboardRecentSessionRow } from "../../components/dashboard/DashboardRecentSessionRow";
 import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
+import { WeeklyRecapTeaser } from "../../features/weeklyRecap/WeeklyRecapTeaser";
 import { glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
 import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
 import { EmptyState } from "../../components/states/EmptyState";
@@ -635,6 +636,8 @@ export default function DashboardScreen() {
                 router.push("/streak/history");
               }}
             />
+
+            <WeeklyRecapTeaser t={t} onPress={() => router.push("/weekly-recap")} />
 
             <FriendsActivityWidget
               currentUserId={user?.id ?? 0}

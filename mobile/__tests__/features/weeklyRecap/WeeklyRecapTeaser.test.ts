@@ -1,4 +1,4 @@
-import { isWeeklyRecapTeaserVisible } from "../../../features/friends/components/FriendsWeeklyRecapTeaser";
+import { isWeeklyRecapTeaserVisible } from "../../../features/weeklyRecap/WeeklyRecapTeaser";
 
 describe("isWeeklyRecapTeaserVisible", () => {
   it("shows all day Sunday", () => {
