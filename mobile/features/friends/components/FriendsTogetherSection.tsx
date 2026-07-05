@@ -7,6 +7,7 @@ import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { colors } from "../../../constants/theme";
 import type { BuddyStatusDto, CommitmentDto, SocialChallengeDto } from "../../../types/friends";
 import { challengeDaysLeft, challengeKindLabel } from "../utils/friendsScreenFormat";
+import { FriendsBuddyDuelCard } from "./FriendsBuddyDuelCard";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 
@@ -45,10 +46,6 @@ export function FriendsTogetherSection({
 }: Props) {
   const router = useRouter();
   const hasActiveBuddy = buddy?.status === "active";
-  const buddyAhead =
-    hasActiveBuddy && (buddy.buddy_week_sessions ?? 0) > (buddy.this_week_sessions ?? 0);
-  const youAhead =
-    hasActiveBuddy && (buddy.this_week_sessions ?? 0) > (buddy.buddy_week_sessions ?? 0);
   const showGetStarted =
     challengeCards.length === 0 &&
     !hasActiveBuddy &&
@@ -133,37 +130,17 @@ export function FriendsTogetherSection({
             title={t("friendsScreen.togetherBuddyTitle")}
             subtitle={t("friendsScreen.togetherBuddySub")}
           />
+          {buddy?.status === "active" ? (
+            <FriendsBuddyDuelCard
+              t={t}
+              buddyName={buddy.buddy_username ?? t("friendsScreen.challengeSomeone")}
+              yourSessions={buddy.this_week_sessions ?? 0}
+              buddySessions={buddy.buddy_week_sessions ?? 0}
+              onCatchUp={onOpenSessionSetup}
+            />
+          ) : (
           <View style={styles.cardElevated}>
-            {buddy?.status === "active" ? (
-              <>
-                <Text style={styles.userMeta}>
-                  {t("friendsScreen.togetherBuddyCompare", {
-                    buddy: buddy.buddy_username,
-                    buddyWeek: buddy.buddy_week_sessions ?? 0,
-                    yourWeek: buddy.this_week_sessions ?? 0,
-                  })}
-                </Text>
-                {buddyAhead ? (
-                  <Text style={styles.userMeta}>{t("friendsScreen.togetherBuddyBehind")}</Text>
-                ) : null}
-                {youAhead ? (
-                  <Text style={styles.userMeta}>
-                    {t("friendsScreen.togetherBuddyAhead", {
-                      buddy: buddy.buddy_username,
-                    })}
-                  </Text>
-                ) : null}
-                {!buddyAhead && !youAhead && (buddy.this_week_sessions ?? 0) > 0 ? (
-                  <Text style={styles.userMeta}>{t("friendsScreen.togetherBuddyTied")}</Text>
-                ) : null}
-                {buddyAhead ? (
-                  <PrimaryButton
-                    label={t("friendsScreen.heroCtaCatchUp")}
-                    onPress={onOpenSessionSetup}
-                  />
-                ) : null}
-              </>
-            ) : buddy?.status === "pending_incoming" ? (
+            {buddy?.status === "pending_incoming" ? (
               <>
                 <Text style={styles.userMeta}>
                   {t("friendsScreen.buddyPendingIncoming", {
@@ -205,6 +182,7 @@ export function FriendsTogetherSection({
               </>
             )}
           </View>
+          )}
         </View>
       ) : null}
 
