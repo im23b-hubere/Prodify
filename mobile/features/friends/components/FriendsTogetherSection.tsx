@@ -53,6 +53,13 @@ export function FriendsTogetherSection({
     buddy?.status !== "pending_incoming" &&
     buddy?.status !== "pending_outgoing";
 
+  const openStats = () => {
+    router.push({
+      pathname: "/(tabs)/stats",
+      params: { focus: "yourWeek" },
+    } as Href);
+  };
+
   const openChallengeDetail = (challengeId: number) => {
     router.push(`/challenge/${challengeId}` as Href);
   };
@@ -66,6 +73,7 @@ export function FriendsTogetherSection({
         buddy={buddy}
         commitment={commitment}
         activeChallengeCount={activeChallengeCount}
+        onViewCommitment={commitment ? openStats : undefined}
       />
 
       {showGetStarted ? (
@@ -167,11 +175,11 @@ export function FriendsTogetherSection({
             title={t("friendsScreen.togetherChallengesTitle")}
             subtitle={t("friendsScreen.togetherChallengesSub")}
             right={
-              challengeCards.length > 0 ? (
+              activeChallengeCount > 0 ? (
                 <View style={styles.collapseBadge}>
                   <Text style={styles.collapseBadgeText}>
                     {t("friendsScreen.challengesCollapsedSummary", {
-                      count: challengeCards.length,
+                      count: activeChallengeCount,
                     })}
                   </Text>
                 </View>

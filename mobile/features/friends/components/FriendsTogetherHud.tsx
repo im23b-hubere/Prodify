@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import type { TFunction } from "i18next";
 import { memo, useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { StatTile } from "../../../components/ui/StatTile";
 import { fontFamily } from "../../../constants/fonts";
@@ -13,6 +13,7 @@ type Props = {
   buddy: BuddyStatusDto | null;
   commitment: CommitmentDto | null;
   activeChallengeCount: number;
+  onViewCommitment?: () => void;
 };
 
 export const FriendsTogetherHud = memo(function FriendsTogetherHud({
@@ -20,6 +21,7 @@ export const FriendsTogetherHud = memo(function FriendsTogetherHud({
   buddy,
   commitment,
   activeChallengeCount,
+  onViewCommitment,
 }: Props) {
   const buddyLabel = useMemo(() => {
     if (buddy?.status === "active") {
@@ -70,10 +72,25 @@ export const FriendsTogetherHud = memo(function FriendsTogetherHud({
         <StatTile label={t("friendsScreen.crewHudChallengesLabel")} value={`${activeChallengeCount}`} />
       </View>
       {commitment ? (
-        <View style={styles.commitmentRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("friendsScreen.togetherViewInStats")}
+          disabled={!onViewCommitment}
+          onPress={onViewCommitment}
+          style={({ pressed }) => [
+            styles.commitmentRow,
+            onViewCommitment && pressed && styles.commitmentRowPressed,
+          ]}
+          testID="friends-crew-commitment-row"
+        >
           <Text style={styles.commitmentLabel}>{t("friendsScreen.togetherPromiseTitle")}</Text>
-          <Text style={styles.commitmentValue}>{commitmentLabel}</Text>
-        </View>
+          <View style={styles.commitmentValueWrap}>
+            <Text style={styles.commitmentValue}>{commitmentLabel}</Text>
+            {onViewCommitment ? (
+              <Text style={styles.commitmentLink}>{t("friendsScreen.togetherViewInStats")}</Text>
+            ) : null}
+          </View>
+        </Pressable>
       ) : null}
       <Text style={styles.status}>{statusLine}</Text>
     </LinearGradient>
@@ -112,6 +129,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
+  commitmentRowPressed: {
+    opacity: 0.88,
+  },
+  commitmentValueWrap: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
   commitmentLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
@@ -123,6 +147,12 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     ...typography.body,
+  },
+  commitmentLink: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 10,
+    letterSpacing: 0.4,
   },
   status: {
     color: colors.textSecondary,

@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import type { TFunction } from "i18next";
 import { memo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { type DimensionValue, StyleSheet, Text, View } from "react-native";
 
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { fontFamily } from "../../../constants/fonts";
@@ -26,8 +26,12 @@ export const FriendsBuddyDuelCard = memo(function FriendsBuddyDuelCard({
   const youAhead = yourSessions > buddySessions;
   const tied = yourSessions === buddySessions;
   const scale = Math.max(yourSessions, buddySessions, 1);
-  const yourWidth = `${Math.max(8, (yourSessions / scale) * 100)}%`;
-  const buddyWidth = `${Math.max(8, (buddySessions / scale) * 100)}%`;
+  const barWidth = (sessions: number): DimensionValue => {
+    if (sessions <= 0) return "0%";
+    return `${Math.max(8, (sessions / scale) * 100)}%`;
+  };
+  const yourWidth = barWidth(yourSessions);
+  const buddyWidth = barWidth(buddySessions);
 
   const statusLine = buddyAhead
     ? t("friendsScreen.togetherBuddyBehind")
