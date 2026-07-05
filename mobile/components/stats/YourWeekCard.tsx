@@ -34,6 +34,7 @@ type Props = {
   configured: boolean;
   busy: boolean;
   hero?: boolean;
+  embedded?: boolean;
   onSaveGoal: (target: number, shareWithFriends: boolean) => Promise<void>;
   onStartSession: () => void;
 };
@@ -68,6 +69,7 @@ export function YourWeekCard({
   configured,
   busy,
   hero = false,
+  embedded = false,
   onSaveGoal,
   onStartSession,
 }: Props) {
@@ -160,151 +162,169 @@ export function YourWeekCard({
     return t("stats.yourWeek.nextStepOnTrack");
   }, [configured, goal, status, forecast, t]);
 
+  const eyebrowStyle = [
+    styles.sectionEyebrow,
+    hero && embedded ? styles.sectionEyebrowEmbedded : null,
+  ];
+
+  const cardBody = (
+    <>
+      <Text style={eyebrowStyle}>{t("stats.yourWeek.eyebrow")}</Text>
+
+      {!configured ? (
+        <View style={styles.setupWrap}>
+          <Text style={[styles.setupTitle, hero && styles.setupTitleHero]}>
+            {t("stats.yourWeek.setupTitle")}
+          </Text>
+          {!hero ? (
+            <Text style={styles.setupHint}>{t("stats.yourWeek.setupHint")}</Text>
+          ) : null}
+          <View style={styles.chipRow}>
+            {GOAL_CHIPS.map((n) => (
+              <Pressable
+                key={n}
+                style={({ pressed }) => [
+                  styles.chip,
+                  hero && styles.chipHero,
+                  hero && embedded && styles.chipEmbedded,
+                  pressed && styles.chipPressed,
+                ]}
+                disabled={busy}
+                onPress={() => void saveFromSetup(n)}
+              >
+                {busy ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <>
+                    <Text style={styles.chipValue}>{n}</Text>
+                    <Text style={styles.chipLabel}>{t("stats.yourWeek.sessionsUnit")}</Text>
+                  </>
+                )}
+              </Pressable>
+            ))}
+          </View>
+          <Pressable onPress={() => openEditor(5)} disabled={busy}>
+            <Text style={styles.customLink}>{t("stats.yourWeek.customTarget")}</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <View style={styles.metricRow}>
+            <Text style={[styles.bigNumber, hero && styles.bigNumberHero]}>
+              {goal?.current_sessions ?? 0}
+              <Text style={styles.bigNumberDim}> / {goal?.target_value ?? "—"}</Text>
+            </Text>
+            <Text style={styles.metricLabel}>{t("stats.yourWeek.sessionsThisWeek")}</Text>
+          </View>
+
+          <View
+            style={[
+              styles.statusPill,
+              status === "on_track" && styles.statusOnTrack,
+              status === "behind" && styles.statusBehind,
+              status === "completed" && styles.statusDone,
+            ]}
+          >
+            <Text style={styles.statusText}>
+              {status === "completed"
+                ? t("stats.yourWeek.statusCompleted")
+                : status === "behind"
+                  ? t("stats.yourWeek.statusBehind")
+                  : t("stats.yourWeek.statusOnTrack")}
+            </Text>
+          </View>
+
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+          </View>
+
+          {hero && nextStepLine ? (
+            <Text style={styles.nextStep} numberOfLines={2}>
+              {nextStepLine}
+            </Text>
+          ) : null}
+
+          {!hero && forecast && forecastRiskKey ? (
+            <Text
+              style={[
+                styles.forecastLine,
+                forecast.risk_level === "on_track" && styles.forecastOnTrack,
+                forecast.risk_level === "at_risk" && styles.forecastAtRisk,
+                forecast.risk_level === "off_track" && styles.forecastOffTrack,
+              ]}
+            >
+              {t(forecastRiskKey)} ·{" "}
+              {t("stats.forecastRemaining", {
+                n: forecast.remaining_sessions,
+                days: forecast.days_left,
+              })}
+            </Text>
+          ) : null}
+
+          {!hero ? (
+            <>
+              <Text style={styles.studioLabel}>{t("stats.yourWeek.studioDays")}</Text>
+              <View style={styles.dayRow}>
+                {weekKeys.map((key, idx) => {
+                  const active = activeDayKeys.has(key);
+                  return (
+                    <View key={key} style={styles.dayCell}>
+                      <View
+                        style={[
+                          styles.dayDot,
+                          active && styles.dayDotActive,
+                          key === todayKey && styles.dayDotToday,
+                        ]}
+                      />
+                      <Text style={[styles.dayLetter, active && styles.dayLetterActive]}>
+                        {WEEKDAY_LETTERS[idx]}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
+
+          {!hero && commitment ? (
+            <View style={styles.promiseRow}>
+              <Text style={styles.promiseText}>
+                {commitment.witness_usernames?.length
+                  ? t("stats.yourWeek.sharedWith", {
+                      names: commitment.witness_usernames.map((n) => `@${n}`).join(", "),
+                    })
+                  : t("stats.yourWeek.sharedWithFriends")}
+              </Text>
+            </View>
+          ) : null}
+
+          <PrimaryButton
+            label={busy ? t("stats.yourWeek.saving") : primaryLabel}
+            onPress={primaryAction}
+            disabled={busy}
+          />
+          {status !== "completed" ? (
+            <Pressable onPress={() => openEditor()} disabled={busy} style={styles.editLink}>
+              <Text style={styles.editLinkText}>{t("stats.yourWeek.editGoal")}</Text>
+            </Pressable>
+          ) : null}
+        </>
+      )}
+    </>
+  );
+
   return (
     <>
       <View testID={hero ? "your-week-hero" : undefined}>
+      {hero && embedded ? (
+        <View style={styles.embeddedShell}>
+          {cardBody}
+        </View>
+      ) : (
       <AppCard style={[styles.card, hero ? styles.cardHero : undefined]}>
-        <Text style={styles.sectionEyebrow}>{t("stats.yourWeek.eyebrow")}</Text>
-
-        {!configured ? (
-          <View style={styles.setupWrap}>
-            <Text style={[styles.setupTitle, hero && styles.setupTitleHero]}>
-              {t("stats.yourWeek.setupTitle")}
-            </Text>
-            {!hero ? (
-              <Text style={styles.setupHint}>{t("stats.yourWeek.setupHint")}</Text>
-            ) : null}
-            <View style={styles.chipRow}>
-              {GOAL_CHIPS.map((n) => (
-                <Pressable
-                  key={n}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    hero && styles.chipHero,
-                    pressed && styles.chipPressed,
-                  ]}
-                  disabled={busy}
-                  onPress={() => void saveFromSetup(n)}
-                >
-                  {busy ? (
-                    <ActivityIndicator color={colors.primary} size="small" />
-                  ) : (
-                    <>
-                      <Text style={styles.chipValue}>{n}</Text>
-                      <Text style={styles.chipLabel}>{t("stats.yourWeek.sessionsUnit")}</Text>
-                    </>
-                  )}
-                </Pressable>
-              ))}
-            </View>
-            <Pressable onPress={() => openEditor(5)} disabled={busy}>
-              <Text style={styles.customLink}>{t("stats.yourWeek.customTarget")}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <View style={styles.metricRow}>
-              <Text style={[styles.bigNumber, hero && styles.bigNumberHero]}>
-                {goal?.current_sessions ?? 0}
-                <Text style={styles.bigNumberDim}> / {goal?.target_value ?? "—"}</Text>
-              </Text>
-              <Text style={styles.metricLabel}>{t("stats.yourWeek.sessionsThisWeek")}</Text>
-            </View>
-
-            <View
-              style={[
-                styles.statusPill,
-                status === "on_track" && styles.statusOnTrack,
-                status === "behind" && styles.statusBehind,
-                status === "completed" && styles.statusDone,
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {status === "completed"
-                  ? t("stats.yourWeek.statusCompleted")
-                  : status === "behind"
-                    ? t("stats.yourWeek.statusBehind")
-                    : t("stats.yourWeek.statusOnTrack")}
-              </Text>
-            </View>
-
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
-            </View>
-
-            {hero && nextStepLine ? (
-              <Text style={styles.nextStep} numberOfLines={2}>
-                {nextStepLine}
-              </Text>
-            ) : null}
-
-            {!hero && forecast && forecastRiskKey ? (
-              <Text
-                style={[
-                  styles.forecastLine,
-                  forecast.risk_level === "on_track" && styles.forecastOnTrack,
-                  forecast.risk_level === "at_risk" && styles.forecastAtRisk,
-                  forecast.risk_level === "off_track" && styles.forecastOffTrack,
-                ]}
-              >
-                {t(forecastRiskKey)} ·{" "}
-                {t("stats.forecastRemaining", {
-                  n: forecast.remaining_sessions,
-                  days: forecast.days_left,
-                })}
-              </Text>
-            ) : null}
-
-            {!hero ? (
-              <>
-                <Text style={styles.studioLabel}>{t("stats.yourWeek.studioDays")}</Text>
-                <View style={styles.dayRow}>
-                  {weekKeys.map((key, idx) => {
-                    const active = activeDayKeys.has(key);
-                    return (
-                      <View key={key} style={styles.dayCell}>
-                        <View
-                          style={[
-                            styles.dayDot,
-                            active && styles.dayDotActive,
-                            key === todayKey && styles.dayDotToday,
-                          ]}
-                        />
-                        <Text style={[styles.dayLetter, active && styles.dayLetterActive]}>
-                          {WEEKDAY_LETTERS[idx]}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </>
-            ) : null}
-
-            {!hero && commitment ? (
-              <View style={styles.promiseRow}>
-                <Text style={styles.promiseText}>
-                  {commitment.witness_usernames?.length
-                    ? t("stats.yourWeek.sharedWith", {
-                        names: commitment.witness_usernames.map((n) => `@${n}`).join(", "),
-                      })
-                    : t("stats.yourWeek.sharedWithFriends")}
-                </Text>
-              </View>
-            ) : null}
-
-            <PrimaryButton
-              label={busy ? t("stats.yourWeek.saving") : primaryLabel}
-              onPress={primaryAction}
-              disabled={busy}
-            />
-            {status !== "completed" ? (
-              <Pressable onPress={() => openEditor()} disabled={busy} style={styles.editLink}>
-                <Text style={styles.editLinkText}>{t("stats.yourWeek.editGoal")}</Text>
-              </Pressable>
-            ) : null}
-          </>
-        )}
+        {cardBody}
       </AppCard>
+      )}
       </View>
 
       <Modal
@@ -373,12 +393,20 @@ export function YourWeekCard({
 const styles = StyleSheet.create({
   card: { gap: spacing.sm },
   cardHero: { gap: spacing.xs },
+  embeddedShell: {
+    gap: spacing.sm,
+  },
   sectionEyebrow: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
     ...typography.meta,
     textTransform: "uppercase",
     letterSpacing: 0.6,
+  },
+  sectionEyebrowEmbedded: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 10,
+    letterSpacing: 1.2,
   },
   setupWrap: { gap: spacing.sm },
   setupTitle: {
@@ -412,6 +440,10 @@ const styles = StyleSheet.create({
   },
   chipHero: {
     minHeight: 52,
+  },
+  chipEmbedded: {
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   chipSelected: {
     borderColor: colors.primary,

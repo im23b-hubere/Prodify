@@ -16,7 +16,7 @@ export type KpiItem = {
 type Props = {
   items: KpiItem[];
   testID?: string;
-  variant?: "default" | "hero";
+  variant?: "default" | "hero" | "inset";
 };
 
 export const StatsKpiStrip = memo(function StatsKpiStrip({
@@ -25,27 +25,37 @@ export const StatsKpiStrip = memo(function StatsKpiStrip({
   variant = "default",
 }: Props) {
   const isHero = variant === "hero";
+  const isInset = variant === "inset";
+  const useHeroRow = isHero || isInset;
 
   const strip = (
-    <View style={[styles.row, isHero && styles.rowHero]}>
+    <View style={[styles.row, useHeroRow && styles.rowHero, isInset && styles.rowInset]}>
       {items.map((item, index) => (
         <View
           key={item.key}
-          style={[styles.cell, isHero && styles.cellHero, index < items.length - 1 && styles.cellBorder, isHero && index < items.length - 1 && styles.cellBorderHero]}
+          style={[
+            styles.cell,
+            useHeroRow && styles.cellHero,
+            isInset && styles.cellInset,
+            index < items.length - 1 && styles.cellBorder,
+            useHeroRow && index < items.length - 1 && styles.cellBorderHero,
+          ]}
         >
           {typeof item.value === "string" || typeof item.value === "number" ? (
-            <Text style={[styles.value, isHero && styles.valueHero]}>{item.value}</Text>
+            <Text style={[styles.value, useHeroRow && styles.valueHero, isInset && styles.valueInset]}>
+              {item.value}
+            </Text>
           ) : (
             <View style={styles.valueRow}>{item.value}</View>
           )}
-          <Text style={[styles.label, isHero && styles.labelHero]} numberOfLines={1}>
+          <Text style={[styles.label, useHeroRow && styles.labelHero]} numberOfLines={1}>
             {item.label}
           </Text>
           {item.sublabel ? (
             <Text
               style={[
                 styles.sub,
-                isHero && styles.subHero,
+                useHeroRow && styles.subHero,
                 item.subPositive === false ? styles.subNeg : styles.subPos,
               ]}
               numberOfLines={2}
@@ -72,6 +82,14 @@ export const StatsKpiStrip = memo(function StatsKpiStrip({
     );
   }
 
+  if (isInset) {
+    return (
+      <View testID={testID} style={styles.insetShell}>
+        {strip}
+      </View>
+    );
+  }
+
   return (
     <View testID={testID} style={styles.defaultShell}>
       {strip}
@@ -95,6 +113,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
+  insetShell: {
+    overflow: "hidden",
+  },
   row: {
     flexDirection: "row",
     borderRadius: radii.lg,
@@ -107,6 +128,9 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     backgroundColor: "transparent",
   },
+  rowInset: {
+    borderRadius: 0,
+  },
   cell: {
     flex: 1,
     alignItems: "center",
@@ -116,6 +140,9 @@ const styles = StyleSheet.create({
   },
   cellHero: {
     paddingVertical: spacing.md,
+  },
+  cellInset: {
+    paddingVertical: spacing.sm,
   },
   cellBorder: {
     borderRightWidth: StyleSheet.hairlineWidth,
@@ -134,6 +161,10 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 34,
     letterSpacing: -0.5,
+  },
+  valueInset: {
+    fontSize: 26,
+    lineHeight: 30,
   },
   valueRow: {
     flexDirection: "row",

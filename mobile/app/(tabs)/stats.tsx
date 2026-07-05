@@ -727,22 +727,37 @@ export default function StatsScreen() {
                   tryScrollToYourWeek();
                 }}
               >
-                <YourWeekCard
-                  t={t}
-                  goal={weeklyGoal}
-                  forecast={forecast}
-                  commitment={commitment}
-                  heatmapDays={heatmapDays}
-                  configured={goalConfigured}
-                  busy={weekBusy}
-                  hero
-                  onSaveGoal={handleSaveWeeklyGoal}
-                  onStartSession={handleStartSession}
-                />
+                <LinearGradient
+                  colors={["#3d1510", "#1a1010", "#0f0f0f"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.mergedHeroShell}
+                  testID="stats-merged-hero"
+                >
+                  <YourWeekCard
+                    t={t}
+                    goal={weeklyGoal}
+                    forecast={forecast}
+                    commitment={commitment}
+                    heatmapDays={heatmapDays}
+                    configured={goalConfigured}
+                    busy={weekBusy}
+                    hero
+                    embedded
+                    onSaveGoal={handleSaveWeeklyGoal}
+                    onStartSession={handleStartSession}
+                  />
+                  <View style={styles.mergedHeroDivider} />
+                  <StatsKpiStrip
+                    items={statCarouselItems}
+                    variant="inset"
+                    testID="stats-kpi-strip"
+                  />
+                </LinearGradient>
               </View>
-            ) : null}
-
-            <StatsKpiStrip items={statCarouselItems} variant="hero" testID="stats-kpi-strip" />
+            ) : (
+              <StatsKpiStrip items={statCarouselItems} variant="hero" testID="stats-kpi-strip" />
+            )}
 
             <WeeklyRecapTeaser t={t} onPress={openWeeklyRecap} />
 
@@ -1044,6 +1059,22 @@ const styles = StyleSheet.create({
   },
   heroWrap: {
     marginBottom: spacing.xs,
+  },
+  mergedHeroShell: {
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    padding: spacing.md,
+    gap: spacing.md,
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  mergedHeroDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
   staticSection: {
     gap: spacing.md,

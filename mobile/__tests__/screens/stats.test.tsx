@@ -137,6 +137,7 @@ describe("Stats Screen", () => {
   it("renders hero and KPI strip after load", async () => {
     const { findByTestId } = render(<StatsScreen />);
     expect(await findByTestId("your-week-hero")).toBeTruthy();
+    expect(await findByTestId("stats-merged-hero")).toBeTruthy();
     expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
   });
 
