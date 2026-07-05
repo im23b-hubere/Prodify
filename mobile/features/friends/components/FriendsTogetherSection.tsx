@@ -8,6 +8,7 @@ import { colors } from "../../../constants/theme";
 import type { BuddyStatusDto, CommitmentDto, SocialChallengeDto } from "../../../types/friends";
 import { challengeDaysLeft, challengeKindLabel } from "../utils/friendsScreenFormat";
 import { FriendsBuddyDuelCard } from "./FriendsBuddyDuelCard";
+import { FriendsTogetherHud } from "./FriendsTogetherHud";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 
@@ -52,20 +53,20 @@ export function FriendsTogetherSection({
     buddy?.status !== "pending_incoming" &&
     buddy?.status !== "pending_outgoing";
 
-  const openStats = () => {
-    router.push({
-      pathname: "/(tabs)/stats",
-      params: { focus: "yourWeek" },
-    } as Href);
-  };
-
   const openChallengeDetail = (challengeId: number) => {
     router.push(`/challenge/${challengeId}` as Href);
   };
 
+  const activeChallengeCount = challengeCards.filter((c) => c.status === "active").length;
+
   return (
     <>
-      <Text style={styles.togetherIntro}>{t("friendsScreen.togetherIntro")}</Text>
+      <FriendsTogetherHud
+        t={t}
+        buddy={buddy}
+        commitment={commitment}
+        activeChallengeCount={activeChallengeCount}
+      />
 
       {showGetStarted ? (
         <View style={styles.togetherGetStartedCard}>
@@ -93,33 +94,6 @@ export function FriendsTogetherSection({
           >
             <Text style={styles.secondaryBtnText}>{t("friendsScreen.togetherStartChallenge")}</Text>
           </Pressable>
-        </View>
-      ) : null}
-
-      {commitment ? (
-        <View style={styles.sectionWrap}>
-          <View style={styles.cardElevated}>
-            <Text style={styles.innerHeading}>{t("friendsScreen.togetherPromiseTitle")}</Text>
-            <Text style={styles.userMeta}>
-              {commitment.witness_usernames?.length
-                ? t("friendsScreen.togetherPromiseWithWitnesses", {
-                    target: commitment.target_sessions,
-                    names: commitment.witness_usernames.map((n) => `@${n}`).join(", "),
-                  })
-                : t("friendsScreen.togetherPromiseSolo", {
-                    target: commitment.target_sessions,
-                  })}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              style={styles.weekHeroTextLink}
-              onPress={openStats}
-            >
-              <Text style={styles.weekHeroTextLinkText}>
-                {t("friendsScreen.togetherViewInStats")}
-              </Text>
-            </Pressable>
-          </View>
         </View>
       ) : null}
 

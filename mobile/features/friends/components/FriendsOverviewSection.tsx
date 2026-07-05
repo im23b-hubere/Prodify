@@ -3,7 +3,8 @@ import { useRouter } from "expo-router";
 import { Activity, Trophy } from "lucide-react-native";
 import type { TFunction } from "i18next";
 import { useMemo } from "react";
-import { FlatList, Image, Pressable, Text, View, type ListRenderItem } from "react-native";
+import type { ReactNode } from "react";
+import { Image, Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 
 import { API_BASE_URL } from "../../../constants/api";
@@ -30,7 +31,7 @@ type Props = {
   entries: FriendLeaderboardEntryDto[];
   currentUserId?: number;
   activity: FriendActivityDto[];
-  renderActivityItem: ListRenderItem<FriendActivityDto>;
+  renderActivity: (item: FriendActivityDto, index: number) => ReactNode;
   activeTriggerCard: FriendsTriggerCard | null;
   onCompleteTriggerAction: () => void;
   onAddFriendFromEmptyFeed: () => void;
@@ -44,7 +45,7 @@ export function FriendsOverviewSection({
   entries,
   currentUserId,
   activity,
-  renderActivityItem,
+  renderActivity,
   activeTriggerCard,
   onCompleteTriggerAction,
   onAddFriendFromEmptyFeed,
@@ -239,16 +240,16 @@ export function FriendsOverviewSection({
             />
           ) : null}
           {activity.length > 0 ? (
-            <FlatList
-              data={activity}
-              keyExtractor={(item) => `${item.user_id}-${item.session_id}-${item.activity_at}`}
-              renderItem={renderActivityItem}
-              scrollEnabled={false}
-              initialNumToRender={6}
-              windowSize={7}
-              removeClippedSubviews={false}
-              ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-            />
+            <View style={styles.activityFeedStack}>
+              {activity.map((item, index) => (
+                <View
+                  key={`${item.user_id}-${item.session_id}-${item.activity_at}`}
+                  style={index > 0 ? { marginTop: spacing.sm } : undefined}
+                >
+                  {renderActivity(item, index)}
+                </View>
+              ))}
+            </View>
           ) : null}
         </View>
       </View>

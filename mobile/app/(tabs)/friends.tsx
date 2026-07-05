@@ -2,7 +2,7 @@ import { type Href, useRouter } from "expo-router";
 import { UserPlus } from "lucide-react-native";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, RefreshControl, Text, type ListRenderItem } from "react-native";
+import { ScrollView, RefreshControl, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeIn } from "react-native-reanimated";
 
@@ -18,6 +18,7 @@ import { FriendsOverviewSection } from "../../features/friends/components/Friend
 import { FriendsScreenHeader } from "../../features/friends/components/FriendsScreenHeader";
 import { FriendsSocialSummaryStrip } from "../../features/friends/components/FriendsSocialSummaryStrip";
 import { FriendsTogetherSection } from "../../features/friends/components/FriendsTogetherSection";
+import { FriendsWeeklyRecapTeaser } from "../../features/friends/components/FriendsWeeklyRecapTeaser";
 import { useFriendsDashboardData } from "../../features/friends/hooks/useFriendsDashboardData";
 import { useFriendsScreenActions } from "../../features/friends/hooks/useFriendsScreenActions";
 import { useFriendsScreenState } from "../../features/friends/hooks/useFriendsScreenState";
@@ -96,6 +97,10 @@ export default function FriendsScreen() {
     router.push("/session/setup" as Href);
   }, [router]);
 
+  const openWeeklyRecap = useCallback(() => {
+    router.push("/weekly-recap" as Href);
+  }, [router]);
+
   const actions = useFriendsScreenActions({
     token,
     userId: user?.id,
@@ -168,8 +173,8 @@ export default function FriendsScreen() {
     }
   }, [activity, t, user?.id]);
 
-  const renderActivityItem = useCallback<ListRenderItem<FriendActivityDto>>(
-    ({ item, index }) => {
+  const renderActivity = useCallback(
+    (item: FriendActivityDto, index: number) => {
       const isSessionItem =
         item.session_id > 0 && (item.status === "live" || item.status === "completed");
       const metrics = feedMetricsBySession[item.session_id];
@@ -233,10 +238,7 @@ export default function FriendsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <FlatList
-        data={[0]}
-        keyExtractor={(item) => String(item)}
-        renderItem={() => null}
+      <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
@@ -245,101 +247,101 @@ export default function FriendsScreen() {
             tintColor={colors.primary}
           />
         }
-        ListHeaderComponent={
-          <>
-            <FriendsScreenHeader
-              title={t("friendsScreen.title")}
-              subtitle={t("friendsScreen.subtitle")}
-              tabOverviewLabel={t("friendsScreen.tabOverview")}
-              tabToolsLabel={t("friendsScreen.tabSocialTools")}
-              sectionTab={sectionTab}
-              onOpenAddFriend={() => setAddOpen(true)}
-              onChangeTab={setSectionTab}
-              addFriendA11y={t("friendsScreen.addFriendA11y")}
-            />
-            {!loading && !actions.hasOtherFriends && sectionTab === "overview" ? (
-              <EmptyState
-                iconNode={<UserPlus color={colors.primary} size={36} />}
-                title={t("friendsScreen.feedEmptyTitle")}
-                message={t("friendsScreen.feedEmptyMessage")}
-                actionLabel={t("friendsScreen.feedEmptyCta")}
-                onAction={() => setAddOpen(true)}
-              />
-            ) : null}
-            {error ? (
-              <ErrorState
-                title={t("common.oops")}
-                message={error}
-                retryLabel={t("common.tryAgain")}
-                onRetry={() => load({ force: true }).catch(() => undefined)}
-              />
-            ) : null}
-            {loading && !refreshing && !error ? (
-              <LoadingState message={t("friendsScreen.loading")} />
-            ) : null}
+      >
+        <FriendsScreenHeader
+          title={t("friendsScreen.title")}
+          subtitle={t("friendsScreen.subtitle")}
+          tabOverviewLabel={t("friendsScreen.tabOverview")}
+          tabToolsLabel={t("friendsScreen.tabSocialTools")}
+          sectionTab={sectionTab}
+          onOpenAddFriend={() => setAddOpen(true)}
+          onChangeTab={setSectionTab}
+          addFriendA11y={t("friendsScreen.addFriendA11y")}
+        />
+        {!loading && !actions.hasOtherFriends && sectionTab === "overview" ? (
+          <EmptyState
+            iconNode={<UserPlus color={colors.primary} size={36} />}
+            title={t("friendsScreen.feedEmptyTitle")}
+            message={t("friendsScreen.feedEmptyMessage")}
+            actionLabel={t("friendsScreen.feedEmptyCta")}
+            onAction={() => setAddOpen(true)}
+          />
+        ) : null}
+        {error ? (
+          <ErrorState
+            title={t("common.oops")}
+            message={error}
+            retryLabel={t("common.tryAgain")}
+            onRetry={() => load({ force: true }).catch(() => undefined)}
+          />
+        ) : null}
+        {loading && !refreshing && !error ? (
+          <LoadingState message={t("friendsScreen.loading")} />
+        ) : null}
 
-            {!(loading && !refreshing) && !error ? (
+        {!(loading && !refreshing) && !error ? (
+          <>
+            {sectionTab === "overview" && actions.hasOtherFriends ? (
               <>
-                {sectionTab === "overview" && actions.hasOtherFriends ? (
-                  <FriendsSocialSummaryStrip
-                    t={t}
-                    mode={mode}
-                    entries={actions.entries}
-                    currentUserId={user?.id}
-                  />
-                ) : null}
-                <FriendsIncomingSection
+                <FriendsSocialSummaryStrip
                   t={t}
-                  incoming={incoming}
-                  actionBusy={actionBusy}
-                  onAccept={actions.acceptRequest}
-                  onDecline={actions.declineRequest}
+                  mode={mode}
+                  entries={actions.entries}
+                  currentUserId={user?.id}
                 />
-                {sectionTab === "overview" && actions.hasOtherFriends ? (
-                  <FriendsOverviewSection
-                    t={t}
-                    mode={mode}
-                    setMode={setMode}
-                    loading={loading}
-                    entries={actions.entries}
-                    currentUserId={user?.id}
-                    activity={visibleActivity}
-                    renderActivityItem={renderActivityItem}
-                    activeTriggerCard={actions.activeTriggerCard}
-                    onCompleteTriggerAction={actions.completeTriggerAction}
-                    onAddFriendFromEmptyFeed={() => setAddOpen(true)}
-                  />
-                ) : null}
-                {sectionTab === "tools" ? (
-                  <FriendsTogetherSection
-                    t={t}
-                    busyActionKey={busyActionKey}
-                    onJoinSocialChallenge={actions.joinSocialChallengeById}
-                    onOpenChallengeCreate={() => {
-                      setChallengeKind("duel");
-                      setChallengeTarget("5");
-                      setChallengeDuration("7");
-                      setChallengeTitle("");
-                      setSelectedMembers([]);
-                      setChallengeCreateOpen(true);
-                    }}
-                    onOpenSessionSetup={openSessionSetup}
-                    buddy={buddy}
-                    commitment={commitment}
-                    hasOtherFriends={actions.hasOtherFriends}
-                    onOpenBuddyPicker={() => setBuddyPickerOpen(true)}
-                    onOpenAddFriend={() => setAddOpen(true)}
-                    onAcceptBuddyInvite={actions.acceptBuddyInvite}
-                    pendingBuddyInviteId={actions.pendingBuddyInviteId}
-                    challengeCards={actions.challengeCards}
-                    currentUserId={user?.id}
-                  />
-                ) : null}
+                <FriendsWeeklyRecapTeaser t={t} onPress={openWeeklyRecap} />
               </>
             ) : null}
+            <FriendsIncomingSection
+              t={t}
+              incoming={incoming}
+              actionBusy={actionBusy}
+              onAccept={actions.acceptRequest}
+              onDecline={actions.declineRequest}
+            />
+            {sectionTab === "overview" && actions.hasOtherFriends ? (
+              <FriendsOverviewSection
+                t={t}
+                mode={mode}
+                setMode={setMode}
+                loading={loading}
+                entries={actions.entries}
+                currentUserId={user?.id}
+                activity={visibleActivity}
+                renderActivity={renderActivity}
+                activeTriggerCard={actions.activeTriggerCard}
+                onCompleteTriggerAction={actions.completeTriggerAction}
+                onAddFriendFromEmptyFeed={() => setAddOpen(true)}
+              />
+            ) : null}
+            {sectionTab === "tools" ? (
+              <FriendsTogetherSection
+                t={t}
+                busyActionKey={busyActionKey}
+                onJoinSocialChallenge={actions.joinSocialChallengeById}
+                onOpenChallengeCreate={() => {
+                  setChallengeKind("duel");
+                  setChallengeTarget("5");
+                  setChallengeDuration("7");
+                  setChallengeTitle("");
+                  setSelectedMembers([]);
+                  setChallengeCreateOpen(true);
+                }}
+                onOpenSessionSetup={openSessionSetup}
+                buddy={buddy}
+                commitment={commitment}
+                hasOtherFriends={actions.hasOtherFriends}
+                onOpenBuddyPicker={() => setBuddyPickerOpen(true)}
+                onOpenAddFriend={() => setAddOpen(true)}
+                onAcceptBuddyInvite={actions.acceptBuddyInvite}
+                pendingBuddyInviteId={actions.pendingBuddyInviteId}
+                challengeCards={actions.challengeCards}
+                currentUserId={user?.id}
+              />
+            ) : null}
           </>
-        }
-      />
+        ) : null}
+      </ScrollView>
 
       {toastMessage ? (
         <Animated.View entering={FadeIn.duration(180)} style={styles.toast}>
