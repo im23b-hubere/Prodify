@@ -610,8 +610,23 @@ export default function StatsScreen() {
     return stats?.productivity_hint ?? null;
   }, [stats?.productivity_hint_item, stats?.productivity_hint, t]);
 
-  const statCarouselItems = useMemo(
-    () => [
+  const statCarouselItems = useMemo(() => {
+    const middleMetric =
+      filter.period === "week"
+        ? {
+            key: "avg",
+            label: t("stats.avgSession"),
+            value: summary.avgSession,
+            subPositive: true,
+          }
+        : {
+            key: "sessions",
+            label: t("stats.sessions"),
+            value: summary.sessions,
+            subPositive: true,
+          };
+
+    return [
       {
         key: "hours",
         label: t("stats.totalHours"),
@@ -625,12 +640,7 @@ export default function StatsScreen() {
             : undefined,
         subPositive: summary.delta == null || summary.delta >= 0,
       },
-      {
-        key: "sessions",
-        label: t("stats.sessions"),
-        value: summary.sessions,
-        subPositive: true,
-      },
+      middleMetric,
       {
         key: "streak",
         label: t("stats.currentStreak"),
@@ -643,9 +653,8 @@ export default function StatsScreen() {
         sublabel: t("stats.bestStreakSub", { days: summary.bestStreak }),
         subPositive: true,
       },
-    ],
-    [summary, t],
-  );
+    ];
+  }, [filter.period, summary, t]);
 
   const openRecentSession = useCallback(
     (session: SessionDto) => {
@@ -692,6 +701,7 @@ export default function StatsScreen() {
               </Pressable>
             ))}
           </View>
+          <Text style={styles.filterHint}>{t("stats.filterScopeHint", { period: filter.label })}</Text>
         </View>
 
         {showInitialLoading ? <StatsSkeleton /> : null}
@@ -819,9 +829,7 @@ export default function StatsScreen() {
             <StatsSection
               title={t("stats.recordsTitle")}
               subtitle={
-                decoratedRecords.length > 0
-                  ? decoratedRecords[0]?.value
-                  : t("stats.recordsEmpty")
+                decoratedRecords.length > 0 ? t("stats.recordsSubtitle") : undefined
               }
               testID="stats-section-records"
             >

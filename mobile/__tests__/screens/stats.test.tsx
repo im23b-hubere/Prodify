@@ -140,4 +140,8 @@ describe("Stats Screen", () => {
     expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
   });
 
+  it("shows filter scope hint under period chips", async () => {
+    const { findByText } = render(<StatsScreen />);
+    expect(await findByText("stats.filterScopeHint")).toBeTruthy();
+  });
 });
