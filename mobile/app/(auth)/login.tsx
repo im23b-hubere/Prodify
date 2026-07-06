@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,8 +12,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SecureStore from "expo-secure-store";
 
 import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { useAuth } from "../../context/AuthContext";
@@ -75,8 +74,8 @@ export default function LoginScreen() {
         await AsyncStorage.multiSet([
           [ONBOARDING_COMPLETE_KEY, "1"],
           [WEEKLY_GOAL_CONFIGURED_KEY, "1"],
+          [TUTORIAL_SEEN_KEY, "1"],
         ]).catch(() => undefined);
-        await SecureStore.setItemAsync(TUTORIAL_SEEN_KEY, "1").catch(() => undefined);
       }
       if (pendingPaywall) {
         router.replace({

@@ -7,14 +7,17 @@ import { Modal, Pressable, StyleSheet, Text } from "react-native";
 import { PrimaryButton } from "./ui/PrimaryButton";
 import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
+import { isE2eModeEnabled } from "../lib/e2eMode";
 
 const KEY = "prodify_tutorial_v1";
 
 export function TutorialOverlay() {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
+  const e2e = isE2eModeEnabled();
 
   useEffect(() => {
+    if (e2e) return;
     let cancelled = false;
     (async () => {
       try {
@@ -27,15 +30,16 @@ export function TutorialOverlay() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [e2e]);
 
   const dismiss = useCallback(async () => {
+    if (e2e) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     await SecureStore.setItemAsync(KEY, "1");
     setVisible(false);
-  }, []);
+  }, [e2e]);
 
-  if (!visible) return null;
+  if (e2e || !visible) return null;
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={dismiss}>

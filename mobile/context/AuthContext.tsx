@@ -1,10 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SecureStore from "expo-secure-store";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { ONBOARDING_COMPLETE_KEY, REFRESH_TOKEN_KEY } from "../constants/storageKeys";
+import { ONBOARDING_COMPLETE_KEY } from "../constants/storageKeys";
 import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } from "../lib/client";
 import i18n from "../lib/i18n";
+import {
+  clearTokenPair,
+  readAccessToken,
+  readRefreshToken,
+  writeTokenPair,
+} from "../lib/authTokenStorage";
 import {
   clearEntitlementCache,
   fetchEntitlement,
@@ -25,8 +30,6 @@ import {
   getRevenueCatCustomerInfo,
   isPremiumActive,
 } from "../lib/revenuecat";
-
-const TOKEN_KEY = "prodify_token";
 
 type UserMe = {
   id: number;
@@ -59,8 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   const persistTokenPair = useCallback(async (pair: TokenPair) => {
-    await SecureStore.setItemAsync(TOKEN_KEY, pair.access_token);
-    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, pair.refresh_token);
+    await writeTokenPair(pair.access_token, pair.refresh_token);
     setToken(pair.access_token);
   }, []);
 
@@ -68,8 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
-        const stored = await SecureStore.getItemAsync(TOKEN_KEY);
-        if (!cancelled) setToken(stored?.trim() ?? null);
+        const stored = await readAccessToken();
+        if (!cancelled) setToken(stored);
       } finally {
         if (!cancelled) setHydrated(true);
       }
@@ -80,14 +82,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setAuthRefreshBridge(() => SecureStore.getItemAsync(REFRESH_TOKEN_KEY), persistTokenPair);
+    setAuthRefreshBridge(() => readRefreshToken(), persistTokenPair);
     return () => setAuthRefreshBridge(null, null);
   }, [persistTokenPair]);
 
   useEffect(() => {
     setApiUnauthorizedHandler(async () => {
-      await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
-      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
+      await clearTokenPair();
       await clearNotificationInbox().catch(() => undefined);
       await cancelWeeklyRecapScheduled().catch(() => undefined);
       await setNotificationUserContext(null).catch(() => undefined);
@@ -109,8 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setUser(null);
-        await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
-        await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
+        await clearTokenPair();
         await setNotificationUserContext(null).catch(() => undefined);
         setToken(null);
       }
@@ -214,12 +214,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    const t = await SecureStore.getItemAsync(TOKEN_KEY).catch(() => null);
-    if (t?.trim()) {
-      await apiJson("/auth/logout", { method: "POST", token: t.trim() }).catch(() => undefined);
+    const t = (token?.trim() || (await readAccessToken())) ?? "";
+    if (t) {
+      await apiJson("/auth/logout", { method: "POST", token: t }).catch(() => undefined);
     }
-    await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
-    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
+    await clearTokenPair();
     await clearNotificationInbox().catch(() => undefined);
     await cancelWeeklyRecapScheduled().catch(() => undefined);
     await setNotificationUserContext(null).catch(() => undefined);
@@ -231,17 +230,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearLevelCatalogCache();
     setToken(null);
     setUser(null);
-  }, []);
+  }, [token]);
 
   const deleteAccount = useCallback(async () => {
-    const fromStore = await SecureStore.getItemAsync(TOKEN_KEY).catch(() => null);
-    const trimmed = (token?.trim() || fromStore?.trim() || "").trim();
+    const trimmed = (token?.trim() || (await readAccessToken()) || "").trim();
     if (!trimmed) {
       throw new Error(i18n.t("errors.unexpectedResponse"));
     }
     await apiJson("/users/me", { method: "DELETE", token: trimmed });
-    await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined);
-    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => undefined);
+    await clearTokenPair();
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY).catch(() => undefined);
     await clearNotificationInbox().catch(() => undefined);
     await cancelWeeklyRecapScheduled().catch(() => undefined);
