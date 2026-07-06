@@ -127,7 +127,13 @@ jobs:
 
       - name: Prebuild iOS
         working-directory: mobile
-        run: npx expo prebuild --platform ios --clean
+        run: |
+          set -euo pipefail
+          cat > .env <<EOF
+          EXPO_PUBLIC_E2E_TEST_EMAIL=${E2E_TEST_EMAIL}
+          EXPO_PUBLIC_E2E_TEST_PASSWORD=${E2E_TEST_PASSWORD}
+          EOF
+          npx expo prebuild --platform ios --clean
 
       - name: Force bundled JS for Debug simulator build
         working-directory: mobile

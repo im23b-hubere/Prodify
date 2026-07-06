@@ -8,6 +8,15 @@ module.exports = ({ config }) => {
   const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? "";
   const appEnv =
     process.env.EXPO_PUBLIC_APP_ENV?.trim() || process.env.EXPO_PUBLIC_ENV?.trim() || "";
+  const e2eMode = process.env.EXPO_PUBLIC_E2E_MODE === "true";
+  const e2eTestEmail =
+    process.env.EXPO_PUBLIC_E2E_TEST_EMAIL?.trim() ||
+    process.env.E2E_TEST_EMAIL?.trim() ||
+    (e2eMode ? "test@prodify.app" : "");
+  const e2eTestPassword =
+    process.env.EXPO_PUBLIC_E2E_TEST_PASSWORD ||
+    process.env.E2E_TEST_PASSWORD ||
+    (e2eMode ? "Test1234!" : "");
   const invalidSentryDsn =
     !sentryDsn ||
     sentryDsn.startsWith("@") ||
@@ -41,6 +50,8 @@ module.exports = ({ config }) => {
       // Baked at EAS build time from Environment Variables (see eas.json → environment).
       revenueCatApiKey,
       revenueCatEntitlementId,
+      e2eTestEmail,
+      e2eTestPassword,
     },
   };
 };
