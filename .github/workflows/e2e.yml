@@ -206,6 +206,9 @@ jobs:
           echo "Installing $APP_PATH on ${{ steps.sim.outputs.device_udid }}"
           xcrun simctl install "${{ steps.sim.outputs.device_udid }}" "$APP_PATH"
 
+      - name: Warm API and reset E2E account
+        run: bash scripts/seed-e2e-user.sh
+
       - name: Run Maestro smoke
         working-directory: mobile
         env:

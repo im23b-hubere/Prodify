@@ -51,7 +51,11 @@ export function TutorialOverlay() {
             <Text style={styles.bold}>{t("tutorialOverlay.stopSessionCta")}</Text>{" "}
             {t("tutorialOverlay.bodyEnd")}
           </Text>
-          <PrimaryButton label={t("tutorialOverlay.gotIt")} onPress={dismiss} />
+          <PrimaryButton
+            label={t("tutorialOverlay.gotIt")}
+            onPress={dismiss}
+            testID="tutorial-got-it"
+          />
         </Pressable>
       </Pressable>
     </Modal>

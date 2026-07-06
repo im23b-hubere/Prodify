@@ -14,6 +14,7 @@ import {
 import { clearLevelCatalogCache } from "../lib/progressionLevelCatalog";
 import { clearProgressionSyncCache } from "../lib/progressionSync";
 import { clearDevBillingBypass } from "../lib/devBillingBypass";
+import { isE2eModeEnabled } from "../lib/e2eMode";
 import { clearNotificationInbox, setNotificationUserContext } from "../lib/notificationInbox";
 import { cancelWeeklyRecapScheduled } from "../lib/weeklyRecapNotifications";
 import { clearPendingDeepLinkPath } from "../lib/pendingDeepLink";
@@ -132,8 +133,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await apiJson<Partial<TokenPair>>("/auth/login", {
         method: "POST",
         body: { email, password },
-        timeoutMs: 20_000,
-        retries: 0,
+        timeoutMs: isE2eModeEnabled() ? 60_000 : 20_000,
+        retries: isE2eModeEnabled() ? 1 : 0,
       });
       const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
       const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
@@ -146,9 +147,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const me = await apiJson<UserMe>("/auth/me", { token: access });
         setUser(me);
         await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
-        if (__DEV__) {
-          const ent = await fetchEntitlement(access);
-          if (!hasPremiumAccess(ent)) {
+        if (!isE2eModeEnabled()) {
+          if (__DEV__) {
+            const ent = await fetchEntitlement(access);
+            if (!hasPremiumAccess(ent)) {
+              await configureRevenueCat(String(me.id));
+              const info = await getRevenueCatCustomerInfo(String(me.id));
+              await syncEntitlement(access, {
+                app_user_id: String(me.id),
+                entitlement: isPremiumActive(info) ? "premium" : "free",
+                trial_active: false,
+                expires_at: activeEntitlementExpiration(info),
+              });
+            }
+          } else {
             await configureRevenueCat(String(me.id));
             const info = await getRevenueCatCustomerInfo(String(me.id));
             await syncEntitlement(access, {
@@ -158,15 +170,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               expires_at: activeEntitlementExpiration(info),
             });
           }
-        } else {
-          await configureRevenueCat(String(me.id));
-          const info = await getRevenueCatCustomerInfo(String(me.id));
-          await syncEntitlement(access, {
-            app_user_id: String(me.id),
-            entitlement: isPremiumActive(info) ? "premium" : "free",
-            trial_active: false,
-            expires_at: activeEntitlementExpiration(info),
-          });
         }
       } catch {
         /* best effort: auth succeeds even if billing sync fails */

@@ -14,6 +14,7 @@ type PrimaryButtonProps = {
   loading?: boolean;
   icon?: ReactNode;
   accessibilityLabel?: string;
+  testID?: string;
 };
 
 export function PrimaryButton({
@@ -23,9 +24,11 @@ export function PrimaryButton({
   loading,
   icon,
   accessibilityLabel,
+  testID,
 }: PrimaryButtonProps) {
   return (
     <Pressable
+      testID={testID}
       disabled={disabled || loading}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}

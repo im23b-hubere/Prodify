@@ -10,6 +10,7 @@ appId: com.prodify.app
     id: "password-input"
 - inputText: ${TEST_PASSWORD}
 - tapOn: "Sign in"
+- hideKeyboard
 - extendedWaitUntil:
     visible:
       id: "dashboard-studio-hud"
