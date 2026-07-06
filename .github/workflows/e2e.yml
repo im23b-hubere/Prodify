@@ -61,6 +61,8 @@ jobs:
       EXPO_PUBLIC_APP_ENV: development
       EXPO_PUBLIC_ENV: development
       EXPO_PUBLIC_E2E_MODE: "true"
+      EXPO_PUBLIC_E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
+      EXPO_PUBLIC_E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || 'Test1234!' }}
       EXPO_PUBLIC_REVENUECAT_API_KEY: appl_mnYqBJcSBBUEyNRCfULPzxMqpmX
       EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID: app_access
       EX_UPDATES_NATIVE_DEBUG: "1"

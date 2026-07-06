@@ -28,6 +28,7 @@ Automated iOS smoke tests for release candidates.
 
    - `EXPO_PUBLIC_API_URL` — reachable API (default: Render production)
    - `EXPO_PUBLIC_E2E_MODE=true` — bypasses paywall gate in simulator builds only
+   - `EXPO_PUBLIC_E2E_TEST_EMAIL` / `EXPO_PUBLIC_E2E_TEST_PASSWORD` — baked into E2E builds so Maestro can tap Sign in without typing into controlled inputs
    - `SENTRY_DISABLE_AUTO_UPLOAD=true` — required so Sentry does not fail unsigned CI builds
 
 3. **[Maestro CLI](https://maestro.mobile.dev/)** installed locally.

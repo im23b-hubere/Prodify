@@ -3,14 +3,12 @@ appId: com.prodify.app
 - extendedWaitUntil:
     visible: "Welcome back"
     timeout: 90000
+- extendedWaitUntil:
+    visible:
+      id: "login-e2e-ready"
+    timeout: 30000
 - tapOn:
-    id: "email-input"
-- inputText: ${TEST_EMAIL}
-- tapOn:
-    id: "password-input"
-- inputText: ${TEST_PASSWORD}
-- tapOn: "Sign in"
-- hideKeyboard
+    id: "sign-in-button"
 - extendedWaitUntil:
     visible:
       id: "dashboard-studio-hud"

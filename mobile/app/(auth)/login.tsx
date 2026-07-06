@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
@@ -21,6 +21,7 @@ import { ONBOARDING_COMPLETE_KEY, WEEKLY_GOAL_CONFIGURED_KEY } from "../../const
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { ApiError } from "../../lib/client";
+import { getE2eTestCredentials } from "../../lib/e2eCredentials";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { replaceWithPendingDeepLinkOrDashboard } from "../../lib/pendingDeepLink";
 import { resolvePostAuthRouteFromStorage, toHref } from "../../lib/postAuthNavigation";
@@ -36,25 +37,40 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [e2ePrefillReady, setE2ePrefillReady] = useState(false);
   const pendingPaywall = params.next === "paywall";
   const paywallVariant =
     params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
 
+  useEffect(() => {
+    const preset = getE2eTestCredentials();
+    if (!preset) return;
+    setEmail(preset.email);
+    setPassword(preset.password);
+    setE2ePrefillReady(true);
+  }, []);
+
   async function onSubmit() {
     if (loading) return;
-    const trimmedEmail = email.trim();
+    const preset = getE2eTestCredentials();
+    let trimmedEmail = email.trim();
+    let passwordValue = password;
+    if (!trimmedEmail && preset) {
+      trimmedEmail = preset.email;
+      passwordValue = preset.password;
+    }
     if (!trimmedEmail) {
       setError(t("errors.validation.emailRequired"));
       return;
     }
-    if (!password.trim()) {
+    if (!passwordValue.trim()) {
       setError(t("errors.validation.passwordRequired"));
       return;
     }
     setError(null);
     setLoading(true);
     try {
-      await signIn(trimmedEmail, password);
+      await signIn(trimmedEmail, passwordValue);
       if (isE2eModeEnabled()) {
         await AsyncStorage.multiSet([
           [ONBOARDING_COMPLETE_KEY, "1"],
@@ -103,6 +119,7 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.card}>
+          {e2ePrefillReady ? <View testID="login-e2e-ready" /> : null}
           <Text style={styles.fieldLabel}>{t("auth.login.email")}</Text>
           <TextInput
             testID="email-input"
@@ -131,7 +148,12 @@ export default function LoginScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <PrimaryButton label={t("auth.login.signIn")} onPress={onSubmit} loading={loading} />
+          <PrimaryButton
+            label={t("auth.login.signIn")}
+            onPress={onSubmit}
+            loading={loading}
+            testID="sign-in-button"
+          />
         </View>
 
         <Pressable
