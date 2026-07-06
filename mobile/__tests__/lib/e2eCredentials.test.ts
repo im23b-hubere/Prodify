@@ -21,7 +21,7 @@ describe("e2eCredentials", () => {
   const originalPassword = process.env.EXPO_PUBLIC_E2E_TEST_PASSWORD;
 
   beforeEach(() => {
-    (Constants.expoConfig as { extra: Record<string, string> }).extra = {};
+    (Constants.expoConfig as { extra: Record<string, unknown> }).extra = { e2eMode: true };
     delete process.env.EXPO_PUBLIC_E2E_TEST_EMAIL;
     delete process.env.EXPO_PUBLIC_E2E_TEST_PASSWORD;
   });
@@ -34,7 +34,8 @@ describe("e2eCredentials", () => {
   });
 
   it("prefers credentials baked into expo extra", () => {
-    (Constants.expoConfig as { extra: Record<string, string> }).extra = {
+    (Constants.expoConfig as { extra: Record<string, unknown> }).extra = {
+      e2eMode: true,
       e2eTestEmail: "extra@prodify.app",
       e2eTestPassword: "from-extra",
     };
@@ -45,6 +46,7 @@ describe("e2eCredentials", () => {
   });
 
   it("falls back to E2E defaults when nothing is baked in", () => {
+    (Constants.expoConfig as { extra: Record<string, unknown> }).extra = { e2eMode: true };
     expect(getE2eTestCredentials()).toEqual({
       email: "test@prodify.app",
       password: "Test1234!",

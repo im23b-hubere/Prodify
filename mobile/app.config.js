@@ -50,8 +50,10 @@ module.exports = ({ config }) => {
       // Baked at EAS build time from Environment Variables (see eas.json → environment).
       revenueCatApiKey,
       revenueCatEntitlementId,
-      e2eTestEmail,
-      e2eTestPassword,
+      appEnv,
+      e2eMode: e2eMode && appEnv !== "production",
+      e2eTestEmail: e2eMode ? e2eTestEmail : "",
+      e2eTestPassword: e2eMode ? e2eTestPassword : "",
     },
   };
 };

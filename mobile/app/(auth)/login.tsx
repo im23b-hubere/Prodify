@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
@@ -28,27 +28,27 @@ import { resolvePostAuthRouteFromStorage, toHref } from "../../lib/postAuthNavig
 
 const TUTORIAL_SEEN_KEY = "prodify_tutorial_v1";
 
+function readInitialLoginFields(): { email: string; password: string } {
+  const preset = getE2eTestCredentials();
+  return {
+    email: preset?.email ?? "",
+    password: preset?.password ?? "",
+  };
+}
+
 export default function LoginScreen() {
   const { t } = useTranslation();
   const { signIn } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams<{ next?: string; source?: string; variant?: string }>();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const initialFields = readInitialLoginFields();
+  const [email, setEmail] = useState(initialFields.email);
+  const [password, setPassword] = useState(initialFields.password);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [e2ePrefillReady, setE2ePrefillReady] = useState(false);
   const pendingPaywall = params.next === "paywall";
   const paywallVariant =
     params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
-
-  useEffect(() => {
-    const preset = getE2eTestCredentials();
-    if (!preset) return;
-    setEmail(preset.email);
-    setPassword(preset.password);
-    setE2ePrefillReady(true);
-  }, []);
 
   async function onSubmit() {
     if (loading) return;
@@ -110,6 +110,7 @@ export default function LoginScreen() {
     <KeyboardAvoidingView
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
+      testID="login-screen"
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
@@ -119,7 +120,6 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.card}>
-          {e2ePrefillReady ? <View testID="login-e2e-ready" /> : null}
           <Text style={styles.fieldLabel}>{t("auth.login.email")}</Text>
           <TextInput
             testID="email-input"

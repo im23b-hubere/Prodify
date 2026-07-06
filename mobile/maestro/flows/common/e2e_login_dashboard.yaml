@@ -4,8 +4,7 @@ appId: com.prodify.app
     visible: "Welcome back"
     timeout: 90000
 - extendedWaitUntil:
-    visible:
-      id: "login-e2e-ready"
+    visible: "test@prodify.app"
     timeout: 30000
 - tapOn:
     id: "sign-in-button"
