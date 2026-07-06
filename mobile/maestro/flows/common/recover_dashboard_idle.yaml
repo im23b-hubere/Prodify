@@ -1,0 +1,13 @@
+appId: com.prodify.app
+---
+# Leftover active sessions hide dashboard-start-session until stopped.
+- runFlow:
+    when:
+      visible: "STOP SESSION"
+    commands:
+      - tapOn: "STOP SESSION"
+      - tapOn: "End session"
+      - extendedWaitUntil:
+          visible: "Session logged"
+          timeout: 30000
+      - tapOn: "Back to dashboard"

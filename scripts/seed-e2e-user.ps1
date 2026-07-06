@@ -15,12 +15,47 @@ $ApiUrl = $ApiUrl.TrimEnd("/")
 
 Write-Host "Seeding E2E user at $ApiUrl ($Email / $Username)"
 
+try {
+    $health = Invoke-WebRequest -Uri "$ApiUrl/health" -Method GET -UseBasicParsing
+    Write-Host "API health HTTP $($health.StatusCode)"
+} catch {
+    Write-Host "API health check failed (continuing): $($_.Exception.Message)"
+}
+
 $loginBody = @{ email = $Email; password = $Password } | ConvertTo-Json -Compress
+
+function Stop-ActiveE2ESession {
+    param([string]$Token)
+    try {
+        $active = Invoke-WebRequest -Uri "$ApiUrl/sessions/active" -Method GET -Headers @{ Authorization = "Bearer $Token" } -UseBasicParsing
+        if ($active.StatusCode -ne 200) { return }
+        $session = $active.Content | ConvertFrom-Json
+        $stopBody = @{ session_id = $session.id } | ConvertTo-Json -Compress
+        $stopped = Invoke-WebRequest -Uri "$ApiUrl/sessions/stop" -Method POST -ContentType "application/json" -Headers @{ Authorization = "Bearer $Token" } -Body $stopBody -UseBasicParsing
+        Write-Host "Stopped active E2E session $($session.id) (HTTP $($stopped.StatusCode))."
+    } catch {
+        $status = $_.Exception.Response.StatusCode.value__
+        if ($status -eq 404) {
+            Write-Host "No active E2E session to stop (HTTP 404)."
+            return
+        }
+        Write-Host "Active session cleanup failed (HTTP $status)."
+        if ($_.ErrorDetails.Message) { Write-Host $_.ErrorDetails.Message }
+    }
+}
+
+function Finalize-E2ELogin {
+    param([string]$Content)
+    $token = ($Content | ConvertFrom-Json).access_token
+    Stop-ActiveE2ESession -Token $token
+    Write-Host "E2E user login verified."
+}
 
 try {
     $login = Invoke-WebRequest -Uri "$ApiUrl/auth/login" -Method POST -ContentType "application/json" -Body $loginBody -UseBasicParsing
     if ($login.StatusCode -eq 200) {
         Write-Host "E2E user login verified (existing account)."
+        Finalize-E2ELogin -Content $login.Content
         exit 0
     }
 } catch {
@@ -47,7 +82,7 @@ try {
 try {
     $verify = Invoke-WebRequest -Uri "$ApiUrl/auth/login" -Method POST -ContentType "application/json" -Body $loginBody -UseBasicParsing
     if ($verify.StatusCode -eq 200) {
-        Write-Host "E2E user login verified."
+        Finalize-E2ELogin -Content $verify.Content
         exit 0
     }
     Write-Host "Login smoke check failed with HTTP $($verify.StatusCode)"

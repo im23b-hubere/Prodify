@@ -11,15 +11,21 @@ import {
   TextInput,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 
 import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { useAuth } from "../../context/AuthContext";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
+import { ONBOARDING_COMPLETE_KEY, WEEKLY_GOAL_CONFIGURED_KEY } from "../../constants/storageKeys";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { ApiError } from "../../lib/client";
+import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { replaceWithPendingDeepLinkOrDashboard } from "../../lib/pendingDeepLink";
 import { resolvePostAuthRouteFromStorage, toHref } from "../../lib/postAuthNavigation";
+
+const TUTORIAL_SEEN_KEY = "prodify_tutorial_v1";
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -49,6 +55,13 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(trimmedEmail, password);
+      if (isE2eModeEnabled()) {
+        await AsyncStorage.multiSet([
+          [ONBOARDING_COMPLETE_KEY, "1"],
+          [WEEKLY_GOAL_CONFIGURED_KEY, "1"],
+        ]).catch(() => undefined);
+        await SecureStore.setItemAsync(TUTORIAL_SEEN_KEY, "1").catch(() => undefined);
+      }
       if (pendingPaywall) {
         router.replace({
           pathname: "/paywall",

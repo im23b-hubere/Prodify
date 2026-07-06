@@ -3,18 +3,26 @@ appId: com.prodify.app
 - extendedWaitUntil:
     visible: "Welcome back"
     timeout: 90000
-- tapOn: "Email"
+- tapOn:
+    id: "email-input"
 - inputText: ${TEST_EMAIL}
-- tapOn: "Password"
+- tapOn:
+    id: "password-input"
 - inputText: ${TEST_PASSWORD}
 - tapOn: "Sign in"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-studio-hud"
+    timeout: 180000
 - tapOn:
     text: "Skip for now \\(dev\\)"
     optional: true
 - runFlow:
     file: dismiss_overlays.yaml
+- runFlow:
+    file: recover_dashboard_idle.yaml
 - extendedWaitUntil:
     visible:
       id: "dashboard-start-session"
-    timeout: 120000
+    timeout: 90000
 - assertVisible: "START SESSION"
