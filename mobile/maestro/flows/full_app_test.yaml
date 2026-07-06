@@ -3,13 +3,11 @@ env:
   TEST_EMAIL: test@prodify.app
   TEST_PASSWORD: Test1234!
 ---
-# --- Bootstrap: onboarding + login ---
+# --- Bootstrap: login ---
 - launchApp:
     clearState: true
 - runFlow:
-    file: common/e2e_bootstrap_dashboard.yaml
-- runFlow:
-    file: common/dismiss_overlays.yaml
+    file: common/e2e_login_dashboard.yaml
 
 # --- Core session flow (smoke baseline) ---
 - tapOn: "START SESSION"
@@ -32,7 +30,10 @@ env:
 - tapOn: "Profile"
 - assertVisible: "Profile"
 - tapOn: "Dashboard"
-- assertVisible: "Dashboard"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-start-session"
+    timeout: 30000
 
 # --- Secondary screens (deep links + in-app navigation) ---
 - openLink: prodify://streak/history

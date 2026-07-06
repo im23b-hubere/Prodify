@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Href } from "expo-router";
 
 import { ONBOARDING_COMPLETE_KEY } from "../constants/storageKeys";
+import { isE2eModeEnabled } from "./e2eMode";
 
 export type PostAuthEntryPoint = "login" | "register" | "app_launch";
 export type PaywallSource = "onboarding" | "post_auth" | "in_app";
@@ -41,6 +42,7 @@ export async function readOnboardingComplete(): Promise<boolean> {
 
 /** Where unauthenticated users land when auth is required (deep links, cold start). */
 export function resolveUnauthenticatedAuthHref(onboardingComplete: boolean): HrefPath {
+  if (isE2eModeEnabled()) return "/(auth)/login";
   return onboardingComplete ? "/(auth)/login" : "/onboarding";
 }
 
@@ -61,6 +63,10 @@ export function resolvePostAuthRoute({
 }: ResolvePostAuthRouteInput): ResolvedRoute {
   if (!hasToken) {
     return { pathname: resolveUnauthenticatedAuthHref(onboardingComplete) };
+  }
+
+  if (isE2eModeEnabled()) {
+    return { pathname: "/(tabs)/dashboard" };
   }
 
   if (!onboardingComplete) {
@@ -97,6 +103,7 @@ export function toHref(route: ResolvedRoute): Href {
 
 // Backward-compatible helper used by legacy auth flow tests.
 export async function getPostLoginHref(): Promise<HrefPath> {
+  if (isE2eModeEnabled()) return "/(tabs)/dashboard";
   const onboardingComplete = await readOnboardingComplete();
   return onboardingComplete ? "/(tabs)/dashboard" : "/onboarding";
 }

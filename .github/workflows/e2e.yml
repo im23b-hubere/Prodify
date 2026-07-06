@@ -212,11 +212,9 @@ jobs:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
         run: |
           set -euo pipefail
-          BOOTSTRAP_LINK="prodify://e2e/bootstrap?email=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${E2E_TEST_EMAIL}', safe=''))")&password=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${E2E_TEST_PASSWORD}', safe=''))")"
           maestro --device "${{ steps.sim.outputs.device_udid }}" test \
             -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
             -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
-            -e "BOOTSTRAP_LINK=${BOOTSTRAP_LINK}" \
             maestro/flows/smoke_test.yaml
 
       - name: Upload Maestro screenshots / reports

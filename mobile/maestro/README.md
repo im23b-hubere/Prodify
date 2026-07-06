@@ -6,10 +6,10 @@ Automated iOS smoke tests for release candidates.
 
 | File | Purpose |
 |------|---------|
-| `flows/smoke_test.yaml` | Full smoke: onboarding skip → login → session → tabs |
+| `flows/smoke_test.yaml` | Full smoke: UI login → session → tabs |
 | `flows/full_app_test.yaml` | Extended coverage: smoke + secondary screens + legal |
-| `flows/onboarding_to_login.yaml` | Skip quiz onboarding and open login via `prodify://login` |
-| `flows/login_with_credentials.yaml` | Sign in with `TEST_EMAIL` / `TEST_PASSWORD` |
+| `flows/common/e2e_login_dashboard.yaml` | Sign in with `TEST_EMAIL` / `TEST_PASSWORD` and wait for dashboard |
+| `flows/login_with_credentials.yaml` | Alias for `common/e2e_login_dashboard.yaml` |
 | `flows/common/dismiss_overlays.yaml` | Dismiss first-run tutorial overlay |
 
 ## Prerequisites

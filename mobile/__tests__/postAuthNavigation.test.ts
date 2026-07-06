@@ -9,6 +9,12 @@ import {
   resolveUnauthenticatedAuthHref,
 } from "../lib/postAuthNavigation";
 
+jest.mock("../lib/e2eMode", () => ({
+  isE2eModeEnabled: jest.fn(() => false),
+}));
+
+import { isE2eModeEnabled } from "../lib/e2eMode";
+
 describe("postAuthNavigation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -54,5 +60,30 @@ describe("postAuthNavigation", () => {
   it("getPostLoginHref returns onboarding when AsyncStorage throws", async () => {
     (AsyncStorage.getItem as jest.Mock).mockRejectedValueOnce(new Error("storage"));
     await expect(getPostLoginHref()).resolves.toBe("/onboarding");
+  });
+
+  describe("E2E mode", () => {
+    beforeEach(() => {
+      (isE2eModeEnabled as jest.Mock).mockReturnValue(true);
+    });
+
+    it("resolveUnauthenticatedAuthHref sends users to login", () => {
+      expect(resolveUnauthenticatedAuthHref(false)).toBe("/(auth)/login");
+    });
+
+    it("resolvePostAuthRoute sends authenticated users to dashboard", () => {
+      expect(
+        resolvePostAuthRoute({
+          hasToken: true,
+          onboardingComplete: false,
+          entryPoint: "login",
+        }).pathname,
+      ).toBe("/(tabs)/dashboard");
+    });
+
+    it("getPostLoginHref returns dashboard without reading storage", async () => {
+      await expect(getPostLoginHref()).resolves.toBe("/(tabs)/dashboard");
+      expect(AsyncStorage.getItem).not.toHaveBeenCalled();
+    });
   });
 });
