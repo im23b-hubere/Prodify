@@ -2,6 +2,7 @@ appId: com.prodify.app
 env:
   TEST_EMAIL: test@prodify.app
   TEST_PASSWORD: Test1234!
+  BOOTSTRAP_LINK: prodify://e2e/bootstrap?email=test%40prodify.app&password=Test1234%21
 ---
 - launchApp:
     clearState: true
@@ -9,6 +10,11 @@ env:
     file: common/e2e_bootstrap_dashboard.yaml
 - runFlow:
     file: common/dismiss_overlays.yaml
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-start-session"
+    timeout: 120000
+- assertVisible: "START SESSION"
 - tapOn: "START SESSION"
 - assertVisible: "New Session"
 - tapOn: "Beat Making"

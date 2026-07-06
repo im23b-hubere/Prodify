@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
@@ -8,6 +9,8 @@ import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { clearPendingDeepLinkPath } from "../../lib/pendingDeepLink";
+
+const TUTORIAL_SEEN_KEY = "prodify_tutorial_v1";
 
 export default function E2eBootstrapScreen() {
   const router = useRouter();
@@ -35,6 +38,7 @@ export default function E2eBootstrapScreen() {
         [ONBOARDING_COMPLETE_KEY, "1"],
         [WEEKLY_GOAL_CONFIGURED_KEY, "1"],
       ]);
+      await SecureStore.setItemAsync(TUTORIAL_SEEN_KEY, "1").catch(() => undefined);
       await clearPendingDeepLinkPath();
       await signIn(email, password);
       if (!cancelled) {

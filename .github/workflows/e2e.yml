@@ -163,6 +163,18 @@ jobs:
           xcrun simctl bootstatus "${{ steps.sim.outputs.device_udid }}" -b
           sleep 5
 
+      - name: Pre-approve prodify deep links on simulator
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.device_udid }}"
+          PLIST="$HOME/Library/Developer/CoreSimulator/Devices/${UDID}/data/Library/Preferences/com.apple.launchservices.schemeapproval.plist"
+          mkdir -p "$(dirname "$PLIST")"
+          if [[ ! -f "$PLIST" ]]; then
+            /usr/libexec/PlistBuddy -c "Add :com.apple.CoreSimulator.CoreSimulatorBridge dict" "$PLIST"
+          fi
+          /usr/libexec/PlistBuddy -c "Delete :com.apple.CoreSimulator.CoreSimulatorBridge:prodify" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :com.apple.CoreSimulator.CoreSimulatorBridge:prodify string com.prodify.app" "$PLIST"
+
       - name: Build app (simulator)
         working-directory: mobile/ios
         run: |
@@ -200,9 +212,11 @@ jobs:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
         run: |
           set -euo pipefail
+          BOOTSTRAP_LINK="prodify://e2e/bootstrap?email=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${E2E_TEST_EMAIL}', safe=''))")&password=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${E2E_TEST_PASSWORD}', safe=''))")"
           maestro --device "${{ steps.sim.outputs.device_udid }}" test \
             -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
             -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
+            -e "BOOTSTRAP_LINK=${BOOTSTRAP_LINK}" \
             maestro/flows/smoke_test.yaml
 
       - name: Upload Maestro screenshots / reports

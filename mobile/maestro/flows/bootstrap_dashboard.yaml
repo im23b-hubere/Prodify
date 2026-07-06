@@ -2,6 +2,7 @@ appId: com.prodify.app
 env:
   TEST_EMAIL: test@prodify.app
   TEST_PASSWORD: Test1234!
+  BOOTSTRAP_LINK: prodify://e2e/bootstrap?email=test%40prodify.app&password=Test1234%21
 ---
 - launchApp:
     clearState: true

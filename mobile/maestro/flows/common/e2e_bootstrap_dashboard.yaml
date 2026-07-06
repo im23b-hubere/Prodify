@@ -1,9 +1,5 @@
 appId: com.prodify.app
 ---
-- openLink: "prodify://e2e/bootstrap?email=${TEST_EMAIL}&password=${TEST_PASSWORD}"
+- openLink: ${BOOTSTRAP_LINK}
 - runFlow:
     file: confirm_deep_link.yaml
-- extendedWaitUntil:
-    visible:
-      id: "dashboard-start-session"
-    timeout: 120000
