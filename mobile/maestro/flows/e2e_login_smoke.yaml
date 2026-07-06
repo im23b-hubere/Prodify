@@ -1,0 +1,10 @@
+appId: com.prodify.app
+env:
+  TEST_EMAIL: test@prodify.app
+  TEST_PASSWORD: Test1234!
+---
+# Fast E2E tier: login + dashboard only (~5 min Maestro).
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/e2e_login_dashboard.yaml

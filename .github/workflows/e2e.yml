@@ -19,6 +19,14 @@ on:
         description: E2E register username
         required: false
         default: e2euser
+      test_profile:
+        description: Maestro flow tier (fast = login/dashboard only)
+        required: false
+        default: fast
+        type: choice
+        options:
+          - fast
+          - full
   pull_request:
     branches:
       - main
@@ -28,16 +36,8 @@ on:
       - "scripts/seed-e2e-user.sh"
       - ".github/workflows/e2e.yml"
   schedule:
-    # Nightly iOS E2E smoke.
+    # Nightly full iOS E2E smoke.
     - cron: "30 2 * * *"
-  push:
-    branches:
-      - main
-      - "release/**"
-    paths:
-      - "mobile/**"
-      - "scripts/seed-e2e-user.sh"
-      - ".github/workflows/e2e.yml"
 
 permissions:
   contents: read
@@ -46,34 +46,35 @@ concurrency:
   group: e2e-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  MAESTRO_VERSION: "1.39.13"
+  MAESTRO_INSTALLER_SHA256: "40115b628eb491f29d02275bc7e3db5334024ba4fdff7210a334fd3cf4a8f306"
+  E2E_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
+  E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
+  E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || 'Test1234!' }}
+  E2E_TEST_USERNAME: ${{ github.event.inputs.test_username || 'e2euser' }}
+  EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
+  EXPO_PUBLIC_APP_ENV: development
+  EXPO_PUBLIC_ENV: development
+  EXPO_PUBLIC_E2E_MODE: "true"
+  EXPO_PUBLIC_E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
+  EXPO_PUBLIC_E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || 'Test1234!' }}
+  EXPO_PUBLIC_REVENUECAT_API_KEY: appl_mnYqBJcSBBUEyNRCfULPzxMqpmX
+  EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID: app_access
+  EX_UPDATES_NATIVE_DEBUG: "1"
+  SENTRY_DISABLE_AUTO_UPLOAD: "true"
+  SENTRY_ALLOW_FAILURE: "true"
+  CI: "true"
+
 jobs:
-  e2e-ios:
+  build-ios:
     runs-on: macos-15
-    timeout-minutes: 60
-    env:
-      MAESTRO_VERSION: "1.39.13"
-      MAESTRO_INSTALLER_SHA256: "40115b628eb491f29d02275bc7e3db5334024ba4fdff7210a334fd3cf4a8f306"
-      E2E_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
-      E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
-      E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || 'Test1234!' }}
-      E2E_TEST_USERNAME: ${{ github.event.inputs.test_username || 'e2euser' }}
-      EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
-      EXPO_PUBLIC_APP_ENV: development
-      EXPO_PUBLIC_ENV: development
-      EXPO_PUBLIC_E2E_MODE: "true"
-      EXPO_PUBLIC_E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
-      EXPO_PUBLIC_E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || 'Test1234!' }}
-      EXPO_PUBLIC_REVENUECAT_API_KEY: appl_mnYqBJcSBBUEyNRCfULPzxMqpmX
-      EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID: app_access
-      EX_UPDATES_NATIVE_DEBUG: "1"
-      # Sentry native build scripts must not upload symbols or fail CI without auth.
-      SENTRY_DISABLE_AUTO_UPLOAD: "true"
-      SENTRY_ALLOW_FAILURE: "true"
-      CI: "true"
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash
-
+    outputs:
+      native_hash: ${{ steps.native-hash.outputs.hash }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
@@ -84,8 +85,18 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
-      - name: Seed E2E API user
-        run: bash scripts/seed-e2e-user.sh
+      - name: Hash native sources
+        id: native-hash
+        run: |
+          set -euo pipefail
+          HASH=$(
+            {
+              cat mobile/package-lock.json
+              cat mobile/app.json
+              cat mobile/app.config.js
+            } | shasum -a 256 | cut -c1-16
+          )
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: cd mobile && npm ci
@@ -110,21 +121,6 @@ jobs:
           fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
           NODE
 
-      - name: Install Maestro
-        run: |
-          set -euo pipefail
-          curl -fsSL "https://get.maestro.mobile.dev" -o /tmp/maestro-installer.sh
-          echo "${MAESTRO_INSTALLER_SHA256}  /tmp/maestro-installer.sh" | shasum -a 256 -c -
-          chmod +x /tmp/maestro-installer.sh
-          MAESTRO_VERSION="${MAESTRO_VERSION}" /tmp/maestro-installer.sh
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-
-      - name: Verify Maestro CLI
-        run: |
-          set -euo pipefail
-          maestro --version
-          maestro --version | grep -Fq "${MAESTRO_VERSION}"
-
       - name: Prebuild iOS
         working-directory: mobile
         run: |
@@ -141,9 +137,124 @@ jobs:
           set -euo pipefail
           sed -i '' 's/SKIP_BUNDLING/FORCE_BUNDLING/g' ios/Prodify.xcodeproj/project.pbxproj
 
+      - name: Cache CocoaPods
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        id: pods-cache
+        with:
+          path: mobile/ios/Pods
+          key: e2e-pods-${{ steps.native-hash.outputs.hash }}
+          restore-keys: |
+            e2e-pods-
+
       - name: Install CocoaPods
+        if: steps.pods-cache.outputs.cache-hit != 'true'
         working-directory: mobile/ios
         run: pod install
+
+      - name: Cache xcodebuild output
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        id: xcode-cache
+        with:
+          path: mobile/ios/build
+          key: e2e-xcode-${{ steps.native-hash.outputs.hash }}
+          restore-keys: |
+            e2e-xcode-
+
+      - name: Build app (simulator)
+        if: steps.xcode-cache.outputs.cache-hit != 'true'
+        working-directory: mobile/ios
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace Prodify.xcworkspace \
+            -scheme Prodify \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Resolve Prodify.app path
+        id: app
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find mobile/ios/build -path "*/Build/Products/*-iphonesimulator/Prodify.app" -type d | head -1)
+          if [[ -z "${APP_PATH:-}" ]]; then
+            APP_PATH=$(find mobile/ios/build -name "Prodify.app" -type d | head -1)
+          fi
+          if [[ -z "${APP_PATH:-}" ]]; then
+            echo "Prodify.app not found under mobile/ios/build"
+            find mobile/ios/build -name "*.app" || true
+            exit 1
+          fi
+          echo "path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Packaging $APP_PATH"
+
+      - name: Upload iOS simulator app
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prodify-ios-simulator
+          path: ${{ steps.app.outputs.path }}
+          retention-days: 3
+          if-no-files-found: error
+
+  maestro-ios:
+    runs-on: macos-15
+    needs: build-ios
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Select Maestro flow
+        id: flow
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            FLOW="maestro/flows/smoke_test.yaml"
+          elif [[ "${{ github.event.inputs.test_profile }}" == "full" ]]; then
+            FLOW="maestro/flows/smoke_test.yaml"
+          else
+            FLOW="maestro/flows/e2e_login_smoke.yaml"
+          fi
+          echo "path=$FLOW" >> "$GITHUB_OUTPUT"
+          echo "Maestro flow: $FLOW"
+
+      - name: Download iOS simulator app
+        uses: actions/download-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prodify-ios-simulator
+          path: artifacts/prodify-ios-simulator
+
+      - name: Cache Maestro CLI
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
+        id: maestro-cache
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-${{ env.MAESTRO_VERSION }}
+          restore-keys: |
+            maestro-${{ runner.os }}-
+
+      - name: Install Maestro
+        if: steps.maestro-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://get.maestro.mobile.dev" -o /tmp/maestro-installer.sh
+          echo "${MAESTRO_INSTALLER_SHA256}  /tmp/maestro-installer.sh" | shasum -a 256 -c -
+          chmod +x /tmp/maestro-installer.sh
+          MAESTRO_VERSION="${MAESTRO_VERSION}" /tmp/maestro-installer.sh
+
+      - name: Add Maestro to PATH
+        run: echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Maestro CLI
+        run: |
+          set -euo pipefail
+          maestro --version
+          maestro --version | grep -Fq "${MAESTRO_VERSION}"
 
       - name: Resolve simulator
         id: sim
@@ -183,32 +294,14 @@ jobs:
           /usr/libexec/PlistBuddy -c "Delete :com.apple.CoreSimulator.CoreSimulatorBridge:prodify" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :com.apple.CoreSimulator.CoreSimulatorBridge:prodify string com.prodify.app" "$PLIST"
 
-      - name: Build app (simulator)
-        working-directory: mobile/ios
-        run: |
-          set -euo pipefail
-          xcodebuild \
-            -workspace Prodify.xcworkspace \
-            -scheme Prodify \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            -derivedDataPath build \
-            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_udid }}" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
-
       - name: Install app on booted simulator
         run: |
           set -euo pipefail
           xcrun simctl uninstall "${{ steps.sim.outputs.device_udid }}" com.prodify.app || true
-          APP_PATH=$(find mobile/ios/build -path "*/Build/Products/*-iphonesimulator/Prodify.app" -type d | head -1)
+          APP_PATH=$(find artifacts/prodify-ios-simulator -name "Prodify.app" -type d | head -1)
           if [[ -z "${APP_PATH:-}" ]]; then
-            APP_PATH=$(find mobile/ios/build -name "Prodify.app" -type d | head -1)
-          fi
-          if [[ -z "${APP_PATH:-}" ]]; then
-            echo "Prodify.app not found under mobile/ios/build"
-            find mobile/ios/build -name "*.app" || true
+            echo "Prodify.app not found in downloaded artifact"
+            find artifacts/prodify-ios-simulator || true
             exit 1
           fi
           echo "Installing $APP_PATH on ${{ steps.sim.outputs.device_udid }}"
@@ -217,7 +310,7 @@ jobs:
       - name: Warm API and reset E2E account
         run: bash scripts/seed-e2e-user.sh
 
-      - name: Run Maestro smoke
+      - name: Run Maestro
         working-directory: mobile
         env:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
@@ -226,7 +319,7 @@ jobs:
           maestro --device "${{ steps.sim.outputs.device_udid }}" test \
             -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
             -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
-            maestro/flows/smoke_test.yaml
+            "${{ steps.flow.outputs.path }}"
 
       - name: Upload Maestro screenshots / reports
         if: always()
@@ -244,14 +337,4 @@ jobs:
           name: maestro-logs
           path: ~/.maestro/logs/
           retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Upload iOS build logs on failure
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: xcodebuild-logs
-          path: |
-            mobile/ios/build/Logs/
-          retention-days: 3
           if-no-files-found: ignore

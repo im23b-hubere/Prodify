@@ -6,7 +6,8 @@ Automated iOS smoke tests for release candidates.
 
 | File | Purpose |
 |------|---------|
-| `flows/smoke_test.yaml` | Full smoke: UI login → session → tabs |
+| `flows/e2e_login_smoke.yaml` | Fast tier: login + dashboard only (PR CI) |
+| `flows/smoke_test.yaml` | Full smoke: login → session → tabs |
 | `flows/full_app_test.yaml` | Extended coverage: smoke + secondary screens + legal |
 | `flows/common/e2e_login_dashboard.yaml` | Sign in with `TEST_EMAIL` / `TEST_PASSWORD` and wait for dashboard |
 | `flows/login_with_credentials.yaml` | Alias for `common/e2e_login_dashboard.yaml` |
@@ -65,9 +66,33 @@ Use GitHub Actions instead of local Maestro:
 
 Workflow: `.github/workflows/e2e.yml`
 
+| Trigger | Build | Maestro flow | Typical duration |
+|---------|-------|--------------|------------------|
+| **Pull request** | Cached when native deps unchanged | `e2e_login_smoke.yaml` (fast) | ~8–15 min |
+| **Nightly cron** | Cached when possible | `smoke_test.yaml` (full) | ~15–25 min |
+| **Manual dispatch** | Cached when possible | `fast` or `full` (your choice) | ~8–25 min |
+| **Push to `main`** | — | *not run* (use Prodify CI ~2 min) | — |
+
+Prodify CI (unit/lint) runs on every push. Full macOS E2E is intentionally **not** tied to each `main` push.
+
+Build and Maestro run in **separate jobs**. The simulator `.app` is uploaded as an artifact so Maestro-only changes reuse a cached Xcode build when native sources are unchanged.
+
+### Fast local iteration (recommended during development)
+
+```bash
+cd mobile
+# After one simulator install/build:
+maestro test \
+  -e TEST_EMAIL=test@prodify.app \
+  -e TEST_PASSWORD='Test1234!' \
+  maestro/flows/e2e_login_smoke.yaml
+```
+
+Re-run Maestro after flow/login tweaks without waiting for CI (~2–5 min locally vs ~35 min full pipeline).
+
 1. Trigger manually: **Actions → E2E Tests → Run workflow**
 2. Or on PRs to `main` / `release/**` when `mobile/**` changes
-3. Nightly cron at 02:30 UTC
+3. Nightly cron at 02:30 UTC (full smoke)
 
 Artifacts (screenshots, logs) upload on failure for 7 days.
 
