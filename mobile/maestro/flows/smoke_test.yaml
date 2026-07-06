@@ -27,4 +27,7 @@ env:
 - tapOn: "Profile"
 - assertVisible: "Profile"
 - tapOn: "Dashboard"
-- assertVisible: "Dashboard"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-start-session"
+    timeout: 30000

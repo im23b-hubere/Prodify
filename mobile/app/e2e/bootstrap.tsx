@@ -55,7 +55,7 @@ export default function E2eBootstrapScreen() {
   }, [params.email, params.password, router, signIn]);
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} testID="e2e-bootstrap-screen">
       <ActivityIndicator color={colors.primary} />
       <Text style={styles.text}>Preparing E2E session...</Text>
     </View>

@@ -2,7 +2,6 @@ import * as Linking from "expo-linking";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 
-import { isE2eBootstrapDeepLink } from "./E2eBootstrapBridge";
 import { useAuth } from "../context/AuthContext";
 import {
   deepLinkRequiresAuth,
@@ -10,6 +9,7 @@ import {
   isAllowedDeepLinkPath,
   toRoutableHref,
 } from "../lib/deepLinkGuard";
+import { isE2eBootstrapDeepLink, parseE2eBootstrapDeepLink } from "../lib/e2eBootstrapDeepLink";
 import {
   readOnboardingComplete,
   resolveDeepLinkFallbackHref,
@@ -26,6 +26,13 @@ export function DeepLinkGuard() {
   useEffect(() => {
     const handleDeepLink = ({ url }: { url: string }) => {
       if (isE2eBootstrapDeepLink(url)) {
+        const creds = parseE2eBootstrapDeepLink(url);
+        if (creds) {
+          router.replace({
+            pathname: "/e2e/bootstrap",
+            params: { email: creds.email, password: creds.password },
+          } as Href);
+        }
         return;
       }
 

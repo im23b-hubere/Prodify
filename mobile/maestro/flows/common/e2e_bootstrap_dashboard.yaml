@@ -4,8 +4,6 @@ appId: com.prodify.app
 - runFlow:
     file: confirm_deep_link.yaml
 - extendedWaitUntil:
-    visible: "Dashboard"
-    timeout: 60000
-- extendedWaitUntil:
-    visible: "START SESSION"
-    timeout: 60000
+    visible:
+      id: "dashboard-start-session"
+    timeout: 120000

@@ -3,3 +3,6 @@ appId: com.prodify.app
 - tapOn:
     text: "Open"
     optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
