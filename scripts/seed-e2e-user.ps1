@@ -15,12 +15,28 @@ $ApiUrl = $ApiUrl.TrimEnd("/")
 
 Write-Host "Seeding E2E user at $ApiUrl ($Email / $Username)"
 
-try {
-    $health = Invoke-WebRequest -Uri "$ApiUrl/health" -Method GET -UseBasicParsing
-    Write-Host "API health HTTP $($health.StatusCode)"
-} catch {
-    Write-Host "API health check failed (continuing): $($_.Exception.Message)"
+function Wait-ApiWarm {
+    param([int]$MaxAttempts = 6)
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            $health = Invoke-WebRequest -Uri "$ApiUrl/health" -Method GET -UseBasicParsing -TimeoutSec 90
+            if ($health.StatusCode -eq 200) {
+                Write-Host "API health OK (attempt $attempt/$MaxAttempts)."
+                return $true
+            }
+            Write-Host "API health HTTP $($health.StatusCode) (attempt $attempt/$MaxAttempts)."
+        } catch {
+            Write-Host "API health failed (attempt $attempt/$MaxAttempts): $($_.Exception.Message)"
+        }
+        if ($attempt -lt $MaxAttempts) {
+            Start-Sleep -Seconds 15
+        }
+    }
+    Write-Host "Warning: API warm-up did not return 200; continuing with login/register attempts."
+    return $false
 }
+
+Wait-ApiWarm | Out-Null
 
 $loginBody = @{ email = $Email; password = $Password } | ConvertTo-Json -Compress
 

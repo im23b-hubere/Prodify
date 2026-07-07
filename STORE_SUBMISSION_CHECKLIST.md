@@ -1,12 +1,12 @@
 # Store Submission Checklist
 
-Date: 2026-04-22
+Date: 2026-07-07
 
 ## Identity and Versioning
 
 - [x] Bundle IDs set (`com.prodify.app` iOS/Android)
-- [ ] Version numbers finalized for release candidate
-- [ ] iOS `buildNumber` incremented for final upload
+- [x] Version numbers finalized for release candidate (`1.0.1`)
+- [ ] iOS `buildNumber` incremented for final upload (EAS `autoIncrement` handles remote; local `app.json` optional)
 - [ ] Android `versionCode` incremented (if Android release planned)
 
 ## Visual Assets
@@ -19,12 +19,13 @@ Date: 2026-04-22
 Reference files:
 
 - `mobile/store/STORE_METADATA.en-US.md`
+- `mobile/store/STORE_METADATA.de-DE.md`
 - `mobile/store/SCREENSHOT_PLAN.en-US.md`
 
 ## Listing Content
 
 - [x] App description (EN) drafted
-- [ ] App description (DE) drafted/reviewed
+- [x] App description (DE) drafted/reviewed (`mobile/store/STORE_METADATA.de-DE.md`)
 - [x] Keywords drafted
 - [x] Promo text drafted
 

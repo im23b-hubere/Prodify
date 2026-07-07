@@ -5,6 +5,7 @@ App version: 1.0.1
 Bundle/package: `com.prodify.app`
 
 Screenshot spec: `mobile/store/SCREENSHOT_PLAN.en-US.md`  
+German listing copy: `mobile/store/STORE_METADATA.de-DE.md`  
 Entitlements reference: `docs/premium-entitlements.md`
 
 ## Product Positioning

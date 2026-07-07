@@ -41,6 +41,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: e2e-${{ github.workflow }}-${{ github.ref }}
@@ -94,9 +95,14 @@ jobs:
               cat mobile/package-lock.json
               cat mobile/app.json
               cat mobile/app.config.js
+              find mobile/app mobile/lib mobile/context mobile/components mobile/features \
+                -type f \( -name '*.ts' -o -name '*.tsx' \) 2>/dev/null \
+                | LC_ALL=C sort \
+                | xargs cat 2>/dev/null || true
             } | shasum -a 256 | cut -c1-16
           )
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+          echo "Bundle cache key: $HASH"
 
       - name: Install dependencies
         run: cd mobile && npm ci
@@ -224,7 +230,7 @@ jobs:
           echo "Maestro flow: $FLOW"
 
       - name: Download iOS simulator app
-        uses: actions/download-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: prodify-ios-simulator
           path: artifacts/prodify-ios-simulator

@@ -11,7 +11,29 @@ API_URL="${API_URL%/}"
 
 echo "Seeding E2E user at ${API_URL} (${EMAIL} / ${USERNAME})"
 
-curl -sS -o /dev/null -w "API health HTTP %{http_code}\n" "${API_URL}/health" || true
+warm_api() {
+  local attempt=1
+  local max_attempts=6
+  while [[ "$attempt" -le "$max_attempts" ]]; do
+    local status
+    status=$(curl -sS --max-time 90 -o /tmp/prodify-e2e-health.json -w "%{http_code}" \
+      "${API_URL}/health" || true)
+    if [[ "$status" == "200" ]]; then
+      echo "API health OK (attempt ${attempt}/${max_attempts})."
+      return 0
+    fi
+    echo "API health HTTP ${status} (attempt ${attempt}/${max_attempts}); retrying in 15s..."
+    sleep 15
+    attempt=$((attempt + 1))
+  done
+  echo "API health did not return 200 after ${max_attempts} attempts."
+  cat /tmp/prodify-e2e-health.json 2>/dev/null || true
+  return 1
+}
+
+warm_api || {
+  echo "Warning: API warm-up failed; continuing with login/register attempts."
+}
 
 login_payload=$(printf '{"email":"%s","password":"%s"}' "$EMAIL" "$PASSWORD")
 

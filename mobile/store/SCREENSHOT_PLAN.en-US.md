@@ -1,7 +1,7 @@
 # Prodify Screenshot Plan (en-US)
 
-Last updated: 2026-04-20  
-App version: 1.0.0  
+Last updated: 2026-07-07  
+App version: 1.0.1  
 Bundle/package: `com.prodify.app`
 
 ## Device Targets
