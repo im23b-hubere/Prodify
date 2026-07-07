@@ -217,7 +217,7 @@ jobs:
   maestro-ios:
     runs-on: macos-15
     needs: build-ios
-    timeout-minutes: ${{ github.event_name == 'schedule' && 60 || (github.event.inputs.test_profile == 'full' && 60 || 30) }}
+    timeout-minutes: ${{ github.event_name == 'schedule' && 90 || (github.event.inputs.test_profile == 'full' && 90 || 30) }}
     defaults:
       run:
         shell: bash
