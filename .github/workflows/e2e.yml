@@ -197,11 +197,20 @@ jobs:
           echo "path=$APP_PATH" >> "$GITHUB_OUTPUT"
           echo "Packaging $APP_PATH"
 
+      - name: Zip simulator app for artifact upload
+        id: app-zip
+        run: |
+          set -euo pipefail
+          APP_PATH="${{ steps.app.outputs.path }}"
+          ZIP_PATH="${{ runner.temp }}/Prodify.app.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
+          echo "zip_path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
+
       - name: Upload iOS simulator app
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: prodify-ios-simulator
-          path: ${{ steps.app.outputs.path }}
+          path: ${{ steps.app-zip.outputs.zip_path }}
           retention-days: 3
           if-no-files-found: error
 
@@ -233,7 +242,27 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: prodify-ios-simulator
-          path: artifacts/prodify-ios-simulator
+          path: artifacts
+
+      - name: Unzip simulator app bundle
+        id: app-bundle
+        run: |
+          set -euo pipefail
+          ZIP_PATH=$(find artifacts -name "Prodify.app.zip" -type f | head -1)
+          if [[ -z "${ZIP_PATH:-}" ]]; then
+            echo "Prodify.app.zip not found in downloaded artifact"
+            find artifacts || true
+            exit 1
+          fi
+          unzip -q "$ZIP_PATH" -d artifacts
+          APP_PATH=$(find artifacts -name "Prodify.app" -type d | head -1)
+          if [[ -z "${APP_PATH:-}" ]]; then
+            echo "Prodify.app not found after unzip"
+            find artifacts || true
+            exit 1
+          fi
+          echo "path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Unpacked $APP_PATH"
 
       - name: Cache Maestro CLI
         uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
@@ -304,12 +333,7 @@ jobs:
         run: |
           set -euo pipefail
           xcrun simctl uninstall "${{ steps.sim.outputs.device_udid }}" com.prodify.app || true
-          APP_PATH=$(find artifacts/prodify-ios-simulator -name "Prodify.app" -type d | head -1)
-          if [[ -z "${APP_PATH:-}" ]]; then
-            echo "Prodify.app not found in downloaded artifact"
-            find artifacts/prodify-ios-simulator || true
-            exit 1
-          fi
+          APP_PATH="${{ steps.app-bundle.outputs.path }}"
           echo "Installing $APP_PATH on ${{ steps.sim.outputs.device_udid }}"
           xcrun simctl install "${{ steps.sim.outputs.device_udid }}" "$APP_PATH"
 
