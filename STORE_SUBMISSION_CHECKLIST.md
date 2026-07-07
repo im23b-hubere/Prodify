@@ -42,6 +42,12 @@ Reference files:
 - [ ] Export compliance/encryption questionnaire completed
 - [ ] Account deletion flow tested from production build
 
+## QA / E2E
+
+- [x] E2E fast smoke (login + dashboard) — [GitHub run 28867541073](https://github.com/im23b-hubere/Prodify/actions/runs/28867541073) on `cde03cf`
+- [ ] E2E full smoke (session + tabs) — [run 28869758919](https://github.com/im23b-hubere/Prodify/actions/runs/28869758919) in progress
+- [ ] TestFlight smoke on physical device (login, session, paywall)
+
 ## Final Submission Readiness
 
 - [ ] TestFlight build approved for release
