@@ -75,7 +75,7 @@ Workflow: `.github/workflows/e2e.yml`
 
 Prodify CI (unit/lint) runs on every push. Full macOS E2E is intentionally **not** tied to each `main` push.
 
-Build and Maestro run in **separate jobs**. The simulator `.app` is uploaded as an artifact so Maestro-only changes reuse a cached Xcode build when native sources are unchanged.
+Build and Maestro run in **separate jobs**. The simulator `.app` is uploaded as an artifact so Maestro-only changes reuse a cached Xcode build when native sources are unchanged. JS/TS changes invalidate the Xcode cache via bundle hash in the workflow.
 
 ### Fast local iteration (recommended during development)
 
