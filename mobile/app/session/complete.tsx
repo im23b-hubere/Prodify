@@ -291,6 +291,7 @@ export default function SessionCompleteScreen() {
           <SecondaryButton
             label={t("sessionComplete.backToDashboard")}
             onPress={() => router.replace("/(tabs)/dashboard")}
+            testID="session-complete-back"
           />
         </View>
       </ScrollView>

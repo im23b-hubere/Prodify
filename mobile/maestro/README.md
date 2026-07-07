@@ -8,6 +8,8 @@ Automated iOS smoke tests for release candidates.
 |------|---------|
 | `flows/e2e_login_smoke.yaml` | Fast tier: login + dashboard only (PR CI) |
 | `flows/smoke_test.yaml` | Full smoke: login → session → tabs |
+| `flows/common/smoke_session.yaml` | Session start/stop subflow (testIDs) |
+| `flows/common/smoke_tabs.yaml` | Tab navigation subflow (testIDs) |
 | `flows/full_app_test.yaml` | Extended coverage: smoke + secondary screens + legal |
 | `flows/common/e2e_login_dashboard.yaml` | Sign in with `TEST_EMAIL` / `TEST_PASSWORD` and wait for dashboard |
 | `flows/login_with_credentials.yaml` | Alias for `common/e2e_login_dashboard.yaml` |

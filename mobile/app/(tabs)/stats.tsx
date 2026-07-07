@@ -226,7 +226,7 @@ export default function StatsScreen() {
   }, [contentFade, showInitialLoading]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top"]} testID="stats-screen">
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.content}

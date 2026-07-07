@@ -1,0 +1,27 @@
+appId: com.prodify.app
+---
+# Tab navigation smoke (testID tab bar + screen roots).
+- tapOn:
+    id: tab-stats
+- extendedWaitUntil:
+    visible:
+      id: stats-screen
+    timeout: 90000
+- tapOn:
+    id: tab-friends
+- extendedWaitUntil:
+    visible:
+      id: friends-screen
+    timeout: 90000
+- tapOn:
+    id: tab-profile
+- extendedWaitUntil:
+    visible:
+      id: profile-screen
+    timeout: 90000
+- tapOn:
+    id: tab-dashboard
+- extendedWaitUntil:
+    visible:
+      id: dashboard-studio-hud
+    timeout: 90000

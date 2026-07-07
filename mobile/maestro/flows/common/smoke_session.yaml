@@ -1,0 +1,30 @@
+appId: com.prodify.app
+---
+# Session start → stop → return to dashboard (testID-driven for CI speed).
+- tapOn:
+    id: dashboard-start-session
+- extendedWaitUntil:
+    visible:
+      id: session-setup-modal
+    timeout: 45000
+- tapOn:
+    id: session-type-beat_making
+- tapOn:
+    id: session-setup-start
+- extendedWaitUntil:
+    visible:
+      id: dashboard-stop-session
+    timeout: 90000
+- tapOn:
+    id: dashboard-stop-session
+- tapOn: "End session"
+- extendedWaitUntil:
+    visible:
+      id: session-complete-screen
+    timeout: 90000
+- tapOn:
+    id: session-complete-back
+- extendedWaitUntil:
+    visible:
+      id: dashboard-start-session
+    timeout: 60000

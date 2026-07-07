@@ -232,7 +232,7 @@ export default function FriendsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top"]} testID="friends-screen">
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={

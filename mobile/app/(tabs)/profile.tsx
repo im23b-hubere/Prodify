@@ -271,7 +271,7 @@ export default function ProfileScreen() {
       : `${API_BASE_URL}${user.profile_picture_url}`
     : null;
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top"]} testID="profile-screen">
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={

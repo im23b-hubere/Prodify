@@ -3,33 +3,12 @@ env:
   TEST_EMAIL: test@prodify.app
   TEST_PASSWORD: Test1234!
 ---
+# Full smoke: login → session → tabs (optimized for CI testIDs).
 - launchApp:
     clearState: true
 - runFlow:
     file: common/e2e_login_dashboard.yaml
-- tapOn:
-    id: "dashboard-start-session"
-- assertVisible: "New Session"
-- tapOn: "Beat Making"
-- tapOn: "START SESSION"
-- extendedWaitUntil:
-    visible: "STOP SESSION"
-    timeout: 120000
-- waitForAnimationToEnd:
-    timeout: 8000
-- tapOn: "STOP SESSION"
-- tapOn: "End session"
-- assertVisible: "Session logged"
-- tapOn: "Back to dashboard"
-- assertVisible: "START SESSION"
-- tapOn: "Stats"
-- assertVisible: "Your stats"
-- tapOn: "Friends"
-- assertVisible: "Friends"
-- tapOn: "Profile"
-- assertVisible: "Profile"
-- tapOn: "Dashboard"
-- extendedWaitUntil:
-    visible:
-      id: "dashboard-start-session"
-    timeout: 30000
+- runFlow:
+    file: common/smoke_session.yaml
+- runFlow:
+    file: common/smoke_tabs.yaml

@@ -10,6 +10,7 @@ type SecondaryButtonProps = {
   onPress: () => void;
   disabled?: boolean;
   accessibilityLabel?: string;
+  testID?: string;
 };
 
 export function SecondaryButton({
@@ -17,9 +18,11 @@ export function SecondaryButton({
   onPress,
   disabled,
   accessibilityLabel,
+  testID,
 }: SecondaryButtonProps) {
   return (
     <Pressable
+      testID={testID}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}

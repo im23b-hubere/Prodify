@@ -71,6 +71,7 @@ export function ActiveSessionBlock({
         style={({ pressed }) => [styles.stopSessionBtn, pressed && styles.pressedStop]}
         onPress={onConfirmStop}
         disabled={stopBusy}
+        testID="dashboard-stop-session"
       >
         <Text style={styles.stopSessionLabel}>
           {stopBusy ? t("dashboard.stopping") : t("dashboard.stopSession")}

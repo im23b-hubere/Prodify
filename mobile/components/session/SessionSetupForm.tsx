@@ -144,6 +144,7 @@ function TypeCard({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={label}
+      testID={`session-type-${type}`}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
         onSelect();
@@ -527,6 +528,7 @@ export function SessionSetupForm({
           onPress={onSubmit}
           loading={busy}
           disabled={!hydrated || !canStart}
+          testID="session-setup-start"
         />
       </View>
     </KeyboardAvoidingView>

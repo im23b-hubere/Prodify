@@ -1,8 +1,9 @@
 import { Redirect, Tabs } from "expo-router";
 import { BarChart3, LayoutGrid, UserRound, Users } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 
 import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { colors, spacing } from "../../constants/theme";
@@ -41,6 +42,13 @@ function timeoutAccessFallback(ms: number, fallback: boolean): Promise<boolean> 
   return new Promise((resolve) => {
     setTimeout(() => resolve(fallback), ms);
   });
+}
+
+function TabBarButton({
+  testID,
+  ...props
+}: BottomTabBarButtonProps & { testID: string }) {
+  return <Pressable {...props} testID={testID} accessibilityRole="button" />;
 }
 
 export default function TabsLayout() {
@@ -155,6 +163,7 @@ export default function TabsLayout() {
         name="dashboard"
         options={{
           title: t("tabs.dashboard"),
+          tabBarButton: (props) => <TabBarButton {...props} testID="tab-dashboard" />,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} icon="dashboard" />
           ),
@@ -164,6 +173,7 @@ export default function TabsLayout() {
         name="stats"
         options={{
           title: t("tabs.stats"),
+          tabBarButton: (props) => <TabBarButton {...props} testID="tab-stats" />,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} icon="stats" />
           ),
@@ -173,6 +183,7 @@ export default function TabsLayout() {
         name="friends"
         options={{
           title: t("tabs.friends"),
+          tabBarButton: (props) => <TabBarButton {...props} testID="tab-friends" />,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} icon="friends" />
           ),
@@ -182,6 +193,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: t("tabs.profile"),
+          tabBarButton: (props) => <TabBarButton {...props} testID="tab-profile" />,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused} icon="profile" />
           ),
