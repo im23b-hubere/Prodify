@@ -5,7 +5,7 @@ appId: com.prodify.app
     id: dashboard-start-session
 - extendedWaitUntil:
     visible:
-      id: session-setup-modal
+      id: session-type-beat_making
     timeout: 45000
 - tapOn:
     id: session-type-beat_making

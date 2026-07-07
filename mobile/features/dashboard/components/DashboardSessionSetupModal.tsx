@@ -47,8 +47,8 @@ export function DashboardSessionSetupModal({
       <GestureHandlerRootView style={styles.modalGestureRoot}>
         <View style={styles.modalRoot}>
           <Pressable style={styles.modalBackdrop} onPress={() => closeSetupModal()} />
-          <Animated.View style={[styles.modalSheet, sheetStyle]} testID="session-setup-modal">
-            <SafeAreaView style={styles.modalSafe} edges={["bottom"]}>
+          <Animated.View style={[styles.modalSheet, sheetStyle]}>
+            <SafeAreaView style={styles.modalSafe} edges={["bottom"]} testID="session-setup-modal">
               <View>
                 <View style={styles.modalHandle} />
                 <View style={styles.modalHeaderRow}>
