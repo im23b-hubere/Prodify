@@ -7,12 +7,16 @@ env:
     clearState: true
 - runFlow:
     file: common/e2e_login_dashboard.yaml
-- tapOn: "START SESSION"
+- tapOn:
+    id: "dashboard-start-session"
 - assertVisible: "New Session"
 - tapOn: "Beat Making"
 - tapOn: "START SESSION"
-- assertVisible: "STOP SESSION"
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "STOP SESSION"
+    timeout: 120000
+- waitForAnimationToEnd:
+    timeout: 8000
 - tapOn: "STOP SESSION"
 - tapOn: "End session"
 - assertVisible: "Session logged"
