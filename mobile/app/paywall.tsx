@@ -8,7 +8,7 @@ import Constants from "expo-constants";
 import type { CustomerInfo, PurchasesPackage } from "react-native-purchases";
 
 import { ErrorState } from "../components/states/ErrorState";
-import { LoadingState } from "../components/states/LoadingState";
+import { PaywallPlansSkeleton } from "../components/states/PaywallPlansSkeleton";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { getExpoPublicRevenueCatApiKey } from "../constants/env";
 import { fontFamily } from "../constants/fonts";
@@ -229,11 +229,18 @@ export default function PaywallScreen() {
           return;
         }
         await configureRevenueCat(appUserId ?? undefined);
-        const info = await getRevenueCatCustomerInfo(appUserId ?? undefined);
-        if (cancelled) return;
-        if (isPremiumActive(info)) {
-          await finalizePremiumUnlock(info);
-          return;
+        // Pre-check current entitlement, but never let a transient network
+        // failure here block the offerings — otherwise the purchase buttons
+        // stay permanently disabled after a hiccup.
+        try {
+          const info = await getRevenueCatCustomerInfo(appUserId ?? undefined);
+          if (cancelled) return;
+          if (isPremiumActive(info)) {
+            await finalizePremiumUnlock(info);
+            return;
+          }
+        } catch {
+          // Ignore and continue to load purchasable packages.
         }
         const offering = await getDefaultOffering(appUserId ?? undefined);
         if (cancelled) return;
@@ -432,58 +439,71 @@ export default function PaywallScreen() {
           <Text style={styles.body} numberOfLines={3}>
             {copy.body}
           </Text>
-          {loading ? <LoadingState message={t("paywall.loadingOfferings")} /> : null}
-          {error ? (
-            <ErrorState
-              title={t("paywall.errorTitle")}
-              message={error}
-              retryLabel={t("common.tryAgain")}
-              onRetry={() => {
-                setReloadKey((prev) => prev + 1);
-              }}
-            />
-          ) : null}
-          <PrimaryButton
-            label={
-              expoGoPreviewMode
-                ? t("paywall.cta.sixMonthWithPrice", { price: previewSixMonthPrice })
-                : sixMonthPkg
-                  ? t("paywall.cta.sixMonthWithPrice", {
-                      price: sixMonthPkg.product.priceString,
-                    })
-                  : t("paywall.cta.sixMonth")
-            }
-            onPress={() => void purchasePackage(sixMonthPkg)}
-            disabled={
-              busy ||
-              (!expoGoPreviewMode && !sixMonthPkg) ||
-              (!purchaseEnabled && !expoGoPreviewMode)
-            }
-          />
-          <PrimaryButton
-            label={
-              expoGoPreviewMode
-                ? t("paywall.cta.weeklyWithPrice", { price: previewWeeklyPrice })
-                : weeklyPkg
-                  ? t("paywall.cta.weeklyWithPrice", { price: weeklyPkg.product.priceString })
-                  : t("paywall.cta.weekly")
-            }
-            onPress={() => void purchasePackage(weeklyPkg)}
-            disabled={
-              busy || (!expoGoPreviewMode && !weeklyPkg) || (!purchaseEnabled && !expoGoPreviewMode)
-            }
-          />
-          <Pressable
-            style={styles.restore}
-            onPress={() => void onRestore()}
-            disabled={busy || expoGoPreviewMode}
-            accessibilityRole="button"
-            accessibilityLabel={t("paywall.cta.restore")}
-          >
-            <Text style={styles.restoreText}>
-              {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore")}
-            </Text>
-          </Pressable>
+          {loading ? (
+            <PaywallPlansSkeleton />
+          ) : (
+            <>
+              {error && !expoGoPreviewMode ? (
+                <ErrorState
+                  title={t("paywall.errorTitle")}
+                  message={error}
+                  retryLabel={t("common.tryAgain")}
+                  onRetry={() => {
+                    setReloadKey((prev) => prev + 1);
+                  }}
+                />
+              ) : null}
+              {!error || expoGoPreviewMode ? (
+                <>
+                  <PrimaryButton
+                    label={
+                      expoGoPreviewMode
+                        ? t("paywall.cta.sixMonthWithPrice", { price: previewSixMonthPrice })
+                        : sixMonthPkg
+                          ? t("paywall.cta.sixMonthWithPrice", {
+                              price: sixMonthPkg.product.priceString,
+                            })
+                          : t("paywall.cta.sixMonth")
+                    }
+                    onPress={() => void purchasePackage(sixMonthPkg)}
+                    disabled={
+                      busy ||
+                      (!expoGoPreviewMode && !sixMonthPkg) ||
+                      (!purchaseEnabled && !expoGoPreviewMode)
+                    }
+                  />
+                  <PrimaryButton
+                    label={
+                      expoGoPreviewMode
+                        ? t("paywall.cta.weeklyWithPrice", { price: previewWeeklyPrice })
+                        : weeklyPkg
+                          ? t("paywall.cta.weeklyWithPrice", {
+                              price: weeklyPkg.product.priceString,
+                            })
+                          : t("paywall.cta.weekly")
+                    }
+                    onPress={() => void purchasePackage(weeklyPkg)}
+                    disabled={
+                      busy ||
+                      (!expoGoPreviewMode && !weeklyPkg) ||
+                      (!purchaseEnabled && !expoGoPreviewMode)
+                    }
+                  />
+                </>
+              ) : null}
+              <Pressable
+                style={styles.restore}
+                onPress={() => void onRestore()}
+                disabled={busy || expoGoPreviewMode}
+                accessibilityRole="button"
+                accessibilityLabel={t("paywall.cta.restore")}
+              >
+                <Text style={styles.restoreText}>
+                  {busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore")}
+                </Text>
+              </Pressable>
+            </>
+          )}
           <View style={styles.footer}>
             <Text style={styles.disclaimer}>{t("paywall.legal.disclaimer")}</Text>
             <View style={styles.legalRow}>
