@@ -19,8 +19,14 @@ let sdkConfigured = false;
 let configureChain: Promise<void> = Promise.resolve();
 
 const REVENUECAT_CONFIGURE_TIMEOUT_MS = 8_000;
-const REVENUECAT_READ_TIMEOUT_MS = 10_000;
+const REVENUECAT_READ_TIMEOUT_MS = 20_000;
 const REVENUECAT_PURCHASE_TIMEOUT_MS = 45_000;
+const OFFERINGS_RETRY_ATTEMPTS = 3;
+const OFFERINGS_RETRY_DELAY_MS = 1_500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function withRevenueCatTimeout<T>(
   promise: Promise<T>,
@@ -126,16 +132,33 @@ async function ensurePurchasesReady(appUserId?: string): Promise<void> {
   }
 }
 
+async function fetchOfferingsWithRetry(appUserId?: string) {
+  await ensurePurchasesReady(appUserId);
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= OFFERINGS_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      return await withRevenueCatTimeout(
+        Purchases.getOfferings(),
+        "offerings",
+        REVENUECAT_READ_TIMEOUT_MS,
+      );
+    } catch (error) {
+      lastError = error;
+      if (attempt < OFFERINGS_RETRY_ATTEMPTS) {
+        await sleep(OFFERINGS_RETRY_DELAY_MS * attempt);
+      }
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("RevenueCat offerings could not be fetched from App Store Connect.");
+}
+
 export async function getDefaultOffering(appUserId?: string): Promise<PurchasesOffering | null> {
   if (isE2eModeEnabled()) return null;
   if (Platform.OS === "web") return null;
   if (!getRevenueCatApiKey()) return null;
-  await ensurePurchasesReady(appUserId);
-  const offerings = await withRevenueCatTimeout(
-    Purchases.getOfferings(),
-    "offerings",
-    REVENUECAT_READ_TIMEOUT_MS,
-  );
+  const offerings = await fetchOfferingsWithRetry(appUserId);
   if (offerings.current) return offerings.current;
   const allOfferings = Object.values(offerings.all ?? {});
   return allOfferings[0] ?? null;
@@ -193,8 +216,9 @@ export async function getRevenueCatCustomerInfo(appUserId?: string): Promise<Cus
 
 export async function purchaseRevenueCatPackage(
   pkg: PurchasesPackage,
+  appUserId?: string,
 ): Promise<MakePurchaseResult> {
-  await ensurePurchasesReady();
+  await ensurePurchasesReady(appUserId);
   return withRevenueCatTimeout(
     Purchases.purchasePackage(pkg),
     "purchase",

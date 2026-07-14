@@ -15,6 +15,7 @@ import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../lib/client";
+import { resolvePaywallPackages } from "../lib/billingProducts";
 import { seedEntitlementCache, syncEntitlement } from "../lib/billing";
 import { setDevBillingBypass } from "../lib/devBillingBypass";
 import { isE2eModeEnabled } from "../lib/e2eMode";
@@ -39,12 +40,6 @@ import {
 } from "../lib/paywallErrors";
 
 type Variant = "value" | "outcome" | "social_proof";
-const WEEKLY_PRODUCT_ID = "prodify_premium_weekly";
-const SIX_MONTH_PRODUCT_ID = "prodify_premium_6months";
-
-function packageMatchesProductId(pkg: PurchasesPackage, productId: string): boolean {
-  return pkg.product.identifier === productId;
-}
 
 export default function PaywallScreen() {
   const { t } = useTranslation();
@@ -245,17 +240,13 @@ export default function PaywallScreen() {
         const offering = await getDefaultOffering(appUserId ?? undefined);
         if (cancelled) return;
         const pkgs = offering?.availablePackages ?? [];
-        const weekly = pkgs.find((p) => p.packageType === "WEEKLY");
-        const sixMonth = pkgs.find((p) => p.packageType === "SIX_MONTH");
-        const weeklyById = pkgs.find((p) => packageMatchesProductId(p, WEEKLY_PRODUCT_ID));
-        const sixMonthById = pkgs.find((p) => packageMatchesProductId(p, SIX_MONTH_PRODUCT_ID));
-        const resolvedWeekly = weekly ?? weeklyById ?? pkgs[0] ?? null;
-        const resolvedSixMonth = sixMonth ?? sixMonthById ?? null;
+        const { weekly: resolvedWeekly, sixMonth: resolvedSixMonth, purchasable } =
+          resolvePaywallPackages(pkgs);
         setWeeklyPkg(resolvedWeekly);
         setSixMonthPkg(resolvedSixMonth);
-        setPurchaseEnabled(pkgs.length > 0);
-        if (!pkgs.length) {
-          setError(t("paywall.errors.storeUnavailable"));
+        setPurchaseEnabled(purchasable.length > 0);
+        if (!purchasable.length) {
+          setError(t("paywall.errors.appleProductsUnavailable"));
         } else {
           setError(null);
         }
@@ -303,7 +294,7 @@ export default function PaywallScreen() {
     }
     setBusy(true);
     try {
-      const res = await purchaseRevenueCatPackage(pkg);
+      const res = await purchaseRevenueCatPackage(pkg, appUserId ?? undefined);
       if (!isPremiumActive(res.customerInfo)) {
         throw new Error(t("paywall.errors.entitlementNotActive"));
       }

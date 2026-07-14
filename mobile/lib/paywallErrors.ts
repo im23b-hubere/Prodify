@@ -10,7 +10,8 @@ export function resolveOfferingsLoadError(error: unknown, fallback: string): str
     normalized.includes("app store connect") ||
     normalized.includes("storekit") ||
     normalized.includes("could not be fetched") ||
-    normalized.includes("offerings-empty")
+    normalized.includes("offerings-empty") ||
+    normalized.includes("timed out")
   ) {
     return "appleProductsUnavailable";
   }
