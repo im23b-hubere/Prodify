@@ -6,6 +6,7 @@ env:
 # --- Onboarding + existing-account login ---
 - launchApp:
     clearState: true
+    clearKeychain: true
 - runFlow:
     file: onboarding_to_login.yaml
 - runFlow:
