@@ -12,9 +12,11 @@ appId: com.prodify.app
     visible:
       id: "dashboard-studio-hud"
     timeout: 180000
-- tapOn:
-    text: "Skip for now \\(dev\\)"
-    optional: true
+- runFlow:
+    when:
+      visible: "Skip for now \\(dev\\)"
+    commands:
+      - tapOn: "Skip for now \\(dev\\)"
 - runFlow:
     file: dismiss_overlays.yaml
 - runFlow:

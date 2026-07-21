@@ -10,6 +10,8 @@ appId: com.prodify.app
       visible: "Open"
     commands:
       - tapOn: "Open"
-- tapOn:
-    text: "Continue"
-    optional: true
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
