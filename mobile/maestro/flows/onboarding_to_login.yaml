@@ -5,8 +5,6 @@ appId: com.prodify.app
 - tapOn: "Skip"
 - assertVisible: "Your Prodify plan"
 - tapOn: "Continue"
-- assertVisible: "Not now"
-- tapOn: "Not now"
 - extendedWaitUntil:
     visible: "Premium"
     timeout: 20000

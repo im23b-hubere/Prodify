@@ -7,8 +7,10 @@ import { ONBOARDING_COMPLETE_KEY } from "../../constants/storageKeys";
 import { apiJson } from "../../lib/client";
 import { saveOnboardingQuiz } from "../../lib/onboardingQuiz";
 import { savePendingWeeklyGoal } from "../../lib/onboardingGoalSync";
+import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
 const mockReplace = jest.fn();
+const mockUseAuth = jest.fn();
 
 jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
@@ -55,7 +57,7 @@ jest.mock("react-i18next", () => ({
 }));
 
 jest.mock("../../context/AuthContext", () => ({
-  useAuth: () => ({ token: null }),
+  useAuth: () => mockUseAuth(),
 }));
 
 jest.mock("../../components/brand/ProdifyWordmark", () => {
@@ -91,10 +93,16 @@ jest.mock("../../lib/client", () => ({
   apiJson: jest.fn(),
 }));
 
+jest.mock("../../lib/premiumAccess", () => ({
+  resolvePremiumAccess: jest.fn(),
+}));
+
 describe("OnboardingScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    mockUseAuth.mockReturnValue({ token: null, user: null });
+    (resolvePremiumAccess as jest.Mock).mockResolvedValue(false);
   });
 
   afterEach(() => {
@@ -110,7 +118,6 @@ describe("OnboardingScreen", () => {
     fireEvent.press(getByText("10"));
     fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
     fireEvent.press(getByText("onboarding.quiz.plan.cta"));
-    fireEvent.press(getByText("onboarding.notifications.notNow"));
 
     await waitFor(() => {
       expect(savePendingWeeklyGoal).toHaveBeenCalledWith(10);
@@ -125,6 +132,37 @@ describe("OnboardingScreen", () => {
     expect(mockReplace).toHaveBeenCalledWith({
       pathname: "/(auth)/register",
       params: { next: "paywall", source: "onboarding", variant: "outcome" },
+    });
+  });
+
+  it("routes existing users to login and the subscription check without replaying onboarding", () => {
+    const { getByText } = render(<OnboardingScreen />);
+
+    fireEvent.press(getByText("onboarding.existingAccount"));
+
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: "/(auth)/login",
+      params: { next: "paywall", source: "existing_account", variant: "value" },
+    });
+  });
+
+  it("sends an existing premium user to the dashboard after onboarding", async () => {
+    mockUseAuth.mockReturnValue({
+      token: "access-token",
+      user: { id: 42, is_premium: false },
+    });
+    (resolvePremiumAccess as jest.Mock).mockResolvedValue(true);
+    (apiJson as jest.Mock).mockResolvedValue(undefined);
+
+    const { getByText } = render(<OnboardingScreen />);
+    fireEvent.press(getByText("onboarding.skip"));
+    fireEvent.press(getByText("onboarding.skip"));
+    fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
+    fireEvent.press(getByText("onboarding.quiz.plan.cta"));
+
+    await waitFor(() => {
+      expect(resolvePremiumAccess).toHaveBeenCalledWith("access-token", "42");
+      expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
     });
   });
 });

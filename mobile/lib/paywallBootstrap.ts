@@ -54,12 +54,12 @@ export async function bootstrapPaywall(input: BootstrapInput): Promise<PaywallBo
   // Entitlement and StoreKit are independent sources. Resolve them together so a slow backend or
   // stale RevenueCat identity cannot leave the paywall showing skeletons for a full minute.
   const [grant, snapshot] = await Promise.all([
-    resolvePremiumGrant(input.token, input.appUserId, input.userIsPremium),
+    resolvePremiumGrant(input.token, input.appUserId, input.userIsPremium, {
+      includeRevenueCat: false,
+    }),
     getPaywallBillingSnapshot(input.appUserId ?? undefined),
   ]);
-  if (grant?.source === "revenuecat") {
-    return { kind: "premium_unlock", customerInfo: grant.customerInfo };
-  }
+  // RevenueCat customer state is already part of snapshot. Avoid a second SDK read here.
   if (grant?.source === "entitlement") {
     return { kind: "premium_unlock", customerInfo: null };
   }

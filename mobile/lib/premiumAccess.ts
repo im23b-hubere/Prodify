@@ -128,6 +128,7 @@ export async function resolvePremiumGrant(
   token: string | null,
   appUserId?: string | null,
   userIsPremium?: boolean,
+  options: { includeRevenueCat?: boolean } = {},
 ): Promise<PremiumGrant | null> {
   if (isE2eModeEnabled() || (await isDevBillingBypassActive())) {
     return {
@@ -191,7 +192,7 @@ export async function resolvePremiumGrant(
     }
   }
 
-  if (userId) {
+  if (userId && options.includeRevenueCat !== false) {
     const info = await withTimeout(
       (async () => {
         await configureRevenueCat(userId);

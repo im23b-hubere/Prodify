@@ -47,8 +47,8 @@ import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
 import { hasPremiumAccess, peekCachedHasPremiumAccess } from "../../lib/billing";
 import { loadPersistedEntitlement } from "../../lib/entitlementStorage";
-import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { savePendingWeeklyGoal } from "../../lib/onboardingGoalSync";
+import { resolvePremiumAccess } from "../../lib/premiumAccess";
 import {
   experienceLabel,
   genreLabel,
@@ -75,8 +75,7 @@ type Step =
   | "genre"
   | "producerGoal"
   | "weeklyGoal"
-  | "plan"
-  | "notifications";
+  | "plan";
 
 const EXPERIENCE_OPTIONS: {
   id: ProducerExperience;
@@ -179,7 +178,10 @@ export default function OnboardingScreen() {
   const skipPersonalization = useCallback(() => setStep("weeklyGoal"), []);
 
   const openLogin = useCallback(() => {
-    router.replace("/(auth)/login");
+    router.replace({
+      pathname: "/(auth)/login",
+      params: { next: "paywall", source: "existing_account", variant: "value" },
+    });
   }, [router]);
 
   const advanceQuiz = useCallback((next: Step) => {
@@ -238,10 +240,12 @@ export default function OnboardingScreen() {
 
       if (token && user?.id != null) {
         const userId = user.id;
-        const hasAccess =
+        const cachedAccess =
           Boolean(user.is_premium) ||
           peekCachedHasPremiumAccess(token) === true ||
           hasPremiumAccess(await loadPersistedEntitlement(userId).catch(() => null));
+        const hasAccess =
+          cachedAccess || (await resolvePremiumAccess(token, String(userId)).catch(() => false));
         if (hasAccess) {
           router.replace("/(tabs)/dashboard");
           return;
@@ -263,19 +267,6 @@ export default function OnboardingScreen() {
       setBusy(false);
     }
   }, [answers, goal, router, token, user]);
-
-  const requestNotif = useCallback(async () => {
-    setBusy(true);
-    try {
-      if (!isE2eModeEnabled()) {
-        const Notifications = await import("expo-notifications");
-        await Notifications.requestPermissionsAsync();
-      }
-      await finish();
-    } finally {
-      setBusy(false);
-    }
-  }, [finish]);
 
   const planRows = useMemo(() => {
     const rows = [];
@@ -549,8 +540,9 @@ export default function OnboardingScreen() {
             label={t("onboarding.quiz.plan.cta")}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-              setStep("notifications");
+              void finish();
             }}
+            loading={busy}
           />
         }
       >
@@ -565,31 +557,7 @@ export default function OnboardingScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.notifSafe} edges={["top", "bottom"]}>
-      <View style={styles.notifBody}>
-        <Text style={styles.notifTitle}>
-          {t("onboarding.notifications.titlePrefix")}{" "}
-          <Text style={styles.loopAccent}>{t("onboarding.notifications.titleLoop")}</Text>
-        </Text>
-        <Text style={styles.notifSubtitle}>{t("onboarding.notifications.body")}</Text>
-        <View style={styles.notifCard}>
-          <Text style={styles.notifCardTitle}>{t("onboarding.notifications.visualTitle")}</Text>
-          <Text style={styles.notifBenefit}>{t("onboarding.notifications.benefit1")}</Text>
-          <Text style={styles.notifBenefit}>{t("onboarding.notifications.benefit2")}</Text>
-          <Text style={styles.notifBenefit}>{t("onboarding.notifications.benefit3")}</Text>
-        </View>
-      </View>
-      <PrimaryButton
-        label={t("onboarding.notifications.enable")}
-        onPress={requestNotif}
-        loading={busy}
-      />
-      <Pressable style={styles.secondaryBtn} onPress={finish} disabled={busy}>
-        <Text style={styles.secondaryTxt}>{t("onboarding.notifications.notNow")}</Text>
-      </Pressable>
-    </SafeAreaView>
-  );
+  return null;
 }
 
 const styles = StyleSheet.create({

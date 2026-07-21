@@ -35,18 +35,38 @@ describe("bootstrapPaywall", () => {
     jest.clearAllMocks();
   });
 
-  it("returns premium_unlock when grant resolves to RevenueCat", async () => {
+  it("returns premium_unlock when the server entitlement is active", async () => {
     (resolvePremiumGrant as jest.Mock).mockResolvedValue({
-      source: "revenuecat",
-      customerInfo: { entitlements: { active: { app_access: {} } } },
+      source: "entitlement",
+      entitlement: { entitlement: "premium" },
+    });
+    (getPaywallBillingSnapshot as jest.Mock).mockResolvedValue({
+      customerInfo: null,
+      offering: null,
     });
 
     await expect(
       bootstrapPaywall({ token: "tok", appUserId: "1", t }),
     ).resolves.toEqual({
       kind: "premium_unlock",
-      customerInfo: { entitlements: { active: { app_access: {} } } },
+      customerInfo: null,
     });
+    expect(resolvePremiumGrant).toHaveBeenCalledWith("tok", "1", undefined, {
+      includeRevenueCat: false,
+    });
+  });
+
+  it("returns premium_unlock from the single RevenueCat customer snapshot", async () => {
+    (resolvePremiumGrant as jest.Mock).mockResolvedValue(null);
+    const customerInfo = { entitlements: { active: { app_access: {} } } };
+    (getPaywallBillingSnapshot as jest.Mock).mockResolvedValue({
+      customerInfo,
+      offering: { availablePackages: [] },
+    });
+
+    await expect(
+      bootstrapPaywall({ token: "tok", appUserId: "1", t }),
+    ).resolves.toEqual({ kind: "premium_unlock", customerInfo });
   });
 
   it("returns plans_ready when offerings include purchasable packages", async () => {

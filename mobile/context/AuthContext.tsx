@@ -200,13 +200,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!access || !refresh) {
         throw new Error(i18n.t("errors.unexpectedResponse"));
       }
-      await persistTokenPair({ access_token: access, refresh_token: refresh });
-
-      // Critical path only: identity. Everything else is background so the button unlocks fast.
+      // Verify the authenticated identity before committing tokens locally. Otherwise a transient
+      // /auth/me failure leaves the UI reporting a failed login while the next launch is signed in.
       const me = await apiJson<UserMe>("/auth/me", {
         token: access,
         timeoutMs: AUTH_IDENTITY_TIMEOUT_MS,
       });
+      await persistTokenPair({ access_token: access, refresh_token: refresh });
       setUser(me);
 
       void clearNotificationInbox().catch(() => undefined);
@@ -230,12 +230,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!access || !refresh) {
         throw new Error(i18n.t("errors.unexpectedResponse"));
       }
-      await persistTokenPair({ access_token: access, refresh_token: refresh });
-
       const me = await apiJson<UserMe>("/auth/me", {
         token: access,
         timeoutMs: AUTH_IDENTITY_TIMEOUT_MS,
       });
+      await persistTokenPair({ access_token: access, refresh_token: refresh });
       setUser(me);
 
       void clearNotificationInbox().catch(() => undefined);
