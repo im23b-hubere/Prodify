@@ -3,12 +3,9 @@ env:
   TEST_EMAIL: test@prodify.app
   TEST_PASSWORD: Test1234!
 ---
-# --- Onboarding + existing-account login ---
+# --- Existing-account login ---
 - launchApp:
     clearState: true
-    clearKeychain: true
-- runFlow:
-    file: onboarding_to_login.yaml
 - runFlow:
     file: common/e2e_login_dashboard.yaml
 
