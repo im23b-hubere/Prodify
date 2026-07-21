@@ -26,6 +26,7 @@ on:
         type: choice
         options:
           - maestro/flows/bootstrap_dashboard.yaml
+          - maestro/flows/onboarding_to_login.yaml
           - maestro/flows/smoke_test.yaml
           - maestro/flows/full_app_test.yaml
       qa_mode:
