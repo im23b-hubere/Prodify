@@ -1,5 +1,14 @@
 appId: com.prodify.app
 ---
+# iOS Keychain/SecureStore can survive an app uninstall, so clearState alone
+# does not reliably reset the persisted onboarding flag. Enter the screen
+# explicitly to make this flow deterministic on both fresh and replay runs.
+- openLink: prodify://onboarding
+- runFlow:
+    file: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 20000
 - tapOn: "Skip"
 - assertVisible: "Weekly session target"
 - tapOn: "Skip"
