@@ -51,7 +51,12 @@ async function tryRecoverExistingSubscription(appUserId: string | null): Promise
 
 /** Resolve paywall state: premium unlock, purchasable plans, or actionable error. */
 export async function bootstrapPaywall(input: BootstrapInput): Promise<PaywallBootstrapResult> {
-  const grant = await resolvePremiumGrant(input.token, input.appUserId, input.userIsPremium);
+  // Entitlement and StoreKit are independent sources. Resolve them together so a slow backend or
+  // stale RevenueCat identity cannot leave the paywall showing skeletons for a full minute.
+  const [grant, snapshot] = await Promise.all([
+    resolvePremiumGrant(input.token, input.appUserId, input.userIsPremium),
+    getPaywallBillingSnapshot(input.appUserId ?? undefined),
+  ]);
   if (grant?.source === "revenuecat") {
     return { kind: "premium_unlock", customerInfo: grant.customerInfo };
   }
@@ -59,7 +64,6 @@ export async function bootstrapPaywall(input: BootstrapInput): Promise<PaywallBo
     return { kind: "premium_unlock", customerInfo: null };
   }
 
-  const snapshot = await getPaywallBillingSnapshot(input.appUserId ?? undefined);
   if (snapshot.customerInfo && isPremiumActive(snapshot.customerInfo)) {
     return { kind: "premium_unlock", customerInfo: snapshot.customerInfo };
   }

@@ -19,14 +19,9 @@ let sdkConfigured = false;
 let configureChain: Promise<void> = Promise.resolve();
 
 const REVENUECAT_CONFIGURE_TIMEOUT_MS = 8_000;
-const REVENUECAT_READ_TIMEOUT_MS = 12_000;
+const REVENUECAT_READ_TIMEOUT_MS = 8_000;
 const REVENUECAT_PURCHASE_TIMEOUT_MS = 45_000;
-const OFFERINGS_RETRY_ATTEMPTS = 2;
-const OFFERINGS_RETRY_DELAY_MS = 1_000;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const OFFERINGS_RETRY_ATTEMPTS = 1;
 
 function withRevenueCatTimeout<T>(
   promise: Promise<T>,
@@ -144,9 +139,6 @@ async function fetchOfferingsWithRetry(appUserId?: string) {
       );
     } catch (error) {
       lastError = error;
-      if (attempt < OFFERINGS_RETRY_ATTEMPTS) {
-        await sleep(OFFERINGS_RETRY_DELAY_MS * attempt);
-      }
     }
   }
   throw lastError instanceof Error

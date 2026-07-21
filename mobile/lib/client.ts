@@ -12,6 +12,22 @@ const RETRYABLE_STATUS_CODES = new Set([429, 502, 503, 504]);
 
 /** Set from AuthProvider: clear stored token when an authenticated request returns 401. */
 let unauthorizedHandler: (() => void | Promise<void>) | null = null;
+let apiWarmup: Promise<void> | null = null;
+
+/** Wake the production API while the user is still entering credentials. */
+export function warmApi(): Promise<void> {
+  if (apiWarmup) return apiWarmup;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90_000);
+  apiWarmup = fetch(`${API_BASE_URL}/health`, { signal: controller.signal })
+    .then(() => undefined)
+    .catch(() => undefined)
+    .finally(() => {
+      clearTimeout(timeoutId);
+      apiWarmup = null;
+    });
+  return apiWarmup;
+}
 
 export function setApiUnauthorizedHandler(handler: (() => void | Promise<void>) | null): void {
   unauthorizedHandler = handler;

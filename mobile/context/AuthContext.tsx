@@ -2,7 +2,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { ONBOARDING_COMPLETE_KEY } from "../constants/storageKeys";
-import { ApiError, apiJson, setApiUnauthorizedHandler, setAuthRefreshBridge } from "../lib/client";
+import {
+  ApiError,
+  apiJson,
+  setApiUnauthorizedHandler,
+  setAuthRefreshBridge,
+  warmApi,
+} from "../lib/client";
 import i18n from "../lib/i18n";
 import {
   clearTokenPair,
@@ -125,6 +131,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (hydrated && !token) void warmApi();
+  }, [hydrated, token]);
 
   useEffect(() => {
     setAuthRefreshBridge(() => readRefreshToken(), persistTokenPair);
