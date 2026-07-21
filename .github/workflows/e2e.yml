@@ -346,10 +346,29 @@ jobs:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
         run: |
           set -euo pipefail
-          maestro --device "${{ steps.sim.outputs.device_udid }}" test \
-            -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
-            -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
-            "${{ steps.flow.outputs.path }}"
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          cmd = [
+              "maestro",
+              "--device",
+              "${{ steps.sim.outputs.device_udid }}",
+              "test",
+              "-e",
+              f"TEST_EMAIL={os.environ['E2E_TEST_EMAIL']}",
+              "-e",
+              f"TEST_PASSWORD={os.environ['E2E_TEST_PASSWORD']}",
+              "${{ steps.flow.outputs.path }}",
+          ]
+          try:
+              completed = subprocess.run(cmd, timeout=1500)
+          except subprocess.TimeoutExpired:
+              print("Maestro timed out after 25 minutes.", file=sys.stderr)
+              sys.exit(124)
+          sys.exit(completed.returncode)
+          PY
 
       - name: Upload Maestro screenshots / reports
         if: always()

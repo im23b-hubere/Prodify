@@ -2,7 +2,7 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
 
 from app.config import settings
 
@@ -59,7 +59,7 @@ def decode_access_token_claims(token: str) -> tuple[str | None, int]:
         except (TypeError, ValueError):
             tv = 0
         return sub_s, tv
-    except JWTError:
+    except jwt.InvalidTokenError:
         return None, 0
 
 

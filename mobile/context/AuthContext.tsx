@@ -12,8 +12,8 @@ import {
 } from "../lib/authTokenStorage";
 import {
   clearEntitlementCache,
-  fetchEntitlement,
-  hasPremiumAccess,
+  clearEntitlementCacheForUser,
+  seedEntitlementCache,
   syncEntitlement,
 } from "../lib/billing";
 import { clearLevelCatalogCache } from "../lib/progressionLevelCatalog";
@@ -55,6 +55,51 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 type TokenPair = { access_token: string; refresh_token: string };
+
+// Render can need close to a minute to wake after an idle period. Auth is the one flow where
+// aborting early turns a healthy cold start into a misleading "network error" for the user.
+const AUTH_COLD_START_TIMEOUT_MS = 90_000;
+const AUTH_IDENTITY_TIMEOUT_MS = 30_000;
+
+/**
+ * Billing must never block login/register UX.
+ * Configure RevenueCat + sync entitlement in the background after auth succeeds.
+ */
+function syncBillingInBackground(access: string, me: UserMe): void {
+  if (isE2eModeEnabled()) return;
+
+  if (me.is_premium) {
+    seedEntitlementCache(
+      access,
+      {
+        provider: "server",
+        entitlement: "premium",
+        trial_active: false,
+        expires_at: null,
+      },
+      me.id,
+    );
+  }
+
+  void (async () => {
+    try {
+      await configureRevenueCat(String(me.id));
+      const info = await getRevenueCatCustomerInfo(String(me.id));
+      const premium = isPremiumActive(info);
+      const synced = await syncEntitlement(access, {
+        app_user_id: String(me.id),
+        entitlement: premium ? "premium" : "free",
+        trial_active: false,
+        expires_at: activeEntitlementExpiration(info),
+      }).catch(() => null);
+      if (premium && synced) {
+        seedEntitlementCache(access, synced, me.id);
+      }
+    } catch {
+      /* best effort — tabs/paywall resolve access independently */
+    }
+  })();
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
@@ -127,13 +172,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser().catch(() => setUser(null));
   }, [hydrated, token, refreshUser]);
 
+  useEffect(() => {
+    if (!token || user?.id == null || isE2eModeEnabled()) return;
+    void configureRevenueCat(String(user.id)).catch(() => undefined);
+  }, [token, user?.id]);
+
   const signIn = useCallback(
     async (email: string, password: string) => {
-      await clearNotificationInbox().catch(() => undefined);
       const data = await apiJson<Partial<TokenPair>>("/auth/login", {
         method: "POST",
         body: { email, password },
-        timeoutMs: isE2eModeEnabled() ? 60_000 : 20_000,
+        timeoutMs: AUTH_COLD_START_TIMEOUT_MS,
         retries: isE2eModeEnabled() ? 1 : 0,
       });
       const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
@@ -142,49 +191,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(i18n.t("errors.unexpectedResponse"));
       }
       await persistTokenPair({ access_token: access, refresh_token: refresh });
-      await syncPendingWeeklyGoal(access).catch(() => undefined);
-      try {
-        const me = await apiJson<UserMe>("/auth/me", { token: access });
-        setUser(me);
-        await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
-        if (!isE2eModeEnabled()) {
-          if (__DEV__) {
-            const ent = await fetchEntitlement(access);
-            if (!hasPremiumAccess(ent)) {
-              await configureRevenueCat(String(me.id));
-              const info = await getRevenueCatCustomerInfo(String(me.id));
-              await syncEntitlement(access, {
-                app_user_id: String(me.id),
-                entitlement: isPremiumActive(info) ? "premium" : "free",
-                trial_active: false,
-                expires_at: activeEntitlementExpiration(info),
-              });
-            }
-          } else {
-            await configureRevenueCat(String(me.id));
-            const info = await getRevenueCatCustomerInfo(String(me.id));
-            await syncEntitlement(access, {
-              app_user_id: String(me.id),
-              entitlement: isPremiumActive(info) ? "premium" : "free",
-              trial_active: false,
-              expires_at: activeEntitlementExpiration(info),
-            });
-          }
-        }
-      } catch {
-        /* best effort: auth succeeds even if billing sync fails */
-      }
+
+      // Critical path only: identity. Everything else is background so the button unlocks fast.
+      const me = await apiJson<UserMe>("/auth/me", {
+        token: access,
+        timeoutMs: AUTH_IDENTITY_TIMEOUT_MS,
+      });
+      setUser(me);
+
+      void clearNotificationInbox().catch(() => undefined);
+      void setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
+      void syncPendingWeeklyGoal(access).catch(() => undefined);
+      syncBillingInBackground(access, me);
     },
     [persistTokenPair],
   );
 
   const signUp = useCallback(
     async (email: string, username: string, password: string) => {
-      await clearNotificationInbox().catch(() => undefined);
       const data = await apiJson<Partial<TokenPair>>("/auth/register", {
         method: "POST",
         body: { email, username, password },
-        timeoutMs: 20_000,
+        timeoutMs: AUTH_COLD_START_TIMEOUT_MS,
         retries: 0,
       });
       const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
@@ -193,27 +221,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(i18n.t("errors.unexpectedResponse"));
       }
       await persistTokenPair({ access_token: access, refresh_token: refresh });
-      await syncPendingWeeklyGoal(access).catch(() => undefined);
-      try {
-        const me = await apiJson<UserMe>("/auth/me", { token: access });
-        setUser(me);
-        await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
-        await configureRevenueCat(String(me.id));
-        const info = await getRevenueCatCustomerInfo(String(me.id));
-        await syncEntitlement(access, {
-          app_user_id: String(me.id),
-          entitlement: isPremiumActive(info) ? "premium" : "free",
-          trial_active: false,
-          expires_at: activeEntitlementExpiration(info),
-        });
-      } catch {
-        /* best effort: auth succeeds even if billing sync fails */
-      }
+
+      const me = await apiJson<UserMe>("/auth/me", {
+        token: access,
+        timeoutMs: AUTH_IDENTITY_TIMEOUT_MS,
+      });
+      setUser(me);
+
+      void clearNotificationInbox().catch(() => undefined);
+      void setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
+      void syncPendingWeeklyGoal(access).catch(() => undefined);
+      syncBillingInBackground(access, me);
     },
     [persistTokenPair],
   );
 
   const signOut = useCallback(async () => {
+    const previousUserId = user?.id;
     const t = (token?.trim() || (await readAccessToken())) ?? "";
     if (t) {
       await apiJson("/auth/logout", { method: "POST", token: t }).catch(() => undefined);
@@ -226,13 +250,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearDevBillingBypass();
     await configureRevenueCat(undefined).catch(() => undefined);
     clearEntitlementCache();
+    if (previousUserId != null) {
+      await clearEntitlementCacheForUser(previousUserId).catch(() => undefined);
+    }
     clearProgressionSyncCache();
     clearLevelCatalogCache();
     setToken(null);
     setUser(null);
-  }, [token]);
+  }, [token, user?.id]);
 
   const deleteAccount = useCallback(async () => {
+    const previousUserId = user?.id;
     const trimmed = (token?.trim() || (await readAccessToken()) || "").trim();
     if (!trimmed) {
       throw new Error(i18n.t("errors.unexpectedResponse"));
@@ -247,11 +275,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearDevBillingBypass();
     await configureRevenueCat(undefined).catch(() => undefined);
     clearEntitlementCache();
+    if (previousUserId != null) {
+      await clearEntitlementCacheForUser(previousUserId).catch(() => undefined);
+    }
     clearProgressionSyncCache();
     clearLevelCatalogCache();
     setToken(null);
     setUser(null);
-  }, [token]);
+  }, [token, user?.id]);
 
   const value = useMemo(
     () => ({

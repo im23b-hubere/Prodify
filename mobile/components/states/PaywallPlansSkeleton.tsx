@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { colors, radii, spacing, ui } from "../../constants/theme";
+import { radii, spacing, ui } from "../../constants/theme";
 
 /**
  * Loading placeholder for the paywall purchase options.

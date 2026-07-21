@@ -128,7 +128,7 @@ jobs:
           node -e "const fs=require('fs');
           const eas=JSON.parse(fs.readFileSync('eas.json','utf8'));
           const env=eas?.build?.production?.env||{};
-          const required=['EXPO_PUBLIC_APP_ENV','EXPO_PUBLIC_ENV','EXPO_PUBLIC_API_URL','EXPO_PUBLIC_SENTRY_DSN'];
+          const required=['EXPO_PUBLIC_APP_ENV','EXPO_PUBLIC_ENV','EXPO_PUBLIC_API_URL'];
           const missing=required.filter((k)=>!String(env[k]||'').trim());
           if(missing.length){console.error('Missing production env values in eas.json: '+missing.join(', '));process.exit(1);}
           console.log('Production env defaults configured in eas.json.');"

@@ -1,6 +1,7 @@
 {
   "brand": "Prodify",
   "auth": {
+    "connectionHint": "Connecting securely. This can take a moment when the service is waking up.",
     "stack": {
       "login": "Login",
       "register": "Register"
@@ -39,6 +40,7 @@
   },
   "onboarding": {
     "skip": "Skip",
+    "existingAccount": "Sign in",
     "next": "Next",
     "continue": "Continue",
     "footerPrivacy": "Privacy policy",
@@ -125,6 +127,7 @@
         "title": "Weekly session target",
         "subtitle": "Pick a number you can defend every week.",
         "perWeek": "sessions / week",
+        "optionLabel": "{{count}} sessions per week",
         "session": "session",
         "sessions": "sessions",
         "cta": "See my plan",
@@ -394,7 +397,7 @@
     },
     "errors": {
       "storeUnavailable": "Store currently unavailable. You can continue and try again later.",
-      "appleProductsUnavailable": "Apple has not returned your subscription products yet. In App Store Connect, link both subscriptions to app version 1.0.1, confirm the Paid Apps Agreement is active, and enable In-App Purchase for com.prodify.app in Apple Developer. Then install the latest TestFlight build and try again.",
+      "appleProductsUnavailable": "We could not load subscription plans from Apple right now. If you already subscribe, tap Restore purchases below. Otherwise check your connection and try again in a moment.",
       "missingConfig": "Billing is not configured in this build (missing RevenueCat API key).",
       "expoGoNotSupported": "In-app purchases are not available in Expo Go. Use a development or production build to view plans.",
       "loadOfferings": "Failed to load offerings.",

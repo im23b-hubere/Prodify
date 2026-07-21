@@ -32,7 +32,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { OnboardingPlanSummary } from "../../components/onboarding/OnboardingPlanSummary";
 import { OnboardingQuizShell } from "../../components/onboarding/OnboardingQuizShell";
 import { QuizOptionCard } from "../../components/onboarding/QuizOptionCard";
@@ -46,6 +45,8 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { apiJson } from "../../lib/client";
+import { hasPremiumAccess, peekCachedHasPremiumAccess } from "../../lib/billing";
+import { loadPersistedEntitlement } from "../../lib/entitlementStorage";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { savePendingWeeklyGoal } from "../../lib/onboardingGoalSync";
 import {
@@ -70,7 +71,6 @@ const ONBOARDING_VISUALS = [
 
 type Step =
   | "intro"
-  | "welcome"
   | "experience"
   | "genre"
   | "producerGoal"
@@ -105,7 +105,7 @@ const PRODUCER_GOAL_OPTIONS: { id: ProducerGoal; icon: typeof Target }[] = [
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<Step>("intro");
   const [introIndex, setIntroIndex] = useState(0);
@@ -175,7 +175,12 @@ export default function OnboardingScreen() {
     [dailyTarget, t],
   );
 
-  const goToWeeklyGoal = useCallback(() => setStep("weeklyGoal"), []);
+  const skipIntro = useCallback(() => setStep("experience"), []);
+  const skipPersonalization = useCallback(() => setStep("weeklyGoal"), []);
+
+  const openLogin = useCallback(() => {
+    router.replace("/(auth)/login");
+  }, [router]);
 
   const advanceQuiz = useCallback((next: Step) => {
     setTimeout(() => setStep(next), 200);
@@ -230,6 +235,19 @@ export default function OnboardingScreen() {
       }
       await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "1").catch(() => undefined);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+
+      if (token && user?.id != null) {
+        const userId = user.id;
+        const hasAccess =
+          Boolean(user.is_premium) ||
+          peekCachedHasPremiumAccess(token) === true ||
+          hasPremiumAccess(await loadPersistedEntitlement(userId).catch(() => null));
+        if (hasAccess) {
+          router.replace("/(tabs)/dashboard");
+          return;
+        }
+      }
+
       if (!token) {
         router.replace({
           pathname: "/(auth)/register",
@@ -244,7 +262,7 @@ export default function OnboardingScreen() {
     } finally {
       setBusy(false);
     }
-  }, [answers, goal, router, token]);
+  }, [answers, goal, router, token, user]);
 
   const requestNotif = useCallback(async () => {
     setBusy(true);
@@ -305,12 +323,20 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.introSafe} edges={["top", "bottom"]}>
         <View style={styles.introTopRow}>
-          <Pressable accessibilityRole="button" onPress={goToWeeklyGoal}>
-            <Text style={styles.introSkip}>{t("onboarding.skip")}</Text>
+          <Pressable accessibilityRole="button" hitSlop={12} onPress={openLogin}>
+            <Text style={styles.introSignIn}>{t("onboarding.existingAccount")}</Text>
           </Pressable>
-          <Text style={styles.introDots}>
-            {introIndex + 1}/{INTRO_SLIDE_COUNT}
-          </Text>
+          <View style={styles.introTopRight}>
+            <Text
+              accessibilityLabel={`${introIndex + 1} of ${INTRO_SLIDE_COUNT}`}
+              style={styles.introDots}
+            >
+              {introIndex + 1}/{INTRO_SLIDE_COUNT}
+            </Text>
+            <Pressable accessibilityRole="button" hitSlop={12} onPress={skipIntro}>
+              <Text style={styles.introSkip}>{t("onboarding.skip")}</Text>
+            </Pressable>
+          </View>
         </View>
         <Animated.View
           key={`intro-${introIndex}`}
@@ -361,35 +387,13 @@ export default function OnboardingScreen() {
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
               if (introIndex >= introSlides.length - 1) {
-                setStep("welcome");
+                setStep("experience");
                 return;
               }
               setIntroIndex((current) => current + 1);
             }}
           />
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (step === "welcome") {
-    return (
-      <SafeAreaView style={styles.welcomeSafe} edges={["top", "bottom"]}>
-        <Pressable accessibilityRole="button" style={styles.welcomeSkip} onPress={goToWeeklyGoal}>
-          <Text style={styles.welcomeSkipTxt}>{t("onboarding.skip")}</Text>
-        </Pressable>
-        <View style={styles.welcomeBody}>
-          <ProdifyWordmark size="hero" />
-          <Text style={styles.welcomeTitle}>{t("onboarding.quiz.welcome.title")}</Text>
-          <Text style={styles.welcomeSubtitle}>{t("onboarding.quiz.welcome.subtitle")}</Text>
-        </View>
-        <PrimaryButton
-          label={t("onboarding.quiz.welcome.cta")}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-            setStep("experience");
-          }}
-        />
       </SafeAreaView>
     );
   }
@@ -401,8 +405,11 @@ export default function OnboardingScreen() {
         totalSteps={QUIZ_STEPS}
         title={t("onboarding.quiz.experience.title")}
         subtitle={t("onboarding.quiz.experience.subtitle")}
-        onBack={() => setStep("welcome")}
-        onSkip={goToWeeklyGoal}
+        onBack={() => {
+          setIntroIndex(INTRO_SLIDE_COUNT - 1);
+          setStep("intro");
+        }}
+        onSkip={skipPersonalization}
         skipLabel={t("onboarding.skip")}
       >
         {EXPERIENCE_OPTIONS.map((opt, index) => (
@@ -428,7 +435,7 @@ export default function OnboardingScreen() {
         title={t("onboarding.quiz.genre.title")}
         subtitle={t("onboarding.quiz.genre.subtitle")}
         onBack={() => setStep("experience")}
-        onSkip={goToWeeklyGoal}
+        onSkip={skipPersonalization}
         skipLabel={t("onboarding.skip")}
       >
         {GENRE_OPTIONS.map((opt, index) => (
@@ -453,7 +460,7 @@ export default function OnboardingScreen() {
         title={t("onboarding.quiz.producerGoal.title")}
         subtitle={t("onboarding.quiz.producerGoal.subtitle")}
         onBack={() => setStep("genre")}
-        onSkip={goToWeeklyGoal}
+        onSkip={skipPersonalization}
         skipLabel={t("onboarding.skip")}
       >
         {PRODUCER_GOAL_OPTIONS.map((opt, index) => (
@@ -477,7 +484,7 @@ export default function OnboardingScreen() {
         totalSteps={QUIZ_STEPS}
         title={t("onboarding.quiz.weeklyGoal.title")}
         subtitle={t("onboarding.quiz.weeklyGoal.subtitle")}
-        onBack={() => setStep(answers.producerGoal ? "producerGoal" : "welcome")}
+        onBack={() => setStep(answers.producerGoal ? "producerGoal" : "experience")}
         onSkip={() => setStep("plan")}
         skipLabel={t("onboarding.skip")}
         footer={
@@ -495,6 +502,9 @@ export default function OnboardingScreen() {
             {GOALS.map((g) => (
               <Pressable
                 key={g}
+                accessibilityRole="button"
+                accessibilityState={{ selected: goal === g }}
+                accessibilityLabel={t("onboarding.quiz.weeklyGoal.optionLabel", { count: g })}
                 style={[styles.goalCard, goal === g && styles.goalCardOn]}
                 onPress={() => {
                   Haptics.selectionAsync().catch(() => undefined);
@@ -594,6 +604,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  introTopRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  introSignIn: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   introSkip: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
@@ -638,42 +658,6 @@ const styles = StyleSheet.create({
   introPageDotActive: {
     width: 24,
     backgroundColor: colors.primary,
-  },
-  welcomeSafe: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    justifyContent: "space-between",
-  },
-  welcomeSkip: { alignSelf: "flex-end" },
-  welcomeSkipTxt: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  welcomeBody: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.sm,
-  },
-  welcomeTitle: {
-    marginTop: spacing.lg,
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 30,
-    lineHeight: 36,
-    textAlign: "center",
-    letterSpacing: -0.8,
-  },
-  welcomeSubtitle: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.body,
-    textAlign: "center",
-    lineHeight: 22,
-    maxWidth: 320,
   },
   goalScroll: { gap: spacing.md, paddingBottom: spacing.sm },
   goalGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
@@ -30,9 +30,19 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showConnectionHint, setShowConnectionHint] = useState(false);
   const pendingPaywall = params.next === "paywall";
   const paywallVariant =
     params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
+
+  useEffect(() => {
+    if (!loading) {
+      setShowConnectionHint(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowConnectionHint(true), 4_000);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   async function onSubmit() {
     if (loading) return;
@@ -131,6 +141,11 @@ export default function RegisterScreen() {
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
+          {showConnectionHint ? (
+            <Text accessibilityLiveRegion="polite" style={styles.connectionHint}>
+              {t("auth.connectionHint")}
+            </Text>
+          ) : null}
 
           <PrimaryButton
             label={t("auth.register.createAccount")}
@@ -223,6 +238,14 @@ const styles = StyleSheet.create({
     color: colors.danger,
     marginBottom: 12,
     fontSize: 14,
+  },
+  connectionHint: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+    textAlign: "center",
   },
   linkWrap: {
     marginTop: 18,

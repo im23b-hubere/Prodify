@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from "expo-router";
 import { BarChart3, LayoutGrid, UserRound, Users } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentPropsWithoutRef } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
@@ -9,12 +9,13 @@ import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useStreakReconcileOnForeground } from "../../hooks/useStreakReconcileOnForeground";
-import { peekCachedHasPremiumAccess } from "../../lib/billing";
+import { peekCachedHasPremiumAccess, peekStoredHasPremiumAccess } from "../../lib/billing";
 import { isDevBillingBypassActive } from "../../lib/devBillingBypass";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
-const ENTITLEMENT_BOOT_TIMEOUT_MS = 7_000;
+/** Hard cap so cold starts never sit on the splash longer than this. */
+const ENTITLEMENT_BOOT_TIMEOUT_MS = 6_000;
 
 type TabIconProps = {
   focused: boolean;
@@ -44,11 +45,10 @@ function timeoutAccessFallback(ms: number, fallback: boolean): Promise<boolean> 
   });
 }
 
-function TabBarButton({
-  testID,
-  ...props
-}: BottomTabBarButtonProps & { testID: string }) {
-  return <Pressable {...props} testID={testID} accessibilityRole="button" />;
+type PressableProps = ComponentPropsWithoutRef<typeof Pressable>;
+
+function TabBarButton({ testID, ...props }: BottomTabBarButtonProps & { testID: string }) {
+  return <Pressable {...(props as PressableProps)} testID={testID} accessibilityRole="button" />;
 }
 
 export default function TabsLayout() {
@@ -61,57 +61,55 @@ export default function TabsLayout() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!token) {
-      setHasAccess(null);
-      setEntitlementLoading(false);
-      return;
-    }
 
-    if (isE2eModeEnabled()) {
-      setHasAccess(true);
-      setEntitlementLoading(false);
-      return;
-    }
+    async function bootstrapAccess() {
+      if (!token) {
+        setHasAccess(null);
+        setEntitlementLoading(false);
+        return;
+      }
 
-    void isDevBillingBypassActive()
-      .then((bypass) => {
-        if (cancelled || !bypass) return;
+      if (isE2eModeEnabled()) {
         setHasAccess(true);
         setEntitlementLoading(false);
-      })
-      .catch(() => undefined);
+        return;
+      }
 
-    const cachedAccess = peekCachedHasPremiumAccess(token);
-    const fastAccess = user?.is_premium ? true : cachedAccess;
-    if (fastAccess !== null) {
-      // Fast path: show UI from cache; refresh billing in background (b92b637).
-      setHasAccess(fastAccess);
+      const bypass = await isDevBillingBypassActive().catch(() => false);
+      if (cancelled) return;
+      if (bypass) {
+        setHasAccess(true);
+        setEntitlementLoading(false);
+        return;
+      }
+
+      let fastAccess: boolean | null = user?.is_premium ? true : peekCachedHasPremiumAccess(token);
+      if (fastAccess == null && user?.id != null) {
+        const storedPremium = await peekStoredHasPremiumAccess(user.id).catch(() => false);
+        if (cancelled) return;
+        if (storedPremium) {
+          fastAccess = true;
+        }
+      }
+
+      if (fastAccess !== null) {
+        setHasAccess(fastAccess);
+        setEntitlementLoading(false);
+      } else {
+        setHasAccess(null);
+        setEntitlementLoading(true);
+      }
+
+      const resolved = await Promise.race([
+        resolvePremiumAccess(token, user?.id != null ? String(user.id) : null),
+        timeoutAccessFallback(ENTITLEMENT_BOOT_TIMEOUT_MS, fastAccess === true),
+      ]);
+      if (cancelled) return;
+      setHasAccess(resolved);
       setEntitlementLoading(false);
-    } else {
-      setHasAccess(null);
-      setEntitlementLoading(true);
     }
 
-    void Promise.race([
-      resolvePremiumAccess(token, user?.id != null ? String(user.id) : null),
-      timeoutAccessFallback(ENTITLEMENT_BOOT_TIMEOUT_MS, fastAccess === true),
-    ])
-      .then((access) => {
-        if (!cancelled) {
-          setHasAccess(access);
-        }
-      })
-      .catch(async () => {
-        if (!cancelled) {
-          const bypass = await isDevBillingBypassActive().catch(() => false);
-          setHasAccess(bypass || fastAccess === true);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setEntitlementLoading(false);
-        }
-      });
+    void bootstrapAccess();
     return () => {
       cancelled = true;
     };

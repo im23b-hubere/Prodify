@@ -15,16 +15,14 @@ import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../lib/client";
-import { resolvePaywallPackages } from "../lib/billingProducts";
 import { seedEntitlementCache, syncEntitlement } from "../lib/billing";
 import { setDevBillingBypass } from "../lib/devBillingBypass";
 import { isE2eModeEnabled } from "../lib/e2eMode";
+import { bootstrapPaywall } from "../lib/paywallBootstrap";
 import { replaceWithPendingDeepLinkOrDashboard } from "../lib/pendingDeepLink";
 import { resolvePaywallExitRoute, type PaywallSource } from "../lib/postAuthNavigation";
 import {
   activeEntitlementExpiration,
-  configureRevenueCat,
-  getDefaultOffering,
   getRevenueCatCustomerInfo,
   isPremiumActive,
   purchaseRevenueCatPackage,
@@ -32,11 +30,9 @@ import {
 } from "../lib/revenuecat";
 import { loadOnboardingQuiz } from "../lib/onboardingQuiz";
 import {
-  isOfferingsErrorKey,
   isPaymentPendingError,
   isPurchaseAlreadyOwnedError,
   isPurchaseCancelledError,
-  resolveOfferingsLoadError,
 } from "../lib/paywallErrors";
 
 type Variant = "value" | "outcome" | "social_proof";
@@ -167,29 +163,38 @@ export default function PaywallScreen() {
   }, [source, token]);
 
   const finalizePremiumUnlock = useCallback(
-    async (info: CustomerInfo) => {
+    async (info: CustomerInfo | null, expiresAt?: string | null) => {
+      const resolvedExpires = info ? activeEntitlementExpiration(info) : (expiresAt ?? null);
       if (token) {
-        seedEntitlementCache(token, {
-          provider: "revenuecat",
-          entitlement: "premium",
-          trial_active: false,
-          expires_at: activeEntitlementExpiration(info),
-        });
+        seedEntitlementCache(
+          token,
+          {
+            provider: "revenuecat",
+            entitlement: "premium",
+            trial_active: false,
+            expires_at: resolvedExpires,
+          },
+          appUserId ? Number.parseInt(appUserId, 10) : null,
+        );
       }
       if (token && appUserId) {
         const synced = await syncEntitlement(token, {
           app_user_id: appUserId,
           entitlement: "premium",
           trial_active: false,
-          expires_at: activeEntitlementExpiration(info),
+          expires_at: resolvedExpires,
         }).catch(() => null);
         if (!synced || synced.entitlement !== "premium") {
-          seedEntitlementCache(token, {
-            provider: "revenuecat",
-            entitlement: "premium",
-            trial_active: false,
-            expires_at: activeEntitlementExpiration(info),
-          });
+          seedEntitlementCache(
+            token,
+            {
+              provider: "revenuecat",
+              entitlement: "premium",
+              trial_active: false,
+              expires_at: resolvedExpires,
+            },
+            Number.parseInt(appUserId, 10),
+          );
         }
         await refreshUser().catch(() => undefined);
       }
@@ -201,7 +206,7 @@ export default function PaywallScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadOfferings() {
+    async function loadPaywall() {
       try {
         if (expoGoPreviewMode) {
           setPurchaseEnabled(false);
@@ -212,6 +217,7 @@ export default function PaywallScreen() {
           return;
         }
         setLoading(true);
+        setError(null);
         const hasApiKey = Boolean(getExpoPublicRevenueCatApiKey());
         if (!hasApiKey) {
           setPurchaseEnabled(false);
@@ -223,47 +229,45 @@ export default function PaywallScreen() {
           setError(t("paywall.errors.expoGoNotSupported"));
           return;
         }
-        await configureRevenueCat(appUserId ?? undefined);
-        // Pre-check current entitlement, but never let a transient network
-        // failure here block the offerings — otherwise the purchase buttons
-        // stay permanently disabled after a hiccup.
-        try {
-          const info = await getRevenueCatCustomerInfo(appUserId ?? undefined);
-          if (cancelled) return;
-          if (isPremiumActive(info)) {
-            await finalizePremiumUnlock(info);
-            return;
-          }
-        } catch {
-          // Ignore and continue to load purchasable packages.
-        }
-        const offering = await getDefaultOffering(appUserId ?? undefined);
+
+        const result = await bootstrapPaywall({
+          token,
+          appUserId,
+          userIsPremium: Boolean(user?.is_premium),
+          t,
+        });
         if (cancelled) return;
-        const pkgs = offering?.availablePackages ?? [];
-        const { weekly: resolvedWeekly, sixMonth: resolvedSixMonth, purchasable } =
-          resolvePaywallPackages(pkgs);
-        setWeeklyPkg(resolvedWeekly);
-        setSixMonthPkg(resolvedSixMonth);
-        setPurchaseEnabled(purchasable.length > 0);
-        if (!purchasable.length) {
-          setError(t("paywall.errors.appleProductsUnavailable"));
-        } else {
-          setError(null);
+
+        if (result.kind === "premium_unlock") {
+          await finalizePremiumUnlock(result.customerInfo);
+          return;
         }
+
+        if (result.kind === "plans_ready") {
+          setWeeklyPkg(result.weekly);
+          setSixMonthPkg(result.sixMonth);
+          setPurchaseEnabled(result.purchasable.length > 0);
+          setError(null);
+          return;
+        }
+
+        setPurchaseEnabled(false);
+        setWeeklyPkg(null);
+        setSixMonthPkg(null);
+        setError(result.message);
       } catch (e) {
         if (cancelled) return;
         setPurchaseEnabled(false);
-        const resolved = resolveOfferingsLoadError(e, t("paywall.errors.loadOfferings"));
-        setError(isOfferingsErrorKey(resolved) ? t(`paywall.errors.${resolved}`) : resolved);
+        setError(e instanceof Error ? e.message : t("paywall.errors.loadOfferings"));
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    void loadOfferings();
+    void loadPaywall();
     return () => {
       cancelled = true;
     };
-  }, [appUserId, expoGoPreviewMode, finalizePremiumUnlock, isExpoGo, reloadKey, t]);
+  }, [appUserId, expoGoPreviewMode, finalizePremiumUnlock, isExpoGo, reloadKey, t, token, user?.is_premium]);
 
   async function recoverExistingSubscription(showFailureAlert: boolean): Promise<boolean> {
     const customerInfo = await getRevenueCatCustomerInfo(appUserId ?? undefined).catch(() => null);

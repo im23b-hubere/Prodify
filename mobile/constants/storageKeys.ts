@@ -35,3 +35,6 @@ export const NOTIFICATION_SETTINGS_KEY = "prodify_notification_settings_v1";
 
 /** Expo Go dev only: skip paywall locally without Store purchase. */
 export const DEV_BILLING_BYPASS_KEY = "prodify_dev_billing_bypass_v1";
+
+/** Per-user premium entitlement snapshot (survives cold starts). */
+export const ENTITLEMENT_PERSISTENCE_KEY = "prodify_entitlement_v1";

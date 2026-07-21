@@ -8,10 +8,6 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
 const BASE_RETRY_DELAY_MS = 600;
 const REFRESH_ACCESS_TIMEOUT_MS = 12_000;
-const PRODUCTION_BASE_FALLBACKS = [
-  "https://prodify-api-46b1.onrender.com",
-  "https://api.prodify.app",
-];
 const RETRYABLE_STATUS_CODES = new Set([429, 502, 503, 504]);
 
 /** Set from AuthProvider: clear stored token when an authenticated request returns 401. */
@@ -84,10 +80,6 @@ export type ApiMultipartOptions = {
   signal?: AbortSignal;
 };
 
-function normalizeBaseUrl(url: string): string {
-  return url.trim().replace(/\/+$/, "");
-}
-
 function parseHostFromBaseUrl(baseUrl: string): string {
   try {
     const parsed = new URL(baseUrl);
@@ -129,19 +121,6 @@ function canRetryMethod(method: string, retryUnsafeMethods?: boolean | string[])
   if (retryUnsafeMethods === true) return true;
   const allowed = new Set(retryUnsafeMethods.map((value) => value.toUpperCase()));
   return allowed.has(method);
-}
-
-function nextProductionFallbackBaseUrl(currentBaseUrl: string, tried: string[]): string | null {
-  const normalizedCurrent = normalizeBaseUrl(currentBaseUrl);
-  const triedSet = new Set(tried.map(normalizeBaseUrl));
-  triedSet.add(normalizedCurrent);
-  for (const candidate of PRODUCTION_BASE_FALLBACKS) {
-    const normalizedCandidate = normalizeBaseUrl(candidate);
-    if (!triedSet.has(normalizedCandidate)) {
-      return normalizedCandidate;
-    }
-  }
-  return null;
 }
 
 function inferDevFallbackBaseUrl(): string | null {
@@ -315,25 +294,6 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
           aborted.name = "AbortError";
           throw aborted;
         }
-        if (!__DEV__) {
-          const fallbackBaseUrl = nextProductionFallbackBaseUrl(baseUrl, triedBaseUrls);
-          if (fallbackBaseUrl) {
-            console.warn(`[api] Request timeout on ${baseUrl}, retrying via ${fallbackBaseUrl}`);
-            addNetworkBreadcrumb({
-              method,
-              path,
-              timeoutMs,
-              host,
-              fallbackUsed: true,
-              reason: "timeout_fallback_host",
-            });
-            return apiJson<T>(path, {
-              ...opts,
-              _baseUrl: fallbackBaseUrl,
-              _triedBaseUrls: [...triedBaseUrls, baseUrl],
-            });
-          }
-        }
         addNetworkBreadcrumb({
           method,
           path,
@@ -352,25 +312,6 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
               `[api] Primary API unreachable (${baseUrl}), retrying via ${fallbackBaseUrl}`,
             );
             return apiJson<T>(path, { ...opts, _baseUrl: fallbackBaseUrl });
-          }
-        }
-        if (!__DEV__) {
-          const fallbackBaseUrl = nextProductionFallbackBaseUrl(baseUrl, triedBaseUrls);
-          if (fallbackBaseUrl) {
-            console.warn(`[api] Network failure on ${baseUrl}, retrying via ${fallbackBaseUrl}`);
-            addNetworkBreadcrumb({
-              method,
-              path,
-              timeoutMs,
-              host,
-              fallbackUsed: true,
-              reason: "network_fallback_host",
-            });
-            return apiJson<T>(path, {
-              ...opts,
-              _baseUrl: fallbackBaseUrl,
-              _triedBaseUrls: [...triedBaseUrls, baseUrl],
-            });
           }
         }
         addNetworkBreadcrumb({

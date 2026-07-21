@@ -104,6 +104,8 @@ describe("OnboardingScreen", () => {
   it("skips quiz to weekly goal and routes anonymous users to account creation before paywall", async () => {
     const { getByText } = render(<OnboardingScreen />);
 
+    // Skip the marketing carousel, then skip the optional personalization questions.
+    fireEvent.press(getByText("onboarding.skip"));
     fireEvent.press(getByText("onboarding.skip"));
     fireEvent.press(getByText("10"));
     fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));

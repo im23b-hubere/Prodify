@@ -19,10 +19,10 @@ let sdkConfigured = false;
 let configureChain: Promise<void> = Promise.resolve();
 
 const REVENUECAT_CONFIGURE_TIMEOUT_MS = 8_000;
-const REVENUECAT_READ_TIMEOUT_MS = 20_000;
+const REVENUECAT_READ_TIMEOUT_MS = 12_000;
 const REVENUECAT_PURCHASE_TIMEOUT_MS = 45_000;
-const OFFERINGS_RETRY_ATTEMPTS = 3;
-const OFFERINGS_RETRY_DELAY_MS = 1_500;
+const OFFERINGS_RETRY_ATTEMPTS = 2;
+const OFFERINGS_RETRY_DELAY_MS = 1_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -224,4 +224,30 @@ export async function purchaseRevenueCatPackage(
     "purchase",
     REVENUECAT_PURCHASE_TIMEOUT_MS,
   );
+}
+
+export type PaywallBillingSnapshot = {
+  customerInfo: CustomerInfo | null;
+  offering: PurchasesOffering | null;
+};
+
+/** Load customer info and offerings in parallel after SDK configure. */
+export async function getPaywallBillingSnapshot(
+  appUserId?: string,
+): Promise<PaywallBillingSnapshot> {
+  if (isE2eModeEnabled() || Platform.OS === "web" || !getRevenueCatApiKey()) {
+    return { customerInfo: null, offering: null };
+  }
+
+  await ensurePurchasesReady(appUserId);
+
+  const [customerInfoResult, offeringResult] = await Promise.allSettled([
+    getRevenueCatCustomerInfo(appUserId),
+    getDefaultOffering(appUserId),
+  ]);
+
+  return {
+    customerInfo: customerInfoResult.status === "fulfilled" ? customerInfoResult.value : null,
+    offering: offeringResult.status === "fulfilled" ? offeringResult.value : null,
+  };
 }
