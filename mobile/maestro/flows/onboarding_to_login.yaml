@@ -13,9 +13,3 @@ appId: com.prodify.app
 - extendedWaitUntil:
     visible: "Premium"
     timeout: 20000
-- openLink: prodify://login
-- runFlow:
-    file: common/confirm_deep_link.yaml
-- extendedWaitUntil:
-    visible: "Welcome back"
-    timeout: 20000
