@@ -1,5 +1,6 @@
 appId: com.prodify.app
 ---
+- runFlow: common/confirm_deep_link.yaml
 - extendedWaitUntil:
     visible: "Skip"
     timeout: 20000
@@ -11,5 +12,6 @@ appId: com.prodify.app
 - assertVisible: "Your Prodify plan"
 - tapOn: "Continue"
 - extendedWaitUntil:
-    visible: "Premium"
+    visible: "Let's get started"
     timeout: 20000
+- assertVisible: "Create account"

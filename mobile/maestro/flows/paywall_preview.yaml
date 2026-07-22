@@ -1,0 +1,10 @@
+appId: com.prodify.app
+---
+- openLink: "prodify://paywall"
+- runFlow: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible: "Premium"
+    timeout: 20000
+- assertVisible: "6-month plan"
+- assertVisible: "Weekly plan"
+- assertVisible: "Restore purchases"
