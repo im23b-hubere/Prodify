@@ -1,8 +1,5 @@
 appId: com.prodify.app
 ---
-- openLink: prodify://onboarding
-- runFlow:
-    file: common/confirm_deep_link.yaml
 - extendedWaitUntil:
     visible: "Skip"
     timeout: 20000

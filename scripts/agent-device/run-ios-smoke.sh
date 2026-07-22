@@ -48,6 +48,11 @@ if [[ "${CI:-}" == "true" && -n "${SIMULATOR_UDID:-}" ]]; then
   echo "Running native Maestro on simulator ${SIMULATOR_UDID}"
   export MAESTRO_DRIVER_STARTUP_TIMEOUT="${MAESTRO_DRIVER_STARTUP_TIMEOUT:-300000}"
   MAESTRO_LOG="${ARTIFACTS}/maestro-output.log"
+  if [[ "${FLOW}" == *"onboarding_to_login"* ]]; then
+    echo "Opening onboarding directly through simctl"
+    xcrun simctl openurl "${SIMULATOR_UDID}" "prodify://onboarding"
+    sleep 3
+  fi
   if ! maestro --device "${SIMULATOR_UDID}" test \
     -e "TEST_EMAIL=${E2E_TEST_EMAIL}" \
     -e "TEST_PASSWORD=${E2E_TEST_PASSWORD}" \
