@@ -2,6 +2,6 @@ appId: com.prodify.app
 ---
 - tapOn: "View public profile"
 - extendedWaitUntil:
-    visible: "Recent sessions"
+    visible: "e2euser"
     timeout: 20000
 - back
