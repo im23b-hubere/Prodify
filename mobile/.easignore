@@ -1,0 +1,31 @@
+# Dependencies and local Expo state
+node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+
+# Generated native projects (EAS prebuilds these from app.json)
+ios/
+android/
+.kotlin/
+
+# Local environments, caches, and credentials
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+*.log
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
