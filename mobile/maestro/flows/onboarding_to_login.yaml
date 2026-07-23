@@ -9,10 +9,10 @@ appId: com.prodify.app
     point: "90%,10%"
 - assertVisible: "How long have you been producing?"
 - tapOn:
-    point: "90%,7%"
+    point: "90%,10%"
 - assertVisible: "Weekly session target"
 - tapOn:
-    point: "90%,7%"
+    point: "90%,10%"
 - assertVisible: "Your Prodify plan"
 - tapOn: "Continue"
 - extendedWaitUntil:
