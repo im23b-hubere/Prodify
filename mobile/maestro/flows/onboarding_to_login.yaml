@@ -1,7 +1,7 @@
 appId: com.prodify.app
 ---
 - tapOn:
-    point: "70%,44%"
+    point: "70%,55%"
 - extendedWaitUntil:
     visible: "Welcome to Prodify"
     timeout: 20000
