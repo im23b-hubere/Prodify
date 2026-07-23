@@ -45,7 +45,7 @@ appId: com.prodify.app
     visible: "Your rank"
     timeout: 20000
 - assertVisible: "All ranks"
-- back
+- tapOn: "Back to dashboard"
 
 - extendedWaitUntil:
     visible:
