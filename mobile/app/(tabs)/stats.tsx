@@ -367,7 +367,11 @@ export default function StatsScreen() {
 
             {!isWeeklyRecapTeaserVisible() ? (
               <View style={styles.weeklyRecapBottomCta}>
-                <SecondaryButton label={t("stats.openWeeklyRecap")} onPress={openWeeklyRecap} />
+                <SecondaryButton
+                  label={t("stats.openWeeklyRecap")}
+                  onPress={openWeeklyRecap}
+                  testID="stats-open-weekly-recap"
+                />
               </View>
             ) : null}
           </Animated.View>
