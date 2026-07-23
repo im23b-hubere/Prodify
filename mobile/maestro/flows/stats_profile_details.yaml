@@ -39,17 +39,17 @@ appId: com.prodify.app
 - extendedWaitUntil:
     visible: "Notifications"
     timeout: 20000
-- back
+- tapOn: ".*Back"
 - tapOn: "Privacy"
 - extendedWaitUntil:
     visible: "Privacy policy"
     timeout: 15000
-- back
+- tapOn: "Back"
 - tapOn: "Terms of use"
 - extendedWaitUntil:
     visible: "Terms of use"
     timeout: 15000
-- back
+- tapOn: "Back"
 
 - tapOn:
     id: "tab-dashboard"
