@@ -1,0 +1,59 @@
+appId: com.prodify.app
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/e2e_login_dashboard.yaml
+
+- tapOn:
+    id: "tab-stats"
+- extendedWaitUntil:
+    visible:
+      id: "stats-screen"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Open weekly recap"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "Open weekly recap"
+- extendedWaitUntil:
+    visible: "Weekly recap"
+    timeout: 20000
+- tapOn: "Close"
+
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-screen"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "View public profile"
+    file: common/view_public_profile.yaml
+- scrollUntilVisible:
+    element: "Privacy"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "Notifications"
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 20000
+- back
+- tapOn: "Privacy"
+- extendedWaitUntil:
+    visible: "Privacy policy"
+    timeout: 15000
+- back
+- tapOn: "Terms of use"
+- extendedWaitUntil:
+    visible: "Terms of use"
+    timeout: 15000
+- back
+
+- tapOn:
+    id: "tab-dashboard"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-start-session"
+    timeout: 30000

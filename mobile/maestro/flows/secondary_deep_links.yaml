@@ -1,0 +1,53 @@
+appId: com.prodify.app
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/e2e_login_dashboard.yaml
+
+- openLink: prodify://streak/history
+- runFlow:
+    file: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible: "Streak history"
+    timeout: 20000
+- back
+
+- openLink: prodify://notifications
+- runFlow:
+    file: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 20000
+- assertVisible: "Preferences"
+- back
+
+- openLink: prodify://session-trash
+- runFlow:
+    file: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible: "Session trash"
+    timeout: 20000
+- back
+
+- openLink: prodify://session/setup
+- runFlow:
+    file: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible: "New Session"
+    timeout: 20000
+- back
+
+- openLink: prodify://progression-overview
+- runFlow:
+    file: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible: "Your rank"
+    timeout: 20000
+- assertVisible: "All ranks"
+- back
+
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-start-session"
+    timeout: 30000
