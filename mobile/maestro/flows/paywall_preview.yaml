@@ -1,5 +1,9 @@
 appId: com.prodify.app
 ---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/e2e_login_dashboard.yaml
 - openLink: "prodify://paywall"
 - runFlow: common/confirm_deep_link.yaml
 - extendedWaitUntil:
