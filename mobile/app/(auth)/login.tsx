@@ -155,9 +155,17 @@ export default function LoginScreen() {
             accessibilityLabel={t("auth.login.password")}
           />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text testID="login-error" accessibilityLiveRegion="polite" style={styles.error}>
+              {error}
+            </Text>
+          ) : null}
           {showConnectionHint ? (
-            <Text accessibilityLiveRegion="polite" style={styles.connectionHint}>
+            <Text
+              testID="login-connection-hint"
+              accessibilityLiveRegion="polite"
+              style={styles.connectionHint}
+            >
               {t("auth.connectionHint")}
             </Text>
           ) : null}

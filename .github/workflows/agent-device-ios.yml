@@ -26,6 +26,7 @@ on:
         type: choice
         options:
           - maestro/flows/bootstrap_dashboard.yaml
+          - maestro/flows/login_error_recovery.yaml
           - maestro/flows/onboarding_to_login.yaml
           - maestro/flows/paywall_preview.yaml
           - maestro/flows/smoke_test.yaml
