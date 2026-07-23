@@ -23,13 +23,20 @@ env:
 - assertVisible: "START SESSION"
 
 # --- Tab navigation ---
-- tapOn: "Stats"
-- assertVisible: "Your stats"
-- tapOn: "Friends"
-- assertVisible: "Friends"
-- tapOn: "Profile"
-- assertVisible: "Profile"
-- tapOn: "Dashboard"
+- tapOn:
+    id: "tab-stats"
+- assertVisible:
+    id: "stats-screen"
+- tapOn:
+    id: "tab-friends"
+- assertVisible:
+    id: "friends-screen"
+- tapOn:
+    id: "tab-profile"
+- assertVisible:
+    id: "profile-screen"
+- tapOn:
+    id: "tab-dashboard"
 - extendedWaitUntil:
     visible:
       id: "dashboard-start-session"
@@ -70,9 +77,11 @@ env:
 - back
 
 # --- Stats: weekly recap ---
-- tapOn: "Stats"
+- tapOn:
+    id: "tab-stats"
 - extendedWaitUntil:
-    visible: "Your stats"
+    visible:
+      id: "stats-screen"
     timeout: 20000
 - scrollUntilVisible:
     element: "Open weekly recap"
@@ -95,9 +104,11 @@ env:
 - tapOn: "Back to dashboard"
 
 # --- Profile: public profile + legal ---
-- tapOn: "Profile"
+- tapOn:
+    id: "tab-profile"
 - extendedWaitUntil:
-    visible: "Profile"
+    visible:
+      id: "profile-screen"
     timeout: 20000
 - runFlow:
     when:
