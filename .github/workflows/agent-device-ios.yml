@@ -29,6 +29,7 @@ on:
           - maestro/flows/login_error_recovery.yaml
           - maestro/flows/onboarding_to_login.yaml
           - maestro/flows/paywall_preview.yaml
+          - maestro/flows/tab_navigation.yaml
           - maestro/flows/smoke_test.yaml
           - maestro/flows/full_app_test.yaml
       qa_mode:
