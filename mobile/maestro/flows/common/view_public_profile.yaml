@@ -4,4 +4,4 @@ appId: com.prodify.app
 - extendedWaitUntil:
     visible: "e2euser"
     timeout: 20000
-- back
+- tapOn: "Back"
