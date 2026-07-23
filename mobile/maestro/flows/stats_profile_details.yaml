@@ -11,11 +11,9 @@ appId: com.prodify.app
     visible:
       id: "stats-screen"
     timeout: 20000
-- scrollUntilVisible:
-    element: "Open weekly recap"
-    direction: DOWN
-    timeout: 30000
-- tapOn: "Open weekly recap"
+- scroll
+- tapOn:
+    point: "50%,86%"
 - extendedWaitUntil:
     visible: "Weekly recap"
     timeout: 20000
