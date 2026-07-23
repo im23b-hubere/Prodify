@@ -1,6 +1,7 @@
 appId: com.prodify.app
 ---
-- runFlow: common/confirm_deep_link.yaml
+- tapOn:
+    point: "70%,44%"
 - extendedWaitUntil:
     visible: "Welcome to Prodify"
     timeout: 20000
