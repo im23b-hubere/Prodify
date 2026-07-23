@@ -8,6 +8,7 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 
 type Props = {
+  testID?: string;
   stepIndex: number;
   totalSteps: number;
   title: string;
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function OnboardingQuizShell({
+  testID,
   stepIndex,
   totalSteps,
   title,
@@ -33,7 +35,7 @@ export function OnboardingQuizShell({
   const progress = Math.max(0, Math.min(1, (stepIndex + 1) / totalSteps));
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+    <SafeAreaView testID={testID} style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.topRow}>
         {onBack ? (
           <Pressable

@@ -312,7 +312,7 @@ export default function OnboardingScreen() {
   if (step === "intro") {
     const slide = introSlides[introIndex];
     return (
-      <SafeAreaView style={styles.introSafe} edges={["top", "bottom"]}>
+      <SafeAreaView testID="onboarding-intro" style={styles.introSafe} edges={["top", "bottom"]}>
         <View style={styles.introTopRow}>
           <Pressable accessibilityRole="button" hitSlop={12} onPress={openLogin}>
             <Text style={styles.introSignIn}>{t("onboarding.existingAccount")}</Text>
@@ -392,6 +392,7 @@ export default function OnboardingScreen() {
   if (step === "experience") {
     return (
       <OnboardingQuizShell
+        testID="onboarding-experience"
         stepIndex={0}
         totalSteps={QUIZ_STEPS}
         title={t("onboarding.quiz.experience.title")}
@@ -421,6 +422,7 @@ export default function OnboardingScreen() {
   if (step === "genre") {
     return (
       <OnboardingQuizShell
+        testID="onboarding-genre"
         stepIndex={1}
         totalSteps={QUIZ_STEPS}
         title={t("onboarding.quiz.genre.title")}
@@ -446,6 +448,7 @@ export default function OnboardingScreen() {
   if (step === "producerGoal") {
     return (
       <OnboardingQuizShell
+        testID="onboarding-producer-goal"
         stepIndex={2}
         totalSteps={QUIZ_STEPS}
         title={t("onboarding.quiz.producerGoal.title")}
@@ -471,6 +474,7 @@ export default function OnboardingScreen() {
   if (step === "weeklyGoal") {
     return (
       <OnboardingQuizShell
+        testID="onboarding-weekly-goal"
         stepIndex={3}
         totalSteps={QUIZ_STEPS}
         title={t("onboarding.quiz.weeklyGoal.title")}
@@ -530,6 +534,7 @@ export default function OnboardingScreen() {
   if (step === "plan") {
     return (
       <OnboardingQuizShell
+        testID="onboarding-plan"
         stepIndex={4}
         totalSteps={QUIZ_STEPS}
         title={t("onboarding.quiz.plan.title")}

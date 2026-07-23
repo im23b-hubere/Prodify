@@ -3,17 +3,21 @@ appId: com.prodify.app
 - tapOn:
     point: "70%,55%"
 - extendedWaitUntil:
-    visible: "Welcome to Prodify"
+    visible:
+      id: "onboarding-intro"
     timeout: 20000
 - tapOn:
     point: "90%,10%"
-- assertVisible: "How long have you been producing?"
+- assertVisible:
+    id: "onboarding-experience"
 - tapOn:
     point: "90%,10%"
-- assertVisible: "Weekly session target"
+- assertVisible:
+    id: "onboarding-weekly-goal"
 - tapOn:
     point: "90%,10%"
-- assertVisible: "Your Prodify plan"
+- assertVisible:
+    id: "onboarding-plan"
 - tapOn: "Continue"
 - extendedWaitUntil:
     visible: "Let's get started"
