@@ -363,9 +363,9 @@
     },
     "cta": {
       "sixMonth": "6-month plan",
-      "sixMonthWithPrice": "6 months · {{price}}",
+      "sixMonthWithPrice": "BEST VALUE · 6 months · {{price}}",
       "weekly": "Weekly plan",
-      "weeklyWithPrice": "Weekly · {{price}}",
+      "weeklyWithPrice": "1 week · {{price}}",
       "restore": "Restore purchases",
       "pleaseWait": "Please wait...",
       "skipSubscriptionDev": "Skip for now (dev)"
@@ -392,8 +392,8 @@
       "restoreFailedTitle": "Restore failed"
     },
     "expoPreview": {
-      "weeklyPricePlaceholder": "CHF 7.90",
-      "sixMonthPricePlaceholder": "CHF 39.90"
+      "weeklyPricePlaceholder": "CHF 10.00",
+      "sixMonthPricePlaceholder": "CHF 49.99"
     },
     "errors": {
       "storeUnavailable": "Store currently unavailable. You can continue and try again later.",

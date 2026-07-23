@@ -48,7 +48,7 @@ describe("billingProducts", () => {
         makePackage({
           identifier: "$rc_weekly",
           productId: WEEKLY_PRODUCT_ID,
-          priceString: "CHF 7.90",
+          priceString: "CHF 10.00",
         }) as never,
       ),
     ).toBe(true);
@@ -59,13 +59,13 @@ describe("billingProducts", () => {
       identifier: "$rc_weekly",
       packageType: "WEEKLY",
       productId: WEEKLY_PRODUCT_ID,
-      priceString: "CHF 7.90",
+      priceString: "CHF 10.00",
     });
     const sixMonth = makePackage({
       identifier: "$rc_six_month",
       packageType: "CUSTOM",
       productId: SIX_MONTH_PRODUCT_ID,
-      priceString: "CHF 39.90",
+      priceString: "CHF 49.99",
     });
 
     expect(resolvePaywallPackages([weekly, sixMonth] as never)).toEqual({

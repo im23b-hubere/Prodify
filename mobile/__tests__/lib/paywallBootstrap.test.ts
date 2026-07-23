@@ -71,7 +71,7 @@ describe("bootstrapPaywall", () => {
 
   it("returns plans_ready when offerings include purchasable packages", async () => {
     (resolvePremiumGrant as jest.Mock).mockResolvedValue(null);
-    const weekly = makePackage("prodify_weekly_access", "CHF 7.90");
+    const weekly = makePackage("prodify_weekly_access", "CHF 10.00");
     (getPaywallBillingSnapshot as jest.Mock).mockResolvedValue({
       customerInfo: null,
       offering: { availablePackages: [weekly] },
