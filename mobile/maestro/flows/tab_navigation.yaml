@@ -1,0 +1,28 @@
+appId: com.prodify.app
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/e2e_login_dashboard.yaml
+
+- tapOn:
+    id: "tab-stats"
+- assertVisible:
+    id: "stats-screen"
+
+- tapOn:
+    id: "tab-friends"
+- assertVisible:
+    id: "friends-screen"
+
+- tapOn:
+    id: "tab-profile"
+- assertVisible:
+    id: "profile-screen"
+
+- tapOn:
+    id: "tab-dashboard"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-start-session"
+    timeout: 30000
