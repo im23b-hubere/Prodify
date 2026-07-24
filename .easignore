@@ -1,0 +1,38 @@
+# EAS is invoked from mobile/, but the Git repository root is the archive boundary.
+# Keep only the mobile app inputs required by Expo prebuild.
+.git/
+.github/
+.tmp/
+artifacts/
+backend/
+docs/
+scripts/
+
+# Local dependency and generated output
+node_modules/
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/coverage/
+mobile/ios/
+mobile/android/
+mobile/.kotlin/
+
+# Local environments, caches, credentials, and editor files
+mobile/.env
+mobile/.env.*
+!mobile/.env.example
+*.tsbuildinfo
+*.log
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
