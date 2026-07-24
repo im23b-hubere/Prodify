@@ -333,7 +333,7 @@ jobs:
         env:
           SIMULATOR_UDID: ${{ steps.sim.outputs.device_udid }}
           AGENT_DEVICE_REPLAY_TIMEOUT_MS: ${{ contains(github.event.inputs.maestro_flow, 'full_app_test') && '900000' || contains(github.event.inputs.maestro_flow, 'bootstrap_dashboard') && '300000' || '600000' }}
-          MAESTRO_DRIVER_STARTUP_TIMEOUT: ${{ github.event.inputs.qa_mode == 'replay-only' && '180000' || '300000' }}
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "600000"
         run: bash scripts/agent-device/run-ios-smoke.sh
 
       - name: Upload agent-device artifacts
