@@ -10,6 +10,7 @@ import type { CustomerInfo, PurchasesPackage } from "react-native-purchases";
 import { ErrorState } from "../components/states/ErrorState";
 import { PaywallPlansSkeleton } from "../components/states/PaywallPlansSkeleton";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
+import { SecondaryButton } from "../components/ui/SecondaryButton";
 import { getExpoPublicRevenueCatApiKey } from "../constants/env";
 import { fontFamily } from "../constants/fonts";
 import { colors, radii, spacing, typography } from "../constants/theme";
@@ -467,7 +468,7 @@ export default function PaywallScreen() {
                       (!purchaseEnabled && !expoGoPreviewMode)
                     }
                   />
-                  <PrimaryButton
+                  <SecondaryButton
                     label={
                       expoGoPreviewMode
                         ? t("paywall.cta.weeklyWithPrice", { price: previewWeeklyPrice })

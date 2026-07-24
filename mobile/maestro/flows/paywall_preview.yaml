@@ -9,6 +9,6 @@ appId: com.prodify.app
 - extendedWaitUntil:
     visible: "App access"
     timeout: 20000
-- assertVisible: "6 months.*CHF.*"
-- assertVisible: "Weekly.*CHF.*"
+- assertVisible: "BEST VALUE.*6 months.*CHF 49.99"
+- assertVisible: "1 week.*CHF 10.00"
 - assertVisible: "Restore purchases"
