@@ -393,7 +393,7 @@
     },
     "expoPreview": {
       "weeklyPricePlaceholder": "CHF 10.00",
-      "sixMonthPricePlaceholder": "CHF 49.99"
+      "sixMonthPricePlaceholder": "CHF 50.00"
     },
     "errors": {
       "storeUnavailable": "Store currently unavailable. You can continue and try again later.",

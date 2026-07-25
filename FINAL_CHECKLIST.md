@@ -1,36 +1,63 @@
 # Final Go/No-Go Checklist
 
-Date: 2026-07-07  
-Release version: `1.0.1`  
-Commit SHA: `cde03cf`
+Date: 2026-07-24
 
-## Gate Status
+Release version: `1.0.1`
 
-- [x] 1. Code Quality Gate — unit tests green
-- [ ] 2. Config Gate (Mobile Production) — verify `EXPO_PUBLIC_SENTRY_DSN` in EAS
-- [x] 3. Config Gate (Backend Production) — API health OK
-- [x] 4. Database Gate — PostgreSQL on Render
-- [ ] 5. Observability Gate — Sentry DSN not fully verified in EAS
-- [x] 6. Security Gate — baseline OK
-- [x] 7. CI Gate — Prodify CI green
-- [ ] 8. E2E/Smoke Gate — fast ✅ [28867541073](https://github.com/im23b-hubere/Prodify/actions/runs/28867541073); full ⏳ [28869758919](https://github.com/im23b-hubere/Prodify/actions/runs/28869758919)
-- [ ] 9. Store Readiness Gate — screenshots + ASC forms open
-- [x] 10. Rollback Gate — runbook in `ROLLBACK_PLAN.md`
+Current release branch: `codex/release-ready-blackbox`
 
-## Blocking Criteria (Any = No-Go)
+## Engineering gates
 
-- [x] Production API URL + DB connection
-- [ ] Sentry DSN verified for production EAS build
-- [x] Migrations / DB revision known good
-- [x] CI green on release commit
-- [ ] Full E2E smoke green on release candidate
-- [x] Legal/support links in store listing drafts
+- [x] Mobile lint and TypeScript checks.
+- [x] Mobile tests: 192/192.
+- [x] Backend tests: 102/102.
+- [x] Expo Doctor: 18/18.
+- [x] Production API and database health.
+- [x] Render always-on idle verification.
+- [x] Production config uses HTTPS Render API and disables E2E bypass.
+- [x] Current native iOS simulator build.
+- [x] Paywall visual and black-box QA.
+- [x] Onboarding and login/recovery black-box QA.
+- [x] Dashboard, stats, profile, tabs, legal screens, and deep links QA.
+- [ ] Combined full-app flow rerun after local test-navigation stabilization.
+- [ ] Final release commit pushed with a clean tracked worktree.
+
+## Signed build and TestFlight gates
+
+- [ ] Expo iOS build capacity available.
+- [ ] New signed production build from the final commit.
+- [ ] Build uploaded and processed in TestFlight.
+- [ ] Correct version, build number, environment, and commit recorded.
+- [ ] Physical-device smoke on Wi-Fi and cellular.
+- [ ] No prolonged `Connecting securely` state.
+
+## Subscription gates
+
+- [x] `prodify_weekly_access`: one week, CHF 10.00, auto-renewing (verified in App Store Connect).
+- [x] `prodify_6month_access`: six months, CHF 50.00, auto-renewing (verified in App Store Connect).
+- [x] Both products belong to the intended App Store subscription group.
+- [x] RevenueCat `$rc_weekly` maps only to the weekly product.
+- [x] RevenueCat `$rc_six_month` maps only to the six-month product.
+- [x] Both packages grant `app_access`.
+- [ ] Existing entitled account bypasses paywall.
+- [ ] Weekly sandbox purchase succeeds.
+- [ ] Six-month sandbox purchase succeeds.
+- [ ] Restore Purchases succeeds after reinstall/new device.
+- [ ] Cancellation/expiry behavior verified.
+
+## App Store Connect gates
+
+- [ ] Production Sentry DSN and release reporting verified.
+- [ ] Privacy nutrition labels confirmed.
+- [ ] Age rating confirmed.
+- [ ] Export compliance confirmed.
+- [ ] Subscription localization and review screenshots complete.
+- [ ] App screenshots, metadata, support URL, Privacy URL, and Terms URL complete.
+- [ ] Account deletion tested in the final production build.
 
 ## Decision
 
 - [ ] GO
-- [x] NO-GO (interim)
+- [x] NO-GO — final signed build, live purchase verification, and store gates remain.
 
-Decision owner: _pending_  
-Date/time: 2026-07-07  
-Notes: Fast E2E passed; awaiting full smoke, TestFlight, and App Store Connect assets.
+Do not submit for App Review until every unchecked P0 production gate is evidenced.

@@ -65,7 +65,7 @@ describe("billingProducts", () => {
       identifier: "$rc_six_month",
       packageType: "CUSTOM",
       productId: SIX_MONTH_PRODUCT_ID,
-      priceString: "CHF 49.99",
+      priceString: "CHF 50.00",
     });
 
     expect(resolvePaywallPackages([weekly, sixMonth] as never)).toEqual({

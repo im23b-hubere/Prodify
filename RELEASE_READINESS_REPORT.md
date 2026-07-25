@@ -1,70 +1,110 @@
 # Release Readiness Report
 
-Date: 2026-07-07  
-Scope: iOS-focused production release preparation  
-Release candidate: `1.0.1` @ `cde03cf`
+Date: 2026-07-24
 
-## Gate Status Overview
+Scope: iOS production release candidate
 
-1. Code Quality Gate: ✅ (mobile + backend unit tests green)
-2. Config Gate (Mobile Production): ⚠️ partial — API URL + RevenueCat in `eas.json`; verify `EXPO_PUBLIC_SENTRY_DSN` in EAS Environment
-3. Config Gate (Backend Production): ✅ verified live — `https://prodify-api-46b1.onrender.com/health` → `database: ok`, `environment: production` (cold start ~60–90s)
-4. Database Gate: ✅ (PostgreSQL on Render)
-5. Observability Gate: ⚠️ verify Sentry DSN in EAS + backend host
-6. Security Gate: ✅ (with follow-up hardening)
-7. CI Gate: ✅ — Prodify CI green on `cde03cf`
-8. E2E/Smoke Gate: ⚠️ partial — **fast tier ✅** [28867541073](https://github.com/im23b-hubere/Prodify/actions/runs/28867541073); **full tier ⏳** [28869758919](https://github.com/im23b-hubere/Prodify/actions/runs/28869758919)
-9. Store Readiness Gate: ⚠️ partial — EN + DE metadata ready; screenshots + ASC forms still manual
-10. Rollback Gate: ✅
+App version: `1.0.1`
 
-## Evidence Produced
+Current release branch: `codex/release-ready-blackbox`
 
-- Test execution: `TEST_RESULTS.md`
-- E2E evidence: `E2E_TEST_RESULTS.md`
-- Mobile/backend config docs: `CONFIG_DOCUMENTATION.md`
-- Store preparation: `STORE_SUBMISSION_CHECKLIST.md`
-- Deployment/final decision: `DEPLOYMENT_CHECKLIST.md`, `FINAL_CHECKLIST.md`, `README_PRODUCTION.md`
+## Executive status
 
-## Open Items by Priority
+Current recommendation: **NO-GO for App Store release, conditionally ready for a final TestFlight candidate.**
 
-### P0 (Must complete before submit)
+The current app source compiles as a native iOS simulator application and the critical
+black-box paths pass. A new signed production build is still required because the latest
+available TestFlight build predates the final onboarding, networking, entitlement, and
+paywall changes.
 
-- [x] Green E2E fast smoke (`e2e_login_smoke.yaml`) on `cde03cf`
-- [ ] Green E2E full smoke (`smoke_test.yaml`) — [run 28869758919](https://github.com/im23b-hubere/Prodify/actions/runs/28869758919)
-- [ ] Verify EAS production secrets: `EXPO_PUBLIC_SENTRY_DSN`
-- [ ] Production TestFlight build + internal smoke (login, session, paywall)
-- [ ] App Store screenshots (6 shots — `mobile/store/SCREENSHOT_PLAN.en-US.md`)
-- [ ] Age rating + privacy nutrition labels in App Store Connect
+## Verified gates
 
-### P1 (Strongly recommended before launch)
+- [x] Mobile lint passed.
+- [x] Mobile TypeScript check passed.
+- [x] Mobile Jest: 52/52 suites and 192/192 tests passed.
+- [x] Expo Doctor: 18/18 checks passed.
+- [x] Backend pytest: 102/102 tests passed.
+- [x] Production API and database health passed.
+- [x] Render remained responsive after several hours idle; the previous 45-108 second
+      cold start is no longer reproducible after enabling always-on hosting.
+- [x] Production Expo config resolves to `com.prodify.app`,
+      `https://prodify-api-46b1.onrender.com`, environment `production`, entitlement
+      `app_access`, and E2E bypass disabled.
+- [x] Production configuration rejects a build when `EXPO_PUBLIC_E2E_MODE=true`.
+- [x] Native iOS simulator build succeeded for `7fadee0`.
+- [x] Paywall black-box and visual QA passed:
+  - six months is the primary `BEST VALUE` choice;
+  - weekly is visually secondary;
+  - Restore Purchases, auto-renewal disclosure, Privacy, Terms, Sign out, and Delete
+    account are visible.
+- [x] Onboarding-to-login black-box flow passed.
+- [x] Invalid-login recovery followed by successful login passed.
+- [x] Dashboard, weekly recap, profile, legal screens, and notifications passed.
+- [x] Tab navigation passed.
+- [x] Deep links and secondary screens passed.
+- [x] Live RevenueCat default offering verified:
+  - `$rc_six_month` maps only to `prodify_6month_access`;
+  - `$rc_weekly` maps only to `prodify_weekly_access`;
+  - both products grant `app_access`;
+  - both products are in subscription group `prodify_app_access`;
+  - both products report App Store status `Waiting for Review`.
+- [x] Legacy weekly and six-month products remain attached to `app_access`, preserving
+      entitlement compatibility for existing test/legacy purchases.
+- [x] Live App Store Connect subscription configuration verified and corrected:
+  - `prodify_weekly_access` is one week, auto-renewing, CHF 10.00;
+  - `prodify_6month_access` is six months, auto-renewing, CHF 50.00;
+  - both products belong to `prodify_app_access`.
 
-- [x] German store description drafted (`mobile/store/STORE_METADATA.de-DE.md`)
-- [ ] Copy DE metadata into App Store Connect
-- [ ] Seed screenshot account: `scripts/seed-screenshot-account.ps1 -ViaApi`
-- [ ] Account deletion flow tested on production build
-- [ ] Sentry test error + release tagging
+## Monetization configuration target
 
-### P2 (Post-launch)
+- Weekly auto-renewing subscription: `prodify_weekly_access`, CHF 10.00 (verified in App Store Connect).
+- Six-month auto-renewing subscription: `prodify_6month_access`, CHF 50.00 (verified in App Store Connect).
+- RevenueCat entitlement: `app_access`.
+- Default offering must map `$rc_weekly` only to the weekly product and
+  `$rc_six_month` only to the six-month product.
 
-- Broader E2E beyond smoke flows
-- Backend coverage in low-coverage modules
+Store prices shown by the production app are supplied by Apple/RevenueCat. Simulator
+prices are deterministic E2E fixtures and do not prove the live App Store configuration.
 
-## Recommended Next Actions (in order)
+## Remaining release blockers
 
-1. **Wait for full E2E** → [28869758919](https://github.com/im23b-hubere/Prodify/actions/runs/28869758919)
-2. **Seed screenshot data** → `.\scripts\seed-screenshot-account.ps1 -ViaApi -MainPassword "<password>"`
-3. **Capture 6 screenshots** (iPhone 15 Pro Max, en-US, dark)
-4. **EAS production build** → `.\scripts\release-ios.ps1 -Build -SkipQa`
-5. **TestFlight** → install on iPhone, smoke login/session/paywall
-6. **App Store Connect** → screenshots, metadata EN+DE, age rating, release notes 1.0.1
-7. **Go/No-Go** → `FINAL_CHECKLIST.md`
+### P0 — before a final TestFlight candidate
 
-## Final Recommendation
+- [ ] Commit and push the local stabilization of `full_app_test.yaml`.
+- [ ] Replay the combined full-app black-box flow. Its component flows are green; the
+      combined flow used two fragile text-based Back actions that were locally replaced
+      with stable navigation.
+- [ ] Confirm the real production Sentry DSN remains present in the EAS production
+      environment.
+- [ ] Restore Expo iOS build capacity (quota reset or an explicitly approved plan
+      upgrade).
+- [ ] Build a new signed production binary from the final pushed commit.
+- [ ] Upload only that new binary to TestFlight.
 
-- Current recommendation: **NO-GO** (full E2E + TestFlight + ASC assets still open)
-- Closer than before: fast E2E green, CI green, API healthy, store copy ready.
+### P0 — before App Store submission
 
-## Estimated Remaining Effort
+- [ ] Verify live App Store Connect durations and Swiss price tiers for both products.
+- [x] Verify the RevenueCat offering/package/product mapping and `app_access`
+      entitlement.
+- [ ] On a physical iPhone with the final TestFlight build, verify:
+  - existing entitled account bypasses the paywall;
+  - weekly sandbox purchase unlocks access;
+  - six-month sandbox purchase unlocks access;
+  - Restore Purchases unlocks a reinstall/new device;
+  - cancellation/expiry removes access after RevenueCat refresh;
+  - login, session creation, session completion, stats, sign out, and account deletion.
+- [ ] Verify TestFlight launch and login over cellular as well as Wi-Fi.
+- [ ] Confirm App Store privacy nutrition labels, age rating, export compliance,
+      subscription review screenshots, and required metadata/assets in App Store Connect.
 
-- After full E2E green + EAS access: **~1 working day**
-- Including screenshots + TestFlight review: **2–3 working days**
+## Revenue expectation
+
+The product and paywall can be optimized for conversion, but no test or implementation
+can guarantee CHF 10,000 monthly revenue. After launch, measure paywall views, plan
+selection, checkout conversion, trial/purchase completion, renewal, refund, and churn.
+Use those measurements for controlled pricing and copy experiments.
+
+## Release decision rule
+
+Change to **GO** only after the final signed binary, live subscription mapping, physical
+sandbox purchase/restore, and TestFlight smoke gates above are all evidenced as green.
