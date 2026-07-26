@@ -62,6 +62,10 @@ if ($FastSmoke) {
 $Auto = -not $NoAuto
 $Gh = Resolve-GhCommand
 Set-Location $RepoRoot
+$Ref = (& git branch --show-current).Trim()
+if ([string]::IsNullOrWhiteSpace($Ref)) {
+    throw "Could not resolve the current Git branch for workflow dispatch."
+}
 
 $resolution = Resolve-AgentDeviceQaMode -Gh $Gh -WorkflowFile $WorkflowFile `
     -Auto:$Auto -ReplayOnly:$ReplayOnly -AppArtifactRunId $AppArtifactRunId
@@ -94,6 +98,7 @@ Write-Host ""
 Write-AgentDeviceQaModeSummary -Resolution $resolution -Flow $Flow
 Write-Host "Triggering workflow: $WorkflowFile"
 & $Gh workflow run $WorkflowFile `
+    --ref $Ref `
     -f "api_url=$ApiUrl" `
     -f "test_email=$TestEmail" `
     -f "test_password=$TestPassword" `
@@ -108,7 +113,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Start-Sleep -Seconds 3
-$runId = & $Gh run list --workflow=$WorkflowFile --limit 1 --json databaseId -q ".[0].databaseId"
+$runId = & $Gh run list --workflow=$WorkflowFile --branch $Ref --limit 1 --json databaseId -q ".[0].databaseId"
 $runUrl = & $Gh run view $runId --json url -q ".url"
 
 Write-Host ""
