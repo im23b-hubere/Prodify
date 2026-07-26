@@ -47,12 +47,13 @@ Current release branch: `codex/release-ready-blackbox`
 
 ## App Store Connect gates
 
-- [ ] Production Sentry DSN and release reporting verified.
-- [ ] Privacy nutrition labels confirmed.
-- [ ] Age rating confirmed.
-- [ ] Export compliance confirmed.
-- [ ] Subscription localization and review screenshots complete.
-- [ ] App screenshots, metadata, support URL, Privacy URL, and Terms URL complete.
+- [x] Production Sentry DSN is present in the EAS production environment.
+- [ ] Privacy nutrition labels reconciled with shipped SDK behavior; tracking is currently
+      declared despite no ATT usage description or advertising/tracking SDK.
+- [x] Current age rating is 4+; new social-media questions remain due by 2026-09-07.
+- [x] Export compliance is configured through `ITSAppUsesNonExemptEncryption=false`.
+- [x] Subscription localization and review screenshots complete.
+- [x] Five iPhone screenshots, metadata, support URL, and Privacy URL are present.
 - [ ] Account deletion tested in the final production build.
 
 ## Decision

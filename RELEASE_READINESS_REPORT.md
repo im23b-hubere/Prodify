@@ -74,16 +74,16 @@ prices are deterministic E2E fixtures and do not prove the live App Store config
 - [ ] Replay the combined full-app black-box flow. Its component flows are green; the
       combined flow used two fragile text-based Back actions that were locally replaced
       with stable navigation.
-- [ ] Confirm the real production Sentry DSN remains present in the EAS production
-      environment.
-- [ ] Restore Expo iOS build capacity (quota reset or an explicitly approved plan
-      upgrade).
+- [x] Confirmed the production Sentry DSN is present in the EAS production environment.
+- [ ] Restore Expo iOS build capacity: Free-plan quota resets on 2026-08-01, or use an
+      explicitly approved plan upgrade. The rejected build attempt reserved remote build
+      number 51 but did not produce a binary.
 - [ ] Build a new signed production binary from the final pushed commit.
 - [ ] Upload only that new binary to TestFlight.
 
 ### P0 — before App Store submission
 
-- [ ] Verify live App Store Connect durations and Swiss price tiers for both products.
+- [x] Verify live App Store Connect durations and Swiss price tiers for both products.
 - [x] Verify the RevenueCat offering/package/product mapping and `app_access`
       entitlement.
 - [ ] On a physical iPhone with the final TestFlight build, verify:
@@ -94,8 +94,13 @@ prices are deterministic E2E fixtures and do not prove the live App Store config
   - cancellation/expiry removes access after RevenueCat refresh;
   - login, session creation, session completion, stats, sign out, and account deletion.
 - [ ] Verify TestFlight launch and login over cellular as well as Wi-Fi.
-- [ ] Confirm App Store privacy nutrition labels, age rating, export compliance,
-      subscription review screenshots, and required metadata/assets in App Store Connect.
+- [x] App Store version metadata, support URL, five iPhone screenshots, manual release
+      mode, subscription localization/review screenshots, 4+ age rating, and export
+      compliance configuration are present.
+- [ ] Reconcile the published privacy nutrition labels with the shipped SDK behavior.
+      App Store Connect currently declares Product Interaction and Crash Data as tracking,
+      while the app contains no ATT usage description or advertising/tracking SDK.
+- [ ] Answer Apple's new social-media age-rating questions before 2026-09-07.
 
 ## Revenue expectation
 
