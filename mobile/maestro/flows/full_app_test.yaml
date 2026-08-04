@@ -10,37 +10,12 @@ env:
     file: common/e2e_login_dashboard.yaml
 
 # --- Core session flow (smoke baseline) ---
-- tapOn: "START SESSION"
-- assertVisible: "New Session"
-- tapOn: "Beat Making"
-- tapOn: "START SESSION"
-- assertVisible: "STOP SESSION"
-- waitForAnimationToEnd
-- tapOn: "STOP SESSION"
-- tapOn: "End session"
-- assertVisible: "Session logged"
-- tapOn: "Back to dashboard"
-- assertVisible: "START SESSION"
+- runFlow:
+    file: common/smoke_session.yaml
 
 # --- Tab navigation ---
-- tapOn:
-    id: "tab-stats"
-- assertVisible:
-    id: "stats-screen"
-- tapOn:
-    id: "tab-friends"
-- assertVisible:
-    id: "friends-screen"
-- tapOn:
-    id: "tab-profile"
-- assertVisible:
-    id: "profile-screen"
-- tapOn:
-    id: "tab-dashboard"
-- extendedWaitUntil:
-    visible:
-      id: "dashboard-start-session"
-    timeout: 30000
+- runFlow:
+    file: common/smoke_tabs.yaml
 
 # --- Secondary screens (deep links + in-app navigation) ---
 - openLink: prodify://streak/history
