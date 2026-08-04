@@ -65,10 +65,12 @@ env:
       id: "stats-screen"
     timeout: 20000
 - scrollUntilVisible:
-    element: "Open weekly recap"
+    element:
+      id: "stats-open-weekly-recap"
     direction: DOWN
     timeout: 30000
-- tapOn: "Open weekly recap"
+- tapOn:
+    id: "stats-open-weekly-recap"
 - extendedWaitUntil:
     visible: "Weekly recap"
     timeout: 20000
