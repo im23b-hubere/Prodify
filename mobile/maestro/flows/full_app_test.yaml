@@ -49,7 +49,11 @@ env:
 - extendedWaitUntil:
     visible: "New Session"
     timeout: 20000
-- back
+- tapOn: "Cancel"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-studio-hud"
+    timeout: 30000
 
 # --- Stats: weekly recap ---
 - tapOn:
