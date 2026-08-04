@@ -49,7 +49,9 @@ env:
 - extendedWaitUntil:
     visible: "New Session"
     timeout: 20000
-- tapOn: "Cancel"
+- openLink: prodify://dashboard
+- runFlow:
+    file: common/confirm_deep_link.yaml
 - extendedWaitUntil:
     visible:
       id: "dashboard-studio-hud"
