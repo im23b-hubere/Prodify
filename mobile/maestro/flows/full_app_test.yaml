@@ -84,7 +84,13 @@ env:
     visible: "Your rank"
     timeout: 20000
 - assertVisible: "All ranks"
-- tapOn: "Back to dashboard"
+- openLink: prodify://dashboard
+- runFlow:
+    file: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-studio-hud"
+    timeout: 30000
 
 # --- Profile: public profile + legal ---
 - tapOn:
@@ -97,26 +103,35 @@ env:
     when:
       visible: "View public profile"
     file: common/view_public_profile.yaml
-- scrollUntilVisible:
-    element: "Privacy"
-    direction: DOWN
-    timeout: 30000
-- tapOn: "Notifications"
+
+- openLink: prodify://notifications
+- runFlow:
+    file: common/confirm_deep_link.yaml
 - extendedWaitUntil:
     visible: "Notifications"
     timeout: 20000
-- tapOn: ".*Back"
-- tapOn: "Privacy"
+- assertVisible: "Preferences"
+
+- openLink: prodify://legal/privacy
+- runFlow:
+    file: common/confirm_deep_link.yaml
 - extendedWaitUntil:
     visible: "Privacy policy"
     timeout: 15000
-- tapOn: "Back"
-- tapOn: "Terms of use"
+
+- openLink: prodify://legal/terms
+- runFlow:
+    file: common/confirm_deep_link.yaml
 - extendedWaitUntil:
     visible: "Terms of use"
     timeout: 15000
-- tapOn: "Back"
 
 # --- Finish on dashboard ---
-- tapOn: "Dashboard"
+- openLink: prodify://dashboard
+- runFlow:
+    file: common/confirm_deep_link.yaml
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-start-session"
+    timeout: 30000
 - assertVisible: "START SESSION"
