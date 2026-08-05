@@ -1,6 +1,6 @@
 # Final Go/No-Go Checklist
 
-Date: 2026-07-24
+Date: 2026-08-05
 
 Release version: `1.0.1`
 
@@ -19,15 +19,15 @@ Current release branch: `codex/release-ready-blackbox`
 - [x] Paywall visual and black-box QA.
 - [x] Onboarding and login/recovery black-box QA.
 - [x] Dashboard, stats, profile, tabs, legal screens, and deep links QA.
-- [ ] Combined full-app flow rerun after local test-navigation stabilization.
-- [ ] Final release commit pushed with a clean tracked worktree.
+- [x] Combined full-app flow rerun after test-navigation stabilization (run `31006906910`).
+- [x] Final app and QA changes pushed with a clean tracked worktree.
 
 ## Signed build and TestFlight gates
 
-- [ ] Expo iOS build capacity available.
-- [ ] New signed production build from the final commit.
+- [x] Expo iOS build capacity available.
+- [x] Signed production build 52 from app version 1.0.1 and commit `5d983aa`.
 - [ ] Build uploaded and processed in TestFlight.
-- [ ] Correct version, build number, environment, and commit recorded.
+- [x] Correct version, build number, environment, and commit recorded.
 - [ ] Physical-device smoke on Wi-Fi and cellular.
 - [ ] No prolonged `Connecting securely` state.
 

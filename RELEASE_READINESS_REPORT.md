@@ -1,6 +1,6 @@
 # Release Readiness Report
 
-Date: 2026-07-24
+Date: 2026-08-05
 
 Scope: iOS production release candidate
 
@@ -12,10 +12,9 @@ Current release branch: `codex/release-ready-blackbox`
 
 Current recommendation: **NO-GO for App Store release, conditionally ready for a final TestFlight candidate.**
 
-The current app source compiles as a native iOS simulator application and the critical
-black-box paths pass. A new signed production build is still required because the latest
-available TestFlight build predates the final onboarding, networking, entitlement, and
-paywall changes.
+The current app source compiles as a native iOS simulator application, the full combined
+black-box path passes, and signed production build 52 completed successfully. The binary
+still needs to be uploaded and processed in TestFlight before physical-device gates can run.
 
 ## Verified gates
 
@@ -31,7 +30,12 @@ paywall changes.
       `https://prodify-api-46b1.onrender.com`, environment `production`, entitlement
       `app_access`, and E2E bypass disabled.
 - [x] Production configuration rejects a build when `EXPO_PUBLIC_E2E_MODE=true`.
-- [x] Native iOS simulator build succeeded for `7fadee0`.
+- [x] Native iOS simulator build succeeded and was reused for the final full-flow replay.
+- [x] Combined full-app iOS black-box replay passed on run `31006906910` at commit
+      `6304499` (login, paywall gate, session lifecycle, tabs, secondary screens,
+      weekly recap, progression, profile, notifications, legal screens, and dashboard).
+- [x] Signed EAS production build 52 (`1.0.1`) completed from commit `5d983aa`.
+      Subsequent commits through `6304499` modify QA/test isolation only, not shipped app code.
 - [x] Paywall black-box and visual QA passed:
   - six months is the primary `BEST VALUE` choice;
   - weekly is visually secondary;
@@ -70,15 +74,11 @@ prices are deterministic E2E fixtures and do not prove the live App Store config
 
 ### P0 — before a final TestFlight candidate
 
-- [ ] Commit and push the local stabilization of `full_app_test.yaml`.
-- [ ] Replay the combined full-app black-box flow. Its component flows are green; the
-      combined flow used two fragile text-based Back actions that were locally replaced
-      with stable navigation.
+- [x] Commit and push the stabilization of `full_app_test.yaml`.
+- [x] Replay the combined full-app black-box flow successfully (run `31006906910`).
 - [x] Confirmed the production Sentry DSN is present in the EAS production environment.
-- [ ] Restore Expo iOS build capacity: Free-plan quota resets on 2026-08-01, or use an
-      explicitly approved plan upgrade. The rejected build attempt reserved remote build
-      number 51 but did not produce a binary.
-- [ ] Build a new signed production binary from the final pushed commit.
+- [x] Expo iOS build capacity restored after the quota reset.
+- [x] Build signed production binary 52 for version `1.0.1`.
 - [ ] Upload only that new binary to TestFlight.
 
 ### P0 — before App Store submission
