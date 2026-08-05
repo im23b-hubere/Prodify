@@ -13,8 +13,9 @@ Current release branch: `codex/release-ready-blackbox`
 Current recommendation: **NO-GO for App Store release, conditionally ready for a final TestFlight candidate.**
 
 The current app source compiles as a native iOS simulator application, the full combined
-black-box path passes, and signed production build 52 completed successfully. The binary
-still needs to be uploaded and processed in TestFlight before physical-device gates can run.
+black-box path passes, and signed production build 52 completed successfully. EAS Submit
+submission `0b1f225c-1c4b-41d5-891d-fa2969f33e3b` is queued on Expo's Free Tier as of
+2026-08-05; Apple upload and processing have therefore not started yet.
 
 ## Verified gates
 
@@ -79,7 +80,9 @@ prices are deterministic E2E fixtures and do not prove the live App Store config
 - [x] Confirmed the production Sentry DSN is present in the EAS production environment.
 - [x] Expo iOS build capacity restored after the quota reset.
 - [x] Build signed production binary 52 for version `1.0.1`.
-- [ ] Upload only that new binary to TestFlight.
+- [x] Schedule only build 52 for TestFlight through EAS Submit.
+- [ ] EAS Submit leaves the Free Tier Queue and uploads build 52 successfully.
+- [ ] Build 52 finishes processing in TestFlight.
 
 ### P0 — before App Store submission
 
