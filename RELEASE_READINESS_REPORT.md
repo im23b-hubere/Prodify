@@ -1,6 +1,6 @@
 # Release Readiness Report
 
-Date: 2026-08-05
+Date: 2026-08-10
 
 Scope: iOS production release candidate
 
@@ -10,12 +10,12 @@ Current release branch: `codex/release-ready-blackbox`
 
 ## Executive status
 
-Current recommendation: **NO-GO for App Store release, conditionally ready for a final TestFlight candidate.**
+Current recommendation: **NO-GO for App Store release; GO for final physical-device TestFlight QA.**
 
 The current app source compiles as a native iOS simulator application, the full combined
 black-box path passes, and signed production build 52 completed successfully. EAS Submit
-submission `0b1f225c-1c4b-41d5-891d-fa2969f33e3b` is queued on Expo's Free Tier as of
-2026-08-05; Apple upload and processing have therefore not started yet.
+submission `0b1f225c-1c4b-41d5-891d-fa2969f33e3b` completed, Apple processed build 52,
+and the build is assigned to the internal `Team (Expo)` tester group.
 
 ## Verified gates
 
@@ -37,6 +37,8 @@ submission `0b1f225c-1c4b-41d5-891d-fa2969f33e3b` is queued on Expo's Free Tier 
       weekly recap, progression, profile, notifications, legal screens, and dashboard).
 - [x] Signed EAS production build 52 (`1.0.1`) completed from commit `5d983aa`.
       Subsequent commits through `6304499` modify QA/test isolation only, not shipped app code.
+- [x] Build 52 uploaded, processed by Apple, and assigned to the internal
+      `Team (Expo)` TestFlight group.
 - [x] Paywall black-box and visual QA passed:
   - six months is the primary `BEST VALUE` choice;
   - weekly is visually secondary;
@@ -81,8 +83,9 @@ prices are deterministic E2E fixtures and do not prove the live App Store config
 - [x] Expo iOS build capacity restored after the quota reset.
 - [x] Build signed production binary 52 for version `1.0.1`.
 - [x] Schedule only build 52 for TestFlight through EAS Submit.
-- [ ] EAS Submit leaves the Free Tier Queue and uploads build 52 successfully.
-- [ ] Build 52 finishes processing in TestFlight.
+- [x] EAS Submit left the Free Tier Queue and uploaded build 52 successfully.
+- [x] Build 52 finished processing in TestFlight.
+- [x] Build 52 is available to the internal `Team (Expo)` tester group.
 
 ### P0 — before App Store submission
 

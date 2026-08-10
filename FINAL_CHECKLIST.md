@@ -1,6 +1,6 @@
 # Final Go/No-Go Checklist
 
-Date: 2026-08-05
+Date: 2026-08-10
 
 Release version: `1.0.1`
 
@@ -27,8 +27,9 @@ Current release branch: `codex/release-ready-blackbox`
 - [x] Expo iOS build capacity available.
 - [x] Signed production build 52 from app version 1.0.1 and commit `5d983aa`.
 - [x] Build 52 submitted to Expo EAS Submit (`0b1f225c-1c4b-41d5-891d-fa2969f33e3b`).
-- [ ] Expo submission has left the Free Tier Queue and completed successfully.
-- [ ] Build uploaded and processed in TestFlight.
+- [x] Expo submission left the Free Tier Queue and completed successfully.
+- [x] Build uploaded and processed in TestFlight.
+- [x] Build 52 assigned to the internal `Team (Expo)` tester group.
 - [x] Correct version, build number, environment, and commit recorded.
 - [ ] Physical-device smoke on Wi-Fi and cellular.
 - [ ] No prolonged `Connecting securely` state.
