@@ -33,54 +33,101 @@ type ProgressProps = {
 
 type Props = SetupProps | ProgressProps;
 
-export const WeeklyQuestCard = memo(function WeeklyQuestCard(props: Props) {
-  const [editing, setEditing] = useState(false);
-
-  if (props.mode === "setup") {
-    const { t, busy, onSave, testID = "dashboard-quest-setup" } = props;
-    return (
-      <View style={styles.wrap} testID={testID}>
-        <Text style={styles.setupTitle}>{t("dashboard.weeklyGoalNudgeTitle")}</Text>
-        <Text style={styles.setupHint}>{t("dashboard.weeklyGoalInlineHint")}</Text>
-        <View style={styles.chipRow}>
-          {GOAL_CHIPS.map((value) => (
-            <Pressable
-              key={value}
-              accessibilityRole="button"
-              accessibilityLabel={t("dashboard.weeklyGoalChipA11y", { count: value })}
-              disabled={busy}
-              style={({ pressed }) => [
-                styles.chip,
-                pressed && !busy && styles.chipPressed,
-                busy && styles.chipDisabled,
-              ]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                void onSave(value);
-              }}
-            >
-              {busy ? (
-                <ActivityIndicator color={colors.primary} size="small" />
-              ) : (
-                <Text style={styles.chipText}>{value}</Text>
-              )}
-            </Pressable>
-          ))}
-        </View>
+function WeeklyQuestSetup({
+  t,
+  busy,
+  onSave,
+  testID = "dashboard-quest-setup",
+}: Omit<SetupProps, "mode">) {
+  return (
+    <View style={styles.wrap} testID={testID}>
+      <Text style={styles.setupTitle}>{t("dashboard.weeklyGoalNudgeTitle")}</Text>
+      <Text style={styles.setupHint}>{t("dashboard.weeklyGoalInlineHint")}</Text>
+      <View style={styles.chipRow}>
+        {GOAL_CHIPS.map((value) => (
+          <Pressable
+            key={value}
+            accessibilityRole="button"
+            accessibilityLabel={t("dashboard.weeklyGoalChipA11y", { count: value })}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.chip,
+              pressed && !busy && styles.chipPressed,
+              busy && styles.chipDisabled,
+            ]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+              void onSave(value);
+            }}
+          >
+            {busy ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <Text style={styles.chipText}>{value}</Text>
+            )}
+          </Pressable>
+        ))}
       </View>
-    );
-  }
+    </View>
+  );
+}
 
-  const {
-    t,
-    feedback,
-    weekSessionsCount,
-    weeklyGoalTarget,
-    paceForecast,
-    busy,
-    onChangeTarget,
-    testID = "dashboard-quest-progress",
-  } = props;
+function QuestGoalEditor({
+  t,
+  target,
+  busy,
+  onChangeTarget,
+  onSaved,
+}: {
+  t: TFunction;
+  target: number;
+  busy?: boolean;
+  onChangeTarget: (target: number) => Promise<void>;
+  onSaved: () => void;
+}) {
+  return (
+    <View style={styles.chipRow}>
+      {GOAL_CHIPS.map((value) => (
+        <Pressable
+          key={value}
+          accessibilityRole="button"
+          accessibilityLabel={t("dashboard.weeklyGoalChipA11y", { count: value })}
+          disabled={busy}
+          style={({ pressed }) => [
+            styles.chip,
+            value === target && styles.chipActive,
+            pressed && !busy && styles.chipPressed,
+            busy && styles.chipDisabled,
+          ]}
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => undefined);
+            void onChangeTarget(value).then(onSaved);
+          }}
+        >
+          {busy ? (
+            <ActivityIndicator color={colors.primary} size="small" />
+          ) : (
+            <Text style={[styles.chipText, value === target && styles.chipTextActive]}>
+              {value}
+            </Text>
+          )}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function WeeklyQuestProgress({
+  t,
+  feedback,
+  weekSessionsCount,
+  weeklyGoalTarget,
+  paceForecast,
+  busy,
+  onChangeTarget,
+  testID = "dashboard-quest-progress",
+}: Omit<ProgressProps, "mode">) {
+  const [editing, setEditing] = useState(false);
   const presentation = weeklyQuestPresentation(feedback, paceForecast);
 
   return (
@@ -96,6 +143,9 @@ export const WeeklyQuestCard = memo(function WeeklyQuestCard(props: Props) {
           {onChangeTarget ? (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={
+                editing ? t("dashboard.weeklyGoalDone") : t("dashboard.weeklyGoalEdit")
+              }
               onPress={() => {
                 Haptics.selectionAsync().catch(() => undefined);
                 setEditing((value) => !value);
@@ -129,36 +179,19 @@ export const WeeklyQuestCard = memo(function WeeklyQuestCard(props: Props) {
       </View>
 
       {editing && onChangeTarget ? (
-        <View style={styles.chipRow}>
-          {GOAL_CHIPS.map((value) => (
-            <Pressable
-              key={value}
-              accessibilityRole="button"
-              disabled={busy}
-              style={({ pressed }) => [
-                styles.chip,
-                value === weeklyGoalTarget && styles.chipActive,
-                pressed && !busy && styles.chipPressed,
-                busy && styles.chipDisabled,
-              ]}
-              onPress={() => {
-                Haptics.selectionAsync().catch(() => undefined);
-                void onChangeTarget(value).then(() => setEditing(false));
-              }}
-            >
-              {busy ? (
-                <ActivityIndicator color={colors.primary} size="small" />
-              ) : (
-                <Text
-                  style={[styles.chipText, value === weeklyGoalTarget && styles.chipTextActive]}
-                >
-                  {value}
-                </Text>
-              )}
-            </Pressable>
-          ))}
-        </View>
+        <QuestGoalEditor
+          t={t}
+          target={weeklyGoalTarget}
+          busy={busy}
+          onChangeTarget={onChangeTarget}
+          onSaved={() => setEditing(false)}
+        />
       ) : null}
     </View>
   );
+}
+
+export const WeeklyQuestCard = memo(function WeeklyQuestCard(props: Props) {
+  if (props.mode === "setup") return <WeeklyQuestSetup {...props} />;
+  return <WeeklyQuestProgress {...props} />;
 });
