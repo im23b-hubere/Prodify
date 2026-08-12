@@ -1,5 +1,12 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { apiJson } from "../../../lib/client";
 import { parseSessionList } from "../../../lib/sessionDto";
@@ -15,17 +22,102 @@ type SessionTrashMessages = {
   restoreFailed: string;
 };
 
+type TrashLifecycleOptions = {
+  load: (reset?: boolean) => Promise<void>;
+  loadFailed: string;
+  refreshFailed: string;
+  setError: (message: string | null) => void;
+  setLoading: (loading: boolean) => void;
+};
+
+function useTrashLifecycle({
+  load,
+  loadFailed,
+  refreshFailed,
+  setError,
+  setLoading,
+}: TrashLifecycleOptions) {
+  const skipInitialFocusRef = useRef(true);
+  useEffect(() => {
+    void load(true).catch((caught) => setError(errorMessage(caught, loadFailed)));
+  }, [load, loadFailed, setError]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (skipInitialFocusRef.current) {
+        skipInitialFocusRef.current = false;
+        return;
+      }
+      void load(true).catch((caught) => setError(errorMessage(caught, refreshFailed)));
+    }, [load, refreshFailed, setError]),
+  );
+
+  return useCallback(() => {
+    setLoading(true);
+    void load(true).catch((caught) => setError(errorMessage(caught, loadFailed)));
+  }, [load, loadFailed, setError, setLoading]);
+}
+
+function useTrashRefresh(
+  load: (reset?: boolean) => Promise<void>,
+  refreshFailed: string,
+  setError: (message: string | null) => void,
+) {
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load(true);
+    } catch (caught) {
+      setError(errorMessage(caught, refreshFailed));
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load, refreshFailed, setError]);
+  return { refreshing, refresh };
+}
+
+type RestoreOptions = {
+  token: string | null;
+  sessions: SessionDto[];
+  setSessions: Dispatch<SetStateAction<SessionDto[]>>;
+  load: (reset?: boolean) => Promise<void>;
+  restoreFailed: string;
+  setError: (message: string | null) => void;
+};
+
+function useRestoreTrashedSession(options: RestoreOptions) {
+  const { token, sessions, setSessions, load, restoreFailed, setError } = options;
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const restore = useCallback(
+    async (id: number) => {
+      if (!token) return;
+      setBusyId(id);
+      const previous = sessions;
+      setSessions((current) => current.filter((session) => session.id !== id));
+      try {
+        await apiJson(`/sessions/item/${id}/restore`, { token, method: "POST" });
+        await load(true);
+      } catch (caught) {
+        setSessions(previous);
+        setError(errorMessage(caught, restoreFailed));
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [load, restoreFailed, sessions, setError, setSessions, token],
+  );
+  return { busyId, restore };
+}
+
 export function useSessionTrash(token: string | null, messages: SessionTrashMessages) {
   const { notSignedIn, loadFailed, refreshFailed, loadMoreFailed, restoreFailed } = messages;
   const [sessions, setSessions] = useState<SessionDto[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const offsetRef = useRef(0);
-  const skipInitialFocusRef = useRef(true);
 
   const load = useCallback(
     async (reset = true) => {
@@ -57,30 +149,8 @@ export function useSessionTrash(token: string | null, messages: SessionTrashMess
     [notSignedIn, token],
   );
 
-  useEffect(() => {
-    void load(true).catch((caught) => setError(errorMessage(caught, loadFailed)));
-  }, [load, loadFailed]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (skipInitialFocusRef.current) {
-        skipInitialFocusRef.current = false;
-        return;
-      }
-      void load(true).catch((caught) => setError(errorMessage(caught, refreshFailed)));
-    }, [load, refreshFailed]),
-  );
-
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await load(true);
-    } catch (caught) {
-      setError(errorMessage(caught, refreshFailed));
-    } finally {
-      setRefreshing(false);
-    }
-  }, [load, refreshFailed]);
+  const retry = useTrashLifecycle({ load, loadFailed, refreshFailed, setError, setLoading });
+  const { refreshing, refresh } = useTrashRefresh(load, refreshFailed, setError);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loading || loadingMore) return;
@@ -92,29 +162,14 @@ export function useSessionTrash(token: string | null, messages: SessionTrashMess
     }
   }, [hasMore, load, loading, loadingMore, loadMoreFailed]);
 
-  const restore = useCallback(
-    async (id: number) => {
-      if (!token) return;
-      setBusyId(id);
-      const previous = sessions;
-      setSessions((current) => current.filter((session) => session.id !== id));
-      try {
-        await apiJson(`/sessions/item/${id}/restore`, { token, method: "POST" });
-        await load(true);
-      } catch (caught) {
-        setSessions(previous);
-        setError(errorMessage(caught, restoreFailed));
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [load, restoreFailed, sessions, token],
-  );
-
-  const retry = useCallback(() => {
-    setLoading(true);
-    void load(true).catch((caught) => setError(errorMessage(caught, loadFailed)));
-  }, [load, loadFailed]);
+  const { busyId, restore } = useRestoreTrashedSession({
+    token,
+    sessions,
+    setSessions,
+    load,
+    restoreFailed,
+    setError,
+  });
 
   return {
     sessions,
