@@ -13,6 +13,66 @@ import type { StreakMilestonesDto } from "../../../types/streak";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 
+async function loadProfileSnapshot(token: string) {
+  return Promise.allSettled([
+    apiJson<unknown>("/sessions/stats?period=all", { token }),
+    apiJson<StreakMilestonesDto>("/streak/milestones", { token }),
+    apiJson<ReliabilityScoreDto>("/users/me/reliability", { token }).catch(() => null),
+    apiJson<unknown>("/stats/heatmap", { token }),
+    fetchProgression(token),
+  ]);
+}
+
+function rejectedMessage(result: PromiseSettledResult<unknown>, fallback: string): string | null {
+  if (result.status !== "rejected") return null;
+  return result.reason instanceof Error ? result.reason.message : fallback;
+}
+
+function parseProfileSnapshot(
+  results: Awaited<ReturnType<typeof loadProfileSnapshot>>,
+  t: ReturnType<typeof useTranslation>["t"],
+) {
+  const [stats, milestones, reliability, heatmap, progression] = results;
+  const errors = [
+    rejectedMessage(stats, t("profile.errorLoadProfile")),
+    rejectedMessage(milestones, t("profile.errorLoadMilestones")),
+  ].filter((message): message is string => Boolean(message));
+  return {
+    stats: stats.status === "fulfilled" ? tryParseSessionStatsDto(stats.value) : null,
+    milestones: milestones.status === "fulfilled" ? milestones.value : null,
+    reliability: reliability.status === "fulfilled" ? reliability.value : null,
+    heatmapDays: heatmap.status === "fulfilled" ? tryParseHeatmapDays(heatmap.value) : [],
+    progression: progression.status === "fulfilled" ? progression.value : null,
+    error: errors.length ? errors.join("\n") : null,
+  };
+}
+
+function useRequestLifetime(mounted: { current: boolean }, requestSequence: { current: number }) {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      requestSequence.current += 1;
+    };
+  }, [mounted, requestSequence]);
+}
+
+function hasCurrentRequest(
+  mounted: { current: boolean },
+  requestSequence: { current: number },
+  sequence: number,
+): boolean {
+  return mounted.current && sequence === requestSequence.current;
+}
+
+function shouldSkipLoad(force: boolean | undefined, lastFetch: number): boolean {
+  return !force && !isScreenDataStale(lastFetch);
+}
+
+function profileErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function useProfileData(token?: string | null) {
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
@@ -26,18 +86,11 @@ export function useProfileData(token?: string | null) {
   const requestSequence = useRef(0);
   const mounted = useRef(true);
   const lastFetchAt = useRef(0);
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      requestSequence.current += 1;
-    };
-  }, []);
+  useRequestLifetime(mounted, requestSequence);
 
   const load = useCallback(
     async (options?: { force?: boolean }) => {
-      if (!options?.force && !isScreenDataStale(lastFetchAt.current)) return;
+      if (shouldSkipLoad(options?.force, lastFetchAt.current)) return;
 
       const sequence = ++requestSequence.current;
       if (!token) {
@@ -50,53 +103,25 @@ export function useProfileData(token?: string | null) {
       }
 
       try {
-        const [statsResult, milestonesResult, reliabilityResult, heatmapResult, progressionResult] =
-          await Promise.allSettled([
-            apiJson<unknown>("/sessions/stats?period=all", { token }),
-            apiJson<StreakMilestonesDto>("/streak/milestones", { token }),
-            apiJson<ReliabilityScoreDto>("/users/me/reliability", { token }).catch(() => null),
-            apiJson<unknown>("/stats/heatmap", { token }),
-            fetchProgression(token),
-          ]);
-        if (!mounted.current || sequence !== requestSequence.current) return;
-
-        setStats(
-          statsResult.status === "fulfilled" ? tryParseSessionStatsDto(statsResult.value) : null,
-        );
-        setMilestones(milestonesResult.status === "fulfilled" ? milestonesResult.value : null);
-        setReliability(reliabilityResult.status === "fulfilled" ? reliabilityResult.value : null);
-        setHeatmapDays(
-          heatmapResult.status === "fulfilled" ? tryParseHeatmapDays(heatmapResult.value) : [],
-        );
-        setProgression(progressionResult.status === "fulfilled" ? progressionResult.value : null);
-
-        const errors: string[] = [];
-        if (statsResult.status === "rejected") {
-          errors.push(
-            statsResult.reason instanceof Error
-              ? statsResult.reason.message
-              : t("profile.errorLoadProfile"),
-          );
-        }
-        if (milestonesResult.status === "rejected") {
-          errors.push(
-            milestonesResult.reason instanceof Error
-              ? milestonesResult.reason.message
-              : t("profile.errorLoadMilestones"),
-          );
-        }
-        setError(errors.length ? errors.join("\n") : null);
+        const snapshot = parseProfileSnapshot(await loadProfileSnapshot(token), t);
+        if (!hasCurrentRequest(mounted, requestSequence, sequence)) return;
+        setStats(snapshot.stats);
+        setMilestones(snapshot.milestones);
+        setReliability(snapshot.reliability);
+        setHeatmapDays(snapshot.heatmapDays);
+        setProgression(snapshot.progression);
+        setError(snapshot.error);
         lastFetchAt.current = Date.now();
       } catch (loadError) {
-        if (!mounted.current || sequence !== requestSequence.current) return;
-        setError(loadError instanceof Error ? loadError.message : t("profile.errorLoadProfile"));
+        if (!hasCurrentRequest(mounted, requestSequence, sequence)) return;
+        setError(profileErrorMessage(loadError, t("profile.errorLoadProfile")));
         setStats(null);
         setMilestones(null);
         setReliability(null);
         setHeatmapDays([]);
         setProgression(null);
       } finally {
-        if (!mounted.current || sequence !== requestSequence.current) return;
+        if (!hasCurrentRequest(mounted, requestSequence, sequence)) return;
         setLoading(false);
         setRefreshing(false);
       }
