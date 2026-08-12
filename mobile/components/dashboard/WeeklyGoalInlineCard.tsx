@@ -25,48 +25,51 @@ type ProgressProps = {
 
 type Props = SetupProps | ProgressProps;
 
-export const WeeklyGoalInlineCard = memo(function WeeklyGoalInlineCard(props: Props) {
+function WeeklyGoalSetup({ busy, onSave }: Omit<SetupProps, "mode">) {
+  const { t } = useTranslation();
+  return (
+    <View testID="weekly-goal-inline-setup">
+      <AppCard style={styles.card}>
+        <Text style={styles.title}>{t("dashboard.weeklyGoalNudgeTitle")}</Text>
+        <Text style={styles.hint}>{t("dashboard.weeklyGoalInlineHint")}</Text>
+        <View style={styles.chipRow}>
+          {GOAL_CHIPS.map((value) => (
+            <Pressable
+              key={value}
+              accessibilityRole="button"
+              accessibilityLabel={t("dashboard.weeklyGoalChipA11y", { count: value })}
+              disabled={busy}
+              style={({ pressed }) => [
+                styles.chip,
+                pressed && !busy && styles.chipPressed,
+                busy && styles.chipDisabled,
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                void onSave(value);
+              }}
+            >
+              {busy ? (
+                <ActivityIndicator color={colors.primary} size="small" />
+              ) : (
+                <Text style={styles.chipText}>{value}</Text>
+              )}
+            </Pressable>
+          ))}
+        </View>
+      </AppCard>
+    </View>
+  );
+}
+
+function WeeklyGoalProgress({
+  current,
+  target,
+  busy,
+  onChangeTarget,
+}: Omit<ProgressProps, "mode">) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
-
-  if (props.mode === "setup") {
-    const { busy, onSave } = props;
-    return (
-      <View testID="weekly-goal-inline-setup">
-        <AppCard style={styles.card}>
-          <Text style={styles.title}>{t("dashboard.weeklyGoalNudgeTitle")}</Text>
-          <Text style={styles.hint}>{t("dashboard.weeklyGoalInlineHint")}</Text>
-          <View style={styles.chipRow}>
-            {GOAL_CHIPS.map((value) => (
-              <Pressable
-                key={value}
-                accessibilityRole="button"
-                accessibilityLabel={t("dashboard.weeklyGoalChipA11y", { count: value })}
-                disabled={busy}
-                style={({ pressed }) => [
-                  styles.chip,
-                  pressed && !busy && styles.chipPressed,
-                  busy && styles.chipDisabled,
-                ]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                  void onSave(value);
-                }}
-              >
-                {busy ? (
-                  <ActivityIndicator color={colors.primary} size="small" />
-                ) : (
-                  <Text style={styles.chipText}>{value}</Text>
-                )}
-              </Pressable>
-            ))}
-          </View>
-        </AppCard>
-      </View>
-    );
-  }
-
-  const { current, target, busy, onChangeTarget } = props;
   const pct = target > 0 ? Math.max(0, Math.min(100, Math.round((current / target) * 100))) : 0;
 
   return (
@@ -79,6 +82,9 @@ export const WeeklyGoalInlineCard = memo(function WeeklyGoalInlineCard(props: Pr
           {onChangeTarget ? (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={
+                editing ? t("dashboard.weeklyGoalDone") : t("dashboard.weeklyGoalEdit")
+              }
               onPress={() => {
                 Haptics.selectionAsync().catch(() => undefined);
                 setEditing((v) => !v);
@@ -100,6 +106,7 @@ export const WeeklyGoalInlineCard = memo(function WeeklyGoalInlineCard(props: Pr
               <Pressable
                 key={value}
                 accessibilityRole="button"
+                accessibilityLabel={t("dashboard.weeklyGoalChipA11y", { count: value })}
                 disabled={busy}
                 style={({ pressed }) => [
                   styles.chip,
@@ -125,6 +132,20 @@ export const WeeklyGoalInlineCard = memo(function WeeklyGoalInlineCard(props: Pr
         ) : null}
       </AppCard>
     </View>
+  );
+}
+
+export const WeeklyGoalInlineCard = memo(function WeeklyGoalInlineCard(props: Props) {
+  if (props.mode === "setup") {
+    return <WeeklyGoalSetup busy={props.busy} onSave={props.onSave} />;
+  }
+  return (
+    <WeeklyGoalProgress
+      current={props.current}
+      target={props.target}
+      busy={props.busy}
+      onChangeTarget={props.onChangeTarget}
+    />
   );
 });
 
