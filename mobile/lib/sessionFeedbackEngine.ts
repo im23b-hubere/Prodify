@@ -42,100 +42,110 @@ export type SessionFeedbackComputed = {
 };
 
 const STRONG_SESSION_SECONDS = 45 * 60;
+const PREMIUM_PREVIEW = {
+  forecastReady: true,
+  habitRiskReady: true,
+  bestTimeReady: true,
+} as const;
+
+function emotionalMessage(
+  input: SessionFeedbackInput,
+): SessionFeedbackComputed["emotionalMessageKey"] {
+  if (input.currentStreak > 0) return "sessionFeedback.emotion.protectedStreak";
+  if (input.sessionDurationSeconds >= STRONG_SESSION_SECONDS) {
+    return "sessionFeedback.emotion.strongSession";
+  }
+  return "sessionFeedback.emotion.solidConsistency";
+}
+
+function statusMessage(
+  remaining: number,
+  previousStatus: GoalTrackStatus,
+  newStatus: GoalTrackStatus,
+): SessionFeedbackComputed["statusMessageKey"] {
+  if (remaining === 0) return "sessionFeedback.status.goalComplete";
+  if (previousStatus === "off_track" && newStatus !== "off_track") {
+    return "sessionFeedback.status.backOnTrack";
+  }
+  if (newStatus === "off_track") return "sessionFeedback.status.offTrack";
+  return "sessionFeedback.status.onTrack";
+}
+
+function nextAction(
+  remaining: number,
+): Pick<SessionFeedbackComputed, "nextActionKey" | "nextActionParams"> {
+  if (remaining === 0) {
+    return {
+      nextActionKey: "sessionFeedback.nextAction.goalHit",
+      nextActionParams: { sessions: 1, minutes: 30 },
+    };
+  }
+  if (remaining === 1) {
+    return {
+      nextActionKey: "sessionFeedback.nextAction.oneMore",
+      nextActionParams: { sessions: 1, minutes: 30 },
+    };
+  }
+  if (remaining <= 3) {
+    return {
+      nextActionKey: "sessionFeedback.nextAction.fewMore",
+      nextActionParams: { sessions: remaining, minutes: 30 },
+    };
+  }
+  return {
+    nextActionKey: "sessionFeedback.nextAction.keepPace",
+    nextActionParams: { sessions: 1, minutes: 30 },
+  };
+}
+
+function feedbackWithGoal(
+  input: SessionFeedbackInput,
+  weeklyGoalTarget: number,
+  completedSessions: number,
+  now: Date,
+): SessionFeedbackComputed {
+  const expectedByNow = expectedWeeklySessionsByToday(weeklyGoalTarget, now);
+  const previousStatus = classifyGoalTrackStatus({
+    weeklyGoalTarget,
+    weekSessionsCount: Math.max(0, completedSessions - 1),
+    expectedByNow,
+  });
+  const newStatus = classifyGoalTrackStatus({
+    weeklyGoalTarget,
+    weekSessionsCount: completedSessions,
+    expectedByNow,
+  });
+  const remaining = Math.max(0, weeklyGoalTarget - completedSessions);
+  return {
+    progressPercent: weeklyGoalProgressPercent({
+      weeklyGoalTarget,
+      weekSessionsCount: completedSessions,
+    }),
+    remainingSessionsToGoal: remaining,
+    previousStatus,
+    newStatus,
+    statusMessageKey: statusMessage(remaining, previousStatus, newStatus),
+    emotionalMessageKey: emotionalMessage(input),
+    ...nextAction(remaining),
+    premiumPreview: PREMIUM_PREVIEW,
+  };
+}
 
 export function buildSessionFeedback(input: SessionFeedbackInput): SessionFeedbackComputed {
   const now = input.now ?? new Date();
   const completedSessions = Math.max(0, input.weekSessionsCount);
-
   if (input.weeklyGoalTarget != null && input.weeklyGoalTarget > 0) {
-    const expectedByNow = expectedWeeklySessionsByToday(input.weeklyGoalTarget, now);
-    const previousCount = Math.max(0, completedSessions - 1);
-    const previousStatus = classifyGoalTrackStatus({
-      weeklyGoalTarget: input.weeklyGoalTarget,
-      weekSessionsCount: previousCount,
-      expectedByNow,
-    });
-    const newStatus = classifyGoalTrackStatus({
-      weeklyGoalTarget: input.weeklyGoalTarget,
-      weekSessionsCount: completedSessions,
-      expectedByNow,
-    });
-    const remaining = Math.max(0, input.weeklyGoalTarget - completedSessions);
-    const progressPercent = weeklyGoalProgressPercent({
-      weeklyGoalTarget: input.weeklyGoalTarget,
-      weekSessionsCount: completedSessions,
-    });
-
-    let statusMessageKey: SessionFeedbackComputed["statusMessageKey"] =
-      "sessionFeedback.status.onTrack";
-    if (remaining === 0) {
-      statusMessageKey = "sessionFeedback.status.goalComplete";
-    } else if (
-      previousStatus === "off_track" &&
-      (newStatus === "on_track" || newStatus === "ahead")
-    ) {
-      statusMessageKey = "sessionFeedback.status.backOnTrack";
-    } else if (previousStatus === "on_track" && newStatus === "ahead") {
-      statusMessageKey = "sessionFeedback.status.movedAhead";
-    } else if (newStatus === "off_track") {
-      statusMessageKey = "sessionFeedback.status.offTrack";
-    }
-
-    const emotionalMessageKey: SessionFeedbackComputed["emotionalMessageKey"] =
-      input.currentStreak > 0
-        ? "sessionFeedback.emotion.protectedStreak"
-        : input.sessionDurationSeconds >= STRONG_SESSION_SECONDS
-          ? "sessionFeedback.emotion.strongSession"
-          : "sessionFeedback.emotion.solidConsistency";
-
-    let nextActionKey: SessionFeedbackComputed["nextActionKey"] =
-      "sessionFeedback.nextAction.keepPace";
-    let nextActionParams: Record<string, number> = { sessions: 1, minutes: 30 };
-    if (remaining === 0) {
-      nextActionKey = "sessionFeedback.nextAction.goalHit";
-    } else if (remaining === 1) {
-      nextActionKey = "sessionFeedback.nextAction.oneMore";
-      nextActionParams = { sessions: 1, minutes: 30 };
-    } else if (remaining <= 3) {
-      nextActionKey = "sessionFeedback.nextAction.fewMore";
-      nextActionParams = { sessions: remaining, minutes: 30 };
-    }
-
-    return {
-      progressPercent,
-      remainingSessionsToGoal: remaining,
-      previousStatus,
-      newStatus,
-      statusMessageKey,
-      emotionalMessageKey,
-      nextActionKey,
-      nextActionParams,
-      premiumPreview: {
-        forecastReady: true,
-        habitRiskReady: true,
-        bestTimeReady: true,
-      },
-    };
+    return feedbackWithGoal(input, input.weeklyGoalTarget, completedSessions, now);
   }
-
   return {
     progressPercent: null,
     remainingSessionsToGoal: null,
     previousStatus: null,
     newStatus: "on_track",
     statusMessageKey: "sessionFeedback.status.onTrack",
-    emotionalMessageKey:
-      input.currentStreak > 0
-        ? "sessionFeedback.emotion.protectedStreak"
-        : input.sessionDurationSeconds >= STRONG_SESSION_SECONDS
-          ? "sessionFeedback.emotion.strongSession"
-          : "sessionFeedback.emotion.solidConsistency",
+    emotionalMessageKey: emotionalMessage(input),
     nextActionKey: "sessionFeedback.nextAction.keepPace",
     nextActionParams: { sessions: 1, minutes: 30 },
-    premiumPreview: {
-      forecastReady: true,
-      habitRiskReady: true,
-      bestTimeReady: true,
-    },
+    premiumPreview: PREMIUM_PREVIEW,
   };
 }
