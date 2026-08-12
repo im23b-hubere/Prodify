@@ -1,3 +1,9 @@
+from sqlalchemy import select
+
+from app.database import SessionLocal
+from app.models import GrowthEvent
+
+
 def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
     register = client.post(
         "/auth/register",
@@ -25,3 +31,14 @@ def test_goal_forecast_endpoint(client):
     body = forecast.json()
     assert body["target_sessions"] == 4
     assert body["risk_level"] in {"on_track", "at_risk", "off_track"}
+
+    repeated = client.get("/outcomes/goal-forecast/current", headers=headers)
+    assert repeated.status_code == 200
+    with SessionLocal() as db:
+        events = db.scalars(
+            select(GrowthEvent).where(
+                GrowthEvent.user_id == 1,
+                GrowthEvent.event_name == "goal_forecast_seen",
+            )
+        ).all()
+        assert len(events) == 1
