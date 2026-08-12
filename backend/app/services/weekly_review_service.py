@@ -1,10 +1,11 @@
 import json
 import logging
 from collections import Counter
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, load_only
 
 from app.models import ProductionSession, UserGoal, WeeklyReviewSnapshot, utcnow
 from app.schemas import WeeklyReviewPublic
@@ -12,6 +13,20 @@ from app.services.ollama_client import generate_weekly_coach_note
 from app.timeutil import as_utc_aware
 
 logger = logging.getLogger(__name__)
+
+SUGGESTIONS = [
+    "Schedule your next two sessions now at your strongest time window.",
+    "Define one weekly outcome and attach each session to that outcome.",
+    "End every session with a 2-line debrief so restart friction stays low.",
+]
+
+
+@dataclass(frozen=True)
+class WeeklySummary:
+    total_sessions: int
+    total_seconds: int
+    top_day: int | None
+    top_hour: int | None
 
 
 def _week_range():
@@ -59,89 +74,119 @@ def generate_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic:
     week_start, week_end = _week_range()
     week_start_dt = datetime.fromisoformat(week_start).replace(tzinfo=timezone.utc)
     week_end_dt = datetime.fromisoformat(week_end).replace(tzinfo=timezone.utc) + timedelta(days=1)
-
-    totals = db.execute(
-        select(
-            func.count(ProductionSession.id),
-            func.coalesce(func.sum(ProductionSession.duration_seconds), 0),
-        ).where(
-            ProductionSession.user_id == user_id,
-            ProductionSession.deleted_at.is_(None),
-            ProductionSession.duration_seconds.is_not(None),
-            ProductionSession.started_at >= week_start_dt,
-            ProductionSession.started_at < week_end_dt,
-        )
-    ).one()
-    total_sessions = int(totals[0] or 0)
-    total_seconds = int(totals[1] or 0)
-    week_sessions = db.scalars(
+    sessions = list(db.scalars(
         select(ProductionSession).where(
             ProductionSession.user_id == user_id,
             ProductionSession.deleted_at.is_(None),
             ProductionSession.duration_seconds.is_not(None),
             ProductionSession.started_at >= week_start_dt,
             ProductionSession.started_at < week_end_dt,
-        )
-    ).all()
+        ).options(load_only(ProductionSession.started_at, ProductionSession.duration_seconds))
+    ).all())
+    summary = _summarize_sessions(sessions)
+    target = _weekly_target(db, user_id, week_start)
+    insights = _build_insights(summary)
+    blockers = _build_blockers(summary.total_sessions, target)
+    ai_feedback = _generate_coach_feedback(summary, target, insights, blockers)
+    row = _save_snapshot(
+        db,
+        user_id=user_id,
+        week_start=week_start,
+        week_end=week_end,
+        summary=summary,
+        insights=insights,
+        blockers=blockers,
+        ai_feedback=ai_feedback,
+    )
+    return _to_public(row)
+
+
+def _summarize_sessions(sessions: list[ProductionSession]) -> WeeklySummary:
     by_weekday: Counter[int] = Counter()
     by_hour: Counter[int] = Counter()
-    for row in week_sessions:
+    for row in sessions:
         dt = as_utc_aware(row.started_at)
         by_weekday[dt.weekday()] += int(row.duration_seconds or 0)
         by_hour[dt.hour] += int(row.duration_seconds or 0)
-    top_day = by_weekday.most_common(1)[0][0] if by_weekday else None
-    top_hour = by_hour.most_common(1)[0][0] if by_hour else None
+    return WeeklySummary(
+        total_sessions=len(sessions),
+        total_seconds=sum(int(row.duration_seconds or 0) for row in sessions),
+        top_day=by_weekday.most_common(1)[0][0] if by_weekday else None,
+        top_hour=by_hour.most_common(1)[0][0] if by_hour else None,
+    )
 
+
+def _build_insights(summary: WeeklySummary) -> list[str]:
     insights: list[str] = []
-    if top_day is not None:
-        insights.append(f"Your strongest output day was weekday #{top_day + 1}.")
-    if top_hour is not None:
-        insights.append(f"You performed best around {top_hour:02d}:00.")
-    if total_sessions >= 4:
+    if summary.top_day is not None:
+        insights.append(f"Your strongest output day was weekday #{summary.top_day + 1}.")
+    if summary.top_hour is not None:
+        insights.append(f"You performed best around {summary.top_hour:02d}:00.")
+    if summary.total_sessions >= 4:
         insights.append("Your consistency is compounding; keep session cadence steady.")
-    elif total_sessions > 0:
+    elif summary.total_sessions > 0:
         insights.append("Momentum exists; consistency is the next lever.")
     else:
         insights.append("No completed sessions this week yet.")
+    return insights
 
-    goal = db.scalar(
-        select(UserGoal).where(
+
+def _weekly_target(db: Session, user_id: int, week_start: str) -> int:
+    target = db.scalar(
+        select(UserGoal.target_value).where(
             UserGoal.user_id == user_id,
             UserGoal.goal_type == "weekly_sessions",
             UserGoal.week_start == week_start,
         )
     )
+    return int(target or 0)
+
+
+def _build_blockers(total_sessions: int, target: int) -> list[str]:
     blockers: list[str] = []
-    target = int(goal.target_value) if goal else 0
     if target > total_sessions:
         blockers.append(f"You skipped {target - total_sessions} planned session(s).")
     if total_sessions == 0:
         blockers.append("No execution blocks were completed this week.")
+    return blockers
 
-    suggestions = [
-        "Schedule your next two sessions now at your strongest time window.",
-        "Define one weekly outcome and attach each session to that outcome.",
-        "End every session with a 2-line debrief so restart friction stays low.",
-    ]
-    ai_feedback = _default_coach_note()
+
+def _generate_coach_feedback(
+    summary: WeeklySummary,
+    target: int,
+    insights: list[str],
+    blockers: list[str],
+) -> str:
     prompt = _weekly_coach_prompt(
-        total_sessions=total_sessions,
-        total_seconds=total_seconds,
+        total_sessions=summary.total_sessions,
+        total_seconds=summary.total_seconds,
         target_sessions=target,
-        top_day=top_day,
-        top_hour=top_hour,
+        top_day=summary.top_day,
+        top_hour=summary.top_hour,
         insights=insights,
         blockers=blockers,
     )
     try:
-        generated = generate_weekly_coach_note(prompt)
-        if generated:
-            ai_feedback = generated
+        return generate_weekly_coach_note(prompt) or _default_coach_note()
     except Exception:
         logger.exception(
             "weekly_review_ai_provider_error",
             extra={"provider": "ollama", "context": "weekly_review_generate"},
         )
+        return _default_coach_note()
+
+
+def _save_snapshot(
+    db: Session,
+    *,
+    user_id: int,
+    week_start: str,
+    week_end: str,
+    summary: WeeklySummary,
+    insights: list[str],
+    blockers: list[str],
+    ai_feedback: str,
+) -> WeeklyReviewSnapshot:
     row = db.scalar(
         select(WeeklyReviewSnapshot).where(
             WeeklyReviewSnapshot.user_id == user_id,
@@ -151,23 +196,27 @@ def generate_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic:
     if row is None:
         row = WeeklyReviewSnapshot(user_id=user_id, week_start=week_start, week_end=week_end)
         db.add(row)
-    row.total_sessions = total_sessions
-    row.total_seconds = total_seconds
+    row.total_sessions = summary.total_sessions
+    row.total_seconds = summary.total_seconds
     row.insights_json = json.dumps(insights)
     row.blockers_json = json.dumps(blockers)
-    row.suggestions_json = json.dumps(suggestions)
+    row.suggestions_json = json.dumps(SUGGESTIONS)
     row.ai_feedback = ai_feedback
     row.week_end = week_end
     db.commit()
+    return row
+
+
+def _to_public(row: WeeklyReviewSnapshot) -> WeeklyReviewPublic:
     return WeeklyReviewPublic(
-        week_start=week_start,
-        week_end=week_end,
-        total_sessions=total_sessions,
-        total_seconds=total_seconds,
-        insights=insights,
-        blockers=blockers,
-        suggestions=suggestions,
-        ai_feedback=ai_feedback,
+        week_start=row.week_start,
+        week_end=row.week_end,
+        total_sessions=row.total_sessions,
+        total_seconds=row.total_seconds,
+        insights=json.loads(row.insights_json or "[]"),
+        blockers=json.loads(row.blockers_json or "[]"),
+        suggestions=json.loads(row.suggestions_json or "[]"),
+        ai_feedback=row.ai_feedback or "",
         share_image_url=row.share_image_url,
     )
 
@@ -182,14 +231,4 @@ def get_current_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic |
     )
     if row is None:
         return None
-    return WeeklyReviewPublic(
-        week_start=row.week_start,
-        week_end=row.week_end,
-        total_sessions=row.total_sessions,
-        total_seconds=row.total_seconds,
-        insights=json.loads(row.insights_json or "[]"),
-        blockers=json.loads(row.blockers_json or "[]"),
-        suggestions=json.loads(row.suggestions_json or "[]"),
-        ai_feedback=row.ai_feedback or "",
-        share_image_url=row.share_image_url,
-    )
+    return _to_public(row)

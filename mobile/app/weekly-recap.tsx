@@ -1,4 +1,4 @@
-import { type Href, useFocusEffect, useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -16,12 +16,10 @@ import {
   type WeeklyShareTemplateId,
 } from "../features/weeklyRecap/WeeklyWrappedShareCard";
 import { WeeklyWrappedViewer } from "../features/weeklyRecap/WeeklyWrappedViewer";
+import { useWeeklyRecapData } from "../features/weeklyRecap/useWeeklyRecapData";
 import { colors, spacing } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
-import { apiJson } from "../lib/client";
 import { sessionTypeLabel } from "../lib/sessionI18n";
-import { tryParseWeeklyReviewDto } from "../lib/outcomesDto";
-import { tryParseSessionStatsDto } from "../lib/statsDto";
 import type { SessionStatsDto } from "../types/session";
 import type { WeeklyReviewDto } from "../types/outcomes";
 
@@ -87,99 +85,20 @@ export default function WeeklyRecapScreen() {
   const { t } = useTranslation();
   const { token } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState<SessionStatsDto | null>(null);
-  const [review, setReview] = useState<WeeklyReviewDto | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [statsWarning, setStatsWarning] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [generateBusy, setGenerateBusy] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
+  const {
+    stats,
+    review,
+    error,
+    statsWarning,
+    loading,
+    generateBusy,
+    generateError,
+    load,
+    generateRecap,
+  } = useWeeklyRecapData(token, t);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareTemplate, setShareTemplate] = useState<WeeklyShareTemplateId>("gradient");
   const shotRef = useRef<ViewShot | null>(null);
-
-  const load = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      const silent = opts?.silent ?? false;
-      setError(null);
-      setStatsWarning(null);
-      setGenerateError(null);
-      if (!token) {
-        setStats(null);
-        setReview(null);
-        if (!silent) setLoading(false);
-        return;
-      }
-      if (!silent) setLoading(true);
-
-      let parsedReview: WeeklyReviewDto | null = null;
-      try {
-        const rawReview = await apiJson<unknown>("/outcomes/weekly-review/current", { token });
-        parsedReview = tryParseWeeklyReviewDto(rawReview);
-      } catch {
-        parsedReview = null;
-      }
-      setReview(parsedReview);
-
-      let parsedStats: SessionStatsDto | null = null;
-      let statsErr: string | null = null;
-      try {
-        const rawStats = await apiJson<unknown>("/sessions/stats?period=week", { token });
-        parsedStats = tryParseSessionStatsDto(rawStats);
-        if (!parsedStats) {
-          statsErr = t("weeklyRecap.invalidStats");
-        }
-      } catch (e) {
-        statsErr = e instanceof Error ? e.message : t("weeklyRecap.loadFailed");
-      }
-      setStats(parsedStats);
-
-      if (statsErr) {
-        if (parsedReview) {
-          setStatsWarning(statsErr);
-          setError(null);
-        } else {
-          setError(statsErr);
-        }
-      } else {
-        setError(null);
-      }
-
-      if (!silent) setLoading(false);
-    },
-    [token, t],
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
-
-  const onGenerateRecap = useCallback(async () => {
-    if (!token) return;
-    setGenerateBusy(true);
-    setGenerateError(null);
-    try {
-      const raw = await apiJson<unknown>("/outcomes/weekly-review/generate", {
-        token,
-        method: "POST",
-        body: {},
-      });
-      const parsed = tryParseWeeklyReviewDto(raw);
-      if (parsed) {
-        setReview(parsed);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      } else {
-        setGenerateError(t("weeklyRecap.generateInvalid"));
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t("weeklyRecap.generateFailed");
-      setGenerateError(msg);
-    } finally {
-      setGenerateBusy(false);
-    }
-  }, [t, token]);
 
   const s = stats?.summary;
   const displaySessions = review?.total_sessions ?? s?.total_sessions ?? 0;
@@ -304,7 +223,7 @@ export default function WeeklyRecapScreen() {
         showGenerate={Boolean(token && !review)}
         generateBusy={generateBusy}
         generateError={generateError}
-        onGenerate={() => void onGenerateRecap()}
+        onGenerate={() => void generateRecap()}
         showShare={Boolean(token && hasCardData)}
         shareBusy={shareBusy}
         shareTemplate={shareTemplate}

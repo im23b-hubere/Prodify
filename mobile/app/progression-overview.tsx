@@ -1,8 +1,7 @@
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { LevelRankHeroEmblem } from "../components/progression/LevelRankHero";
@@ -12,24 +11,17 @@ import { ErrorState } from "../components/states/ErrorState";
 import { AppCard } from "../components/ui/AppCard";
 import { PrimaryButton } from "../components/ui/PrimaryButton";
 import { ScreenHeader } from "../components/ui/ScreenHeader";
-import { fontFamily } from "../constants/fonts";
-import { colors, radii, spacing, typography, ui } from "../constants/theme";
+import { colors } from "../constants/theme";
 import { useAuth } from "../context/AuthContext";
+import { useProgressionOverview } from "../features/progression/hooks/useProgressionOverview";
+import { styles } from "../features/progression/progressionOverview.styles";
 import {
   leaveProgressionOverview,
   parseProgressionOverviewFrom,
   progressionBackLabel,
 } from "../lib/progressionNavigation";
-import {
-  fetchLevelCatalog,
-  prefetchLevelCatalog,
-  type ProgressionLevelItem,
-} from "../lib/progressionLevelCatalog";
-import { PROGRESSION_NAMED_LEVEL_MAX, progressionLevelName } from "../lib/progressionLevels";
+import { progressionLevelName } from "../lib/progressionLevels";
 import { groupLevelsByTier, levelTierFor } from "../lib/progressionLevelTheme";
-import { isScreenDataStale } from "../lib/screenDataStale";
-import { fetchProgression, syncProgression } from "../lib/progressionSync";
-import type { ProgressionDto } from "../types/outcomes";
 
 export default function ProgressionOverviewScreen() {
   const { t } = useTranslation();
@@ -38,85 +30,15 @@ export default function ProgressionOverviewScreen() {
   const from = parseProgressionOverviewFrom(params.from);
   const backLabel = progressionBackLabel(t, from);
   const { token } = useAuth();
-  const [progression, setProgression] = useState<ProgressionDto | null>(null);
-  const [levelCatalog, setLevelCatalog] = useState<ProgressionLevelItem[]>([]);
-  const [loadingProgression, setLoadingProgression] = useState(true);
-  const [loadingCatalog, setLoadingCatalog] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const lastFetchRef = useRef(0);
-  const progressionRef = useRef(progression);
-  const catalogLenRef = useRef(levelCatalog.length);
-  progressionRef.current = progression;
-  catalogLenRef.current = levelCatalog.length;
-
-  const load = useCallback(
-    async (opts?: { silent?: boolean; sync?: boolean; force?: boolean }) => {
-      const silent = opts?.silent ?? false;
-      const sync = Boolean(opts?.sync);
-      const force = Boolean(opts?.force || sync);
-
-      if (
-        !force &&
-        !silent &&
-        !isScreenDataStale(lastFetchRef.current) &&
-        progressionRef.current &&
-        catalogLenRef.current > 0
-      ) {
-        return;
-      }
-
-      setLoadError(null);
-      if (!token) {
-        setProgression(null);
-        setLevelCatalog([]);
-        setLoadingProgression(false);
-        setLoadingCatalog(false);
-        setRefreshing(false);
-        return;
-      }
-
-      prefetchLevelCatalog();
-
-      if (silent) {
-        setRefreshing(true);
-      } else {
-        if (!progressionRef.current) setLoadingProgression(true);
-        if (catalogLenRef.current === 0) setLoadingCatalog(true);
-      }
-
-      try {
-        const progressionPromise = sync
-          ? syncProgression(token, { force: true })
-          : fetchProgression(token, { force });
-
-        const [raw, catalog] = await Promise.all([
-          progressionPromise,
-          fetchLevelCatalog(PROGRESSION_NAMED_LEVEL_MAX),
-        ]);
-
-        setProgression(raw);
-        setLevelCatalog(catalog);
-        lastFetchRef.current = Date.now();
-      } catch (e) {
-        setProgression(null);
-        setLevelCatalog([]);
-        setLoadError(e instanceof Error ? e.message : t("progression.loadError"));
-      } finally {
-        setLoadingProgression(false);
-        setLoadingCatalog(false);
-        setRefreshing(false);
-      }
-    },
-    [token, t],
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      prefetchLevelCatalog();
-      void load();
-    }, [load]),
-  );
+  const {
+    progression,
+    levelCatalog,
+    loadingProgression,
+    loadingCatalog,
+    refreshing,
+    loadError,
+    load,
+  } = useProgressionOverview(token, t("progression.loadError"));
 
   const level = progression?.current_level ?? 1;
   const nextLevel = level + 1;
@@ -247,79 +169,3 @@ export default function ProgressionOverviewScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: {
-    padding: ui.screenPadding,
-    paddingBottom: spacing.xxl,
-    gap: spacing.md,
-  },
-  heroCard: {
-    borderWidth: 1,
-  },
-  levelTitle: {
-    color: colors.textPrimary,
-    ...typography.cardTitle,
-  },
-  tierSections: {
-    marginTop: spacing.sm,
-    gap: spacing.lg,
-  },
-  tierSection: {
-    gap: spacing.sm,
-  },
-  tierHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  tierDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  tierHeaderText: {
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  tierLine: {
-    flex: 1,
-    height: 1,
-  },
-  metaLine: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    marginTop: spacing.xs,
-  },
-  track: {
-    marginTop: spacing.sm,
-    width: "100%",
-    height: 10,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    overflow: "hidden",
-  },
-  fill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-  },
-  hint: {
-    marginTop: spacing.sm,
-    color: colors.textSecondary,
-    ...typography.caption,
-  },
-  decayHint: {
-    marginTop: spacing.xs,
-    color: colors.textSecondary,
-    ...typography.caption,
-  },
-  levelRows: {
-    gap: spacing.xs,
-  },
-});

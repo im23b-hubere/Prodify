@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "Prodify API"
-    app_version: str = "1.0.0"
+    app_version: str = "1.0.1"
     api_version: str = "v1"
 
     secret_key: str
@@ -50,8 +50,8 @@ class Settings(BaseSettings):
     # Optional emergency fallback trial before RevenueCat rows exist: grant access for N days after signup.
     # Keep at 0 for strict paid-access behavior (recommended for production).
     onboarding_trial_days: int = 0
-    legal_privacy_url: str = "https://prodify.app/privacy"
-    legal_terms_url: str = "https://prodify.app/terms"
+    legal_privacy_url: str = "https://prodify-api-46b1.onrender.com/legal/privacy"
+    legal_terms_url: str = "https://prodify-api-46b1.onrender.com/legal/terms"
     legal_effective_date: str = "2026-04-20"
     legal_version: str = "2026.04"
     support_email: str = "support@prodify.app"

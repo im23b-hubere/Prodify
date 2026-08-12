@@ -51,7 +51,7 @@ def test_register_push_token_creates_and_reactivates_existing_token(client):
 
 def test_register_push_token_respects_feature_flag(client, monkeypatch):
     headers = _auth_headers(client, "push-flag@example.com", "push-flag-user")
-    monkeypatch.setattr("app.routers.notifications.settings.feature_flag_push_notifications_enabled", False)
+    monkeypatch.setattr("app.routers.notification_push.settings.feature_flag_push_notifications_enabled", False)
     created = client.post(
         "/notifications/register-token",
         headers=headers,
@@ -73,7 +73,10 @@ def test_smart_nudge_validates_payload(client):
 
 def test_smart_nudge_accepts_typed_payload(client, monkeypatch):
     headers = _auth_headers(client, "smart-nudge-ok@example.com", "smart-nudge-ok-user")
-    monkeypatch.setattr("app.routers.notifications.send_ping", lambda *_args, **_kwargs: (1, 1, "ok"))
+    monkeypatch.setattr(
+        "app.services.push_notification_service.send_ping",
+        lambda *_args, **_kwargs: (1, 1, "ok"),
+    )
     ok = client.post(
         "/notifications/smart-nudge",
         headers=headers,

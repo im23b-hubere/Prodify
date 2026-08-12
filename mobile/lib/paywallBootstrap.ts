@@ -33,7 +33,9 @@ function mapPackages(offeringPackages: PurchasesPackage[]) {
   return { weekly, sixMonth, purchasable };
 }
 
-async function tryRecoverExistingSubscription(appUserId: string | null): Promise<CustomerInfo | null> {
+async function tryRecoverExistingSubscription(
+  appUserId: string | null,
+): Promise<CustomerInfo | null> {
   if (!appUserId) return null;
 
   const existing = await getRevenueCatCustomerInfo(appUserId).catch(() => null);

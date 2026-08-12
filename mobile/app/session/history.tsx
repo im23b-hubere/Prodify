@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { ChevronLeft, History } from "lucide-react-native";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 
@@ -11,11 +11,11 @@ import { DashboardRecentSessionRow } from "../../components/dashboard/DashboardR
 import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
-import { fontFamily } from "../../constants/fonts";
-import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
+import { colors } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import type { StatsPeriod } from "../../features/stats/types";
 import { useSessionHistory } from "../../features/sessions/hooks/useSessionHistory";
+import { styles } from "../../features/sessions/sessionHistory.styles";
 import { filterSessionsByStatsPeriod } from "../../features/sessions/utils/sessionHistoryFilter";
 import { apiJson } from "../../lib/client";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
@@ -198,82 +198,3 @@ export default function SessionHistoryScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: {
-    paddingHorizontal: ui.screenPadding,
-    paddingBottom: spacing.xxl,
-    gap: spacing.sm,
-  },
-  headerBlock: {
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-  },
-  backBtn: {
-    marginTop: 2,
-    padding: spacing.xs,
-    marginLeft: -spacing.xs,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.screenTitle,
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.caption,
-    lineHeight: 18,
-  },
-  headerLinks: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  link: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
-  linkPressed: {
-    opacity: motion.pressOpacity,
-  },
-  deleteAction: {
-    backgroundColor: colors.danger,
-    justifyContent: "center",
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    borderRadius: radii.md,
-  },
-  deleteActionText: {
-    color: "#fff",
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
-  loadMoreBtn: {
-    alignSelf: "center",
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  loadMoreText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
-  footerSpacer: {
-    height: spacing.lg,
-  },
-});

@@ -118,54 +118,63 @@ def verify_billing_sync(body: BillingSyncBody) -> BillingVerificationResult:
 
 
 def sync_from_webhook_payload(db: Session, payload: dict) -> tuple[int | None, UserSubscription | None]:
-    event = payload.get("event") if isinstance(payload.get("event"), dict) else payload
+    event = _webhook_event(payload)
     user_id_raw = event.get("app_user_id") or event.get("user_id")
     if user_id_raw is None:
         return None, None
-    user_id: int | None = None
-    try:
-        user_id = int(str(user_id_raw))
-    except ValueError:
-        existing = db.scalar(
-            select(UserSubscription).where(UserSubscription.rc_app_user_id == str(user_id_raw))
-        )
-        if existing is not None:
-            user_id = int(existing.user_id)
+    user_id = _resolve_webhook_user_id(db, user_id_raw)
     if user_id is None:
         return None, None
-    event_type = str(event.get("type") or "").strip().upper()
-    is_trial_period = bool(event.get("is_trial_period"))
-
-    if "CANCELLATION" in event_type or "EXPIRATION" in event_type:
-        ent = "free"
-    elif not is_trial_period and (
-        "PURCHASE" in event_type or "RENEWAL" in event_type or bool(event.get("is_active"))
-    ):
-        ent = "premium"
-    else:
-        # Safest fallback: do not accidentally grant access for unknown events.
-        ent = "free"
-
-    expires = event.get("expires_at") or event.get("expiration_at_ms")
-    expires_at: datetime | None = None
-    if isinstance(expires, str):
-        try:
-            expires_at = datetime.fromisoformat(expires.replace("Z", "+00:00"))
-        except ValueError:
-            expires_at = None
-    elif isinstance(expires, (int, float)):
-        try:
-            expires_at = datetime.fromtimestamp(float(expires) / 1000.0, tz=timezone.utc)
-        except (OverflowError, OSError, ValueError):
-            expires_at = None
     body = BillingSyncBody(
         app_user_id=str(user_id_raw),
-        entitlement=ent,
+        entitlement=_webhook_entitlement(event),
         trial_active=False,
-        expires_at=expires_at,
+        expires_at=_webhook_expiration(event),
     )
-    row = upsert_subscription(db, user_id, body)
-    return user_id, row
+    return user_id, upsert_subscription(db, user_id, body)
+
+
+def _webhook_event(payload: dict) -> dict:
+    nested_event = payload.get("event")
+    return nested_event if isinstance(nested_event, dict) else payload
+
+
+def _resolve_webhook_user_id(db: Session, raw_user_id: object) -> int | None:
+    try:
+        return int(str(raw_user_id))
+    except ValueError:
+        existing = db.scalar(
+            select(UserSubscription).where(UserSubscription.rc_app_user_id == str(raw_user_id))
+        )
+        return int(existing.user_id) if existing is not None else None
+
+
+def _webhook_entitlement(event: dict) -> str:
+    event_type = str(event.get("type") or "").strip().upper()
+    is_trial_period = bool(event.get("is_trial_period"))
+    if "CANCELLATION" in event_type or "EXPIRATION" in event_type:
+        return "free"
+    if not is_trial_period and (
+        "PURCHASE" in event_type or "RENEWAL" in event_type or bool(event.get("is_active"))
+    ):
+        return "premium"
+    # Unknown and trial events must never accidentally grant premium access.
+    return "free"
+
+
+def _webhook_expiration(event: dict) -> datetime | None:
+    expires = event.get("expires_at") or event.get("expiration_at_ms")
+    if isinstance(expires, str):
+        try:
+            return datetime.fromisoformat(expires.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if isinstance(expires, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(expires) / 1000.0, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            return None
+    return None
 
 
 def to_entitlement_public(row: UserSubscription | None) -> EntitlementPublic:

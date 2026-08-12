@@ -66,9 +66,9 @@ Whether you are beat making, mixing, recording, or learning, Prodify keeps your 
 
 ## Compliance and Support Links
 
-- **Privacy policy URL:** https://prodify.app/privacy
-- **Terms URL:** https://prodify.app/terms
-- **Support URL / email:** https://prodify.app/support (fallback: support@prodify.app)
+- **Privacy policy URL:** https://prodify-api-46b1.onrender.com/legal/privacy
+- **Terms URL:** https://prodify-api-46b1.onrender.com/legal/terms
+- **Support URL / email:** https://prodify-api-46b1.onrender.com/legal/support (fallback: support@prodify.app)
 - **Account deletion:** In-app via Profile -> Settings & legal -> Delete account
 
 ## Release Notes (1.0.1)
@@ -79,7 +79,7 @@ Whether you are beat making, mixing, recording, or learning, Prodify keeps your 
 - Friend challenges with real session sync and challenge management
 - Together tab: buddy + challenges social view
 
-## Release Notes (1.0.0)
+## Release Notes (1.0.1)
 
 Welcome to Prodify 1.0.
 

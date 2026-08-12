@@ -51,3 +51,36 @@ def test_stats_heatmap_days_length(client):
         assert "date" in d and "seconds" in d and "intensity" in d
         assert d["seconds"] >= 0
         assert 0 <= d["intensity"] <= 4
+
+
+def test_stats_insights_and_records_after_session(client):
+    headers = _auth(client, "stats-detail@example.com", "stats-detail-user")
+    started = client.post("/sessions/start", headers=headers, json={"session_type": "recording"})
+    assert started.status_code == 201
+    session_id = started.json()["id"]
+    assert client.post(
+        "/sessions/stop",
+        headers=headers,
+        json={"session_id": session_id},
+    ).status_code == 200
+
+    insights = client.get("/stats/insights", headers=headers)
+    records = client.get("/stats/records", headers=headers)
+
+    assert insights.status_code == 200
+    productivity = insights.json()["productivity"]
+    assert productivity["best_hour_start"] is not None
+    assert productivity["best_weekday_index"] is not None
+    assert {item["key"] for item in productivity["tip_items"]} == {
+        "stats_insights_best_hour",
+        "stats_insights_lean_dow",
+    }
+    assert records.status_code == 200
+    record_keys = {record["key"] for record in records.json()["records"]}
+    assert {
+        "longest_session",
+        "most_sessions_day",
+        "longest_streak",
+        "current_streak",
+        "productive_week",
+    } <= record_keys

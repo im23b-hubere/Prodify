@@ -109,3 +109,34 @@ def test_session_track_outcome_update_persists(client):
     assert set_wip.status_code == 200
     assert set_wip.json()["track_outcome"] == "wip"
     assert set_wip.json()["track_title"] is None
+
+
+def test_completed_session_insights_contract(client):
+    headers = _auth_headers(client, "session-insights@example.com", "session-insights-user")
+    started = client.post(
+        "/sessions/start",
+        headers=headers,
+        json={"session_type": "mixing"},
+    )
+    assert started.status_code == 201
+    session_id = started.json()["id"]
+
+    active_insights = client.get(f"/sessions/item/{session_id}/insights", headers=headers)
+    assert active_insights.status_code == 400
+    assert client.post(
+        "/sessions/stop",
+        headers=headers,
+        json={"session_id": session_id},
+    ).status_code == 200
+
+    response = client.get(f"/sessions/item/{session_id}/insights", headers=headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["focus_tier"] in {"excellent", "strong", "solid", "room_to_improve"}
+    assert body["active_seconds"] >= 0
+    assert body["paused_seconds"] >= 0
+    assert body["impact_items"]
+    assert any(item["key"] == "prod_minimal_pause" for item in body["productivity_items"])
+    assert isinstance(body["timeline"], list)
+    assert isinstance(body["related_sessions"], list)

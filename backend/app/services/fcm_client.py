@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,18 @@ from app.config import Settings
 logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"]
+
+
+@dataclass
+class FcmDelivery:
+    attempted: int = 0
+    delivered: int = 0
+    errors: list[str] = field(default_factory=list)
+    invalid_tokens: list[str] = field(default_factory=list)
+
+    def as_tuple(self) -> tuple[int, int, str | None, list[str]]:
+        summary = "; ".join(self.errors[:3]) if self.errors else None
+        return self.attempted, self.delivered, summary, self.invalid_tokens
 
 
 def _load_service_account_dict(settings: Settings) -> dict[str, Any] | None:
@@ -55,46 +68,70 @@ def send_fcm_data_messages(
     if not auth:
         return 0, 0, "FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_PATH not configured", []
     access_token, project_id = auth
-
-    if not tokens:
-        return 0, 0, None, []
-
     url = f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json; charset=UTF-8",
     }
-
-    ok = 0
-    errs: list[str] = []
-    invalid_tokens: list[str] = []
-    attempted = 0
+    delivery = FcmDelivery()
     with httpx.Client(timeout=20.0) as client:
-        for t in tokens[:100]:
-            attempted += 1
-            msg: dict[str, Any] = {
-                "token": t,
-                "notification": {"title": title[:128], "body": body[:256]},
-                "android": {"priority": "HIGH"},
-            }
-            if data:
-                msg["data"] = {str(k): str(v) for k, v in data.items()}
-            payload = {"message": msg}
-            try:
-                r = client.post(url, json=payload, headers=headers)
-                if r.status_code == 200:
-                    ok += 1
-                else:
-                    try:
-                        detail = r.json()
-                    except ValueError:
-                        detail = r.text
-                    errs.append(f"{r.status_code}: {detail}"[:200])
-                    detail_text = str(detail)
-                    if "UNREGISTERED" in detail_text or "registration-token-not-registered" in detail_text:
-                        invalid_tokens.append(t)
-            except httpx.HTTPError as e:
-                errs.append(str(e)[:200])
+        for token in tokens[:100]:
+            _send_message(client, url, headers, token, title, body, data, delivery)
+    return delivery.as_tuple()
 
-    summary = "; ".join(errs[:3]) if errs else None
-    return attempted, ok, summary, invalid_tokens
+
+def _send_message(
+    client: httpx.Client,
+    url: str,
+    headers: dict[str, str],
+    token: str,
+    title: str,
+    body: str,
+    data: dict[str, str] | None,
+    delivery: FcmDelivery,
+) -> None:
+    delivery.attempted += 1
+    try:
+        response = client.post(
+            url,
+            json={"message": _message(token, title, body, data)},
+            headers=headers,
+        )
+    except httpx.HTTPError as error:
+        delivery.errors.append(str(error)[:200])
+        return
+    if response.status_code == 200:
+        delivery.delivered += 1
+        return
+    detail = _response_detail(response)
+    delivery.errors.append(f"{response.status_code}: {detail}"[:200])
+    if _is_invalid_token_error(detail):
+        delivery.invalid_tokens.append(token)
+
+
+def _message(
+    token: str,
+    title: str,
+    body: str,
+    data: dict[str, str] | None,
+) -> dict[str, Any]:
+    message: dict[str, Any] = {
+        "token": token,
+        "notification": {"title": title[:128], "body": body[:256]},
+        "android": {"priority": "HIGH"},
+    }
+    if data:
+        message["data"] = {str(key): str(value) for key, value in data.items()}
+    return message
+
+
+def _response_detail(response: httpx.Response) -> object:
+    try:
+        return response.json()
+    except ValueError:
+        return response.text
+
+
+def _is_invalid_token_error(detail: object) -> bool:
+    text = str(detail)
+    return "UNREGISTERED" in text or "registration-token-not-registered" in text

@@ -1,6 +1,6 @@
 import { type Href, useRouter } from "expo-router";
 import { UserPlus } from "lucide-react-native";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, RefreshControl, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,10 +20,9 @@ import { FriendsSocialSummaryStrip } from "../../features/friends/components/Fri
 import { FriendsTogetherSection } from "../../features/friends/components/FriendsTogetherSection";
 import { useFriendsDashboardData } from "../../features/friends/hooks/useFriendsDashboardData";
 import { useFriendsScreenActions } from "../../features/friends/hooks/useFriendsScreenActions";
+import { useFriendsNotifications } from "../../features/friends/hooks/useFriendsNotifications";
 import { useFriendsScreenState } from "../../features/friends/hooks/useFriendsScreenState";
 import { friendsScreenStyles as styles } from "../../features/friends/styles/friendsScreen.styles";
-import { prependNotification } from "../../lib/notificationInbox";
-import { sendLocalSocialNotification } from "../../lib/socialNotifications";
 import type { FriendActivityDto } from "../../types/friends";
 
 export default function FriendsScreen() {
@@ -111,62 +110,7 @@ export default function FriendsScreen() {
     [activity, user?.id],
   );
 
-  useEffect(() => {
-    for (const request of incoming) {
-      prependNotification({
-        id: `social-friend-request-${request.id}`,
-        category: "social",
-        priority: "normal",
-        title: t("notificationsUi.friendRequestTitle"),
-        body: t("notificationsUi.friendRequestBody", { username: request.username }),
-        actionLabel: t("notificationsUi.openFriends"),
-        actionRoute: "/(tabs)/friends",
-        ttlMs: 7 * 24 * 60 * 60 * 1000,
-        dedupeWindowMs: 5 * 60 * 1000,
-      })
-        .then((inserted) => {
-          if (!inserted) return;
-          return sendLocalSocialNotification({
-            title: t("notificationsUi.friendRequestTitle"),
-            body: t("notificationsUi.friendRequestBody", { username: request.username }),
-            path: "/(tabs)/friends",
-            throttleKey: `friend-request-${request.id}`,
-            throttleMs: 30_000,
-          });
-        })
-        .catch(() => undefined);
-    }
-  }, [incoming, t]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    for (const item of activity) {
-      const commentsCount = item.comments_count ?? 0;
-      if (item.user_id !== user.id || item.session_id <= 0 || commentsCount <= 0) continue;
-      prependNotification({
-        id: `social-comment-${item.session_id}-${commentsCount}`,
-        category: "social",
-        priority: "normal",
-        title: t("notificationsUi.newCommentTitle"),
-        body: t("notificationsUi.newCommentBody", { count: commentsCount }),
-        actionLabel: t("notificationsUi.openSession"),
-        actionRoute: `/session/${item.session_id}`,
-        ttlMs: 5 * 24 * 60 * 60 * 1000,
-        dedupeWindowMs: 2 * 60 * 1000,
-      })
-        .then((inserted) => {
-          if (!inserted) return;
-          return sendLocalSocialNotification({
-            title: t("notificationsUi.newCommentTitle"),
-            body: t("notificationsUi.newCommentBody", { count: commentsCount }),
-            path: `/session/${item.session_id}`,
-            throttleKey: `comment-session-${item.session_id}`,
-            throttleMs: 60_000,
-          });
-        })
-        .catch(() => undefined);
-    }
-  }, [activity, t, user?.id]);
+  useFriendsNotifications(incoming, activity, user?.id, t);
 
   const renderActivity = useCallback(
     (item: FriendActivityDto, index: number) => {

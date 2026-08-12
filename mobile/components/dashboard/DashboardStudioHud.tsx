@@ -1,21 +1,20 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { ChevronRight, Shield } from "lucide-react-native";
+import { Shield } from "lucide-react-native";
 import type { TFunction } from "i18next";
 import { memo } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { ActiveSessionTimerBlock } from "../../features/dashboard/components/ActiveSessionTimerBlock";
 import { WeeklyQuestCard } from "../studio/WeeklyQuestCard";
 import { StatTile } from "../ui/StatTile";
-import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors } from "../../constants/theme";
 import type { ForecastComputed } from "../../lib/forecastEngine";
 import type { SessionFeedbackComputed } from "../../lib/sessionFeedbackEngine";
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
-
-type WeekDotKind = "none" | "session" | "freeze";
+import { DashboardWeekDots } from "./DashboardWeekDots";
+import { styles } from "./DashboardStudioHud.styles";
 
 type Props = {
   t: TFunction;
@@ -43,55 +42,6 @@ type Props = {
   onFreezeUnavailable: () => void;
   onOpenStreakHistory: () => void;
 };
-
-function WeekDots({
-  overview,
-  onOpenHistory,
-  t,
-}: {
-  overview: StreakOverviewDto;
-  onOpenHistory: () => void;
-  t: TFunction;
-}) {
-  const kinds = (overview.last_7_day_states ?? []) as WeekDotKind[];
-  const labels = overview.last_7_day_labels ?? [];
-  if (kinds.length !== 7 || labels.length !== 7) return null;
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t("streakHero.historyA11y")}
-      onPress={() => {
-        Haptics.selectionAsync().catch(() => undefined);
-        onOpenHistory();
-      }}
-      style={({ pressed }) => [styles.weekRow, pressed && { opacity: 0.9 }]}
-    >
-      <View style={styles.weekDots}>
-        {labels.map((label, index) => {
-          const kind = kinds[index] ?? "none";
-          const isToday = index === 6;
-          return (
-            <View key={`${label}-${index}`} style={styles.dayColumn}>
-              <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
-                {label.slice(0, 1)}
-              </Text>
-              <View
-                style={[
-                  styles.dayDot,
-                  kind === "session" && styles.dayDotSession,
-                  kind === "freeze" && styles.dayDotFreeze,
-                  isToday && styles.dayDotToday,
-                ]}
-              />
-            </View>
-          );
-        })}
-      </View>
-      <ChevronRight color={colors.secondary} size={18} />
-    </Pressable>
-  );
-}
 
 export const DashboardStudioHud = memo(function DashboardStudioHud({
   t,
@@ -208,7 +158,7 @@ export const DashboardStudioHud = memo(function DashboardStudioHud({
       {statusLine ? <Text style={styles.statusLine}>{statusLine}</Text> : null}
 
       {streakOverview ? (
-        <WeekDots overview={streakOverview} onOpenHistory={onOpenStreakHistory} t={t} />
+        <DashboardWeekDots overview={streakOverview} onOpenHistory={onOpenStreakHistory} t={t} />
       ) : null}
 
       {streakOverview?.streak_at_risk ? (
@@ -245,132 +195,4 @@ export const DashboardStudioHud = memo(function DashboardStudioHud({
       ) : null}
     </LinearGradient>
   );
-});
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: radii.xl,
-    padding: spacing.md,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: "rgba(255,61,0,0.22)",
-    overflow: "hidden",
-  },
-  loadingWrap: {
-    alignItems: "center",
-    paddingVertical: spacing.xs,
-  },
-  actionWrap: {
-    width: "100%",
-  },
-  startBtn: {
-    width: "100%",
-  },
-  startBtnInner: {
-    borderRadius: radii.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    alignItems: "center",
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  startEmoji: {
-    fontSize: 32,
-    color: "#fff",
-  },
-  startTitle: {
-    color: "#fff",
-    fontFamily: fontFamily.heading,
-    fontSize: 22,
-    letterSpacing: 1,
-  },
-  customizeBtn: {
-    alignItems: "center",
-    paddingVertical: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  customizeText: {
-    color: colors.secondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  statGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  statusLine: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.body,
-    textAlign: "center",
-    lineHeight: 21,
-    paddingHorizontal: spacing.sm,
-  },
-  weekRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-    paddingTop: spacing.xs,
-  },
-  weekDots: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 4,
-  },
-  dayColumn: {
-    flex: 1,
-    alignItems: "center",
-    gap: 4,
-  },
-  dayLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 10,
-  },
-  dayLabelToday: {
-    color: colors.textPrimary,
-  },
-  dayDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  dayDotSession: {
-    backgroundColor: colors.primary,
-    borderColor: "rgba(255,61,0,0.6)",
-  },
-  dayDotFreeze: {
-    backgroundColor: colors.secondary,
-    borderColor: "rgba(162,89,255,0.6)",
-  },
-  dayDotToday: {
-    transform: [{ scale: 1.15 }],
-  },
-  freezeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: "rgba(162,89,255,0.35)",
-    backgroundColor: "rgba(162,89,255,0.1)",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  freezeDisabled: {
-    opacity: 0.65,
-  },
-  freezeLabel: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
 });

@@ -12,10 +12,15 @@ import { DASHBOARD_TAB_HREF } from "./postAuthNavigation";
 
 type ReplaceFn = (href: Href) => void;
 
+function isPaywallPath(path: string): boolean {
+  return path === "paywall";
+}
+
 /** Remember a protected route to open after the user signs in (cold-start deep link). */
 export async function setPendingDeepLinkPath(targetPath: string): Promise<void> {
   const normalized = normalizeIncomingPath(targetPath);
   if (!normalized) return;
+  if (isPaywallPath(normalized)) return;
   if (!isAllowedDeepLinkPath(normalized)) return;
   if (!deepLinkRequiresAuth(normalized)) return;
   await AsyncStorage.setItem(PENDING_DEEP_LINK_PATH_KEY, normalized).catch(() => undefined);
@@ -38,7 +43,12 @@ export async function consumePendingDeepLinkHref(): Promise<Href | null> {
   await AsyncStorage.removeItem(PENDING_DEEP_LINK_PATH_KEY).catch(() => undefined);
   if (!raw?.trim()) return null;
   const normalized = normalizeIncomingPath(raw);
-  if (!normalized || !isAllowedDeepLinkPath(normalized) || !deepLinkRequiresAuth(normalized)) {
+  if (
+    !normalized ||
+    isPaywallPath(normalized) ||
+    !isAllowedDeepLinkPath(normalized) ||
+    !deepLinkRequiresAuth(normalized)
+  ) {
     return null;
   }
   return toRoutableHref(normalized) as Href;

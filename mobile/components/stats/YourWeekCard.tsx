@@ -1,27 +1,27 @@
 import type { TFunction } from "i18next";
-import { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { useMemo } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { AppCard } from "../ui/AppCard";
 import { PrimaryButton } from "../ui/PrimaryButton";
-import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography, ui } from "../../constants/theme";
-import { classifyGoalTrackStatus, expectedWeeklySessionsByToday } from "../../lib/goalPace";
+import { YourWeekGoalEditorModal } from "./YourWeekGoalEditorModal";
+import { colors } from "../../constants/theme";
+import { yourWeekStyles as styles } from "./yourWeek.styles";
 import { WEEKDAY_LETTERS, currentWeekDateKeys, localDateKey } from "../../lib/weekCalendar";
+import {
+  activeHeatmapDayKeys,
+  forecastRiskTranslationKey,
+  goalProgressPercent,
+  yourWeekNextStep,
+  yourWeekStatus,
+} from "../../features/stats/yourWeekPresentation";
+import {
+  useYourWeekGoalEditor,
+  WEEKLY_GOAL_CHIPS,
+} from "../../features/stats/useYourWeekGoalEditor";
 import type { CommitmentDto } from "../../types/friends";
 import type { GoalCurrentDto } from "../../types/goals";
 import type { GoalForecastDto } from "../../types/outcomes";
-
-const GOAL_CHIPS = [3, 5, 7] as const;
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 
@@ -39,27 +39,6 @@ type Props = {
   onStartSession: () => void;
 };
 
-function statusKey(
-  goal: GoalCurrentDto | null,
-  forecast: GoalForecastDto | null,
-  configured: boolean,
-): "setup" | "completed" | "behind" | "on_track" {
-  if (!goal || !configured) return "setup";
-  if (goal.current_sessions >= goal.target_value) return "completed";
-  if (forecast) {
-    if (forecast.risk_level === "off_track" || forecast.risk_level === "at_risk") return "behind";
-    return "on_track";
-  }
-  const expectedByNow = expectedWeeklySessionsByToday(goal.target_value);
-  const track = classifyGoalTrackStatus({
-    weeklyGoalTarget: goal.target_value,
-    weekSessionsCount: goal.current_sessions,
-    expectedByNow,
-  });
-  if (track === "off_track") return "behind";
-  return "on_track";
-}
-
 export function YourWeekCard({
   t,
   goal,
@@ -73,49 +52,25 @@ export function YourWeekCard({
   onSaveGoal,
   onStartSession,
 }: Props) {
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [selectedTarget, setSelectedTarget] = useState(5);
-  const [customTarget, setCustomTarget] = useState("");
-  const [shareWithFriends, setShareWithFriends] = useState(false);
+  const {
+    open: editorOpen,
+    close: closeEditor,
+    openEditor,
+    selectedTarget,
+    customTarget,
+    setCustomTarget,
+    selectPreset,
+    shareWithFriends,
+    setShareWithFriends,
+    save: saveFromEditor,
+  } = useYourWeekGoalEditor({ goal, commitment, onSaveGoal });
 
   const weekKeys = useMemo(() => currentWeekDateKeys(), []);
-  const activeDayKeys = useMemo(() => {
-    const set = new Set<string>();
-    for (const day of heatmapDays) {
-      if ((day.seconds ?? 0) > 0 || (day.intensity ?? 0) > 0) {
-        set.add(day.date);
-      }
-    }
-    return set;
-  }, [heatmapDays]);
+  const activeDayKeys = useMemo(() => activeHeatmapDayKeys(heatmapDays), [heatmapDays]);
 
   const todayKey = useMemo(() => localDateKey(new Date()), []);
-  const status = statusKey(goal, forecast, configured);
-  const progressPct = goal ? Math.max(0, Math.min(100, Math.round(goal.progress_percent))) : 0;
-
-  const openEditor = (prefill?: number) => {
-    const value = prefill ?? goal?.target_value ?? 5;
-    setSelectedTarget(value);
-    setCustomTarget(GOAL_CHIPS.includes(value as (typeof GOAL_CHIPS)[number]) ? "" : String(value));
-    setShareWithFriends(Boolean(commitment));
-    setEditorOpen(true);
-  };
-
-  const resolveTarget = (): number | null => {
-    if (customTarget.trim()) {
-      const parsed = Number.parseInt(customTarget, 10);
-      if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 50) return parsed;
-      return null;
-    }
-    return selectedTarget;
-  };
-
-  const saveFromEditor = async () => {
-    const target = resolveTarget();
-    if (target == null) return;
-    await onSaveGoal(target, shareWithFriends);
-    setEditorOpen(false);
-  };
+  const status = yourWeekStatus(goal, forecast, configured);
+  const progressPct = goalProgressPercent(goal);
 
   const saveFromSetup = async (target: number) => {
     await onSaveGoal(target, false);
@@ -142,24 +97,10 @@ export function YourWeekCard({
     onStartSession();
   };
 
-  const forecastRiskKey = forecast
-    ? forecast.risk_level === "on_track"
-      ? "stats.forecastRiskOnTrack"
-      : forecast.risk_level === "at_risk"
-        ? "stats.forecastRiskAtRisk"
-        : "stats.forecastRiskOffTrack"
-    : null;
+  const forecastRiskKey = forecastRiskTranslationKey(forecast);
 
   const nextStepLine = useMemo(() => {
-    if (!configured || !goal) return null;
-    if (status === "completed") return t("stats.yourWeek.nextStepCompleted");
-    if (status === "behind" && forecast?.warning_message) {
-      return forecast.warning_message;
-    }
-    if (forecast && forecast.remaining_sessions > 0) {
-      return t("stats.yourWeek.nextStepRemaining", { n: forecast.remaining_sessions });
-    }
-    return t("stats.yourWeek.nextStepOnTrack");
+    return yourWeekNextStep(goal, forecast, configured, status, t);
   }, [configured, goal, status, forecast, t]);
 
   const eyebrowStyle = [
@@ -178,7 +119,7 @@ export function YourWeekCard({
           </Text>
           {!hero ? <Text style={styles.setupHint}>{t("stats.yourWeek.setupHint")}</Text> : null}
           <View style={styles.chipRow}>
-            {GOAL_CHIPS.map((n) => (
+            {WEEKLY_GOAL_CHIPS.map((n) => (
               <Pressable
                 key={n}
                 style={({ pressed }) => [
@@ -321,328 +262,19 @@ export function YourWeekCard({
         )}
       </View>
 
-      <Modal
+      <YourWeekGoalEditorModal
+        t={t}
         visible={editorOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setEditorOpen(false)}
-      >
-        <Pressable style={styles.modalBackdrop} onPress={() => setEditorOpen(false)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>{t("stats.yourWeek.editTitle")}</Text>
-            <Text style={styles.modalHint}>{t("stats.yourWeek.editHint")}</Text>
-            <View style={styles.chipRow}>
-              {GOAL_CHIPS.map((n) => {
-                const selected = !customTarget && selectedTarget === n;
-                return (
-                  <Pressable
-                    key={`edit-${n}`}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => {
-                      setSelectedTarget(n);
-                      setCustomTarget("");
-                    }}
-                  >
-                    <Text style={[styles.chipValue, selected && styles.chipValueSelected]}>
-                      {n}
-                    </Text>
-                    <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
-                      {t("stats.yourWeek.sessionsUnit")}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <TextInput
-              value={customTarget}
-              onChangeText={setCustomTarget}
-              keyboardType="number-pad"
-              placeholder={t("stats.yourWeek.customPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-            />
-            <View style={styles.shareRow}>
-              <Text style={styles.shareLabel}>{t("stats.yourWeek.shareToggle")}</Text>
-              <Switch
-                value={shareWithFriends}
-                onValueChange={setShareWithFriends}
-                trackColor={{ false: colors.border, true: colors.primary }}
-              />
-            </View>
-            <PrimaryButton
-              label={busy ? t("stats.yourWeek.saving") : t("stats.yourWeek.saveGoal")}
-              onPress={() => void saveFromEditor()}
-              disabled={busy}
-            />
-            <Pressable style={styles.modalCancel} onPress={() => setEditorOpen(false)}>
-              <Text style={styles.modalCancelText}>{t("common.cancel")}</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        busy={busy}
+        selectedTarget={selectedTarget}
+        customTarget={customTarget}
+        shareWithFriends={shareWithFriends}
+        onClose={closeEditor}
+        onSelectPreset={selectPreset}
+        onChangeCustomTarget={setCustomTarget}
+        onChangeSharing={setShareWithFriends}
+        onSave={saveFromEditor}
+      />
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { gap: spacing.sm },
-  cardHero: { gap: spacing.xs },
-  embeddedShell: {
-    gap: spacing.sm,
-  },
-  sectionEyebrow: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  sectionEyebrowEmbedded: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 10,
-    letterSpacing: 1.2,
-  },
-  setupWrap: { gap: spacing.sm },
-  setupTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.cardTitle,
-  },
-  setupTitleHero: {
-    ...typography.body,
-    fontFamily: fontFamily.bodyBold,
-  },
-  setupHint: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-  },
-  chipRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  chip: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 72,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 2,
-  },
-  chipHero: {
-    minHeight: 52,
-  },
-  chipEmbedded: {
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-  chipSelected: {
-    borderColor: colors.primary,
-    backgroundColor: "rgba(255,61,0,0.12)",
-  },
-  chipPressed: { opacity: 0.88 },
-  chipValue: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 24,
-  },
-  chipValueSelected: { color: colors.primary },
-  chipLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-  },
-  chipLabelSelected: { color: colors.textPrimary },
-  customLink: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-    textDecorationLine: "underline",
-  },
-  metricRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  bigNumber: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 32,
-    lineHeight: 38,
-  },
-  bigNumberHero: {
-    fontSize: 28,
-    lineHeight: 32,
-  },
-  bigNumberDim: {
-    color: colors.textSecondary,
-    fontSize: 22,
-  },
-  metricLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.caption,
-    flex: 1,
-    textAlign: "right",
-  },
-  statusPill: {
-    alignSelf: "flex-start",
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  statusOnTrack: {
-    borderColor: "rgba(34,197,94,0.45)",
-    backgroundColor: "rgba(34,197,94,0.12)",
-  },
-  statusBehind: {
-    borderColor: "rgba(251,191,36,0.45)",
-    backgroundColor: "rgba(251,191,36,0.1)",
-  },
-  statusDone: {
-    borderColor: "rgba(255,61,0,0.45)",
-    backgroundColor: "rgba(255,61,0,0.14)",
-  },
-  statusText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  progressTrack: {
-    width: "100%",
-    height: 8,
-    borderRadius: radii.round,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-    borderRadius: radii.round,
-  },
-  forecastLine: {
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-  },
-  forecastOnTrack: { color: colors.success },
-  forecastAtRisk: { color: colors.primary },
-  forecastOffTrack: { color: colors.danger },
-  nextStep: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-    lineHeight: 18,
-  },
-  studioLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    marginTop: spacing.xs,
-  },
-  dayRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 4,
-  },
-  dayCell: { alignItems: "center", gap: 4, flex: 1 },
-  dayDot: {
-    width: 28,
-    height: 28,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.03)",
-  },
-  dayDotActive: {
-    backgroundColor: "rgba(255,106,61,0.35)",
-    borderColor: "rgba(255,106,61,0.55)",
-  },
-  dayDotToday: {
-    borderColor: colors.primary,
-  },
-  dayLetter: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    fontSize: 11,
-  },
-  dayLetterActive: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-  },
-  promiseRow: {
-    paddingVertical: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  promiseText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-  },
-  editLink: { alignItems: "center", paddingVertical: spacing.xs },
-  editLinkText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-    textDecorationLine: "underline",
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "flex-end",
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.sectionTitle,
-  },
-  modalHint: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-  },
-  input: {
-    minHeight: ui.buttonHeight,
-    borderRadius: ui.cardRadius,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    color: colors.textPrimary,
-    fontFamily: fontFamily.body,
-    backgroundColor: colors.background,
-  },
-  shareRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  shareLabel: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.body,
-    ...typography.body,
-    flex: 1,
-  },
-  modalCancel: { alignItems: "center", paddingVertical: spacing.sm },
-  modalCancelText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.bodyStrong,
-  },
-});

@@ -1,29 +1,15 @@
 import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
 import { memo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
-import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors } from "../../constants/theme";
 import type { ForecastComputed } from "../../lib/forecastEngine";
 import type { SessionFeedbackComputed } from "../../lib/sessionFeedbackEngine";
+import { styles } from "./WeeklyQuestCard.styles";
+import { weeklyQuestPresentation } from "./weeklyQuestPresentation";
 
 const GOAL_CHIPS = [3, 5, 7] as const;
-
-type QuestStatus = "goalComplete" | "ahead" | "onTrack" | "atRisk" | "offTrack";
-
-function resolveQuestStatus(
-  feedback: SessionFeedbackComputed,
-  paceForecast: ForecastComputed | null,
-): QuestStatus {
-  if (feedback.remainingSessionsToGoal === 0) return "goalComplete";
-  if (paceForecast?.forecastStatus === "ahead") return "ahead";
-  if (paceForecast?.forecastStatus === "at_risk" || paceForecast?.forecastStatus === "will_miss") {
-    return "atRisk";
-  }
-  if (feedback.newStatus === "off_track") return "offTrack";
-  return "onTrack";
-}
 
 type SetupProps = {
   mode: "setup";
@@ -95,17 +81,16 @@ export const WeeklyQuestCard = memo(function WeeklyQuestCard(props: Props) {
     onChangeTarget,
     testID = "dashboard-quest-progress",
   } = props;
-  const progressPct = paceForecast?.currentProgressPercent ?? feedback.progressPercent ?? 0;
-  const questStatus = resolveQuestStatus(feedback, paceForecast);
+  const presentation = weeklyQuestPresentation(feedback, paceForecast);
 
   return (
     <View style={styles.wrap} testID={testID}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>{t("sessionComplete.weekQuestTitle")}</Text>
         <View style={styles.headerRight}>
-          <View style={[styles.statusChip, styles[`chip_${questStatus}`]]}>
+          <View style={[styles.statusChip, styles[`chip_${presentation.status}`]]}>
             <Text style={styles.statusChipText}>
-              {t(`sessionComplete.questStatus.${questStatus}`)}
+              {t(`sessionComplete.questStatus.${presentation.status}`)}
             </Text>
           </View>
           {onChangeTarget ? (
@@ -132,7 +117,7 @@ export const WeeklyQuestCard = memo(function WeeklyQuestCard(props: Props) {
         })}
       </Text>
       <View style={styles.goalProgressTrack}>
-        <View style={[styles.goalProgressFill, { width: `${progressPct}%` }]} />
+        <View style={[styles.goalProgressFill, { width: `${presentation.progressPercent}%` }]} />
         {paceForecast ? (
           <View
             style={[
@@ -176,142 +161,4 @@ export const WeeklyQuestCard = memo(function WeeklyQuestCard(props: Props) {
       ) : null}
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  wrap: {
-    width: "100%",
-    gap: spacing.sm,
-  },
-  setupTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.body,
-  },
-  setupHint: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  headerRight: {
-    alignItems: "flex-end",
-    gap: spacing.xs,
-  },
-  title: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    flex: 1,
-  },
-  statusChip: {
-    borderRadius: radii.round,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  statusChipText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 11,
-    letterSpacing: 0.3,
-  },
-  chip_goalComplete: {
-    borderColor: "rgba(0,255,136,0.45)",
-    backgroundColor: "rgba(0,255,136,0.12)",
-  },
-  chip_ahead: {
-    borderColor: "rgba(0,255,136,0.35)",
-    backgroundColor: "rgba(0,255,136,0.08)",
-  },
-  chip_onTrack: {
-    borderColor: "rgba(162,89,255,0.4)",
-    backgroundColor: "rgba(162,89,255,0.12)",
-  },
-  chip_atRisk: {
-    borderColor: "rgba(245,158,11,0.45)",
-    backgroundColor: "rgba(245,158,11,0.12)",
-  },
-  chip_offTrack: {
-    borderColor: "rgba(255,68,68,0.4)",
-    backgroundColor: "rgba(255,68,68,0.1)",
-  },
-  progressNumbers: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 28,
-    lineHeight: 34,
-    letterSpacing: -0.5,
-  },
-  goalProgressTrack: {
-    width: "100%",
-    height: 10,
-    borderRadius: radii.round,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-    position: "relative",
-  },
-  goalProgressFill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-  },
-  goalProgressMarker: {
-    position: "absolute",
-    top: -2,
-    bottom: -2,
-    width: 2,
-    backgroundColor: "#ffffff",
-    opacity: 0.85,
-  },
-  chipRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  chip: {
-    minWidth: 52,
-    minHeight: 44,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.md,
-  },
-  chipActive: {
-    borderColor: colors.primary,
-    backgroundColor: "rgba(255,61,0,0.14)",
-  },
-  chipPressed: {
-    opacity: 0.88,
-  },
-  chipDisabled: {
-    opacity: 0.6,
-  },
-  chipText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.body,
-  },
-  chipTextActive: {
-    color: colors.primary,
-  },
-  editBtn: {
-    paddingVertical: 2,
-    paddingHorizontal: spacing.xs,
-  },
-  editBtnText: {
-    color: colors.secondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
 });

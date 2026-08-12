@@ -1,3 +1,11 @@
+from datetime import timedelta
+
+from sqlalchemy import select
+
+from app.database import SessionLocal
+from app.models import ProductionSession, User, utcnow
+
+
 def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
     register = client.post(
         "/auth/register",
@@ -131,3 +139,26 @@ def test_output_metrics_current_returns_shape(client):
     assert "output_increase" in body
     assert "baseline_tracks_30d" in body
 
+
+def test_output_metrics_consistency_uses_full_ninety_day_window(client):
+    headers = _auth_headers(client, "metrics-window@example.com", "metrics-window-user")
+    with SessionLocal() as db:
+        user_id = db.scalar(select(User.id).where(User.email == "metrics-window@example.com"))
+        assert user_id is not None
+        db.add(
+            ProductionSession(
+                user_id=user_id,
+                started_at=utcnow() - timedelta(days=75),
+                stopped_at=utcnow() - timedelta(days=75) + timedelta(minutes=20),
+                duration_seconds=1200,
+                session_type="beat_making",
+            )
+        )
+        db.commit()
+
+    metrics = client.get("/outcomes/output-metrics/current", headers=headers)
+
+    assert metrics.status_code == 200
+    body = metrics.json()
+    assert body["release_consistency"] == 1.1
+    assert body["tracks_finished_30d"] == 0

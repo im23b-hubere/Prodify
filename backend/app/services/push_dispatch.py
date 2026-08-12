@@ -1,8 +1,9 @@
-"""Route push notifications to Expo vs FCM channels."""
+"""Route push notifications to Expo and FCM channels."""
 
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 import logging
 import threading
 
@@ -11,14 +12,33 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.config import Settings
 from app.models import PushToken, utcnow
-from app.services import expo_client, fcm_client
-from app.services import push_templates
+from app.services import expo_client, fcm_client, push_templates
 from app.services.push_links import push_data_dashboard
 
 logger = logging.getLogger(__name__)
 _push_executor: ThreadPoolExecutor | None = None
 _push_executor_size: int | None = None
 _push_executor_lock = threading.Lock()
+
+
+@dataclass(frozen=True)
+class PushChannels:
+    expo: list[str]
+    fcm: list[str]
+
+    @property
+    def attempted(self) -> int:
+        return len(self.expo) + len(self.fcm)
+
+    @property
+    def all_tokens(self) -> list[str]:
+        return [*self.expo, *self.fcm]
+
+
+@dataclass(frozen=True)
+class ChannelDelivery:
+    delivered: int
+    summary_parts: list[str]
 
 
 def _get_push_executor(settings: Settings) -> ThreadPoolExecutor:
@@ -29,27 +49,9 @@ def _get_push_executor(settings: Settings) -> ThreadPoolExecutor:
     with _push_executor_lock:
         if _push_executor is not None and _push_executor_size == max_workers:
             return _push_executor
-        _push_executor = ThreadPoolExecutor(
-            max_workers=max_workers,
-            thread_name_prefix="push-dispatch",
-        )
+        _push_executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="push-dispatch")
         _push_executor_size = max_workers
         return _push_executor
-
-
-def _deactivate_invalid_tokens(db: DBSession, channel: str, tokens: list[str]) -> int:
-    if not tokens:
-        return 0
-    normalized = [t.strip() for t in tokens if t and t.strip()]
-    if not normalized:
-        return 0
-    rows = db.scalars(select(PushToken).where(PushToken.channel == channel, PushToken.token.in_(normalized))).all()
-    deactivated = 0
-    for row in rows:
-        if row.is_active == 1:
-            row.is_active = 0
-            deactivated += 1
-    return deactivated
 
 
 def dispatch_to_user(
@@ -60,122 +62,194 @@ def dispatch_to_user(
     body: str,
     data: dict[str, str] | None = None,
 ) -> tuple[int, int, str | None]:
-    """
-    Send title/body to all push_tokens for user.
-    Returns (total_attempted, total_ok, combined_message).
-    """
-    rows = db.scalars(select(PushToken).where(PushToken.user_id == user_id, PushToken.is_active == 1)).all()
-    expo_tokens: list[str] = []
-    fcm_tokens: list[str] = []
+    """Send a notification to every unique active token for a user."""
+    channels = _load_push_channels(db, user_id)
+    if channels.attempted == 0:
+        return 0, 0, "no push tokens registered"
+
+    deliveries = [
+        _deliver_expo(settings, db, channels.expo, title, body, data),
+        _deliver_fcm(settings, db, channels.fcm, title, body, data),
+    ]
+    _touch_attempted_tokens(db, user_id, channels.all_tokens)
+    delivered = sum(result.delivered for result in deliveries)
+    summary_parts = [part for result in deliveries for part in result.summary_parts]
+    return channels.attempted, delivered, " · ".join(summary_parts) if summary_parts else None
+
+
+def _load_push_channels(db: DBSession, user_id: int) -> PushChannels:
+    rows = db.execute(
+        select(PushToken.token, PushToken.channel).where(
+            PushToken.user_id == user_id,
+            PushToken.is_active == 1,
+        )
+    ).all()
+    expo: list[str] = []
+    fcm: list[str] = []
     seen: set[tuple[str, str]] = set()
-    for r in rows:
-        key = (r.token, r.channel or "expo")
+    for token, raw_channel in rows:
+        channel = (raw_channel or "expo").lower()
+        key = token, channel
         if key in seen:
             continue
         seen.add(key)
-        ch = (r.channel or "expo").lower()
-        if ch == "fcm":
-            fcm_tokens.append(r.token)
-        else:
-            expo_tokens.append(r.token)
-
-    expo_tokens = expo_tokens[:100]
-    fcm_tokens = fcm_tokens[:100]
-
-    if not expo_tokens and not fcm_tokens:
-        return 0, 0, "no push tokens registered"
-
-    total_attempted = len(expo_tokens) + len(fcm_tokens)
-    total_ok = 0
-    parts: list[str] = []
-
-    expo_key = (settings.expo_access_token or "").strip()
-    if expo_tokens:
-        if expo_key:
-            def _expo_msg(token: str) -> dict:
-                m: dict = {
-                    "to": token,
-                    "title": title[:64],
-                    "body": body[:200],
-                    "sound": "default",
-                    "priority": "high",
-                }
-                if data:
-                    m["data"] = {str(k): str(v) for k, v in data.items()}
-                return m
-
-            messages = [_expo_msg(t) for t in expo_tokens]
-            a, o, err, invalid_tokens = expo_client.send_expo_batch(expo_key, messages)
-            total_ok += o
-            parts.append(f"Expo {o}/{a}")
-            if err:
-                parts.append(err)
-            deactivated = _deactivate_invalid_tokens(db, "expo", invalid_tokens)
-            if deactivated:
-                parts.append(f"Expo deactivated={deactivated}")
-        else:
-            parts.append(f"Expo 0/{len(expo_tokens)} (no EXPO_ACCESS_TOKEN)")
-
-    if fcm_tokens:
-        a, o, err, invalid_tokens = fcm_client.send_fcm_data_messages(settings, fcm_tokens, title, body, data=data)
-        total_ok += o
-        parts.append(f"FCM {o}/{a}")
-        if err:
-            parts.append(err)
-        deactivated = _deactivate_invalid_tokens(db, "fcm", invalid_tokens)
-        if deactivated:
-            parts.append(f"FCM deactivated={deactivated}")
-
-    attempted_tokens = [*expo_tokens, *fcm_tokens]
-    if attempted_tokens:
-        touched_rows = db.scalars(
-            select(PushToken).where(
-                PushToken.user_id == user_id,
-                PushToken.is_active == 1,
-                PushToken.token.in_(attempted_tokens),
-            )
-        ).all()
-        now = utcnow()
-        for row in touched_rows:
-            row.last_used_at = now
-
-    summary = " · ".join(parts) if parts else None
-    return total_attempted, total_ok, summary
+        (fcm if channel == "fcm" else expo).append(token)
+    return PushChannels(expo=expo[:100], fcm=fcm[:100])
 
 
-def notify_session_complete(settings: Settings, db: DBSession, user_id: int, session_type: str, duration_seconds: int) -> None:
+def _deliver_expo(
+    settings: Settings,
+    db: DBSession,
+    tokens: list[str],
+    title: str,
+    body: str,
+    data: dict[str, str] | None,
+) -> ChannelDelivery:
+    if not tokens:
+        return ChannelDelivery(0, [])
+    access_token = (settings.expo_access_token or "").strip()
+    if not access_token:
+        return ChannelDelivery(0, [f"Expo 0/{len(tokens)} (no EXPO_ACCESS_TOKEN)"])
+    messages = [_expo_message(token, title, body, data) for token in tokens]
+    attempted, delivered, error, invalid_tokens = expo_client.send_expo_batch(access_token, messages)
+    parts = [f"Expo {delivered}/{attempted}"]
+    if error:
+        parts.append(error)
+    deactivated = _deactivate_invalid_tokens(db, "expo", invalid_tokens)
+    if deactivated:
+        parts.append(f"Expo deactivated={deactivated}")
+    return ChannelDelivery(delivered, parts)
+
+
+def _expo_message(
+    token: str,
+    title: str,
+    body: str,
+    data: dict[str, str] | None,
+) -> dict:
+    message: dict = {
+        "to": token,
+        "title": title[:64],
+        "body": body[:200],
+        "sound": "default",
+        "priority": "high",
+    }
+    if data:
+        message["data"] = {str(key): str(value) for key, value in data.items()}
+    return message
+
+
+def _deliver_fcm(
+    settings: Settings,
+    db: DBSession,
+    tokens: list[str],
+    title: str,
+    body: str,
+    data: dict[str, str] | None,
+) -> ChannelDelivery:
+    if not tokens:
+        return ChannelDelivery(0, [])
+    attempted, delivered, error, invalid_tokens = fcm_client.send_fcm_data_messages(
+        settings,
+        tokens,
+        title,
+        body,
+        data=data,
+    )
+    parts = [f"FCM {delivered}/{attempted}"]
+    if error:
+        parts.append(error)
+    deactivated = _deactivate_invalid_tokens(db, "fcm", invalid_tokens)
+    if deactivated:
+        parts.append(f"FCM deactivated={deactivated}")
+    return ChannelDelivery(delivered, parts)
+
+
+def _deactivate_invalid_tokens(db: DBSession, channel: str, tokens: list[str]) -> int:
+    normalized = [token.strip() for token in tokens if token and token.strip()]
+    if not normalized:
+        return 0
+    rows = db.scalars(
+        select(PushToken).where(PushToken.channel == channel, PushToken.token.in_(normalized))
+    ).all()
+    deactivated = 0
+    for row in rows:
+        if row.is_active == 1:
+            row.is_active = 0
+            deactivated += 1
+    return deactivated
+
+
+def _touch_attempted_tokens(db: DBSession, user_id: int, tokens: list[str]) -> None:
+    rows = db.scalars(
+        select(PushToken).where(
+            PushToken.user_id == user_id,
+            PushToken.is_active == 1,
+            PushToken.token.in_(tokens),
+        )
+    ).all()
+    now = utcnow()
+    for row in rows:
+        row.last_used_at = now
+
+
+def notify_session_complete(
+    settings: Settings,
+    db: DBSession,
+    user_id: int,
+    session_type: str,
+    duration_seconds: int,
+) -> None:
     title, body = push_templates.session_complete(session_type, duration_seconds)
     payload = {**push_data_dashboard(), "kind": "session_complete"}
     try:
-        attempted, ok, msg = dispatch_to_user(settings, db, user_id, title, body, data=payload)
+        attempted, delivered, summary = dispatch_to_user(
+            settings,
+            db,
+            user_id,
+            title,
+            body,
+            data=payload,
+        )
         db.commit()
-        if msg and ok < attempted:
-            logger.info("push session-complete: ok=%s/%s %s", ok, attempted, msg)
+        if summary and delivered < attempted:
+            logger.info("push session-complete: ok=%s/%s %s", delivered, attempted, summary)
     except Exception:
         db.rollback()
         logger.exception("push session-complete failed")
 
 
-def schedule_notify_session_complete(settings: Settings, user_id: int, session_type: str, duration_seconds: int) -> None:
-    """Fire-and-forget push so HTTP workers are not blocked on upstream push latency."""
+def schedule_notify_session_complete(
+    settings: Settings,
+    user_id: int,
+    session_type: str,
+    duration_seconds: int,
+) -> None:
+    """Fire-and-forget push so HTTP workers are not blocked on upstream latency."""
 
-    def _run() -> None:
+    def run_notification() -> None:
         from app.database import SessionLocal
 
         try:
-            with SessionLocal() as bg_db:
-                notify_session_complete(settings, bg_db, user_id, session_type, duration_seconds)
+            with SessionLocal() as background_db:
+                notify_session_complete(
+                    settings,
+                    background_db,
+                    user_id,
+                    session_type,
+                    duration_seconds,
+                )
         except Exception:
             logger.exception("deferred push session-complete failed")
 
     backend = (settings.push_async_backend or "threadpool").strip().lower()
     if backend == "inline":
-        _run()
+        run_notification()
         return
     if backend == "arq":
         logger.warning("push_async_backend=arq is not wired yet; falling back to threadpool")
     try:
-        _get_push_executor(settings).submit(_run)
+        _get_push_executor(settings).submit(run_notification)
     except RuntimeError:
         logger.warning("push dispatch executor unavailable; dropping deferred session-complete push")
 

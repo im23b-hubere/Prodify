@@ -90,6 +90,16 @@ async function refreshPremiumAccess(token: string, appUserId?: string | null): P
         await configureRevenueCat(userId);
         const info = await getRevenueCatCustomerInfo(userId);
         if (!isPremiumActive(info)) return false;
+        seedEntitlementCache(
+          token,
+          {
+            provider: "revenuecat",
+            entitlement: "premium",
+            trial_active: false,
+            expires_at: activeEntitlementExpiration(info),
+          },
+          Number.isFinite(numericUserId) ? numericUserId : null,
+        );
         await syncEntitlement(token, {
           app_user_id: userId,
           entitlement: "premium",

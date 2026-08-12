@@ -45,9 +45,7 @@ describe("bootstrapPaywall", () => {
       offering: null,
     });
 
-    await expect(
-      bootstrapPaywall({ token: "tok", appUserId: "1", t }),
-    ).resolves.toEqual({
+    await expect(bootstrapPaywall({ token: "tok", appUserId: "1", t })).resolves.toEqual({
       kind: "premium_unlock",
       customerInfo: null,
     });
@@ -64,9 +62,10 @@ describe("bootstrapPaywall", () => {
       offering: { availablePackages: [] },
     });
 
-    await expect(
-      bootstrapPaywall({ token: "tok", appUserId: "1", t }),
-    ).resolves.toEqual({ kind: "premium_unlock", customerInfo });
+    await expect(bootstrapPaywall({ token: "tok", appUserId: "1", t })).resolves.toEqual({
+      kind: "premium_unlock",
+      customerInfo,
+    });
   });
 
   it("returns plans_ready when offerings include purchasable packages", async () => {
@@ -98,9 +97,7 @@ describe("bootstrapPaywall", () => {
       entitlements: { active: { app_access: {} } },
     });
 
-    await expect(
-      bootstrapPaywall({ token: "tok", appUserId: "1", t }),
-    ).resolves.toEqual({
+    await expect(bootstrapPaywall({ token: "tok", appUserId: "1", t })).resolves.toEqual({
       kind: "premium_unlock",
       customerInfo: { entitlements: { active: { app_access: {} } } },
     });

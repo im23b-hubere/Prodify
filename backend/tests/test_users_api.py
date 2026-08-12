@@ -1,6 +1,17 @@
+from sqlalchemy import select
+
 from tests.test_friends import _register
 from app.database import SessionLocal
-from app.models import GrowthEvent, PushToken, User, UserGoal, utcnow
+from app.models import (
+    GrowthEvent,
+    ProductionSession,
+    PushToken,
+    SocialComment,
+    SocialReaction,
+    User,
+    UserGoal,
+    utcnow,
+)
 
 
 def test_upload_profile_picture_updates_me(client):
@@ -59,6 +70,29 @@ def test_delete_me_removes_account(client):
         json={"email": "delete-me@example.com", "password": "strong-pass-123"},
     )
     assert relogin.status_code == 401
+
+
+def test_delete_me_removes_other_users_social_data_targeting_owned_sessions(client):
+    owner_token = _register(client, "delete-social-owner@example.com", "deleteowner")
+    other_token = _register(client, "delete-social-other@example.com", "deleteother")
+    owner = client.get("/auth/me", headers={"Authorization": f"Bearer {owner_token}"}).json()
+    other = client.get("/auth/me", headers={"Authorization": f"Bearer {other_token}"}).json()
+
+    with SessionLocal() as db:
+        session = ProductionSession(user_id=owner["id"], session_type="recording", started_at=utcnow())
+        db.add(session)
+        db.flush()
+        db.add(SocialComment(target_type="session", target_id=session.id, author_id=other["id"], body="Nice"))
+        db.add(SocialReaction(target_type="session", target_id=session.id, user_id=other["id"], emoji="👍"))
+        db.commit()
+        session_id = session.id
+
+    deleted = client.delete("/users/me", headers={"Authorization": f"Bearer {owner_token}"})
+    assert deleted.status_code == 204
+
+    with SessionLocal() as db:
+        assert db.scalar(select(SocialComment).where(SocialComment.target_id == session_id)) is None
+        assert db.scalar(select(SocialReaction).where(SocialReaction.target_id == session_id)) is None
 
 
 def test_delete_me_purges_related_rows_and_profile_picture_file(client):

@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from "expo-router";
 import { BarChart3, LayoutGrid, UserRound, Users } from "lucide-react-native";
-import { useEffect, useState, type ComponentPropsWithoutRef } from "react";
+import { useEffect, useState, useSyncExternalStore, type ComponentPropsWithoutRef } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
@@ -9,13 +9,18 @@ import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useStreakReconcileOnForeground } from "../../hooks/useStreakReconcileOnForeground";
-import { peekCachedHasPremiumAccess, peekStoredHasPremiumAccess } from "../../lib/billing";
+import {
+  getEntitlementCacheRevision,
+  peekCachedHasPremiumAccess,
+  peekStoredHasPremiumAccess,
+  subscribeEntitlementCache,
+} from "../../lib/billing";
 import { isDevBillingBypassActive } from "../../lib/devBillingBypass";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
 /** Hard cap so cold starts never sit on the splash longer than this. */
-const ENTITLEMENT_BOOT_TIMEOUT_MS = 6_000;
+const ENTITLEMENT_BOOT_TIMEOUT_MS = 10_000;
 
 type TabIconProps = {
   focused: boolean;
@@ -54,6 +59,11 @@ function TabBarButton({ testID, ...props }: BottomTabBarButtonProps & { testID: 
 export default function TabsLayout() {
   const { t } = useTranslation();
   const { token, user, hydrated } = useAuth();
+  const entitlementCacheRevision = useSyncExternalStore(
+    subscribeEntitlementCache,
+    getEntitlementCacheRevision,
+    getEntitlementCacheRevision,
+  );
   const [entitlementLoading, setEntitlementLoading] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
@@ -92,10 +102,13 @@ export default function TabsLayout() {
         }
       }
 
-      if (fastAccess !== null) {
-        setHasAccess(fastAccess);
+      if (fastAccess === true) {
+        setHasAccess(true);
         setEntitlementLoading(false);
       } else {
+        // A cached "free" result can be briefly stale while RevenueCat/backend sync catches up.
+        // Keep the gate on its loading state until the authoritative multi-source check finishes;
+        // redirecting now would repeatedly remount the paywall during that reconciliation window.
         setHasAccess(null);
         setEntitlementLoading(true);
       }
@@ -113,9 +126,16 @@ export default function TabsLayout() {
     return () => {
       cancelled = true;
     };
-  }, [token, user?.id, user?.is_premium]);
+  }, [entitlementCacheRevision, token, user?.id, user?.is_premium]);
 
-  const waitingForEntitlement = Boolean(token) && entitlementLoading && hasAccess == null;
+  // Read the external cache in render as well as in the effect. A premium cache notification
+  // re-renders this component before the effect can copy the value into React state; consulting
+  // it synchronously prevents one stale `hasAccess=false` frame from mounting the paywall again.
+  const cachedAccessNow = token ? peekCachedHasPremiumAccess(token) : null;
+  const effectiveHasAccess =
+    Boolean(user?.is_premium) || cachedAccessNow === true || hasAccess === true;
+  const waitingForEntitlement =
+    Boolean(token) && !effectiveHasAccess && (entitlementLoading || hasAccess == null);
 
   if (!hydrated || waitingForEntitlement) {
     return (
@@ -129,7 +149,7 @@ export default function TabsLayout() {
   if (!token) {
     return <Redirect href="/(auth)/login" />;
   }
-  if (!hasAccess) {
+  if (!effectiveHasAccess) {
     return <Redirect href={{ pathname: "/paywall", params: { source: "post_auth" } }} />;
   }
 

@@ -1,5 +1,7 @@
 import json
 import math
+from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.exc import IntegrityError
@@ -15,6 +17,22 @@ SESSION_XP_MAX = 85
 XP_DECAY_GRACE_DAYS = 2
 XP_DECAY_PER_DAY = 12
 XP_LEVEL_CATALOG_MAX = 20
+
+
+@dataclass(frozen=True)
+class InactivityDecay:
+    marker: str
+    days_since_activity: int
+    days_due: int
+    previously_applied: int
+
+    @property
+    def total_due(self) -> int:
+        return self.days_due * XP_DECAY_PER_DAY
+
+    @property
+    def delta(self) -> int:
+        return max(0, self.total_due - self.previously_applied)
 
 
 def _level_for_xp(xp_total: int) -> int:
@@ -50,63 +68,73 @@ def apply_inactivity_decay(db: Session, user_id: int) -> tuple[UserProgression |
     row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
     if row is None:
         return None, False
-
     last_positive_at = _last_positive_xp_at(db, user_id)
     if last_positive_at is None:
         return row, False
-
     now = utcnow()
-    days_since_activity = max(0, (now.date() - last_positive_at.date()).days)
-    decay_days_due = max(0, days_since_activity - XP_DECAY_GRACE_DAYS)
-    if decay_days_due <= 0:
+    decay = _inactivity_decay(db, user_id, last_positive_at, now)
+    if decay.delta <= 0:
         return row, False
+    row.xp_total = max(0, int(row.xp_total or 0) - decay.delta)
+    _recompute_progression_fields(row)
+    row.updated_at = now
+    _upsert_decay_ledger(db, user_id, decay)
+    return row, True
 
-    streak_marker = f"since:{last_positive_at.date().isoformat()}"
-    already_applied = db.scalar(
+
+def _inactivity_decay(
+    db: Session,
+    user_id: int,
+    last_positive_at: datetime,
+    now: datetime,
+) -> InactivityDecay:
+    days_since_activity = max(0, (now.date() - last_positive_at.date()).days)
+    marker = f"since:{last_positive_at.date().isoformat()}"
+    previously_applied = db.scalar(
         select(func.coalesce(func.sum(-XpLedger.xp_delta), 0)).where(
             XpLedger.user_id == user_id,
             XpLedger.source_type == "inactivity_decay",
-            XpLedger.source_id == streak_marker,
+            XpLedger.source_id == marker,
             XpLedger.xp_delta < 0,
         )
     )
-    decay_due_total = decay_days_due * XP_DECAY_PER_DAY
-    decay_delta = max(0, int(decay_due_total) - int(already_applied or 0))
-    if decay_delta <= 0:
-        return row, False
+    return InactivityDecay(
+        marker=marker,
+        days_since_activity=days_since_activity,
+        days_due=max(0, days_since_activity - XP_DECAY_GRACE_DAYS),
+        previously_applied=int(previously_applied or 0),
+    )
 
-    row.xp_total = max(0, int(row.xp_total or 0) - decay_delta)
-    _recompute_progression_fields(row)
-    row.updated_at = now
+
+def _upsert_decay_ledger(db: Session, user_id: int, decay: InactivityDecay) -> None:
     meta_json = json.dumps(
         {
-            "days_since_activity": days_since_activity,
-            "decay_days_due": decay_days_due,
+            "days_since_activity": decay.days_since_activity,
+            "decay_days_due": decay.days_due,
             "xp_decay_per_day": XP_DECAY_PER_DAY,
         }
     )
-    new_total_decay = int(already_applied or 0) + decay_delta
+    new_total = decay.previously_applied + decay.delta
     existing_ledger = db.scalar(
         select(XpLedger).where(
             XpLedger.user_id == user_id,
             XpLedger.source_type == "inactivity_decay",
-            XpLedger.source_id == streak_marker,
+            XpLedger.source_id == decay.marker,
         )
     )
     if existing_ledger is not None:
-        existing_ledger.xp_delta = -new_total_decay
+        existing_ledger.xp_delta = -new_total
         existing_ledger.meta_json = meta_json
-    else:
-        db.add(
-            XpLedger(
-                user_id=user_id,
-                source_type="inactivity_decay",
-                source_id=streak_marker,
-                xp_delta=-new_total_decay,
-                meta_json=meta_json,
-            )
+        return
+    db.add(
+        XpLedger(
+            user_id=user_id,
+            source_type="inactivity_decay",
+            source_id=decay.marker,
+            xp_delta=-new_total,
+            meta_json=meta_json,
         )
-    return row, True
+    )
 
 
 def level_catalog(max_level: int = XP_LEVEL_CATALOG_MAX) -> list[dict[str, int | None]]:
@@ -160,62 +188,69 @@ def grant_xp(
     source_id: str | None = None,
     meta: dict | None = None,
 ) -> UserProgression:
-    if source_id is not None and str(source_id).strip():
-        existing = db.scalar(
-            select(XpLedger.id).where(
-                XpLedger.user_id == user_id,
-                XpLedger.source_type == source_type,
-                XpLedger.source_id == str(source_id),
-            )
-        )
-        if existing is not None:
-            row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
-            if row is None:
-                row = UserProgression(user_id=user_id)
-                db.add(row)
-                db.flush()
-                _recompute_progression_fields(row)
-            return row
-
-    row: UserProgression | None = None
+    if _ledger_entry_exists(db, user_id, source_type, source_id):
+        return _get_or_create_progression(db, user_id)
     try:
         with db.begin_nested():
-            row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
-            if row is None:
-                row = UserProgression(user_id=user_id)
-                db.add(row)
-                db.flush()
-            # Ensure inactivity decay cannot be bypassed by returning after a long break.
-            if int(xp_delta) > 0:
-                apply_inactivity_decay(db, user_id)
-            row.xp_total = max(0, int(row.xp_total or 0) + int(xp_delta))
-            _recompute_progression_fields(row)
-            row.updated_at = utcnow()
-            db.add(
-                XpLedger(
-                    user_id=user_id,
-                    source_type=source_type,
-                    source_id=source_id,
-                    xp_delta=xp_delta,
-                    meta_json=json.dumps(meta or {}),
-                )
-            )
-            db.flush()
+            row = _apply_xp_grant(db, user_id, xp_delta, source_type, source_id, meta)
     except IntegrityError:
-        row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
-        if row is None:
-            row = UserProgression(user_id=user_id)
-            db.add(row)
-            db.flush()
-            _recompute_progression_fields(row)
+        return _get_or_create_progression(db, user_id)
+    return row
+
+
+def _ledger_entry_exists(
+    db: Session,
+    user_id: int,
+    source_type: str,
+    source_id: str | None,
+) -> bool:
+    if source_id is None or not str(source_id).strip():
+        return False
+    entry_id = db.scalar(
+        select(XpLedger.id).where(
+            XpLedger.user_id == user_id,
+            XpLedger.source_type == source_type,
+            XpLedger.source_id == str(source_id),
+        )
+    )
+    return entry_id is not None
+
+
+def _get_or_create_progression(db: Session, user_id: int) -> UserProgression:
+    row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
+    if row is not None:
         return row
-    if row is None:
-        row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
-        if row is None:
-            row = UserProgression(user_id=user_id)
-            db.add(row)
-            db.flush()
-            _recompute_progression_fields(row)
+    row = UserProgression(user_id=user_id)
+    db.add(row)
+    db.flush()
+    _recompute_progression_fields(row)
+    return row
+
+
+def _apply_xp_grant(
+    db: Session,
+    user_id: int,
+    xp_delta: int,
+    source_type: str,
+    source_id: str | None,
+    meta: dict | None,
+) -> UserProgression:
+    row = _get_or_create_progression(db, user_id)
+    if int(xp_delta) > 0:
+        apply_inactivity_decay(db, user_id)
+    row.xp_total = max(0, int(row.xp_total or 0) + int(xp_delta))
+    _recompute_progression_fields(row)
+    row.updated_at = utcnow()
+    db.add(
+        XpLedger(
+            user_id=user_id,
+            source_type=source_type,
+            source_id=source_id,
+            xp_delta=xp_delta,
+            meta_json=json.dumps(meta or {}),
+        )
+    )
+    db.flush()
     return row
 
 

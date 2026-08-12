@@ -1,6 +1,10 @@
 import { apiJson } from "./client";
 import { isDevBillingBypassActive } from "./devBillingBypass";
-import { clearPersistedEntitlement, loadPersistedEntitlement, persistEntitlement } from "./entitlementStorage";
+import {
+  clearPersistedEntitlement,
+  loadPersistedEntitlement,
+  persistEntitlement,
+} from "./entitlementStorage";
 import { tryParseEntitlementDto } from "./outcomesDto";
 import type { EntitlementDto } from "../types/outcomes";
 
@@ -13,9 +17,39 @@ type EntitlementCacheEntry = {
 
 let cachedEntitlement: EntitlementCacheEntry | null = null;
 let entitlementInFlight: { token: string; promise: Promise<EntitlementDto> } | null = null;
+let entitlementCacheRevision = 0;
+const entitlementCacheListeners = new Set<() => void>();
 
 const ENTITLEMENT_TTL_MS = 5 * 60_000;
 const PREMIUM_ENTITLEMENT_TTL_MS = 24 * 60 * 60_000;
+
+function sameEntitlementEntry(
+  previous: EntitlementCacheEntry | null,
+  next: EntitlementCacheEntry,
+): boolean {
+  return (
+    previous?.token === next.token &&
+    previous.userId === next.userId &&
+    previous.value.provider === next.value.provider &&
+    previous.value.entitlement === next.value.entitlement &&
+    previous.value.trial_active === next.value.trial_active &&
+    previous.value.expires_at === next.value.expires_at
+  );
+}
+
+function notifyEntitlementCacheChanged(): void {
+  entitlementCacheRevision += 1;
+  entitlementCacheListeners.forEach((listener) => listener());
+}
+
+export function subscribeEntitlementCache(listener: () => void): () => void {
+  entitlementCacheListeners.add(listener);
+  return () => entitlementCacheListeners.delete(listener);
+}
+
+export function getEntitlementCacheRevision(): number {
+  return entitlementCacheRevision;
+}
 
 /** True when the user may use subscription-gated APIs. */
 export function hasPremiumAccess(ent: EntitlementDto | null | undefined): boolean {
@@ -28,25 +62,31 @@ function cacheTtlFor(ent: EntitlementDto): number {
 }
 
 function writeEntitlementCache(token: string, value: EntitlementDto, userId?: number | null): void {
-  cachedEntitlement = {
+  const next: EntitlementCacheEntry = {
     token,
     userId: userId ?? null,
     value,
     atMs: Date.now(),
   };
+  const changed = !sameEntitlementEntry(cachedEntitlement, next);
+  cachedEntitlement = next;
+  if (changed) notifyEntitlementCacheChanged();
   if (userId != null) {
     void persistEntitlement(userId, value).catch(() => undefined);
   }
 }
 
 export function clearEntitlementCache(): void {
+  const hadCachedEntitlement = cachedEntitlement !== null;
   cachedEntitlement = null;
   entitlementInFlight = null;
+  if (hadCachedEntitlement) notifyEntitlementCacheChanged();
 }
 
 export async function clearEntitlementCacheForUser(userId: number): Promise<void> {
   if (cachedEntitlement?.userId === userId) {
     cachedEntitlement = null;
+    notifyEntitlementCacheChanged();
   }
   await clearPersistedEntitlement(userId);
 }
@@ -117,6 +157,7 @@ export async function fetchEntitlement(
     return entitlementInFlight.promise;
   }
 
+  const cacheRevisionAtRequestStart = entitlementCacheRevision;
   const request = apiJson<unknown>("/billing/entitlement", { token, timeoutMs: 12_000 })
     .then((raw) => {
       const parsed = tryParseEntitlementDto(raw);
@@ -128,6 +169,19 @@ export async function fetchEntitlement(
           trial_active: false,
           expires_at: null,
         } as const);
+
+      // A RevenueCat grant may arrive while this server request is still in flight. The server
+      // can briefly remain "free" until its sync finishes; do not let that older response revoke
+      // the newer local premium grant and send navigation back into the paywall.
+      const newerCached = getCachedEntitlement(token);
+      if (
+        entitlementCacheRevision !== cacheRevisionAtRequestStart &&
+        hasPremiumAccess(newerCached) &&
+        !hasPremiumAccess(value)
+      ) {
+        return newerCached!;
+      }
+
       writeEntitlementCache(token, value, userId);
       return value;
     })
@@ -150,7 +204,12 @@ export async function syncEntitlement(
     expires_at?: string | null;
   },
 ): Promise<EntitlementDto> {
-  const raw = await apiJson<unknown>("/billing/sync", { token, method: "POST", body, timeoutMs: 15_000 });
+  const raw = await apiJson<unknown>("/billing/sync", {
+    token,
+    method: "POST",
+    body,
+    timeoutMs: 15_000,
+  });
   const parsed = tryParseEntitlementDto(raw);
   if (!parsed) {
     throw new Error("Invalid entitlement sync response");

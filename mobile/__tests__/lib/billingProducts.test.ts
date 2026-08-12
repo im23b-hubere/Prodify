@@ -28,10 +28,7 @@ describe("billingProducts", () => {
   it("exports the App Store Connect product identifiers", () => {
     expect(WEEKLY_PRODUCT_ID).toBe("prodify_weekly_access");
     expect(SIX_MONTH_PRODUCT_ID).toBe("prodify_6month_access");
-    expect(PAYWALL_PRODUCT_IDS).toEqual([
-      "prodify_weekly_access",
-      "prodify_6month_access",
-    ]);
+    expect(PAYWALL_PRODUCT_IDS).toEqual(["prodify_weekly_access", "prodify_6month_access"]);
   });
 
   it("requires a StoreKit price before treating a package as purchasable", () => {
@@ -65,6 +62,27 @@ describe("billingProducts", () => {
       identifier: "$rc_six_month",
       packageType: "CUSTOM",
       productId: SIX_MONTH_PRODUCT_ID,
+      priceString: "CHF 50.00",
+    });
+
+    expect(resolvePaywallPackages([weekly, sixMonth] as never)).toEqual({
+      weekly,
+      sixMonth,
+      purchasable: [weekly, sixMonth],
+    });
+  });
+
+  it("keeps legacy App Store products purchasable while the offering is rolled back", () => {
+    const weekly = makePackage({
+      identifier: "$rc_weekly",
+      packageType: "WEEKLY",
+      productId: "prodify_premium_weekly",
+      priceString: "CHF 10.00",
+    });
+    const sixMonth = makePackage({
+      identifier: "$rc_six_month",
+      packageType: "SIX_MONTH",
+      productId: "prodify_premium_6months",
       priceString: "CHF 50.00",
     });
 

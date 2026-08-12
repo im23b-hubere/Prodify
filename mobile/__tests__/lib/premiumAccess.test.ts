@@ -30,9 +30,8 @@ jest.mock("../../lib/billing", () => ({
 jest.mock("../../lib/revenuecat", () => ({
   configureRevenueCat: jest.fn(async () => undefined),
   getRevenueCatCustomerInfo: jest.fn(),
-  isPremiumActive: jest.fn(
-    (info: { entitlements?: { active?: Record<string, unknown> } }) =>
-      Boolean(info?.entitlements?.active?.app_access),
+  isPremiumActive: jest.fn((info: { entitlements?: { active?: Record<string, unknown> } }) =>
+    Boolean(info?.entitlements?.active?.app_access),
   ),
   activeEntitlementExpiration: jest.fn(() => null),
 }));
@@ -69,27 +68,31 @@ describe("resolvePremiumAccess", () => {
     await expect(resolvePremiumAccess("tok", "42")).resolves.toBe(true);
     expect(configureRevenueCat).toHaveBeenCalledWith("42");
     expect(getRevenueCatCustomerInfo).toHaveBeenCalled();
-  });
-
-  it(
-    "returns false for free users without waiting on a hanging RevenueCat call forever",
-    async () => {
-      (fetchEntitlement as jest.Mock).mockResolvedValue({
+    expect(seedEntitlementCache).toHaveBeenCalledWith(
+      "tok",
+      {
         provider: "revenuecat",
-        entitlement: "free",
+        entitlement: "premium",
         trial_active: false,
         expires_at: null,
-      });
-      (getRevenueCatCustomerInfo as jest.Mock).mockImplementation(
-        () => new Promise(() => undefined),
-      );
+      },
+      42,
+    );
+  });
 
-      const started = Date.now();
-      await expect(resolvePremiumAccess("tok", "42")).resolves.toBe(false);
-      expect(Date.now() - started).toBeLessThan(8_000);
-      expect(hasPremiumAccess({ entitlement: "free" } as never)).toBe(false);
-      expect(seedEntitlementCache).not.toHaveBeenCalled();
-    },
-    12_000,
-  );
+  it("returns false for free users without waiting on a hanging RevenueCat call forever", async () => {
+    (fetchEntitlement as jest.Mock).mockResolvedValue({
+      provider: "revenuecat",
+      entitlement: "free",
+      trial_active: false,
+      expires_at: null,
+    });
+    (getRevenueCatCustomerInfo as jest.Mock).mockImplementation(() => new Promise(() => undefined));
+
+    const started = Date.now();
+    await expect(resolvePremiumAccess("tok", "42")).resolves.toBe(false);
+    expect(Date.now() - started).toBeLessThan(8_000);
+    expect(hasPremiumAccess({ entitlement: "free" } as never)).toBe(false);
+    expect(seedEntitlementCache).not.toHaveBeenCalled();
+  }, 12_000);
 });

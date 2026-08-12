@@ -1,6 +1,6 @@
 # Final Go/No-Go Checklist
 
-Date: 2026-08-10
+Date: 2026-08-12
 
 Release version: `1.0.1`
 
@@ -9,9 +9,17 @@ Current release branch: `codex/release-ready-blackbox`
 ## Engineering gates
 
 - [x] Mobile lint and TypeScript checks.
-- [x] Mobile tests: 192/192.
-- [x] Backend tests: 102/102.
+- [x] Mobile tests: 242/242.
+- [x] Backend tests: 124/124.
 - [x] Expo Doctor: 18/18.
+- [x] Backend dependency audit: no known vulnerabilities.
+- [x] Mobile production audit rejects every unaccepted high/critical advisory. Two
+      unfixed Metro image-parser advisories are narrowly allowlisted as build-only;
+      production iOS export passed and shipped assets contain no affected formats.
+- [x] Fresh database upgraded from empty state through every Alembic migration and passed runtime schema validation at head.
+- [x] Lockfile reproducibility verified with a clean `npm ci`.
+- [x] Production-mode Hermes exports passed for iOS and Android.
+- [x] Mobile and backend release versions aligned at `1.0.1` in source.
 - [x] Production API and database health.
 - [x] Render always-on idle verification.
 - [x] Production config uses HTTPS Render API and disables E2E bypass.
@@ -53,6 +61,7 @@ Current release branch: `codex/release-ready-blackbox`
 - [x] Production Sentry DSN is present in the EAS production environment.
 - [ ] Privacy nutrition labels reconciled with shipped SDK behavior; tracking is currently
       declared despite no ATT usage description or advertising/tracking SDK.
+- [ ] Deploy the public `/legal/privacy` and `/legal/terms` pages, verify HTTP 200, and update App Store Connect to the new URLs.
 - [x] Current age rating is 4+; new social-media questions remain due by 2026-09-07.
 - [x] Export compliance is configured through `ITSAppUsesNonExemptEncryption=false`.
 - [x] Subscription localization and review screenshots complete.

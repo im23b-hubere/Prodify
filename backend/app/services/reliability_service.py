@@ -4,13 +4,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from app.models import ProductionSession, Streak, User
 from app.timeutil import as_utc_aware
 
 
-@dataclass
+@dataclass(frozen=True)
 class ReliabilityScoreResult:
     score: float
     trend: str
@@ -19,130 +19,155 @@ class ReliabilityScoreResult:
     completion_rate_90d: float
 
 
+@dataclass(frozen=True)
+class ReliabilityMetrics:
+    active_days: int
+    session_count: int
+    completed_sessions: int
+    current_streak: int
+
+    @property
+    def consistency(self) -> float:
+        return min(self.active_days / 90.0, 1.0)
+
+    @property
+    def completion_rate(self) -> float:
+        return self.completed_sessions / self.session_count if self.session_count else 0.0
+
+    @property
+    def score(self) -> float:
+        streak_component = min(self.current_streak / 30.0, 1.0)
+        weighted = self.consistency * 0.45 + self.completion_rate * 0.35 + streak_component * 0.20
+        return round(max(0.0, min(weighted * 10.0, 10.0)), 1)
+
+
 class ReliabilityScoreService:
     """Compute a transparent 0.0-10.0 reliability score."""
 
     @staticmethod
     def calculate(user_id: int, db: Session) -> ReliabilityScoreResult:
-        now = datetime.now(timezone.utc)
-        start_90d = now - timedelta(days=90)
-        start_prev_90d = now - timedelta(days=180)
-
-        current_sessions = db.scalars(
-            select(ProductionSession).where(
-                ProductionSession.user_id == user_id,
-                ProductionSession.deleted_at.is_(None),
-                ProductionSession.duration_seconds.is_not(None),
-                ProductionSession.started_at >= start_90d,
-            )
-        ).all()
-        previous_sessions = db.scalars(
-            select(ProductionSession).where(
-                ProductionSession.user_id == user_id,
-                ProductionSession.deleted_at.is_(None),
-                ProductionSession.duration_seconds.is_not(None),
-                ProductionSession.started_at >= start_prev_90d,
-                ProductionSession.started_at < start_90d,
-            )
-        ).all()
-
-        day_keys_current = {as_utc_aware(s.started_at).date().isoformat() for s in current_sessions}
-        day_keys_previous = {as_utc_aware(s.started_at).date().isoformat() for s in previous_sessions}
-
-        active_days_90d = len(day_keys_current)
-        active_days_prev_90d = len(day_keys_previous)
-        consistency_90d = min(active_days_90d / 90.0, 1.0)
-
-        # "Completion" proxy: sessions that reached at least 25 productive minutes.
-        completed_sessions = len([s for s in current_sessions if int(s.duration_seconds or 0) >= 1500])
-        completion_rate_90d = (
-            completed_sessions / len(current_sessions) if current_sessions else 0.0
-        )
-
-        streak_row = db.scalar(select(Streak).where(Streak.user_id == user_id))
-        current_streak = int(streak_row.current_streak or 0) if streak_row else 0
-        streak_component = min(current_streak / 30.0, 1.0)
-
-        weighted = (
-            consistency_90d * 0.45
-            + completion_rate_90d * 0.35
-            + streak_component * 0.20
-        )
-        score = round(max(0.0, min(weighted * 10.0, 10.0)), 1)
-
-        trend_diff = active_days_90d - active_days_prev_90d
-        if trend_diff >= 5:
-            trend = "up"
-        elif trend_diff <= -5:
-            trend = "down"
-        else:
-            trend = "stable"
-
-        all_user_ids = db.scalars(select(User.id)).all()
-        rank_percent: int | None = None
-        # Avoid misleading percentile messaging with tiny cohorts.
-        if len(all_user_ids) >= 5:
-            streak_map = {
-                row.user_id: int(row.current_streak or 0)
-                for row in db.scalars(select(Streak)).all()
-            }
-            session_rows = db.execute(
-                select(
-                    ProductionSession.user_id,
-                    ProductionSession.started_at,
-                    ProductionSession.duration_seconds,
-                ).where(
-                    ProductionSession.deleted_at.is_(None),
-                    ProductionSession.duration_seconds.is_not(None),
-                    ProductionSession.started_at >= start_90d,
-                )
-            ).all()
-            by_user_days: dict[int, set[str]] = {}
-            by_user_total_sessions: dict[int, int] = {}
-            by_user_completed_sessions: dict[int, int] = {}
-            for uid, started_at, duration_seconds in session_rows:
-                if uid not in by_user_days:
-                    by_user_days[uid] = set()
-                    by_user_total_sessions[uid] = 0
-                    by_user_completed_sessions[uid] = 0
-                by_user_days[uid].add(as_utc_aware(started_at).date().isoformat())
-                by_user_total_sessions[uid] += 1
-                if int(duration_seconds or 0) >= 1500:
-                    by_user_completed_sessions[uid] += 1
-
-            scores: list[float] = []
-            for uid in all_user_ids:
-                if uid == user_id:
-                    scores.append(score)
-                    continue
-                consistency = min(len(by_user_days.get(uid, set())) / 90.0, 1.0)
-                total_sessions = by_user_total_sessions.get(uid, 0)
-                completion = (
-                    by_user_completed_sessions.get(uid, 0) / total_sessions if total_sessions else 0.0
-                )
-                streak_component = min(streak_map.get(uid, 0) / 30.0, 1.0)
-                scores.append(
-                    round(
-                        max(
-                            0.0,
-                            min(
-                                (consistency * 0.45 + completion * 0.35 + streak_component * 0.20) * 10.0,
-                                10.0,
-                            ),
-                        ),
-                        1,
-                    )
-                )
-            scores.sort(reverse=True)
-            total = max(len(scores), 1)
-            rank_position = scores.index(score) + 1 if score in scores else total
-            rank_percent = max(1, int((rank_position / total) * 100))
+        current_start = datetime.now(timezone.utc) - timedelta(days=90)
+        previous_start = current_start - timedelta(days=90)
+        current_sessions = _load_sessions(db, user_id, current_start)
+        previous_sessions = _load_sessions(db, user_id, previous_start, current_start)
+        current = _metrics_for_user(db, user_id, current_sessions)
+        previous_active_days = len(_active_days(previous_sessions))
 
         return ReliabilityScoreResult(
-            score=score,
-            trend=trend,
-            rank_percent=rank_percent,
-            consistency_90d=round(consistency_90d * 100.0, 1),
-            completion_rate_90d=round(completion_rate_90d * 100.0, 1),
+            score=current.score,
+            trend=_trend(current.active_days, previous_active_days),
+            rank_percent=_rank_percent(db, user_id, current.score, current_start),
+            consistency_90d=round(current.consistency * 100.0, 1),
+            completion_rate_90d=round(current.completion_rate * 100.0, 1),
         )
 
+
+def _load_sessions(
+    db: Session,
+    user_id: int,
+    start: datetime,
+    end: datetime | None = None,
+) -> list[ProductionSession]:
+    query = select(ProductionSession).where(
+        ProductionSession.user_id == user_id,
+        ProductionSession.deleted_at.is_(None),
+        ProductionSession.duration_seconds.is_not(None),
+        ProductionSession.started_at >= start,
+    )
+    if end is not None:
+        query = query.where(ProductionSession.started_at < end)
+    return list(
+        db.scalars(
+            query.options(
+                load_only(
+                    ProductionSession.started_at,
+                    ProductionSession.duration_seconds,
+                )
+            )
+        ).all()
+    )
+
+
+def _metrics_for_user(
+    db: Session,
+    user_id: int,
+    sessions: list[ProductionSession],
+) -> ReliabilityMetrics:
+    streak = db.scalar(select(Streak.current_streak).where(Streak.user_id == user_id))
+    return ReliabilityMetrics(
+        active_days=len(_active_days(sessions)),
+        session_count=len(sessions),
+        completed_sessions=sum(_is_completed(row.duration_seconds) for row in sessions),
+        current_streak=int(streak or 0),
+    )
+
+
+def _active_days(sessions: list[ProductionSession]) -> set[str]:
+    return {as_utc_aware(row.started_at).date().isoformat() for row in sessions}
+
+
+def _is_completed(duration_seconds: int | None) -> bool:
+    """A productive session of at least 25 minutes counts as completed."""
+    return int(duration_seconds or 0) >= 1500
+
+
+def _trend(current_active_days: int, previous_active_days: int) -> str:
+    difference = current_active_days - previous_active_days
+    if difference >= 5:
+        return "up"
+    if difference <= -5:
+        return "down"
+    return "stable"
+
+
+def _rank_percent(
+    db: Session,
+    user_id: int,
+    user_score: float,
+    since: datetime,
+) -> int | None:
+    user_ids = list(db.scalars(select(User.id)).all())
+    if len(user_ids) < 5:
+        return None
+
+    scores = _cohort_scores(db, user_ids, since)
+    scores[user_id] = user_score
+    ordered_scores = sorted(scores.values(), reverse=True)
+    rank_position = ordered_scores.index(user_score) + 1
+    return max(1, int(rank_position / len(ordered_scores) * 100))
+
+
+def _cohort_scores(db: Session, user_ids: list[int], since: datetime) -> dict[int, float]:
+    streaks = {
+        user_id: int(streak or 0)
+        for user_id, streak in db.execute(select(Streak.user_id, Streak.current_streak)).all()
+    }
+    metrics = {user_id: ReliabilityMetrics(0, 0, 0, streaks.get(user_id, 0)) for user_id in user_ids}
+    days_by_user: dict[int, set[str]] = {user_id: set() for user_id in user_ids}
+
+    for user_id, started_at, duration in _cohort_sessions(db, since):
+        previous = metrics[user_id]
+        days_by_user[user_id].add(as_utc_aware(started_at).date().isoformat())
+        metrics[user_id] = ReliabilityMetrics(
+            active_days=len(days_by_user[user_id]),
+            session_count=previous.session_count + 1,
+            completed_sessions=previous.completed_sessions + int(_is_completed(duration)),
+            current_streak=previous.current_streak,
+        )
+    return {user_id: metric.score for user_id, metric in metrics.items()}
+
+
+def _cohort_sessions(db: Session, since: datetime) -> list[tuple[int, datetime, int | None]]:
+    return list(
+        db.execute(
+            select(
+                ProductionSession.user_id,
+                ProductionSession.started_at,
+                ProductionSession.duration_seconds,
+            ).where(
+                ProductionSession.deleted_at.is_(None),
+                ProductionSession.duration_seconds.is_not(None),
+                ProductionSession.started_at >= since,
+            )
+        ).tuples()
+    )

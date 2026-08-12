@@ -1,19 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Animated,
-  Easing,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Animated, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { YourWeekCard } from "../../components/stats/YourWeekCard";
@@ -26,17 +16,13 @@ import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { ProgressionBarCard } from "../../components/progression/ProgressionBarCard";
 import { RankHudChip } from "../../components/progression/RankHudChip";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
-import { fontFamily } from "../../constants/fonts";
-import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
+import { colors } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
-import { sessionTypeLabel } from "../../lib/sessionI18n";
-import { translateInsightItem } from "../../lib/sessionInsightsI18n";
 import { progressionOverviewHref } from "../../lib/progressionNavigation";
 import {
   WeeklyRecapTeaser,
   isWeeklyRecapTeaserVisible,
 } from "../../features/weeklyRecap/WeeklyRecapTeaser";
-import { STATS_BREAKDOWN_COLORS } from "../../features/stats/constants";
 import { StatsHeatmapSection } from "../../features/stats/components/StatsHeatmapSection";
 import { StatsRecordsSection } from "../../features/stats/components/StatsRecordsSection";
 import { StatsSection } from "../../features/stats/components/StatsSection";
@@ -44,9 +30,12 @@ import { StatsSessionLogSection } from "../../features/stats/components/StatsSes
 import { StatsSkeleton } from "../../features/stats/components/StatsSkeleton";
 import { StatsTrendsSection } from "../../features/stats/components/StatsTrendsSection";
 import { useStatsScreenData } from "../../features/stats/hooks/useStatsScreenData";
-import type { StatsFilter } from "../../features/stats/types";
-import { buildChartData, buildStatsSummary } from "../../features/stats/utils/chartData";
-import { decorateRecords } from "../../features/stats/utils/records";
+import { useStatsScreenLifecycle } from "../../features/stats/hooks/useStatsScreenLifecycle";
+import {
+  useStatsFilters,
+  useStatsPresentation,
+} from "../../features/stats/hooks/useStatsPresentation";
+import { styles } from "../../features/stats/statsScreen.styles";
 
 export default function StatsScreen() {
   const { t } = useTranslation();
@@ -55,19 +44,8 @@ export default function StatsScreen() {
   const params = useLocalSearchParams<{ focus?: string | string[] }>();
   const focusParam = Array.isArray(params.focus) ? params.focus[0] : params.focus;
 
-  const filters = useMemo<readonly StatsFilter[]>(
-    () => [
-      { key: "7d", label: t("stats.filter7d"), period: "week" },
-      { key: "30d", label: t("stats.filter30d"), period: "month" },
-      { key: "all", label: t("stats.filterAll"), period: "all" },
-    ],
-    [t],
-  );
-
   const [filterIdx, setFilterIdx] = useState(0);
-  const filter = filters[filterIdx];
-  const periodParam =
-    filter.period === "week" ? "week" : filter.period === "month" ? "month" : "all";
+  const { filters, filter, periodParam } = useStatsFilters(t, filterIdx);
 
   const {
     refreshing,
@@ -87,43 +65,6 @@ export default function StatsScreen() {
     saveWeeklyGoal,
   } = useStatsScreenData(token, periodParam, t);
 
-  const scrollRef = useRef<ScrollView>(null);
-  const yourWeekOffsetY = useRef(0);
-  const pendingYourWeekFocus = useRef(false);
-  const lastPeriodParamRef = useRef<string | null>(null);
-  const contentFade = useRef(new Animated.Value(0)).current;
-
-  const tryScrollToYourWeek = useCallback(() => {
-    if (!pendingYourWeekFocus.current || yourWeekOffsetY.current <= 0) return;
-    pendingYourWeekFocus.current = false;
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, yourWeekOffsetY.current - spacing.md),
-        animated: true,
-      });
-    });
-    router.setParams({ focus: undefined } as never);
-  }, [router]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (focusParam === "yourWeek") {
-        pendingYourWeekFocus.current = true;
-      }
-      loadStats().catch(() => undefined);
-    }, [focusParam, loadStats]),
-  );
-
-  useEffect(() => {
-    if (lastPeriodParamRef.current === null) {
-      lastPeriodParamRef.current = periodParam;
-      return;
-    }
-    if (lastPeriodParamRef.current === periodParam) return;
-    lastPeriodParamRef.current = periodParam;
-    loadStats({ force: true }).catch(() => undefined);
-  }, [loadStats, periodParam]);
-
   const handleRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     void onRefresh();
@@ -137,26 +78,14 @@ export default function StatsScreen() {
     router.push("/weekly-recap");
   }, [router]);
 
-  const summary = useMemo(() => buildStatsSummary(stats), [stats]);
-  const chartData = useMemo(() => buildChartData(stats, filter.period), [filter.period, stats]);
-  const breakdownData = useMemo(
-    () =>
-      (stats?.breakdown ?? []).map((item, idx) => ({
-        label: sessionTypeLabel(String(item.session_type), t),
-        value: Math.max(0, Math.round(item.percent)),
-        sessions: item.sessions,
-        color: STATS_BREAKDOWN_COLORS[idx % STATS_BREAKDOWN_COLORS.length],
-      })),
-    [stats, t],
-  );
-  const recentSessions = useMemo(() => stats?.recent_sessions ?? [], [stats?.recent_sessions]);
-  const decoratedRecords = useMemo(() => decorateRecords(records), [records]);
-  const productivityHintText = useMemo(() => {
-    if (stats?.productivity_hint_item) {
-      return translateInsightItem(stats.productivity_hint_item, t);
-    }
-    return stats?.productivity_hint ?? null;
-  }, [stats?.productivity_hint_item, stats?.productivity_hint, t]);
+  const {
+    summary,
+    chartData,
+    breakdownData,
+    recentSessions,
+    decoratedRecords,
+    productivityHintText,
+  } = useStatsPresentation(stats, records, filter.period, t);
 
   const statCarouselItems = useMemo(() => {
     const middleMetric =
@@ -207,23 +136,14 @@ export default function StatsScreen() {
   const showInitialLoading = loading && !refreshing && !stats && !error;
   const showInlineLoading = loading && !refreshing && !!stats;
 
-  useEffect(() => {
-    if (!pendingYourWeekFocus.current || showInitialLoading || !token) return;
-    tryScrollToYourWeek();
-  }, [showInitialLoading, token, tryScrollToYourWeek]);
-
-  useEffect(() => {
-    if (showInitialLoading) {
-      contentFade.setValue(0);
-      return;
-    }
-    Animated.timing(contentFade, {
-      toValue: 1,
-      duration: 180,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [contentFade, showInitialLoading]);
+  const { scrollRef, contentFade, handleYourWeekLayout } = useStatsScreenLifecycle({
+    token,
+    focusParam,
+    periodParam,
+    showInitialLoading,
+    loadStats,
+    onFocusHandled: () => router.setParams({ focus: undefined } as never),
+  });
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="stats-screen">
@@ -282,13 +202,7 @@ export default function StatsScreen() {
         {!showInitialLoading ? (
           <Animated.View style={[styles.contentFadeWrap, { opacity: contentFade }]}>
             {token ? (
-              <View
-                style={styles.heroWrap}
-                onLayout={(event) => {
-                  yourWeekOffsetY.current = event.nativeEvent.layout.y;
-                  tryScrollToYourWeek();
-                }}
-              >
+              <View style={styles.heroWrap} onLayout={handleYourWeekLayout}>
                 <LinearGradient
                   colors={["#3d1510", "#1a1010", "#0f0f0f"]}
                   start={{ x: 0, y: 0 }}
@@ -380,82 +294,3 @@ export default function StatsScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: ui.screenPadding, paddingBottom: spacing.xxl },
-  headerRow: { marginBottom: spacing.md, gap: spacing.sm },
-  filterHint: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    fontFamily: fontFamily.body,
-    lineHeight: 18,
-    marginTop: spacing.xs,
-  },
-  filterRow: { flexDirection: "row", gap: spacing.sm },
-  filterChip: {
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-  },
-  filterChipActive: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.2)" },
-  filterChipPressed: { opacity: motion.pressOpacity, transform: [{ scale: motion.pressScale }] },
-  filterLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-  },
-  filterLabelActive: { color: colors.textPrimary },
-  contentFadeWrap: {
-    gap: spacing.lg,
-  },
-  heroStatValue: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 30,
-    lineHeight: 34,
-    letterSpacing: -0.5,
-  },
-  heroWrap: {
-    marginBottom: spacing.xs,
-  },
-  mergedHeroShell: {
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    padding: spacing.md,
-    gap: spacing.md,
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-  },
-  mergedHeroDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  progressionInner: {
-    marginTop: -spacing.md,
-  },
-  hintCard: {
-    backgroundColor: "rgba(162,89,255,0.12)",
-    borderColor: colors.secondary,
-    gap: spacing.xs,
-  },
-  hintLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  hintText: { color: colors.textSecondary, ...typography.meta, lineHeight: 20 },
-  weeklyRecapBottomCta: {
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
-  },
-});

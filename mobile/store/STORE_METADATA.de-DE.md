@@ -65,9 +65,9 @@ Ob Beatmaking, Mixing, Recording oder Lernen — Prodify strukturiert deinen Wor
 
 ## Compliance & Support
 
-- **Datenschutz:** https://prodify.app/privacy
-- **AGB:** https://prodify.app/terms
-- **Support:** https://prodify.app/support (Fallback: support@prodify.app)
+- **Datenschutz:** https://prodify-api-46b1.onrender.com/legal/privacy
+- **AGB:** https://prodify-api-46b1.onrender.com/legal/terms
+- **Support:** https://prodify-api-46b1.onrender.com/legal/support (Fallback: support@prodify.app)
 - **Account-Löschung:** In-app über Profil → Einstellungen & Rechtliches → Konto löschen
 
 ## Release Notes (1.0.1)

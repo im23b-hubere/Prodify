@@ -30,6 +30,11 @@ describe("pendingDeepLink", () => {
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
   });
 
+  it("does not store the paywall as a post-auth destination", async () => {
+    await setPendingDeepLinkPath("paywall");
+    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+  });
+
   it("consumes and validates stored path", async () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce("session/7");
     const href = await consumePendingDeepLinkHref();
@@ -39,6 +44,13 @@ describe("pendingDeepLink", () => {
 
   it("clears invalid stored paths on consume", async () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce("admin/hack");
+    const href = await consumePendingDeepLinkHref();
+    expect(href).toBeNull();
+    expect(AsyncStorage.removeItem).toHaveBeenCalled();
+  });
+
+  it("clears a stale paywall destination instead of redirecting into a loop", async () => {
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce("paywall");
     const href = await consumePendingDeepLinkHref();
     expect(href).toBeNull();
     expect(AsyncStorage.removeItem).toHaveBeenCalled();

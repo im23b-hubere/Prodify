@@ -1,6 +1,6 @@
 # Release Readiness Report
 
-Date: 2026-08-10
+Date: 2026-08-12
 
 Scope: iOS production release candidate
 
@@ -74,6 +74,28 @@ Store prices shown by the production app are supplied by Apple/RevenueCat. Simul
 prices are deterministic E2E fixtures and do not prove the live App Store configuration.
 
 ## Remaining release blockers
+
+### Source audit update (2026-08-12)
+
+- Mobile Jest: 68/68 suites and 242/242 tests passed.
+- Backend pytest: 124/124 tests passed.
+- Expo Doctor, TypeScript, ESLint, and Prettier passed.
+- Backend dependency audit passed after updating Pillow to 12.3.0.
+- A fresh empty database migrated through the full Alembic graph to head and passed the
+  runtime schema guard. A clean `npm ci` reproduced the mobile dependency tree.
+- Mobile and backend source versions are aligned at `1.0.1`; the live backend will continue
+  to report `1.0.0` until this revision is deployed.
+- The mobile production audit now rejects every unaccepted high/critical advisory.
+  PostCSS is pinned to a fixed compatible version. Two currently unfixed `image-size`
+  advisories are narrowly allowlisted because they affect Metro's build-time ICNS/JXL/HEIF
+  parser; Prodify bundles only controlled PNG/WAV/TTF assets. A production-mode iOS Hermes
+  export completed successfully after this change.
+- Public legal pages now exist in source at `/legal/privacy` and `/legal/terms`, but they
+  remain unverified externally until this backend revision is deployed. The former
+  `prodify.app/privacy` and `prodify.app/terms` URLs returned HTTP 404 on 2026-08-12.
+- The privacy disclosure evidence is recorded in
+  `mobile/store/PRIVACY_DISCLOSURE_AUDIT.md`; App Store Connect still needs the matching
+  manual declaration update.
 
 ### P0 — before a final TestFlight candidate
 

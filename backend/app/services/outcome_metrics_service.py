@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, load_only
@@ -10,7 +10,7 @@ from app.models import ProductionSession, User, utcnow
 from app.timeutil import as_utc_aware
 
 
-@dataclass
+@dataclass(frozen=True)
 class OutputMetricsResult:
     tracks_finished_30d: int
     avg_completion_time_days: float
@@ -24,6 +24,24 @@ class OutputMetricsResult:
     baseline_tracks_30d: int
 
 
+@dataclass(frozen=True)
+class MetricWindows:
+    now: datetime
+    current_start: datetime
+    previous_start: datetime
+    activity_start: datetime
+
+    @classmethod
+    def ending_now(cls) -> "MetricWindows":
+        now = utcnow()
+        return cls(
+            now=now,
+            current_start=now - timedelta(days=30),
+            previous_start=now - timedelta(days=60),
+            activity_start=now - timedelta(days=90),
+        )
+
+
 def _safe_pct_change(current: int, previous: int) -> float:
     if previous <= 0:
         return 100.0 if current > 0 else 0.0
@@ -33,20 +51,47 @@ def _safe_pct_change(current: int, previous: int) -> float:
 class OutcomeMetricsService:
     @staticmethod
     def calculate(user_id: int, db: Session) -> OutputMetricsResult:
-        now = utcnow()
-        start_30 = now - timedelta(days=30)
-        start_60 = now - timedelta(days=60)
-        start_90 = now - timedelta(days=90)
-        # Bounded window for row payloads; lifetime aggregates use COUNT queries below.
-        start_load = start_60
+        windows = MetricWindows.ending_now()
+        sessions = _load_metric_sessions(db, user_id, windows.activity_start)
+        current, previous = _monthly_periods(sessions, windows)
+        current_finished = _finished_count(current)
+        previous_finished = _finished_count(previous)
+        month_change = round(_safe_pct_change(current_finished, previous_finished), 1)
+        active_days = len({_session_date(row) for row in sessions})
+        consistency = round(min(100.0, active_days / 90.0 * 100.0), 1)
+        user = db.get(User, user_id)
+        baseline = _baseline_finished_count(db, user_id, user)
 
-        sessions = db.scalars(
+        return OutputMetricsResult(
+            tracks_finished_30d=current_finished,
+            avg_completion_time_days=_average_completion_days(sessions),
+            release_consistency=consistency,
+            productivity_trend=_productivity_trend(month_change),
+            vs_previous_month=month_change,
+            days_using=_days_using(user, windows.now),
+            completed_tracks=_all_finished_count(db, user_id),
+            consistency_improvement=round(
+                max(-100.0, min(200.0, (consistency - 30.0) / 30.0 * 100.0)),
+                1,
+            ),
+            output_increase=round(_safe_pct_change(current_finished, baseline), 1),
+            baseline_tracks_30d=baseline,
+        )
+
+
+def _load_metric_sessions(
+    db: Session,
+    user_id: int,
+    since: datetime,
+) -> list[ProductionSession]:
+    return list(
+        db.scalars(
             select(ProductionSession)
             .where(
                 ProductionSession.user_id == user_id,
                 ProductionSession.deleted_at.is_(None),
                 ProductionSession.duration_seconds.is_not(None),
-                ProductionSession.started_at >= start_load,
+                ProductionSession.started_at >= since,
             )
             .options(
                 load_only(
@@ -57,101 +102,89 @@ class OutcomeMetricsService:
                 )
             )
         ).all()
+    )
 
-        current_rows = [r for r in sessions if as_utc_aware(r.started_at) >= start_30]
-        previous_rows = [r for r in sessions if start_60 <= as_utc_aware(r.started_at) < start_30]
-        rows_90 = [r for r in sessions if as_utc_aware(r.started_at) >= start_90]
 
-        current_finished = [r for r in current_rows if r.track_outcome == "finished"]
-        previous_finished = [r for r in previous_rows if r.track_outcome == "finished"]
+def _monthly_periods(
+    sessions: list[ProductionSession],
+    windows: MetricWindows,
+) -> tuple[list[ProductionSession], list[ProductionSession]]:
+    current = [row for row in sessions if as_utc_aware(row.started_at) >= windows.current_start]
+    previous = [
+        row
+        for row in sessions
+        if windows.previous_start <= as_utc_aware(row.started_at) < windows.current_start
+    ]
+    return current, previous
 
-        tracks_finished_30d = len(current_finished)
-        prev_finished_count = len(previous_finished)
-        vs_previous_month = round(_safe_pct_change(tracks_finished_30d, prev_finished_count), 1)
 
-        completion_days: list[float] = []
-        by_title = [r for r in sessions if (r.track_title or "").strip()]
-        by_title.sort(key=lambda r: as_utc_aware(r.started_at))
-        first_seen_by_title: dict[str, ProductionSession] = {}
-        for row in by_title:
-            title = (row.track_title or "").strip().lower()
-            if not title:
-                continue
-            if title not in first_seen_by_title and row.track_outcome in ("wip", "finished"):
-                first_seen_by_title[title] = row
-            if row.track_outcome == "finished" and title in first_seen_by_title:
-                first = first_seen_by_title[title]
-                delta_days = max(
-                    1.0, (as_utc_aware(row.started_at) - as_utc_aware(first.started_at)).total_seconds() / 86400.0
-                )
-                completion_days.append(delta_days)
-                del first_seen_by_title[title]
-        avg_completion = round(sum(completion_days) / len(completion_days), 1) if completion_days else 0.0
+def _average_completion_days(sessions: list[ProductionSession]) -> float:
+    first_seen: dict[str, ProductionSession] = {}
+    completion_days: list[float] = []
+    titled_sessions = sorted(
+        (row for row in sessions if (row.track_title or "").strip()),
+        key=lambda row: as_utc_aware(row.started_at),
+    )
+    for row in titled_sessions:
+        title = (row.track_title or "").strip().lower()
+        if title not in first_seen and row.track_outcome in ("wip", "finished"):
+            first_seen[title] = row
+        if row.track_outcome != "finished" or title not in first_seen:
+            continue
+        first = first_seen.pop(title)
+        elapsed = (as_utc_aware(row.started_at) - as_utc_aware(first.started_at)).total_seconds()
+        completion_days.append(max(1.0, elapsed / 86400.0))
+    return round(sum(completion_days) / len(completion_days), 1) if completion_days else 0.0
 
-        active_days_90 = len({as_utc_aware(r.started_at).date().isoformat() for r in rows_90})
 
-        release_consistency = round(min(100.0, (active_days_90 / 90.0) * 100.0), 1)
+def _finished_count(sessions: list[ProductionSession]) -> int:
+    return sum(1 for row in sessions if row.track_outcome == "finished")
 
-        if vs_previous_month > 10:
-            trend = "up"
-        elif vs_previous_month < -10:
-            trend = "down"
-        else:
-            trend = "stable"
 
-        user = db.get(User, user_id)
-        days_using = 0
-        if user is not None:
-            days_using = max(1, (now.date() - as_utc_aware(user.created_at).date()).days + 1)
+def _all_finished_count(db: Session, user_id: int) -> int:
+    return _finished_query(db, user_id)
 
-        all_finished_count = int(
-            db.scalar(
-                select(func.count())
-                .select_from(ProductionSession)
-                .where(
-                    ProductionSession.user_id == user_id,
-                    ProductionSession.deleted_at.is_(None),
-                    ProductionSession.duration_seconds.is_not(None),
-                    ProductionSession.track_outcome == "finished",
-                )
-            )
-            or 0
-        )
 
-        baseline_finished = 0
-        if user is not None:
-            start = as_utc_aware(user.created_at)
-            baseline_end = start + timedelta(days=30)
-            baseline_finished = int(
-                db.scalar(
-                    select(func.count())
-                    .select_from(ProductionSession)
-                    .where(
-                        ProductionSession.user_id == user_id,
-                        ProductionSession.deleted_at.is_(None),
-                        ProductionSession.duration_seconds.is_not(None),
-                        ProductionSession.track_outcome == "finished",
-                        ProductionSession.started_at >= start,
-                        ProductionSession.started_at < baseline_end,
-                    )
-                )
-                or 0
-            )
-        output_increase = round(_safe_pct_change(tracks_finished_30d, baseline_finished), 1)
-        consistency_improvement = round(
-            max(-100.0, min(200.0, ((release_consistency - 30.0) / 30.0) * 100.0)),
-            1,
-        )
+def _baseline_finished_count(db: Session, user_id: int, user: User | None) -> int:
+    if user is None:
+        return 0
+    start = as_utc_aware(user.created_at)
+    return _finished_query(db, user_id, start=start, end=start + timedelta(days=30))
 
-        return OutputMetricsResult(
-            tracks_finished_30d=tracks_finished_30d,
-            avg_completion_time_days=avg_completion,
-            release_consistency=release_consistency,
-            productivity_trend=trend,
-            vs_previous_month=vs_previous_month,
-            days_using=days_using,
-            completed_tracks=all_finished_count,
-            consistency_improvement=consistency_improvement,
-            output_increase=output_increase,
-            baseline_tracks_30d=baseline_finished,
-        )
+
+def _finished_query(
+    db: Session,
+    user_id: int,
+    *,
+    start: datetime | None = None,
+    end: datetime | None = None,
+) -> int:
+    query = select(func.count()).select_from(ProductionSession).where(
+        ProductionSession.user_id == user_id,
+        ProductionSession.deleted_at.is_(None),
+        ProductionSession.duration_seconds.is_not(None),
+        ProductionSession.track_outcome == "finished",
+    )
+    if start is not None:
+        query = query.where(ProductionSession.started_at >= start)
+    if end is not None:
+        query = query.where(ProductionSession.started_at < end)
+    return int(db.scalar(query) or 0)
+
+
+def _days_using(user: User | None, now: datetime) -> int:
+    if user is None:
+        return 0
+    return max(1, (now.date() - as_utc_aware(user.created_at).date()).days + 1)
+
+
+def _productivity_trend(month_change: float) -> str:
+    if month_change > 10:
+        return "up"
+    if month_change < -10:
+        return "down"
+    return "stable"
+
+
+def _session_date(session: ProductionSession) -> str:
+    return as_utc_aware(session.started_at).date().isoformat()

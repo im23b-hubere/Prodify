@@ -6,11 +6,7 @@ export const SIX_MONTH_PRODUCT_ID = "prodify_6month_access";
 
 export const PAYWALL_PRODUCT_IDS = [WEEKLY_PRODUCT_ID, SIX_MONTH_PRODUCT_ID] as const;
 
-const WEEKLY_PACKAGE_IDENTIFIERS = new Set([
-  "$rc_weekly",
-  "weekly",
-  "$rc_weekly_access",
-]);
+const WEEKLY_PACKAGE_IDENTIFIERS = new Set(["$rc_weekly", "weekly", "$rc_weekly_access"]);
 const SIX_MONTH_PACKAGE_IDENTIFIERS = new Set([
   "$rc_six_month",
   "6-months",

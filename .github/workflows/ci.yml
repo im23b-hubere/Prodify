@@ -149,4 +149,4 @@ jobs:
         run: npm test -- --ci --coverage=false
 
       - name: npm production dependency audit
-        run: npm audit --omit=dev --audit-level=high
+        run: npm run audit:production

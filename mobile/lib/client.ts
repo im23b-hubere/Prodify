@@ -1,8 +1,18 @@
 import { API_BASE_URL } from "../constants/api";
 import NetInfo from "@react-native-community/netinfo";
-import Constants from "expo-constants";
-import * as Sentry from "@sentry/react-native";
+import { ApiError, formatApiErrorDetail } from "./apiErrors";
+import {
+  addNetworkBreadcrumb,
+  canRetryMethod,
+  inferDevFallbackBaseUrl,
+  parseApiHost,
+  retryDelayMs,
+} from "./apiNetworkTelemetry";
 import i18n from "./i18n";
+
+export { ApiError } from "./apiErrors";
+export { apiMultipart } from "./apiMultipart";
+export type { ApiMultipartOptions } from "./apiMultipart";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
@@ -48,18 +58,6 @@ export function setAuthRefreshBridge(
   applyTokenPair = apply;
 }
 
-export class ApiError extends Error {
-  readonly status: number;
-  readonly payload: unknown;
-
-  constructor(status: number, message: string, payload: unknown = null) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.payload = payload;
-  }
-}
-
 export type ApiOptions = {
   token?: string | null;
   method?: string;
@@ -76,119 +74,6 @@ export type ApiOptions = {
   /** Internal: base URLs already attempted for this request. */
   _triedBaseUrls?: string[];
 };
-
-type NetworkBreadcrumb = {
-  path: string;
-  method: string;
-  timeoutMs: number;
-  host: string;
-  fallbackUsed: boolean;
-  reason: string;
-  attempt?: number;
-  status?: number;
-};
-
-export type ApiMultipartOptions = {
-  token?: string | null;
-  method?: "POST" | "PUT" | "PATCH";
-  formData: FormData;
-  timeoutMs?: number;
-  signal?: AbortSignal;
-};
-
-function parseHostFromBaseUrl(baseUrl: string): string {
-  try {
-    const parsed = new URL(baseUrl);
-    return parsed.host || "unknown";
-  } catch {
-    return "unknown";
-  }
-}
-
-function addNetworkBreadcrumb(payload: NetworkBreadcrumb): void {
-  if (typeof (Sentry as { addBreadcrumb?: unknown }).addBreadcrumb === "function") {
-    (Sentry as { addBreadcrumb: (crumb: Record<string, unknown>) => void }).addBreadcrumb({
-      category: "network",
-      level: "info",
-      message: `api ${payload.method} ${payload.path}`,
-      data: {
-        method: payload.method,
-        path: payload.path,
-        host: payload.host,
-        timeoutMs: payload.timeoutMs,
-        fallbackUsed: payload.fallbackUsed,
-        reason: payload.reason,
-        attempt: payload.attempt,
-        status: payload.status,
-      },
-    });
-  }
-}
-
-function getRetryDelayMs(attempt: number): number {
-  const base = BASE_RETRY_DELAY_MS * 2 ** attempt;
-  const jitter = Math.floor(Math.random() * Math.max(100, Math.round(base * 0.35)));
-  return base + jitter;
-}
-
-function canRetryMethod(method: string, retryUnsafeMethods?: boolean | string[]): boolean {
-  if (method === "GET" || method === "HEAD") return true;
-  if (!retryUnsafeMethods) return false;
-  if (retryUnsafeMethods === true) return true;
-  const allowed = new Set(retryUnsafeMethods.map((value) => value.toUpperCase()));
-  return allowed.has(method);
-}
-
-function inferDevFallbackBaseUrl(): string | null {
-  const uri =
-    Constants.expoConfig?.hostUri ??
-    (Constants.expoGoConfig as { debuggerHost?: string } | undefined)?.debuggerHost ??
-    (Constants.manifest as { debuggerHost?: string } | null)?.debuggerHost;
-
-  if (!uri || typeof uri !== "string") return null;
-  const host = uri.split(":")[0]?.trim();
-  if (!host || host === "localhost" || host === "127.0.0.1") return null;
-  return `http://${host}:8000`;
-}
-
-/** FastAPI/Pydantic validation errors use `detail` as an array of `{ loc, msg, ... }`. */
-function formatApiErrorDetail(detail: unknown): string {
-  if (typeof detail === "string") return detail;
-  if (!Array.isArray(detail) || detail.length === 0) {
-    return typeof detail === "object" && detail !== null ? JSON.stringify(detail) : String(detail);
-  }
-
-  const lines: string[] = [];
-  for (const item of detail) {
-    if (typeof item !== "object" || item === null || !("msg" in item)) {
-      lines.push(JSON.stringify(item));
-      continue;
-    }
-    const msg = String((item as { msg: unknown }).msg);
-    const loc = (item as { loc?: unknown }).loc;
-    const field = Array.isArray(loc) && loc.length > 0 ? String(loc[loc.length - 1]) : null;
-
-    lines.push(humanizeValidationMessage(msg, field));
-  }
-  return lines.join("\n");
-}
-
-function humanizeValidationMessage(msg: string, field: string | null): string {
-  const lower = msg.toLowerCase();
-  if (lower.includes("not a valid email") || lower.includes("value is not a valid email")) {
-    return i18n.t("errors.validation.email");
-  }
-  if (lower.includes("at least") && lower.includes("character") && field === "password") {
-    return i18n.t("errors.validation.passwordShort");
-  }
-  if (lower.includes("at least") && lower.includes("character") && field === "username") {
-    return i18n.t("errors.validation.usernameShort");
-  }
-  if (lower.includes("at least") && lower.includes("character")) {
-    return msg;
-  }
-  return msg;
-}
 
 async function tryRefreshAccessToken(): Promise<TokenPair | null> {
   if (inFlightRefresh) {
@@ -261,7 +146,7 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
   const method = (opts.method ?? "GET").toUpperCase();
   const allowRetry = canRetryMethod(method, opts.retryUnsafeMethods);
   const retries = allowRetry ? Math.max(0, Math.min(opts.retries ?? MAX_RETRIES, 4)) : 0;
-  const host = parseHostFromBaseUrl(baseUrl);
+  const host = parseApiHost(baseUrl);
 
   let res: Response | null = null;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
@@ -293,7 +178,9 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
           reason: "network_retry_after_error",
           attempt,
         });
-        await new Promise((resolve) => setTimeout(resolve, getRetryDelayMs(attempt)));
+        await new Promise((resolve) =>
+          setTimeout(resolve, retryDelayMs(attempt, BASE_RETRY_DELAY_MS)),
+        );
         continue;
       }
       if (e instanceof Error && e.name === "AbortError") {
@@ -355,7 +242,9 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
         attempt,
         status: res.status,
       });
-      await new Promise((resolve) => setTimeout(resolve, getRetryDelayMs(attempt)));
+      await new Promise((resolve) =>
+        setTimeout(resolve, retryDelayMs(attempt, BASE_RETRY_DELAY_MS)),
+      );
       continue;
     }
     break;
@@ -408,83 +297,4 @@ export async function apiJson<T = unknown>(path: string, opts: ApiOptions = {}):
     throw new ApiError(res.status, msg, data);
   }
   return data as T;
-}
-
-export async function apiMultipart<T = unknown>(
-  path: string,
-  { token, method = "POST", formData, timeoutMs = DEFAULT_TIMEOUT_MS, signal }: ApiMultipartOptions,
-): Promise<T> {
-  const controller = new AbortController();
-  const onExternalAbort = () => controller.abort();
-  if (signal) {
-    if (signal.aborted) controller.abort();
-    signal.addEventListener("abort", onExternalAbort, { once: true });
-  }
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  const host = parseHostFromBaseUrl(API_BASE_URL);
-  try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      method,
-      headers: token?.trim() ? { Authorization: `Bearer ${token.trim()}` } : undefined,
-      body: formData,
-      signal: controller.signal,
-    });
-    const raw = await response.text();
-    let payload: unknown = null;
-    try {
-      payload = raw ? JSON.parse(raw) : null;
-    } catch {
-      payload = raw;
-    }
-    if (!response.ok) {
-      let message = `HTTP ${response.status}`;
-      if (typeof payload === "object" && payload && "detail" in payload) {
-        message = formatApiErrorDetail((payload as { detail: unknown }).detail);
-      } else if (typeof payload === "string" && payload.trim()) {
-        message = payload;
-      }
-      throw new ApiError(response.status, message, payload);
-    }
-    return payload as T;
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      if (signal?.aborted) {
-        addNetworkBreadcrumb({
-          method,
-          path,
-          timeoutMs,
-          host,
-          fallbackUsed: false,
-          reason: "upload_aborted_by_caller",
-        });
-        const aborted = new Error("Request aborted by caller");
-        aborted.name = "AbortError";
-        throw aborted;
-      }
-      addNetworkBreadcrumb({
-        method,
-        path,
-        timeoutMs,
-        host,
-        fallbackUsed: false,
-        reason: "upload_timeout",
-      });
-      throw new Error(i18n.t("errors.requestTimeout"));
-    }
-    if (error instanceof TypeError) {
-      addNetworkBreadcrumb({
-        method,
-        path,
-        timeoutMs,
-        host,
-        fallbackUsed: false,
-        reason: "upload_network_error",
-      });
-      throw new Error(i18n.t("errors.network"));
-    }
-    throw error;
-  } finally {
-    if (signal) signal.removeEventListener("abort", onExternalAbort);
-    clearTimeout(timeoutId);
-  }
 }

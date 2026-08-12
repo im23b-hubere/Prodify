@@ -97,56 +97,50 @@ def calculate_focus_score(
     """Heuristic focus score 0–100 with stronger variance."""
     if duration_minutes <= 0 and paused_duration_minutes <= 0:
         return 0
-    score = 100
     mood = mood_level if mood_level is not None else 3
-
-    if paused_duration_minutes > 0 and duration_minutes > 0:
-        pause_ratio = paused_duration_minutes / duration_minutes
-        if pause_ratio > 0.4:
-            score -= 35
-        elif pause_ratio > 0.25:
-            score -= 20
-        elif pause_ratio > 0.15:
-            score -= 10
-        elif pause_ratio > 0.05:
-            score -= 5
-    elif paused_duration_minutes > 0:
-        score -= 5
-
-    if pause_count > 5:
-        score -= 15
-    elif pause_count > 3:
-        score -= 8
-    elif pause_count > 1:
-        score -= 3
-
-    if background_switches > 10:
-        score -= 20
-    elif background_switches > 5:
-        score -= 10
-    elif background_switches > 2:
-        score -= 5
-
-    if duration_minutes < 15:
-        score -= 10
-    elif duration_minutes < 30:
-        score -= 5
-    elif duration_minutes >= 90:
-        score += 5
-
-    if notes_length > 100:
-        score += 3
-    elif notes_length == 0:
-        score -= 2
-
-    if mood >= 4:
-        score += 2
-
-    if time_of_day is not None and 1 <= time_of_day <= 5:
-        # Slight fatigue penalty for deep-night sessions.
-        score -= 2
-
+    score = sum(
+        (
+            100,
+            _pause_ratio_adjustment(duration_minutes, paused_duration_minutes),
+            _threshold_adjustment(pause_count, ((5, -15), (3, -8), (1, -3))),
+            _threshold_adjustment(background_switches, ((10, -20), (5, -10), (2, -5))),
+            _duration_adjustment(duration_minutes),
+            _notes_adjustment(notes_length),
+            2 if mood >= 4 else 0,
+            -2 if time_of_day is not None and 1 <= time_of_day <= 5 else 0,
+        )
+    )
     return max(0, min(100, int(round(score))))
+
+
+def _pause_ratio_adjustment(duration_minutes: float, paused_minutes: float) -> int:
+    if paused_minutes <= 0:
+        return 0
+    if duration_minutes <= 0:
+        return -5
+    ratio = paused_minutes / duration_minutes
+    return _threshold_adjustment(ratio, ((0.4, -35), (0.25, -20), (0.15, -10), (0.05, -5)))
+
+
+def _threshold_adjustment(
+    value: float,
+    thresholds: tuple[tuple[float, int], ...],
+) -> int:
+    return next((adjustment for threshold, adjustment in thresholds if value > threshold), 0)
+
+
+def _duration_adjustment(duration_minutes: float) -> int:
+    if duration_minutes < 15:
+        return -10
+    if duration_minutes < 30:
+        return -5
+    return 5 if duration_minutes >= 90 else 0
+
+
+def _notes_adjustment(notes_length: int) -> int:
+    if notes_length > 100:
+        return 3
+    return -2 if notes_length == 0 else 0
 
 
 def compute_focus_score_for_session(row: ProductionSession) -> int:

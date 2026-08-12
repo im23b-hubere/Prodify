@@ -1,0 +1,185 @@
+import type { TFunction } from "i18next";
+import { useMemo } from "react";
+
+import { buildWeeklyForecast } from "../../../lib/forecastEngine";
+import { adjustedWeeklyTargetForSignupWeek } from "../../../lib/goalPace";
+import { buildSessionFeedback } from "../../../lib/sessionFeedbackEngine";
+import { STREAK_MILESTONES } from "../../../lib/streakMilestones";
+import { buildTodayPlanRecommendation } from "../../../lib/todayPlanEngine";
+import type { SessionDto } from "../../../types/session";
+import type { StreakOverviewDto } from "../../../types/streak";
+import { getLast7DaysProgress, getStreak, parseApiDate, toDateKey } from "../utils";
+
+type UseDashboardPresentationOptions = {
+  sessions: SessionDto[];
+  streakOverview: StreakOverviewDto | null;
+  loading: boolean;
+  weeklyGoalTarget: number | null;
+  hasWeeklyGoal: boolean;
+  weekSessionsCount: number;
+  accountCreatedAtIso?: string | null;
+  lastUpdated: Date | null;
+  t: TFunction;
+};
+
+export function useDashboardPresentation({
+  sessions,
+  streakOverview,
+  loading,
+  weeklyGoalTarget,
+  hasWeeklyGoal,
+  weekSessionsCount,
+  accountCreatedAtIso,
+  lastUpdated,
+  t,
+}: UseDashboardPresentationOptions) {
+  const visibleSessions = useMemo(
+    () => sessions.filter((session) => session.stopped_at !== null),
+    [sessions],
+  );
+  const weekProgress = useMemo(() => getLast7DaysProgress(sessions), [sessions]);
+  const clientStreak = useMemo(() => getStreak(sessions), [sessions]);
+  const weekSessionsForGoal = Math.max(
+    0,
+    Number.isFinite(weekSessionsCount) ? weekSessionsCount : 0,
+  );
+  const effectiveWeeklyGoalTarget = useMemo(
+    () =>
+      adjustedWeeklyTargetForSignupWeek({
+        weeklyGoalTarget,
+        accountCreatedAtIso: accountCreatedAtIso ?? null,
+      }),
+    [accountCreatedAtIso, weeklyGoalTarget],
+  );
+  const todayStats = useMemo(() => sessionsForToday(visibleSessions), [visibleSessions]);
+  const todayPlan = useMemo(
+    () =>
+      buildTodayPlanRecommendation({
+        weeklyGoalTarget: effectiveWeeklyGoalTarget,
+        weekSessionsCount: weekSessionsForGoal,
+        currentStreak: streakOverview?.current_streak ?? clientStreak,
+        streakAtRisk: streakOverview?.streak_at_risk ?? false,
+        lastSessionAt: visibleSessions[0]?.started_at ?? null,
+        lastSessionType:
+          typeof visibleSessions[0]?.session_type === "string"
+            ? visibleSessions[0].session_type
+            : null,
+      }),
+    [clientStreak, effectiveWeeklyGoalTarget, streakOverview, visibleSessions, weekSessionsForGoal],
+  );
+  const paceForecast = useMemo(
+    () =>
+      effectiveWeeklyGoalTarget != null && effectiveWeeklyGoalTarget > 0
+        ? buildWeeklyForecast({
+            weeklyGoalTarget: effectiveWeeklyGoalTarget,
+            completedThisWeek: weekSessionsForGoal,
+          })
+        : null,
+    [effectiveWeeklyGoalTarget, weekSessionsForGoal],
+  );
+  const sessionFeedback = useMemo(
+    () =>
+      buildSessionFeedback({
+        weeklyGoalTarget: effectiveWeeklyGoalTarget,
+        weekSessionsCount: weekSessionsForGoal,
+        currentStreak: streakOverview?.current_streak ?? clientStreak,
+        sessionDurationSeconds: 0,
+      }),
+    [clientStreak, effectiveWeeklyGoalTarget, streakOverview?.current_streak, weekSessionsForGoal],
+  );
+  const displayOverview = useMemo(
+    () =>
+      streakOverview ??
+      buildFallbackStreakOverview({
+        loading,
+        clientStreak,
+        weekProgress,
+        weekDayLetters: localizedWeekDayLetters(t),
+        t,
+      }),
+    [clientStreak, loading, streakOverview, t, weekProgress],
+  );
+  const studioStatusLine = useMemo(() => {
+    if (!hasWeeklyGoal) return null;
+    if (streakOverview?.streak_at_risk) return t("streakHero.riskBanner");
+    return paceForecast ? t(paceForecast.todayActionKey, paceForecast.todayActionParams) : null;
+  }, [hasWeeklyGoal, paceForecast, streakOverview?.streak_at_risk, t]);
+
+  return {
+    visibleSessions,
+    recentSessions: visibleSessions.slice(0, 3),
+    clientStreak,
+    weekSessionsForGoal,
+    effectiveWeeklyGoalTarget,
+    todayStats,
+    todayPlan,
+    paceForecast,
+    sessionFeedback,
+    displayOverview,
+    studioStatusLine,
+    lastUpdatedLabel: lastUpdated
+      ? t("dashboard.updatedAgo", {
+          mins: Math.max(0, Math.round((Date.now() - lastUpdated.getTime()) / 60000)),
+        })
+      : null,
+  };
+}
+
+function sessionsForToday(sessions: SessionDto[]) {
+  const todayKey = toDateKey(new Date());
+  const todaySessions = sessions.filter(
+    (session) =>
+      Boolean(session.started_at) &&
+      session.stopped_at !== null &&
+      toDateKey(parseApiDate(session.started_at)) === todayKey,
+  );
+  const seconds = todaySessions.reduce(
+    (total, session) => total + (session.duration_seconds ?? 0),
+    0,
+  );
+  return { count: todaySessions.length, minutes: Math.round(seconds / 60) };
+}
+
+function localizedWeekDayLetters(t: TFunction): string[] {
+  const translated = t("dashboard.weekdayShort", { returnObjects: true }) as unknown;
+  const weekDayLetters =
+    Array.isArray(translated) && translated.length === 7
+      ? translated
+      : ["M", "T", "W", "T", "F", "S", "S"];
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const mondayBasedIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
+    return String(weekDayLetters[mondayBasedIndex] ?? "?");
+  });
+}
+
+function buildFallbackStreakOverview({
+  loading,
+  clientStreak,
+  weekProgress,
+  weekDayLetters,
+  t,
+}: {
+  loading: boolean;
+  clientStreak: number;
+  weekProgress: boolean[];
+  weekDayLetters: string[];
+  t: TFunction;
+}): StreakOverviewDto | null {
+  if (loading) return null;
+  const nextMilestone = STREAK_MILESTONES.find((milestone) => clientStreak < milestone.days);
+  return {
+    current_streak: clientStreak,
+    longest_streak: clientStreak,
+    last_7_day_states: weekProgress.map((hasSession) => (hasSession ? "session" : "none")),
+    last_7_day_labels: weekDayLetters,
+    next_milestone_at: nextMilestone?.days ?? null,
+    next_milestone_title: nextMilestone?.title ?? null,
+    days_to_next_milestone: nextMilestone ? nextMilestone.days - clientStreak : null,
+    freezes_remaining: 0,
+    can_use_freeze: false,
+    streak_at_risk: false,
+    tagline: t("dashboard.streakFallbackTagline"),
+  };
+}

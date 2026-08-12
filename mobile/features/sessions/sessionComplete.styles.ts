@@ -1,0 +1,112 @@
+import { StyleSheet } from "react-native";
+
+import { fontFamily } from "../../constants/fonts";
+import { colors, spacing, typography, ui } from "../../constants/theme";
+
+export const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background, padding: ui.screenPadding },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: spacing.md,
+    padding: spacing.lg,
+  },
+  scrollContent: { paddingBottom: spacing.xl },
+  heroCard: {
+    borderRadius: 24,
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255,61,0,0.22)",
+    overflow: "hidden",
+  },
+  heroEyebrow: {
+    color: colors.success,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  bigDur: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 44,
+    lineHeight: 48,
+    letterSpacing: -1,
+    textAlign: "center",
+  },
+  metaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  typePill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,61,0,0.45)",
+    backgroundColor: "rgba(255,61,0,0.12)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+  },
+  typePillText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  moodPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(162,89,255,0.4)",
+    backgroundColor: "rgba(162,89,255,0.12)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+  },
+  moodPillText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  statGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: spacing.sm,
+    width: "100%",
+    marginTop: spacing.sm,
+  },
+  xpHintInline: {
+    color: "#f59e0b",
+    ...typography.caption,
+    fontFamily: fontFamily.bodyMedium,
+    textAlign: "center",
+    paddingHorizontal: spacing.md,
+  },
+  levelLine: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    textAlign: "center",
+    paddingHorizontal: spacing.md,
+  },
+  punchline: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+    textAlign: "center",
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    lineHeight: 22,
+  },
+  loadingTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.screenTitle,
+    textAlign: "center",
+  },
+  muted: { color: colors.textSecondary, ...typography.meta, textAlign: "center" },
+  actions: { marginTop: spacing.xl, gap: spacing.md },
+});

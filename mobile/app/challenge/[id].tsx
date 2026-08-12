@@ -1,19 +1,8 @@
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ChevronLeft, Swords, Trophy } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Alert,
-  Modal,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Modal, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppCard } from "../../components/ui/AppCard";
@@ -21,39 +10,16 @@ import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
-import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography, ui } from "../../constants/theme";
+import { colors } from "../../constants/theme";
+import { challengeDetailStyles as styles } from "../../features/challenges/challengeDetail.styles";
 import { useAuth } from "../../context/AuthContext";
+import { challengeKindLabel } from "../../features/friends/utils/friendsScreenFormat";
 import {
-  challengeDaysLeft,
-  challengeKindLabel,
-} from "../../features/friends/utils/friendsScreenFormat";
-import {
-  cancelChallenge,
-  fetchChallenge,
-  joinSocialChallenge,
-  leaveChallenge,
-  updateChallenge,
-} from "../../lib/social";
-import type { SocialChallengeDto } from "../../types/friends";
-
-function parseChallengeId(raw: string | string[] | undefined): number | null {
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  const id = Number.parseInt(String(value ?? ""), 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
-}
-
-function statusLabel(
-  challenge: SocialChallengeDto,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-): string {
-  if (challenge.status === "completed") {
-    if (challenge.is_tie) return t("challengeDetail.statusTie");
-    return t("challengeDetail.statusCompleted");
-  }
-  if (challenge.status === "cancelled") return t("challengeDetail.statusCancelled");
-  return t("challengeDetail.statusActive");
-}
+  challengeStatusLabel,
+  memberProgressPercent,
+  parseChallengeId,
+} from "../../features/challenges/challengeDetailPresentation";
+import { useChallengeDetail } from "../../features/challenges/hooks/useChallengeDetail";
 
 export default function ChallengeDetailScreen() {
   const { t } = useTranslation();
@@ -62,196 +28,36 @@ export default function ChallengeDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const challengeId = parseChallengeId(params.id);
 
-  const [challenge, setChallenge] = useState<SocialChallengeDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editTarget, setEditTarget] = useState("5");
-  const [editDuration, setEditDuration] = useState("7");
-  const [editBusy, setEditBusy] = useState(false);
-
   const currentUserId = user?.id;
-  const isMember = useMemo(
-    () =>
-      typeof currentUserId === "number" &&
-      (challenge?.members.some((m) => m.user_id === currentUserId) ?? false),
-    [challenge?.members, currentUserId],
-  );
-  const isOwner = challenge?.owner_id === currentUserId;
-  const isActive = challenge?.status === "active";
-
-  const load = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      if (!token || challengeId == null) {
-        setChallenge(null);
-        setError(challengeId == null ? t("challengeDetail.invalidChallenge") : null);
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
-      const silent = opts?.silent ?? false;
-      setError(null);
-      if (!silent) setLoading(true);
-      else setRefreshing(true);
-      try {
-        const row = await fetchChallenge(token, challengeId);
-        setChallenge(row);
-      } catch (e) {
-        setChallenge(null);
-        setError(e instanceof Error ? e.message : t("challengeDetail.loadError"));
-      } finally {
-        if (!silent) setLoading(false);
-        setRefreshing(false);
-      }
-    },
-    [challengeId, t, token],
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
-  );
-
-  const daysLeft =
-    challenge?.days_remaining ??
-    (challenge
-      ? (challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
-        challenge.duration_days ??
-        7)
-      : 0);
-
-  const leaderMember = useMemo(() => {
-    if (!challenge?.members.length) return null;
-    const top = Math.max(...challenge.members.map((m) => m.progress_sessions));
-    const leaders = challenge.members.filter((m) => m.progress_sessions === top);
-    return leaders.length === 1 ? leaders[0] : null;
-  }, [challenge?.members]);
-
-  const totalSessions = useMemo(
-    () => challenge?.members.reduce((sum, m) => sum + m.progress_sessions, 0) ?? 0,
-    [challenge?.members],
-  );
-
-  const openEdit = useCallback(() => {
-    if (!challenge) return;
-    setEditTitle(challenge.title);
-    setEditTarget(String(challenge.target_sessions));
-    setEditDuration(String(challenge.duration_days ?? 7));
-    setEditOpen(true);
-  }, [challenge]);
-
-  const submitEdit = useCallback(async () => {
-    if (!token || challengeId == null) return;
-    const title = editTitle.trim();
-    const target = Number.parseInt(editTarget, 10);
-    const durationDays = Number.parseInt(editDuration, 10);
-    if (
-      title.length < 3 ||
-      !Number.isFinite(target) ||
-      target < 1 ||
-      !Number.isFinite(durationDays) ||
-      durationDays < 3
-    ) {
-      Alert.alert(
-        t("friendsScreen.invalidChallengeTitle"),
-        t("friendsScreen.invalidChallengeBody"),
-      );
-      return;
-    }
-    setEditBusy(true);
-    try {
-      const updated = await updateChallenge(token, challengeId, {
-        title,
-        target_sessions: target,
-        duration_days: durationDays,
-      });
-      setChallenge(updated);
-      setEditOpen(false);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t("common.tryAgain");
-      Alert.alert(t("friendsScreen.couldNotUpdateChallenge"), msg);
-    } finally {
-      setEditBusy(false);
-    }
-  }, [challengeId, editDuration, editTarget, editTitle, t, token]);
-
-  const confirmCancel = useCallback(() => {
-    if (!token || challengeId == null) return;
-    Alert.alert(t("friendsScreen.challengeEndTitle"), t("friendsScreen.challengeEndBody"), [
-      { text: t("friendsScreen.modalCancel"), style: "cancel" },
-      {
-        text: t("friendsScreen.challengeEndConfirm"),
-        style: "destructive",
-        onPress: () => {
-          void (async () => {
-            setBusyActionKey("cancel");
-            try {
-              await cancelChallenge(token, challengeId);
-              router.back();
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : t("common.tryAgain");
-              Alert.alert(t("friendsScreen.couldNotEndChallenge"), msg);
-            } finally {
-              setBusyActionKey(null);
-            }
-          })();
-        },
-      },
-    ]);
-  }, [challengeId, router, t, token]);
-
-  const confirmLeave = useCallback(() => {
-    if (!token || challengeId == null) return;
-    Alert.alert(t("friendsScreen.challengeLeaveTitle"), t("friendsScreen.challengeLeaveBody"), [
-      { text: t("friendsScreen.modalCancel"), style: "cancel" },
-      {
-        text: t("friendsScreen.challengeLeaveConfirm"),
-        style: "destructive",
-        onPress: () => {
-          void (async () => {
-            setBusyActionKey("leave");
-            try {
-              await leaveChallenge(token, challengeId);
-              router.back();
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : t("common.tryAgain");
-              Alert.alert(t("friendsScreen.couldNotLeaveChallenge"), msg);
-            } finally {
-              setBusyActionKey(null);
-            }
-          })();
-        },
-      },
-    ]);
-  }, [challengeId, router, t, token]);
-
-  const joinChallenge = useCallback(async () => {
-    if (!token || challengeId == null) return;
-    setBusyActionKey("join");
-    try {
-      const updated = await joinSocialChallenge(token, challengeId);
-      setChallenge(updated);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t("common.tryAgain");
-      Alert.alert(t("friendsScreen.errorGeneric"), msg);
-    } finally {
-      setBusyActionKey(null);
-    }
-  }, [challengeId, t, token]);
-
-  const outcomeLine = useMemo(() => {
-    if (!challenge || challenge.status !== "completed") return null;
-    if (challenge.is_tie) return t("friendsScreen.challengeEndedTie");
-    if (challenge.winner_user_id === currentUserId) return t("friendsScreen.challengeYouWon");
-    const winner =
-      challenge.members.find((m) => m.user_id === challenge.winner_user_id)?.username ??
-      t("friendsScreen.challengeSomeone");
-    return t("friendsScreen.challengeEndedWinner", { winner });
-  }, [challenge, currentUserId, t]);
+  const {
+    challenge,
+    loading,
+    refreshing,
+    error,
+    busyActionKey,
+    load,
+    join,
+    confirmCancel,
+    confirmLeave,
+    isMember,
+    isOwner,
+    isActive,
+    daysLeft,
+    leaderMember,
+    totalSessions,
+    outcomeLine,
+    editOpen,
+    closeEdit,
+    openEdit,
+    editTitle,
+    setEditTitle,
+    editTarget,
+    setEditTarget,
+    editDuration,
+    setEditDuration,
+    editBusy,
+    submitEdit,
+  } = useChallengeDetail(token, challengeId, currentUserId);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -320,7 +126,7 @@ export default function ChallengeDetailScreen() {
                       challenge.status === "completed" && styles.statusPillDone,
                     ]}
                   >
-                    <Text style={styles.statusPillText}>{statusLabel(challenge, t)}</Text>
+                    <Text style={styles.statusPillText}>{challengeStatusLabel(challenge, t)}</Text>
                   </View>
                 </View>
               </View>
@@ -381,10 +187,9 @@ export default function ChallengeDetailScreen() {
           <Text style={styles.sectionLabel}>{t("challengeDetail.leaderboardTitle")}</Text>
           <AppCard style={styles.leaderboardCard}>
             {challenge.members.map((member, index) => {
-              const target = Math.max(1, challenge.target_sessions);
-              const pct = Math.max(
-                0,
-                Math.min(100, Math.round((member.progress_sessions / target) * 100)),
+              const pct = memberProgressPercent(
+                member.progress_sessions,
+                challenge.target_sessions,
               );
               const me = member.user_id === currentUserId;
               const isLeader = leaderMember != null && member.user_id === leaderMember.user_id;
@@ -429,7 +234,7 @@ export default function ChallengeDetailScreen() {
                     ? t("friendsScreen.loading")
                     : t("friendsScreen.joinThisChallenge")
                 }
-                onPress={() => void joinChallenge()}
+                onPress={() => void join()}
                 disabled={busyActionKey === "join"}
               />
             ) : null}
@@ -474,9 +279,9 @@ export default function ChallengeDetailScreen() {
         visible={editOpen}
         animationType="slide"
         transparent
-        onRequestClose={() => setEditOpen(false)}
+        onRequestClose={() => closeEdit()}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setEditOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => closeEdit()}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>{t("friendsScreen.editChallengeTitle")}</Text>
             <Text style={styles.modalHint}>{t("friendsScreen.editChallengeHint")}</Text>
@@ -511,7 +316,7 @@ export default function ChallengeDetailScreen() {
               onPress={() => void submitEdit()}
               disabled={editBusy}
             />
-            <Pressable style={styles.modalCancel} onPress={() => setEditOpen(false)}>
+            <Pressable style={styles.modalCancel} onPress={() => closeEdit()}>
               <Text style={styles.modalCancelText}>{t("friendsScreen.modalCancel")}</Text>
             </Pressable>
           </Pressable>
@@ -520,272 +325,3 @@ export default function ChallengeDetailScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.round,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  backSpacer: { width: 40 },
-  topTitle: {
-    flex: 1,
-    textAlign: "center",
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.sectionTitle,
-  },
-  pressed: { opacity: 0.88 },
-  centerState: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    justifyContent: "center",
-  },
-  scroll: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xxl,
-    gap: spacing.md,
-  },
-  heroCard: { gap: spacing.sm },
-  heroTop: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
-  heroIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.lg,
-    backgroundColor: "rgba(99, 102, 241, 0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroText: { flex: 1, gap: spacing.xs },
-  heroTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.cardTitle,
-  },
-  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
-  kindPill: {
-    borderRadius: radii.round,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  kindPillText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 12,
-  },
-  statusPill: {
-    borderRadius: radii.round,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statusPillActive: {
-    borderColor: "rgba(99, 102, 241, 0.45)",
-    backgroundColor: "rgba(99, 102, 241, 0.1)",
-  },
-  statusPillDone: {
-    borderColor: "rgba(34, 197, 94, 0.35)",
-    backgroundColor: "rgba(34, 197, 94, 0.08)",
-  },
-  statusPillText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 12,
-  },
-  heroSub: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-  },
-  outcomeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  outcomeText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.bodyStrong,
-    flex: 1,
-  },
-  sectionLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  statCard: {
-    width: "48%",
-    flexGrow: 1,
-    minWidth: "46%",
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: spacing.md,
-  },
-  statValue: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 28,
-  },
-  statLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-    textAlign: "center",
-  },
-  leaderCard: { gap: 4 },
-  leaderLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-  },
-  leaderName: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.cardTitle,
-  },
-  leaderMeta: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-  },
-  leaderboardCard: { gap: 0, paddingVertical: spacing.xs },
-  memberRow: { paddingVertical: spacing.sm, gap: 6 },
-  memberRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  memberHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  memberNameRow: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-  },
-  memberRank: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 12,
-    minWidth: 22,
-  },
-  memberName: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.bodyStrong,
-  },
-  memberNameMe: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold },
-  leaderBadge: {
-    borderRadius: radii.round,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.35)",
-  },
-  leaderBadgeText: {
-    color: "#fbbf24",
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 11,
-  },
-  memberScore: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: radii.round,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: radii.round,
-    backgroundColor: colors.primary,
-  },
-  memberPct: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-  },
-  actions: { gap: spacing.sm, marginTop: spacing.xs },
-  actionRow: { flexDirection: "row", gap: spacing.sm },
-  actionHalf: { flex: 1 },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "flex-end",
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.sectionTitle,
-  },
-  modalHint: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.meta,
-  },
-  fieldLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-    marginTop: spacing.xs,
-  },
-  input: {
-    minHeight: ui.buttonHeight,
-    borderRadius: ui.cardRadius,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    color: colors.textPrimary,
-    fontFamily: fontFamily.body,
-    ...typography.body,
-  },
-  modalCancel: { alignItems: "center", paddingVertical: spacing.sm },
-  modalCancelText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.bodyStrong,
-  },
-});

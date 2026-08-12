@@ -3,16 +3,16 @@ import { type Href, useRouter } from "expo-router";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { memo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { EmptyState } from "../states/EmptyState";
 import { GlassCard } from "../ui/GlassCard";
 import { LoadingState } from "../states/LoadingState";
-import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors } from "../../constants/theme";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { formatTimeAgo } from "../../lib/timeAgo";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../types/friends";
+import { styles } from "./FriendsActivityWidget.styles";
 
 type Props = {
   currentUserId: number;
@@ -241,125 +241,4 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
       )}
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  wrap: { gap: spacing.sm },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 2,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  expandLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  nudgeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.subheadline,
-  },
-  viewAll: { color: colors.secondary, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  subtle: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    marginBottom: spacing.xs,
-  },
-  leaderBlock: { gap: spacing.xs },
-  leaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  rankBadge: {
-    minWidth: 36,
-    height: 28,
-    borderRadius: radii.sm,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rankTxt: { color: "#111", fontFamily: fontFamily.bodyBold, ...typography.caption },
-  name: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  meta: { color: colors.textSecondary, ...typography.caption },
-  feed: { gap: 4, marginTop: spacing.sm },
-  feedRow: {
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  feedName: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
-  feedMeta: { color: colors.textSecondary, ...typography.caption },
-  loading: { color: colors.textSecondary, ...typography.caption },
-  signalsWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs },
-  signalPill: {
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: "rgba(255,61,0,0.12)",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  signalTxt: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyBold },
-  primaryWrap: {
-    marginTop: spacing.xs,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: "rgba(255,61,0,0.12)",
-    padding: spacing.sm,
-    gap: spacing.xs,
-  },
-  primaryMsg: { color: colors.textPrimary, ...typography.caption, fontFamily: fontFamily.bodyBold },
-  primaryHint: { color: colors.textSecondary, ...typography.caption },
-  primaryBtn: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: "rgba(255,61,0,0.24)",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    alignSelf: "flex-start",
-  },
-  primaryBtnTxt: {
-    color: colors.textPrimary,
-    ...typography.caption,
-    fontFamily: fontFamily.bodyBold,
-  },
-  empty: { gap: spacing.sm },
-  emptyTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.subheadline,
-  },
-  emptySub: { color: colors.textSecondary, ...typography.body },
-  emptyBtn: {
-    alignSelf: "flex-start",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  emptyBtnTxt: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
 });

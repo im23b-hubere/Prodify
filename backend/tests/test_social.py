@@ -372,6 +372,12 @@ def test_commitment_witness_selection_persists_and_returns(client):
     assert "witness_usernames" in body
     assert "social-t" in body["witness_usernames"]
 
+    commitments = client.get("/social/commitments", headers=a)
+    assert commitments.status_code == 200
+    assert len(commitments.json()) == 1
+    assert commitments.json()[0]["commitment_key"] == "sessions"
+    assert commitments.json()[0]["witness_user_ids"] == [2]
+
 
 def _complete_long_session(client, headers: dict[str, str], *, minutes: int = 10) -> int:
     started = client.post("/sessions/quick-start", headers=headers, json={"session_type": "beat_making"})

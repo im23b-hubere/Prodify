@@ -20,4 +20,4 @@ slowapi==0.1.9
 sentry-sdk[fastapi]==2.20.0
 google-auth==2.36.0
 requests==2.33.1
-Pillow==12.2.0
+Pillow==12.3.0

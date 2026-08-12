@@ -1,7 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { ONBOARDING_COMPLETE_KEY } from "../constants/storageKeys";
 import {
   ApiError,
   apiJson,
@@ -16,39 +14,22 @@ import {
   readRefreshToken,
   writeTokenPair,
 } from "../lib/authTokenStorage";
-import {
-  clearEntitlementCache,
-  clearEntitlementCacheForUser,
-  seedEntitlementCache,
-  syncEntitlement,
-} from "../lib/billing";
-import { clearLevelCatalogCache } from "../lib/progressionLevelCatalog";
-import { clearProgressionSyncCache } from "../lib/progressionSync";
-import { clearDevBillingBypass } from "../lib/devBillingBypass";
 import { isE2eModeEnabled } from "../lib/e2eMode";
 import { clearNotificationInbox, setNotificationUserContext } from "../lib/notificationInbox";
 import { cancelWeeklyRecapScheduled } from "../lib/weeklyRecapNotifications";
-import { clearPendingDeepLinkPath } from "../lib/pendingDeepLink";
 import { syncPendingWeeklyGoal } from "../lib/onboardingGoalSync";
+import { configureRevenueCat } from "../lib/revenuecat";
 import {
-  activeEntitlementExpiration,
-  configureRevenueCat,
-  getRevenueCatCustomerInfo,
-  isPremiumActive,
-} from "../lib/revenuecat";
-
-type UserMe = {
-  id: number;
-  email: string;
-  username: string;
-  profile_picture_url?: string | null;
-  is_premium?: boolean;
-  created_at?: string;
-};
+  authenticate,
+  clearLocalAuthSession,
+  syncBillingInBackground,
+  type AuthenticatedUser,
+  type TokenPair,
+} from "../lib/authSessionService";
 
 type AuthContextValue = {
   token: string | null;
-  user: UserMe | null;
+  user: AuthenticatedUser | null;
   hydrated: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, username: string, password: string) => Promise<void>;
@@ -60,8 +41,6 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-type TokenPair = { access_token: string; refresh_token: string };
-
 // Render can need close to a minute to wake after an idle period. Auth is the one flow where
 // aborting early turns a healthy cold start into a misleading "network error" for the user.
 const AUTH_COLD_START_TIMEOUT_MS = 90_000;
@@ -71,45 +50,9 @@ const AUTH_IDENTITY_TIMEOUT_MS = 30_000;
  * Billing must never block login/register UX.
  * Configure RevenueCat + sync entitlement in the background after auth succeeds.
  */
-function syncBillingInBackground(access: string, me: UserMe): void {
-  if (isE2eModeEnabled()) return;
-
-  if (me.is_premium) {
-    seedEntitlementCache(
-      access,
-      {
-        provider: "server",
-        entitlement: "premium",
-        trial_active: false,
-        expires_at: null,
-      },
-      me.id,
-    );
-  }
-
-  void (async () => {
-    try {
-      await configureRevenueCat(String(me.id));
-      const info = await getRevenueCatCustomerInfo(String(me.id));
-      const premium = isPremiumActive(info);
-      const synced = await syncEntitlement(access, {
-        app_user_id: String(me.id),
-        entitlement: premium ? "premium" : "free",
-        trial_active: false,
-        expires_at: activeEntitlementExpiration(info),
-      }).catch(() => null);
-      if (premium && synced) {
-        seedEntitlementCache(access, synced, me.id);
-      }
-    } catch {
-      /* best effort — tabs/paywall resolve access independently */
-    }
-  })();
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<UserMe | null>(null);
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   const persistTokenPair = useCallback(async (pair: TokenPair) => {
@@ -159,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      const me = await apiJson<UserMe>("/auth/me", { token });
+      const me = await apiJson<AuthenticatedUser>("/auth/me", { token });
       setUser(me);
       await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
     } catch (e) {
@@ -187,62 +130,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void configureRevenueCat(String(user.id)).catch(() => undefined);
   }, [token, user?.id]);
 
-  const signIn = useCallback(
-    async (email: string, password: string) => {
-      const data = await apiJson<Partial<TokenPair>>("/auth/login", {
-        method: "POST",
-        body: { email, password },
+  const completeAuthentication = useCallback(
+    async (
+      path: "/auth/login" | "/auth/register",
+      body: Record<string, string>,
+      retries: number,
+    ) => {
+      const { pair, user: authenticatedUser } = await authenticate({
+        path,
+        body,
+        retries,
         timeoutMs: AUTH_COLD_START_TIMEOUT_MS,
-        retries: isE2eModeEnabled() ? 1 : 0,
+        identityTimeoutMs: AUTH_IDENTITY_TIMEOUT_MS,
+        unexpectedResponseMessage: i18n.t("errors.unexpectedResponse"),
       });
-      const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
-      const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
-      if (!access || !refresh) {
-        throw new Error(i18n.t("errors.unexpectedResponse"));
-      }
-      // Verify the authenticated identity before committing tokens locally. Otherwise a transient
-      // /auth/me failure leaves the UI reporting a failed login while the next launch is signed in.
-      const me = await apiJson<UserMe>("/auth/me", {
-        token: access,
-        timeoutMs: AUTH_IDENTITY_TIMEOUT_MS,
-      });
-      await persistTokenPair({ access_token: access, refresh_token: refresh });
-      setUser(me);
-
+      await persistTokenPair(pair);
+      setUser(authenticatedUser);
       void clearNotificationInbox().catch(() => undefined);
-      void setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
-      void syncPendingWeeklyGoal(access).catch(() => undefined);
-      syncBillingInBackground(access, me);
+      void setNotificationUserContext(authenticatedUser.created_at ?? null).catch(() => undefined);
+      void syncPendingWeeklyGoal(pair.access_token).catch(() => undefined);
+      if (!isE2eModeEnabled()) syncBillingInBackground(pair.access_token, authenticatedUser);
     },
     [persistTokenPair],
   );
 
-  const signUp = useCallback(
-    async (email: string, username: string, password: string) => {
-      const data = await apiJson<Partial<TokenPair>>("/auth/register", {
-        method: "POST",
-        body: { email, username, password },
-        timeoutMs: AUTH_COLD_START_TIMEOUT_MS,
-        retries: 0,
-      });
-      const access = typeof data.access_token === "string" ? data.access_token.trim() : "";
-      const refresh = typeof data.refresh_token === "string" ? data.refresh_token.trim() : "";
-      if (!access || !refresh) {
-        throw new Error(i18n.t("errors.unexpectedResponse"));
-      }
-      const me = await apiJson<UserMe>("/auth/me", {
-        token: access,
-        timeoutMs: AUTH_IDENTITY_TIMEOUT_MS,
-      });
-      await persistTokenPair({ access_token: access, refresh_token: refresh });
-      setUser(me);
+  const signIn = useCallback(
+    (email: string, password: string) =>
+      completeAuthentication("/auth/login", { email, password }, isE2eModeEnabled() ? 1 : 0),
+    [completeAuthentication],
+  );
 
-      void clearNotificationInbox().catch(() => undefined);
-      void setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
-      void syncPendingWeeklyGoal(access).catch(() => undefined);
-      syncBillingInBackground(access, me);
-    },
-    [persistTokenPair],
+  const signUp = useCallback(
+    (email: string, username: string, password: string) =>
+      completeAuthentication("/auth/register", { email, username, password }, 0),
+    [completeAuthentication],
   );
 
   const signOut = useCallback(async () => {
@@ -251,19 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (t) {
       await apiJson("/auth/logout", { method: "POST", token: t }).catch(() => undefined);
     }
-    await clearTokenPair();
-    await clearNotificationInbox().catch(() => undefined);
-    await cancelWeeklyRecapScheduled().catch(() => undefined);
-    await setNotificationUserContext(null).catch(() => undefined);
-    await clearPendingDeepLinkPath();
-    await clearDevBillingBypass();
-    await configureRevenueCat(undefined).catch(() => undefined);
-    clearEntitlementCache();
-    if (previousUserId != null) {
-      await clearEntitlementCacheForUser(previousUserId).catch(() => undefined);
-    }
-    clearProgressionSyncCache();
-    clearLevelCatalogCache();
+    await clearLocalAuthSession(previousUserId, false);
     setToken(null);
     setUser(null);
   }, [token, user?.id]);
@@ -275,20 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(i18n.t("errors.unexpectedResponse"));
     }
     await apiJson("/users/me", { method: "DELETE", token: trimmed });
-    await clearTokenPair();
-    await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY).catch(() => undefined);
-    await clearNotificationInbox().catch(() => undefined);
-    await cancelWeeklyRecapScheduled().catch(() => undefined);
-    await setNotificationUserContext(null).catch(() => undefined);
-    await clearPendingDeepLinkPath();
-    await clearDevBillingBypass();
-    await configureRevenueCat(undefined).catch(() => undefined);
-    clearEntitlementCache();
-    if (previousUserId != null) {
-      await clearEntitlementCacheForUser(previousUserId).catch(() => undefined);
-    }
-    clearProgressionSyncCache();
-    clearLevelCatalogCache();
+    await clearLocalAuthSession(previousUserId, true);
     setToken(null);
     setUser(null);
   }, [token, user?.id]);
