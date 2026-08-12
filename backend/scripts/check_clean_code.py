@@ -13,9 +13,7 @@ DEFAULT_MAX_MODULE_LINES = 300
 
 # Existing hotspots are explicit debt budgets. Lower these numbers whenever a hotspot is reduced.
 FUNCTION_LINE_BUDGETS = {}
-MODULE_LINE_BUDGETS = {
-    "models.py": 495,
-}
+MODULE_LINE_BUDGETS = {}
 ROUTER_TRANSACTION_BUDGETS = {
     "auth.py": 2,
     "challenges.py": 3,
