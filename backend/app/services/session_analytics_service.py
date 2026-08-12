@@ -1,5 +1,4 @@
 from collections import Counter
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
@@ -17,23 +16,10 @@ from app.contracts.sessions import (
 from app.contracts.insights import RelatedSessionPublic, SessionDetailInsightsPublic, SessionTimelineSegmentPublic
 from app.models import ProductionSession, Streak, UserGoal, utcnow
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
+from app.services.stats_period import StatsPeriod
 from app.timeutil import as_utc_aware
 
 _DURATION_CAP_SECONDS = 48 * 3600
-
-
-@dataclass(frozen=True)
-class StatsPeriod:
-    label: str
-    days: int | None
-
-    @classmethod
-    def parse(cls, value: str) -> "StatsPeriod":
-        if value in ("30d", "month"):
-            return cls("month", 30)
-        if value == "all":
-            return cls("all", None)
-        return cls("week", 7)
 
 
 def build_session_stats(db: Session, user_id: int, requested_period: str) -> SessionStatsPublic:
