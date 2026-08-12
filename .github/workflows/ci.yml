@@ -142,6 +142,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Clean Code size guard
+        run: npm run clean-code
+
       - name: Prettier check
         run: npm run format:check
 
