@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Bell, Flame, Trophy } from "lucide-react-native";
+import { Flame } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, Pressable, RefreshControl, Text, View } from "react-native";
@@ -7,14 +7,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { LinearGradient } from "expo-linear-gradient";
 
 import { DashboardSessionSetupModal } from "../../features/dashboard/components/DashboardSessionSetupModal";
+import { DashboardFeedbackOverlays } from "../../features/dashboard/components/DashboardFeedbackOverlays";
+import { DashboardScreenTopBar } from "../../features/dashboard/components/DashboardScreenTopBar";
 import { useDashboardData } from "../../features/dashboard/hooks/useDashboardData";
 import { useDashboardLifecycle } from "../../features/dashboard/hooks/useDashboardLifecycle";
 import { useDashboardPresentation } from "../../features/dashboard/hooks/useDashboardPresentation";
 import { useDashboardSessionActions } from "../../features/dashboard/hooks/useDashboardSessionActions";
 import { useDashboardSessionSetupModal } from "../../features/dashboard/hooks/useDashboardSessionSetupModal";
+import { useDashboardSessionSetupResults } from "../../features/dashboard/hooks/useDashboardSessionSetupResults";
 import { useDashboardSocialActions } from "../../features/dashboard/hooks/useDashboardSocialActions";
 import { useDashboardSocialNudges } from "../../features/dashboard/hooks/useDashboardSocialNudges";
 import { useDashboardStreakEvents } from "../../features/dashboard/hooks/useDashboardStreakEvents";
@@ -23,18 +25,13 @@ import { DashboardStudioHud } from "../../components/dashboard/DashboardStudioHu
 import { DashboardRecentSessionRow } from "../../components/dashboard/DashboardRecentSessionRow";
 import { FriendsActivityWidget } from "../../components/dashboard/FriendsActivityWidget";
 import { WeeklyRecapTeaser } from "../../features/weeklyRecap/WeeklyRecapTeaser";
-import { glyphRowStyle } from "../../components/icons/ProdifyGlyphs";
-import { StreakBreakModal } from "../../components/streak/StreakBreakModal";
 import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
-import { RankHudChip } from "../../components/progression/RankHudChip";
-import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { TutorialOverlay } from "../../components/TutorialOverlay";
 import { colors } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useRankProgression } from "../../hooks/useRankProgression";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
-import { tryParseSessionDto } from "../../lib/sessionDto";
 import type { SessionDto } from "../../types/session";
 import { styles } from "../../features/dashboard/dashboardScreen.styles";
 
@@ -174,6 +171,19 @@ export default function DashboardScreen() {
       t,
       refreshUnread: refreshUnreadCount,
     });
+  const openSetupScreen = useCallback(() => router.push("/session/setup"), [router]);
+  const openNotifications = useCallback(() => router.push("/notifications"), [router]);
+  const { recoverFromCrash, resolveActiveSessionConflict, handleSessionStarted } =
+    useDashboardSessionSetupResults({
+      closeSetupModal,
+      openSetupScreen,
+      loadSessions,
+      loadStreakOverview,
+      setActive,
+      setSessions,
+      setError,
+      t,
+    });
 
   const renderRightActions = useCallback(
     (sessionId: number) => (
@@ -210,34 +220,13 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <TutorialOverlay />
-      {milestoneToast ? (
-        <Animated.View entering={FadeInUp.duration(320)} style={styles.milestoneToast}>
-          <LinearGradient
-            colors={["#ff6a3d", "#a259ff"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.milestoneToastInner}
-          >
-            <View style={[glyphRowStyle, styles.milestoneToastRow]}>
-              <Trophy size={18} color="#fff" strokeWidth={2.2} fill="#fff" />
-              <Text style={styles.milestoneToastText}>{milestoneToast}</Text>
-            </View>
-          </LinearGradient>
-        </Animated.View>
-      ) : null}
-      {socialToast ? (
-        <Animated.View entering={FadeInUp.duration(220)} style={styles.socialToast}>
-          <Text style={styles.socialToastText}>{socialToast}</Text>
-        </Animated.View>
-      ) : null}
-      <StreakBreakModal
-        visible={breakModalOpen}
-        brokenStreak={breakModalStreak}
-        onStartFresh={() => {
-          dismissBreakModal();
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-          openSessionSetup();
-        }}
+      <DashboardFeedbackOverlays
+        milestoneToast={milestoneToast}
+        socialToast={socialToast}
+        breakModalOpen={breakModalOpen}
+        breakModalStreak={breakModalStreak}
+        dismissBreakModal={dismissBreakModal}
+        openSessionSetup={openSessionSetup}
       />
       <FlatList
         data={recentSessions}
@@ -255,44 +244,12 @@ export default function DashboardScreen() {
         }
         ListHeaderComponent={
           <View style={styles.headerContent}>
-            <View style={styles.topBar}>
-              <ScreenHeader
-                titleNode={
-                  <View style={styles.greetingRow}>
-                    <Text style={styles.greetingPrefix}>{t("dashboard.heyPrefix")}</Text>
-                    <Text
-                      style={styles.greetingName}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.72}
-                    >
-                      {user?.username ?? t("dashboard.defaultUserName")}
-                    </Text>
-                  </View>
-                }
-                actionNode={
-                  <View style={styles.headerActions}>
-                    <RankHudChip from="dashboard" />
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.iconButton,
-                        pressed && styles.iconButtonPressed,
-                      ]}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
-                          () => undefined,
-                        );
-                        router.push("/notifications");
-                      }}
-                      accessibilityLabel={t("dashboard.notificationsA11y")}
-                    >
-                      <Bell color={colors.textPrimary} size={20} />
-                      {notifUnread > 0 ? <View style={styles.notifBadge} /> : null}
-                    </Pressable>
-                  </View>
-                }
-              />
-            </View>
+            <DashboardScreenTopBar
+              username={user?.username}
+              notificationUnreadCount={notifUnread}
+              onOpenNotifications={openNotifications}
+              t={t}
+            />
 
             <DashboardStudioHud
               t={t}
@@ -421,38 +378,9 @@ export default function DashboardScreen() {
         formKey={setupModalKey}
         sheetStyle={sheetStyle}
         closeSetupModal={closeSetupModal}
-        onCrashRecover={() => {
-          closeSetupModal(() => {
-            router.push("/session/setup");
-          });
-        }}
-        onActiveSessionConflict={() => {
-          closeSetupModal(() => {
-            void loadSessions();
-            void loadStreakOverview();
-          });
-        }}
-        onSessionStarted={(created) => {
-          const session = tryParseSessionDto(created);
-          if (!session) {
-            setError(t("dashboard.couldNotReadSession"));
-            closeSetupModal(() => {
-              void loadSessions();
-            });
-            return;
-          }
-          setActive(session);
-          setSessions((prev) => {
-            const rest = prev.filter((s) => s.id !== session.id);
-            return [session, ...rest];
-          });
-          closeSetupModal(() => {
-            void Promise.all([
-              loadSessions().catch(() => null),
-              loadStreakOverview().catch(() => null),
-            ]);
-          });
-        }}
+        onCrashRecover={recoverFromCrash}
+        onActiveSessionConflict={resolveActiveSessionConflict}
+        onSessionStarted={handleSessionStarted}
       />
     </SafeAreaView>
   );
