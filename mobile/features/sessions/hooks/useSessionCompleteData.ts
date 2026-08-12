@@ -23,6 +23,55 @@ type SessionCompleteData = {
   reload: () => Promise<void>;
 };
 
+type CompletionRequest = { token: string; sessionId: string };
+
+function resolveCompletionRequest(
+  token: string | null,
+  sessionId: string | undefined,
+  t: TFunction,
+): CompletionRequest | { error: string } {
+  if (!token) return { error: t("sessionComplete.notSignedIn") };
+  if (!sessionId) return { error: t("sessionComplete.missingSession") };
+  if (!Number.isFinite(Number(sessionId))) return { error: t("sessionComplete.invalidSession") };
+  return { token, sessionId };
+}
+
+async function loadCompletedSession(request: CompletionRequest, t: TFunction) {
+  const rawSession = await apiJson<unknown>(`/sessions/item/${request.sessionId}`, {
+    token: request.token,
+  });
+  const session = tryParseSessionDto(rawSession);
+  if (!session) throw new Error(t("sessionComplete.invalidData"));
+  if (session.stopped_at == null) throw new Error(t("sessionComplete.stillInProgress"));
+  return session;
+}
+
+async function loadCompletionSummary(token: string) {
+  const [statsRaw, progression, rawGoal] = await Promise.all([
+    apiJson<unknown>("/sessions/stats?period=all", { token }).catch(() => null),
+    syncProgression(token, { force: true }).catch(() => null),
+    apiJson<unknown>("/goals/current", { token }).catch(() => null),
+  ]);
+  return {
+    streak: statsRaw
+      ? (tryParseSessionStatsDto(statsRaw)?.summary.current_streak_days ?? null)
+      : null,
+    progression,
+    rawGoal,
+  };
+}
+
+function useCompletionLifecycle(reload: () => Promise<void>, cancelled: { current: boolean }) {
+  useEffect(() => {
+    cancelled.current = false;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    void reload();
+    return () => {
+      cancelled.current = true;
+    };
+  }, [cancelled, reload]);
+}
+
 export function useSessionCompleteData(
   token: string | null,
   sessionId: string | undefined,
@@ -44,44 +93,26 @@ export function useSessionCompleteData(
   }, []);
 
   const reload = useCallback(async () => {
-    if (!token || !sessionId) {
-      fail(!token ? t("sessionComplete.notSignedIn") : t("sessionComplete.missingSession"));
-      return;
-    }
-    if (!Number.isFinite(Number(sessionId))) {
-      fail(t("sessionComplete.invalidSession"));
+    const request = resolveCompletionRequest(token, sessionId, t);
+    if ("error" in request) {
+      fail(request.error);
       return;
     }
 
     setLoadState("loading");
     setLoadError(null);
     try {
-      const rawSession = await apiJson<unknown>(`/sessions/item/${sessionId}`, { token });
+      const completedSession = await loadCompletedSession(request, t);
       if (cancelled.current) return;
-      const parsedSession = tryParseSessionDto(rawSession);
-      if (!parsedSession) {
-        fail(t("sessionComplete.invalidData"));
-        return;
-      }
-      if (parsedSession.stopped_at == null) {
-        fail(t("sessionComplete.stillInProgress"));
-        return;
-      }
-      setSession(parsedSession);
+      setSession(completedSession);
 
-      const [statsRaw, progressionResult, goalRaw] = await Promise.all([
-        apiJson<unknown>("/sessions/stats?period=all", { token }).catch(() => null),
-        syncProgression(token, { force: true }).catch(() => null),
-        apiJson<unknown>("/goals/current", { token }).catch(() => null),
-      ]);
+      const summary = await loadCompletionSummary(request.token);
       if (cancelled.current) return;
-
-      const stats = statsRaw ? tryParseSessionStatsDto(statsRaw) : null;
-      setStreak(stats?.summary.current_streak_days ?? null);
-      setProgression(progressionResult);
+      setStreak(summary.streak);
+      setProgression(summary.progression);
       applyGoalResult(
-        goalRaw,
-        parsedSession.duration_seconds ?? 0,
+        summary.rawGoal,
+        completedSession.duration_seconds ?? 0,
         setWeeklyGoalTarget,
         setWeekSessionsCount,
       );
@@ -93,14 +124,7 @@ export function useSessionCompleteData(
     }
   }, [fail, sessionId, t, token]);
 
-  useEffect(() => {
-    cancelled.current = false;
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    void reload();
-    return () => {
-      cancelled.current = true;
-    };
-  }, [reload]);
+  useCompletionLifecycle(reload, cancelled);
 
   return {
     session,
