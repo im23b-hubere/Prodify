@@ -13,7 +13,6 @@ DEFAULT_MAX_MODULE_LINES = 300
 
 # Existing hotspots are explicit debt budgets. Lower these numbers whenever a hotspot is reduced.
 FUNCTION_LINE_BUDGETS = {
-    ("main.py", "validate_schema"): 101,
     ("jobs/send_streak_reminders.py", "run_streak_reminder_job"): 73,
     ("services/ollama_client.py", "_generate_text"): 65,
     ("services/screenshot_seed_service.py", "seed_screenshot_account"): 85,

@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 
 from app.config import is_sqlite_database_url, settings
 from app.database import engine
@@ -15,6 +15,7 @@ from app.errors import APIError, api_error_handler, http_exception_handler
 from app.middleware.security import SecurityHeadersMiddleware
 from app.observability import init_observability
 from app.rate_limit import limiter
+from app.startup.schema_validation import validate_alembic_head_matches, validate_schema
 
 init_observability()
 from app.routers import (
@@ -41,12 +42,6 @@ from app.routers import (
 logger = logging.getLogger(__name__)
 
 
-def _schema_guard(message: str) -> None:
-    if settings.startup_schema_strict:
-        raise RuntimeError(message)
-    logger.warning("startup schema check downgraded to warning: %s", message)
-
-
 def validate_runtime_config() -> None:
     required_values = {
         "DATABASE_URL": settings.database_url,
@@ -71,131 +66,6 @@ def validate_runtime_config() -> None:
             )
 
     logger.info("Configuration validated for environment=%s", settings.environment)
-
-
-def validate_schema() -> None:
-    inspector = inspect(engine)
-    table_names = set(inspector.get_table_names())
-    required_tables = {
-        "users",
-        "sessions",
-        "streaks",
-        "friendships",
-        "push_tokens",
-        "refresh_tokens",
-        "user_goals",
-        "user_achievements",
-        "streak_reminder_dispatch_log",
-        "user_subscriptions",
-        "user_progression",
-        "xp_ledger",
-        "growth_events",
-        "weekly_review_snapshots",
-        "public_goals",
-        "weekly_challenges",
-        "challenge_participants",
-        "weekly_checkins",
-        "buddy_relationships",
-        "checkin_plans",
-        "checkin_logs",
-        "social_comments",
-        "social_reactions",
-        "social_challenges",
-        "social_challenge_members",
-        "social_commitments",
-        "streak_rescues",
-        "streak_break_notify_dedupe",
-        "analytics_event_dedupe",
-        "notification_read_states",
-    }
-    missing_tables = required_tables.difference(table_names)
-    if missing_tables:
-        missing = ", ".join(sorted(missing_tables))
-        raise RuntimeError(f"Database schema is missing required tables: {missing}. Run Alembic migrations.")
-
-    streak_cols = {column["name"] for column in inspector.get_columns("streaks")}
-    required_streak = {"frozen_day_keys", "freezes_remaining", "billing_month"}
-    missing_streak = required_streak.difference(streak_cols)
-    if missing_streak:
-        miss = ", ".join(sorted(missing_streak))
-        _schema_guard(
-            f"Database schema is missing columns for 'streaks': {miss}. Run Alembic migrations before starting the API."
-        )
-
-    column_names = {column["name"] for column in inspector.get_columns("sessions")}
-    required_columns = {
-        "session_type",
-        "deleted_at",
-        "mood_level",
-        "tags",
-        "paused_duration_seconds",
-        "pause_started_at",
-        "focus_score",
-        "track_outcome",
-        "track_title",
-    }
-    missing_columns = required_columns.difference(column_names)
-    if missing_columns:
-        missing = ", ".join(sorted(missing_columns))
-        _schema_guard(
-            f"Database schema is missing columns for 'sessions': {missing}. "
-            "Run Alembic migrations before starting the API."
-        )
-
-    push_cols = {column["name"] for column in inspector.get_columns("push_tokens")}
-    if "channel" not in push_cols:
-        raise RuntimeError("Database schema is missing column 'channel' on 'push_tokens'. Run Alembic migrations.")
-    required_push_cols = {"is_active", "last_used_at"}
-    missing_push = required_push_cols.difference(push_cols)
-    if missing_push:
-        _schema_guard(
-            f"Database schema is missing columns on 'push_tokens': {', '.join(sorted(missing_push))}. Run Alembic migrations."
-        )
-
-    user_cols = {column["name"] for column in inspector.get_columns("users")}
-    required_user_cols = {
-        "profile_picture_url",
-        "is_premium",
-        "premium_until",
-        "bonus_rescues",
-        "bonus_challenge_slots",
-        "access_token_version",
-    }
-    missing_user = required_user_cols.difference(user_cols)
-    if missing_user:
-        _schema_guard(
-            f"Database schema is missing columns on 'users': {', '.join(sorted(missing_user))}. Run Alembic migrations."
-        )
-
-    # In production with a server DB, refuse to start if migrations were never applied (no revision tracking).
-    if settings.environment == "production" and not is_sqlite_database_url(settings.database_url):
-        if "alembic_version" not in table_names:
-            raise RuntimeError(
-                "Production database has no alembic_version table. Apply migrations before starting the API: "
-                "alembic upgrade head"
-            )
-
-
-def validate_alembic_head_matches() -> None:
-    """When `alembic_version` exists, require it matches the application's migration head (avoids partial migrations)."""
-    from pathlib import Path
-
-    from alembic.config import Config
-    from alembic.script import ScriptDirectory
-    from sqlalchemy import text
-
-    inspector = inspect(engine)
-    if "alembic_version" not in inspector.get_table_names():
-        return
-    cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    script = ScriptDirectory.from_config(cfg)
-    head = script.get_current_head()
-    with engine.connect() as conn:
-        rev = conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).scalar_one_or_none()
-    if rev and head and rev != head:
-        _schema_guard(
-            f"Alembic database revision is '{rev}' but code expects '{head}'. Run `alembic upgrade head` before starting."
-        )
 
 
 @asynccontextmanager
