@@ -18,7 +18,6 @@ ROUTER_TRANSACTION_BUDGETS = {
     "auth.py": 2,
     "challenges.py": 3,
     "friend_relationships.py": 4,
-    "goals.py": 2,
     "outcomes.py": 4,
     "session_records.py": 3,
     "social_accountability.py": 2,
