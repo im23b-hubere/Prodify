@@ -1,18 +1,16 @@
 import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo } from "react";
-import type { CustomerInfo } from "react-native-purchases";
 
 import { useAuth } from "../../context/AuthContext";
-import { seedEntitlementCache, syncEntitlement } from "../../lib/billing";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import type { PaywallSource } from "../../lib/postAuthNavigation";
-import { activeEntitlementExpiration } from "../../lib/revenuecat";
 import { usePaywallAccountActions } from "./usePaywallAccountActions";
 import { usePaywallCopy } from "./usePaywallCopy";
 import { usePaywallExit } from "./usePaywallExit";
 import { usePaywallOfferings } from "./usePaywallOfferings";
 import { usePaywallPurchases } from "./usePaywallPurchases";
+import { usePremiumUnlockFinalizer } from "./usePremiumUnlockFinalizer";
 
 export function usePaywallController() {
   const { token, user, signOut, deleteAccount, refreshUser } = useAuth();
@@ -39,46 +37,12 @@ export function usePaywallController() {
     exitToLogin,
   });
 
-  const finalizePremiumUnlock = useCallback(
-    async (info: CustomerInfo | null, expiresAt?: string | null, showConfirmation = false) => {
-      const resolvedExpires = info ? activeEntitlementExpiration(info) : (expiresAt ?? null);
-      if (token) {
-        seedEntitlementCache(
-          token,
-          {
-            provider: "revenuecat",
-            entitlement: "premium",
-            trial_active: false,
-            expires_at: resolvedExpires,
-          },
-          appUserId ? Number.parseInt(appUserId, 10) : null,
-        );
-      }
-      if (token && appUserId) {
-        const synced = await syncEntitlement(token, {
-          app_user_id: appUserId,
-          entitlement: "premium",
-          trial_active: false,
-          expires_at: resolvedExpires,
-        }).catch(() => null);
-        if (!synced || synced.entitlement !== "premium") {
-          seedEntitlementCache(
-            token,
-            {
-              provider: "revenuecat",
-              entitlement: "premium",
-              trial_active: false,
-              expires_at: resolvedExpires,
-            },
-            Number.parseInt(appUserId, 10),
-          );
-        }
-        await refreshUser().catch(() => undefined);
-      }
-      requestExitAfterUnlock(showConfirmation);
-    },
-    [appUserId, refreshUser, requestExitAfterUnlock, token],
-  );
+  const finalizePremiumUnlock = usePremiumUnlockFinalizer({
+    token,
+    appUserId,
+    refreshUser,
+    requestExitAfterUnlock,
+  });
   const {
     loading,
     weeklyPackage: weeklyPkg,
