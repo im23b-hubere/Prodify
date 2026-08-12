@@ -80,6 +80,92 @@ function buildFeedbackPreview(
   };
 }
 
+function recommendation(input: {
+  status: TodayPlanStatus;
+  messageKey: TodayPlanCopyKey;
+  type: SessionType;
+  sessions: number;
+  minutes: number;
+  feedbackPreview: TodayPlanFeedbackPreview | null;
+}): TodayPlanRecommendation {
+  return {
+    status: input.status,
+    messageKey: input.messageKey,
+    messageParams: { sessions: input.sessions, minutes: input.minutes },
+    suggestedSessionType: input.type,
+    suggestedSessionsToday: input.sessions,
+    suggestedDurationMin: input.minutes,
+    feedbackPreview: input.feedbackPreview,
+  };
+}
+
+function streakProtectionPlan(
+  type: SessionType,
+  feedbackPreview: TodayPlanFeedbackPreview | null,
+): TodayPlanRecommendation {
+  return recommendation({
+    status: "off_track",
+    messageKey: "todayPlan.recommendation.streakRisk",
+    type,
+    sessions: 1,
+    minutes: 30,
+    feedbackPreview,
+  });
+}
+
+function goalPlan(options: {
+  input: TodayPlanInput;
+  weeklyGoalTarget: number;
+  type: SessionType;
+  streakNeedsProtection: boolean;
+  now: Date;
+}): TodayPlanRecommendation {
+  const { input, weeklyGoalTarget, type, streakNeedsProtection, now } = options;
+  const dayOfWeek = toMondayIndexedDay(now.getDay());
+  const expectedByNow = expectedWeeklySessionsByToday(weeklyGoalTarget, now);
+  const deficit = expectedByNow - input.weekSessionsCount;
+  const remaining = Math.max(0, weeklyGoalTarget - input.weekSessionsCount);
+  const daysLeft = Math.max(1, 8 - dayOfWeek);
+  const minimumToday = Math.ceil(remaining / daysLeft);
+  if (deficit >= 2 || remaining > daysLeft) {
+    const sessions = clamp(Math.max(1, minimumToday), 1, 3);
+    const minutes = sessions > 1 ? 30 : 45;
+    const messageKey =
+      sessions <= 1
+        ? "todayPlan.recommendation.offTrackOne"
+        : "todayPlan.recommendation.offTrackMany";
+    return recommendation({
+      status: "off_track",
+      messageKey,
+      type,
+      sessions,
+      minutes,
+      feedbackPreview: buildFeedbackPreview(
+        weeklyGoalTarget,
+        input.weekSessionsCount,
+        expectedByNow,
+        sessions,
+      ),
+    });
+  }
+  const preview = buildFeedbackPreview(weeklyGoalTarget, input.weekSessionsCount, expectedByNow, 1);
+  if (streakNeedsProtection) return streakProtectionPlan(type, preview);
+  const status = classifyGoalTrackStatus({
+    weeklyGoalTarget,
+    weekSessionsCount: input.weekSessionsCount,
+    expectedByNow,
+  });
+  const ahead = status === "ahead";
+  return recommendation({
+    status: ahead ? "ahead" : "on_track",
+    messageKey: ahead ? "todayPlan.recommendation.ahead" : "todayPlan.recommendation.onTrack",
+    type,
+    sessions: 1,
+    minutes: 45,
+    feedbackPreview: preview,
+  });
+}
+
 export function buildTodayPlanRecommendation(input: TodayPlanInput): TodayPlanRecommendation {
   const now = input.now ?? new Date();
   const type = suggestedType(input.lastSessionType);
@@ -88,95 +174,22 @@ export function buildTodayPlanRecommendation(input: TodayPlanInput): TodayPlanRe
     input.streakAtRisk || (input.currentStreak > 0 && (streakHours ?? 0) >= STREAK_RISK_HOURS);
 
   if (input.weeklyGoalTarget != null && input.weeklyGoalTarget > 0) {
-    const dayOfWeek = toMondayIndexedDay(now.getDay());
-    const expectedByNow = expectedWeeklySessionsByToday(input.weeklyGoalTarget, now);
-    const deficit = expectedByNow - input.weekSessionsCount;
-    const sessionsRemainingThisWeek = Math.max(0, input.weeklyGoalTarget - input.weekSessionsCount);
-    const daysLeftIncludingToday = Math.max(1, 8 - dayOfWeek);
-    const minimumTodayForGoal = Math.ceil(sessionsRemainingThisWeek / daysLeftIncludingToday);
-
-    if (deficit >= 2 || sessionsRemainingThisWeek > daysLeftIncludingToday) {
-      const suggestedSessionsToday = clamp(Math.max(1, minimumTodayForGoal), 1, 3);
-      return {
-        status: "off_track",
-        messageKey:
-          suggestedSessionsToday <= 1
-            ? "todayPlan.recommendation.offTrackOne"
-            : "todayPlan.recommendation.offTrackMany",
-        messageParams: {
-          sessions: suggestedSessionsToday,
-          minutes: suggestedSessionsToday > 1 ? 30 : 45,
-        },
-        suggestedSessionType: type,
-        suggestedSessionsToday,
-        suggestedDurationMin: suggestedSessionsToday > 1 ? 30 : 45,
-        feedbackPreview: buildFeedbackPreview(
-          input.weeklyGoalTarget,
-          input.weekSessionsCount,
-          expectedByNow,
-          suggestedSessionsToday,
-        ),
-      };
-    }
-
-    if (streakNeedsProtection) {
-      return {
-        status: "off_track",
-        messageKey: "todayPlan.recommendation.streakRisk",
-        messageParams: { sessions: 1, minutes: 30 },
-        suggestedSessionType: type,
-        suggestedSessionsToday: 1,
-        suggestedDurationMin: 30,
-        feedbackPreview: buildFeedbackPreview(
-          input.weeklyGoalTarget,
-          input.weekSessionsCount,
-          expectedByNow,
-          1,
-        ),
-      };
-    }
-
-    const trackStatus = classifyGoalTrackStatus({
+    return goalPlan({
+      input,
       weeklyGoalTarget: input.weeklyGoalTarget,
-      weekSessionsCount: input.weekSessionsCount,
-      expectedByNow,
+      type,
+      streakNeedsProtection,
+      now,
     });
-    const ahead = trackStatus === "ahead";
-    return {
-      status: ahead ? "ahead" : "on_track",
-      messageKey: ahead ? "todayPlan.recommendation.ahead" : "todayPlan.recommendation.onTrack",
-      messageParams: { sessions: 1, minutes: 45 },
-      suggestedSessionType: type,
-      suggestedSessionsToday: 1,
-      suggestedDurationMin: 45,
-      feedbackPreview: buildFeedbackPreview(
-        input.weeklyGoalTarget,
-        input.weekSessionsCount,
-        expectedByNow,
-        1,
-      ),
-    };
   }
 
-  if (streakNeedsProtection) {
-    return {
-      status: "off_track",
-      messageKey: "todayPlan.recommendation.streakRisk",
-      messageParams: { sessions: 1, minutes: 30 },
-      suggestedSessionType: type,
-      suggestedSessionsToday: 1,
-      suggestedDurationMin: 30,
-      feedbackPreview: null,
-    };
-  }
-
-  return {
+  if (streakNeedsProtection) return streakProtectionPlan(type, null);
+  return recommendation({
     status: "on_track",
     messageKey: "todayPlan.recommendation.fallback",
-    messageParams: { sessions: 1, minutes: 45 },
-    suggestedSessionType: type,
-    suggestedSessionsToday: 1,
-    suggestedDurationMin: 45,
+    type,
+    sessions: 1,
+    minutes: 45,
     feedbackPreview: null,
-  };
+  });
 }
