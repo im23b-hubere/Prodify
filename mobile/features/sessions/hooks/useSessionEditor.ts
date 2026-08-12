@@ -18,19 +18,9 @@ type UseSessionEditorOptions = {
   onError: (message: string) => void;
 };
 
-export function useSessionEditor({
-  token,
-  sessionId,
-  session,
-  currentUserId,
-  t,
-  onSessionUpdated,
-  onClose,
-  onError,
-}: UseSessionEditorOptions) {
+function useSessionDraft(session: SessionDto | null, currentUserId?: number | null) {
   const [selectedType, setSelectedType] = useState<SessionType>(DEFAULT_SESSION_TYPE);
   const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -41,9 +31,27 @@ export function useSessionEditor({
   const isDirty = useMemo(() => {
     if (!session || currentUserId == null || session.user_id !== currentUserId) return false;
     const savedType = (session.session_type as SessionType) || DEFAULT_SESSION_TYPE;
-    const savedNote = session.notes?.trim() ?? "";
-    return selectedType !== savedType || note.trim() !== savedNote;
+    return selectedType !== savedType || note.trim() !== (session.notes?.trim() ?? "");
   }, [currentUserId, note, selectedType, session]);
+
+  return { selectedType, setSelectedType, note, setNote, isDirty };
+}
+
+export function useSessionEditor({
+  token,
+  sessionId,
+  session,
+  currentUserId,
+  t,
+  onSessionUpdated,
+  onClose,
+  onError,
+}: UseSessionEditorOptions) {
+  const { selectedType, setSelectedType, note, setNote, isDirty } = useSessionDraft(
+    session,
+    currentUserId,
+  );
+  const [busy, setBusy] = useState(false);
 
   const save = useCallback(async () => {
     if (!token || !sessionId) return;
