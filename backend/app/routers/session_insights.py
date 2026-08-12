@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import ProductionSession, User
-from app.schemas import SessionDetailInsightsPublic
+from app.contracts.insights import SessionDetailInsightsPublic
 from app.services.session_analytics_service import build_session_detail_insights
 
 router = APIRouter()

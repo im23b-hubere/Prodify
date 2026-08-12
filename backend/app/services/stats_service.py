@@ -6,9 +6,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
-from app.contracts.sessions import InsightItemPublic
-from app.models import ProductionSession, Streak, UserGoal, utcnow
-from app.schemas import (
+from app.contracts.insights import (
     HeatmapDayPublic,
     HeatmapPublic,
     PersonalRecordItem,
@@ -16,6 +14,8 @@ from app.schemas import (
     ProductivityInsightsPublic,
     StatsInsightsPublic,
 )
+from app.contracts.sessions import InsightItemPublic
+from app.models import ProductionSession, Streak, UserGoal, utcnow
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 

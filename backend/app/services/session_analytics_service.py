@@ -14,8 +14,8 @@ from app.contracts.sessions import (
     SessionStatsTrendPoint,
     SessionStatsTypeBreakdownItem,
 )
+from app.contracts.insights import RelatedSessionPublic, SessionDetailInsightsPublic, SessionTimelineSegmentPublic
 from app.models import ProductionSession, Streak, UserGoal, utcnow
-from app.schemas import RelatedSessionPublic, SessionDetailInsightsPublic, SessionTimelineSegmentPublic
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 

@@ -8,13 +8,12 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user, require_kpi_admin
 from app.models import User
-from app.schemas import (
+from app.contracts.insights import (
     HeatmapPublic,
-    KpiDashboardPublic,
-    KpiSummaryPublic,
     PersonalRecordsPublic,
     StatsInsightsPublic,
 )
+from app.schemas import KpiDashboardPublic, KpiSummaryPublic
 from app.services.kpi_tracker import kpi_dashboard, kpi_summary
 from app.services.stats_service import build_heatmap, build_personal_records, build_stats_insights
 
