@@ -45,6 +45,19 @@ def test_buddy_invite_accept_and_duplicate_prevention(client):
     assert accept.json()["status"] == "active"
 
 
+def test_buddy_rules_are_translated_to_stable_http_errors(client):
+    a = _auth_headers(client, "buddy-rules-a@example.com", "buddy-rules-a")
+    _auth_headers(client, "buddy-rules-b@example.com", "buddy-rules-b")
+
+    self_invite = client.post("/social/buddy/invite", headers=a, json={"friend_user_id": 1})
+    non_friend = client.post("/social/buddy/invite", headers=a, json={"friend_user_id": 2})
+    missing_invite = client.post("/social/buddy/accept", headers=a, json={"invite_id": 9999})
+
+    assert self_invite.status_code == 400
+    assert non_friend.status_code == 403
+    assert missing_invite.status_code == 404
+
+
 def test_checkin_plan_done_and_states(client):
     a = _auth_headers(client, "social-c@example.com", "social-c")
     set_plan = client.post("/social/checkins/plan", headers=a, json={"target_checkins": 3})
