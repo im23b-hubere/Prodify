@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../constants/api";
-import { ApiError, formatApiErrorDetail } from "./apiErrors";
+import { apiErrorFromResponse, readResponsePayload } from "./apiResponse";
 import { addNetworkBreadcrumb, parseApiHost } from "./apiNetworkTelemetry";
 import i18n from "./i18n";
 
@@ -30,22 +30,8 @@ export async function apiMultipart<T = unknown>(
       body: formData,
       signal: controller.signal,
     });
-    const raw = await response.text();
-    let payload: unknown = null;
-    try {
-      payload = raw ? JSON.parse(raw) : null;
-    } catch {
-      payload = raw;
-    }
-    if (!response.ok) {
-      let message = `HTTP ${response.status}`;
-      if (typeof payload === "object" && payload && "detail" in payload) {
-        message = formatApiErrorDetail((payload as { detail: unknown }).detail);
-      } else if (typeof payload === "string" && payload.trim()) {
-        message = payload;
-      }
-      throw new ApiError(response.status, message, payload);
-    }
+    const payload = await readResponsePayload(response);
+    if (!response.ok) throw apiErrorFromResponse(response, payload);
     return payload as T;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {

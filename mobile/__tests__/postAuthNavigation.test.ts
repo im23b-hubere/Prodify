@@ -8,12 +8,11 @@ import {
   resolvePostAuthRoute,
   resolveUnauthenticatedAuthHref,
 } from "../lib/postAuthNavigation";
+import { isE2eModeEnabled } from "../lib/e2eMode";
 
 jest.mock("../lib/e2eMode", () => ({
   isE2eModeEnabled: jest.fn(() => false),
 }));
-
-import { isE2eModeEnabled } from "../lib/e2eMode";
 
 describe("postAuthNavigation", () => {
   beforeEach(() => {
