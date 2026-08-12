@@ -14,9 +14,7 @@ DEFAULT_MAX_MODULE_LINES = 300
 # Existing hotspots are explicit debt budgets. Lower these numbers whenever a hotspot is reduced.
 FUNCTION_LINE_BUDGETS = {}
 MODULE_LINE_BUDGETS = {}
-ROUTER_TRANSACTION_BUDGETS = {
-    "streak.py": 6,
-}
+ROUTER_TRANSACTION_BUDGETS = {}
 
 
 @dataclass(frozen=True)
