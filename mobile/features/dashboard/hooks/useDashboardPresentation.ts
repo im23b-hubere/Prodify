@@ -22,6 +22,66 @@ type UseDashboardPresentationOptions = {
   t: TFunction;
 };
 
+type GoalPresentationOptions = {
+  target: number | null;
+  completed: number;
+  clientStreak: number;
+  streakOverview: StreakOverviewDto | null;
+  visibleSessions: SessionDto[];
+  hasWeeklyGoal: boolean;
+  t: TFunction;
+};
+
+function useGoalPresentation({
+  target,
+  completed,
+  clientStreak,
+  streakOverview,
+  visibleSessions,
+  hasWeeklyGoal,
+  t,
+}: GoalPresentationOptions) {
+  const currentStreak = streakOverview?.current_streak ?? clientStreak;
+  const todayPlan = useMemo(
+    () =>
+      buildTodayPlanRecommendation({
+        weeklyGoalTarget: target,
+        weekSessionsCount: completed,
+        currentStreak,
+        streakAtRisk: streakOverview?.streak_at_risk ?? false,
+        lastSessionAt: visibleSessions[0]?.started_at ?? null,
+        lastSessionType:
+          typeof visibleSessions[0]?.session_type === "string"
+            ? visibleSessions[0].session_type
+            : null,
+      }),
+    [completed, currentStreak, streakOverview?.streak_at_risk, target, visibleSessions],
+  );
+  const paceForecast = useMemo(
+    () =>
+      target != null && target > 0
+        ? buildWeeklyForecast({ weeklyGoalTarget: target, completedThisWeek: completed })
+        : null,
+    [completed, target],
+  );
+  const sessionFeedback = useMemo(
+    () =>
+      buildSessionFeedback({
+        weeklyGoalTarget: target,
+        weekSessionsCount: completed,
+        currentStreak,
+        sessionDurationSeconds: 0,
+      }),
+    [completed, currentStreak, target],
+  );
+  const studioStatusLine = useMemo(() => {
+    if (!hasWeeklyGoal) return null;
+    if (streakOverview?.streak_at_risk) return t("streakHero.riskBanner");
+    return paceForecast ? t(paceForecast.todayActionKey, paceForecast.todayActionParams) : null;
+  }, [hasWeeklyGoal, paceForecast, streakOverview?.streak_at_risk, t]);
+  return { todayPlan, paceForecast, sessionFeedback, studioStatusLine };
+}
+
 export function useDashboardPresentation({
   sessions,
   streakOverview,
@@ -52,41 +112,15 @@ export function useDashboardPresentation({
     [accountCreatedAtIso, weeklyGoalTarget],
   );
   const todayStats = useMemo(() => sessionsForToday(visibleSessions), [visibleSessions]);
-  const todayPlan = useMemo(
-    () =>
-      buildTodayPlanRecommendation({
-        weeklyGoalTarget: effectiveWeeklyGoalTarget,
-        weekSessionsCount: weekSessionsForGoal,
-        currentStreak: streakOverview?.current_streak ?? clientStreak,
-        streakAtRisk: streakOverview?.streak_at_risk ?? false,
-        lastSessionAt: visibleSessions[0]?.started_at ?? null,
-        lastSessionType:
-          typeof visibleSessions[0]?.session_type === "string"
-            ? visibleSessions[0].session_type
-            : null,
-      }),
-    [clientStreak, effectiveWeeklyGoalTarget, streakOverview, visibleSessions, weekSessionsForGoal],
-  );
-  const paceForecast = useMemo(
-    () =>
-      effectiveWeeklyGoalTarget != null && effectiveWeeklyGoalTarget > 0
-        ? buildWeeklyForecast({
-            weeklyGoalTarget: effectiveWeeklyGoalTarget,
-            completedThisWeek: weekSessionsForGoal,
-          })
-        : null,
-    [effectiveWeeklyGoalTarget, weekSessionsForGoal],
-  );
-  const sessionFeedback = useMemo(
-    () =>
-      buildSessionFeedback({
-        weeklyGoalTarget: effectiveWeeklyGoalTarget,
-        weekSessionsCount: weekSessionsForGoal,
-        currentStreak: streakOverview?.current_streak ?? clientStreak,
-        sessionDurationSeconds: 0,
-      }),
-    [clientStreak, effectiveWeeklyGoalTarget, streakOverview?.current_streak, weekSessionsForGoal],
-  );
+  const { todayPlan, paceForecast, sessionFeedback, studioStatusLine } = useGoalPresentation({
+    target: effectiveWeeklyGoalTarget,
+    completed: weekSessionsForGoal,
+    clientStreak,
+    streakOverview,
+    visibleSessions,
+    hasWeeklyGoal,
+    t,
+  });
   const displayOverview = useMemo(
     () =>
       streakOverview ??
@@ -99,12 +133,6 @@ export function useDashboardPresentation({
       }),
     [clientStreak, loading, streakOverview, t, weekProgress],
   );
-  const studioStatusLine = useMemo(() => {
-    if (!hasWeeklyGoal) return null;
-    if (streakOverview?.streak_at_risk) return t("streakHero.riskBanner");
-    return paceForecast ? t(paceForecast.todayActionKey, paceForecast.todayActionParams) : null;
-  }, [hasWeeklyGoal, paceForecast, streakOverview?.streak_at_risk, t]);
-
   return {
     visibleSessions,
     recentSessions: visibleSessions.slice(0, 3),
