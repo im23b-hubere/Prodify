@@ -165,4 +165,28 @@ describe("OnboardingScreen", () => {
       expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
     });
   });
+
+  it("finishes onboarding for a signed-in free user when goal sync is temporarily unavailable", async () => {
+    mockUseAuth.mockReturnValue({
+      token: "access-token",
+      user: { id: 42, is_premium: false },
+    });
+    (resolvePremiumAccess as jest.Mock).mockResolvedValue(false);
+    (apiJson as jest.Mock).mockRejectedValue(new Error("offline"));
+
+    const { getByText } = render(<OnboardingScreen />);
+    fireEvent.press(getByText("onboarding.skip"));
+    fireEvent.press(getByText("onboarding.skip"));
+    fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
+    fireEvent.press(getByText("onboarding.quiz.plan.cta"));
+
+    await waitFor(() => {
+      expect(savePendingWeeklyGoal).toHaveBeenCalled();
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith(ONBOARDING_COMPLETE_KEY, "1");
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: "/paywall",
+        params: { source: "onboarding", variant: "outcome" },
+      });
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
+import type { Router } from "expo-router";
 import { useCallback, useState } from "react";
 
 import {
@@ -24,6 +25,64 @@ import { resolvePremiumAccess } from "../../../lib/premiumAccess";
 import { INTRO_SLIDE_COUNT, type OnboardingStep } from "../onboardingConfig";
 
 const QUIZ_ADVANCE_DELAY_MS = 200;
+
+type OnboardingUser = { id?: number | null; is_premium?: boolean | null } | null;
+type OnboardingDestination = "dashboard" | "register" | "paywall";
+
+async function syncWeeklyGoal(token: string | null, weeklyGoal: number): Promise<void> {
+  await savePendingWeeklyGoal(weeklyGoal).catch(() => undefined);
+  if (!token) return;
+  try {
+    await apiJson("/goals/set", {
+      token,
+      method: "POST",
+      body: { goal_type: "weekly_sessions", target_value: weeklyGoal },
+    });
+    await AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1").catch(() => undefined);
+    await AsyncStorage.removeItem(PENDING_WEEKLY_GOAL_KEY).catch(() => undefined);
+  } catch {
+    // The authenticated app retries pending goal synchronization.
+  }
+}
+
+async function userHasPremium(token: string, user: NonNullable<OnboardingUser>): Promise<boolean> {
+  if (user.id == null) return false;
+  const cachedAccess =
+    Boolean(user.is_premium) ||
+    peekCachedHasPremiumAccess(token) === true ||
+    hasPremiumAccess(await loadPersistedEntitlement(user.id).catch(() => null));
+  return cachedAccess || (await resolvePremiumAccess(token, String(user.id)).catch(() => false));
+}
+
+export async function completeOnboarding(input: {
+  answers: OnboardingQuizAnswers;
+  weeklyGoal: number;
+  token: string | null;
+  user: OnboardingUser;
+}): Promise<OnboardingDestination> {
+  const { answers, weeklyGoal, token, user } = input;
+  await saveOnboardingQuiz({ ...answers, weeklyGoal }).catch(() => undefined);
+  await syncWeeklyGoal(token, weeklyGoal);
+  await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "1").catch(() => undefined);
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  if (token && user && (await userHasPremium(token, user))) return "dashboard";
+  return token ? "paywall" : "register";
+}
+
+function navigateAfterOnboarding(router: Router, destination: OnboardingDestination): void {
+  if (destination === "dashboard") {
+    router.replace("/(tabs)/dashboard");
+    return;
+  }
+  if (destination === "register") {
+    router.replace({
+      pathname: "/(auth)/register",
+      params: { next: "paywall", source: "onboarding", variant: "outcome" },
+    });
+    return;
+  }
+  router.replace({ pathname: "/paywall", params: { source: "onboarding", variant: "outcome" } });
+}
 
 export function useOnboardingWorkflow() {
   const { token, user } = useAuth();
@@ -65,48 +124,8 @@ export function useOnboardingWorkflow() {
   const finish = useCallback(async () => {
     setBusy(true);
     try {
-      await saveOnboardingQuiz({ ...answers, weeklyGoal }).catch(() => undefined);
-      await savePendingWeeklyGoal(weeklyGoal).catch(() => undefined);
-      if (token) {
-        try {
-          await apiJson("/goals/set", {
-            token,
-            method: "POST",
-            body: { goal_type: "weekly_sessions", target_value: weeklyGoal },
-          });
-          await AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1").catch(() => undefined);
-          await AsyncStorage.removeItem(PENDING_WEEKLY_GOAL_KEY).catch(() => undefined);
-        } catch {
-          // Goal synchronization is retried from the authenticated app.
-        }
-      }
-      await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "1").catch(() => undefined);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-
-      if (token && user?.id != null) {
-        const cachedAccess =
-          Boolean(user.is_premium) ||
-          peekCachedHasPremiumAccess(token) === true ||
-          hasPremiumAccess(await loadPersistedEntitlement(user.id).catch(() => null));
-        const premiumAccess =
-          cachedAccess || (await resolvePremiumAccess(token, String(user.id)).catch(() => false));
-        if (premiumAccess) {
-          router.replace("/(tabs)/dashboard");
-          return;
-        }
-      }
-
-      if (!token) {
-        router.replace({
-          pathname: "/(auth)/register",
-          params: { next: "paywall", source: "onboarding", variant: "outcome" },
-        });
-        return;
-      }
-      router.replace({
-        pathname: "/paywall",
-        params: { source: "onboarding", variant: "outcome" },
-      });
+      const destination = await completeOnboarding({ answers, weeklyGoal, token, user });
+      navigateAfterOnboarding(router, destination);
     } finally {
       setBusy(false);
     }
