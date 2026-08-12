@@ -9,19 +9,63 @@ import { tryParseSessionStatsDto } from "../../lib/statsDto";
 import type { WeeklyReviewDto } from "../../types/outcomes";
 import type { SessionStatsDto } from "../../types/session";
 
+function useGenerateWeeklyRecap(
+  token: string | null,
+  t: TFunction,
+  setReview: (review: WeeklyReviewDto) => void,
+) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const generate = useCallback(async () => {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const parsed = tryParseWeeklyReviewDto(
+        await apiJson<unknown>("/outcomes/weekly-review/generate", {
+          token,
+          method: "POST",
+          body: {},
+        }),
+      );
+      if (!parsed) {
+        setError(t("weeklyRecap.generateInvalid"));
+        return;
+      }
+      setReview(parsed);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error ? requestError.message : t("weeklyRecap.generateFailed"),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [setReview, t, token]);
+  return {
+    generateBusy: busy,
+    generateError: error,
+    clearGenerateError: setError,
+    generateRecap: generate,
+  };
+}
+
 export function useWeeklyRecapData(token: string | null, t: TFunction) {
   const [stats, setStats] = useState<SessionStatsDto | null>(null);
   const [review, setReview] = useState<WeeklyReviewDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statsWarning, setStatsWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generateBusy, setGenerateBusy] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
+  const { generateBusy, generateError, clearGenerateError, generateRecap } = useGenerateWeeklyRecap(
+    token,
+    t,
+    setReview,
+  );
 
   const load = useCallback(async () => {
     setError(null);
     setStatsWarning(null);
-    setGenerateError(null);
+    clearGenerateError(null);
     if (!token) {
       setStats(null);
       setReview(null);
@@ -55,40 +99,13 @@ export function useWeeklyRecapData(token: string | null, t: TFunction) {
     if (statsError && parsedReview) setStatsWarning(statsError);
     else if (statsError) setError(statsError);
     setLoading(false);
-  }, [t, token]);
+  }, [clearGenerateError, t, token]);
 
   useFocusEffect(
     useCallback(() => {
       void load();
     }, [load]),
   );
-
-  const generateRecap = useCallback(async () => {
-    if (!token) return;
-    setGenerateBusy(true);
-    setGenerateError(null);
-    try {
-      const parsed = tryParseWeeklyReviewDto(
-        await apiJson<unknown>("/outcomes/weekly-review/generate", {
-          token,
-          method: "POST",
-          body: {},
-        }),
-      );
-      if (!parsed) {
-        setGenerateError(t("weeklyRecap.generateInvalid"));
-        return;
-      }
-      setReview(parsed);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    } catch (requestError) {
-      setGenerateError(
-        requestError instanceof Error ? requestError.message : t("weeklyRecap.generateFailed"),
-      );
-    } finally {
-      setGenerateBusy(false);
-    }
-  }, [t, token]);
 
   return {
     stats,
