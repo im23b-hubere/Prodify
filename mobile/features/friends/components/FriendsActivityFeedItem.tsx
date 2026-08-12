@@ -7,7 +7,7 @@ import { API_BASE_URL } from "../../../constants/api";
 import { colors } from "../../../constants/theme";
 import { formatTimeAgo } from "../../../lib/timeAgo";
 import type { FriendActivityDto } from "../../../types/friends";
-import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
+import { friendsActivityStyles as styles } from "../styles/friendsActivity.styles";
 import {
   formatDuration,
   formatSessionTypeLabel,

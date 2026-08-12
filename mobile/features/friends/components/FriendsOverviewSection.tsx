@@ -14,7 +14,7 @@ import { colors, spacing } from "../../../constants/theme";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../../types/friends";
 import { FriendsLeaderboardPodium } from "./FriendsLeaderboardPodium";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
-import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
+import { friendsOverviewStyles as styles } from "../styles/friendsOverview.styles";
 
 export type FriendsTriggerCard = {
   key: string;

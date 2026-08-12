@@ -1,0 +1,156 @@
+import { StyleSheet } from "react-native";
+
+import { fontFamily } from "../../../constants/fonts";
+import { colors, radii, shadows, spacing, typography } from "../../../constants/theme";
+import { friendsSharedStyles } from "./friendsShared.styles";
+
+const localStyles = StyleSheet.create({
+  commitmentEventBadge: {
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.45)",
+    backgroundColor: "rgba(34,197,94,0.14)",
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+  },
+  commitmentEventBadgeText: {
+    color: "#86efac",
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 10,
+  },
+  feedActionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  feedActionChipPressed: { backgroundColor: "rgba(255,255,255,0.08)" },
+  feedActionChipText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  feedActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  feedAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#2b2140",
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  feedAvatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  feedAvatarText: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, fontSize: 15 },
+  feedHeaderCopy: { flex: 1, minWidth: 0, gap: 2 },
+  feedHeaderRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  feedItemAccent: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: colors.primary,
+    opacity: 0.85,
+  },
+  feedItemCard: {
+    position: "relative",
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
+    ...shadows.card,
+  },
+  feedItemInner: { padding: spacing.md, gap: spacing.sm, paddingLeft: spacing.md + 4 },
+  feedNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+  },
+  feedReactPrimaryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.08)",
+  },
+  feedReactPrimaryChipActive: {
+    backgroundColor: "rgba(255,61,0,0.2)",
+  },
+  feedReactPrimaryChipText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  feedReactPrimaryChipTextActive: {
+    color: colors.textPrimary,
+  },
+  feedReplyChip: {
+    marginLeft: "auto",
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "transparent",
+  },
+  feedReplyChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.12)",
+  },
+  feedReplyChipText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  feedSessionMeta: {
+    marginTop: 2,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+    lineHeight: 18,
+  },
+  feedUserName: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.body,
+    lineHeight: 22,
+  },
+  feedUserNameFlex: { flex: 1, minWidth: 0 },
+  feedYouPill: {
+    flexShrink: 0,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.round,
+    backgroundColor: "rgba(162,89,255,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(162,89,255,0.45)",
+  },
+  feedYouPillText: { color: colors.secondary, fontFamily: fontFamily.bodyBold, fontSize: 10 },
+});
+
+export const friendsActivityStyles = { ...friendsSharedStyles, ...localStyles };

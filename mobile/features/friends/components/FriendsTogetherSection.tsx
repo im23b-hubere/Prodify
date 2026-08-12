@@ -10,7 +10,7 @@ import { challengeDaysLeft, challengeKindLabel } from "../utils/friendsScreenFor
 import { FriendsBuddyDuelCard } from "./FriendsBuddyDuelCard";
 import { FriendsTogetherHud } from "./FriendsTogetherHud";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
-import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
+import { friendsTogetherStyles as styles } from "../styles/friendsTogether.styles";
 
 type Props = {
   t: TFunction;

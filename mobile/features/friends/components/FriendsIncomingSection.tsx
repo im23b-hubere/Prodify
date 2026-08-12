@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import type { FriendIncomingDto } from "../../../types/friends";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
-import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
+import { friendsIncomingStyles as styles } from "../styles/friendsIncoming.styles";
 
 type Props = {
   t: TFunction;

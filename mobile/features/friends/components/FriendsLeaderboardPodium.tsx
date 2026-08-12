@@ -7,7 +7,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { API_BASE_URL } from "../../../constants/api";
 import type { FriendLeaderboardEntryDto } from "../../../types/friends";
-import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
+import { friendsLeaderboardStyles as styles } from "../styles/friendsLeaderboard.styles";
 
 type Props = {
   t: TFunction;
