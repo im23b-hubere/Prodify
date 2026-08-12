@@ -8,8 +8,8 @@ from app.dependencies import get_current_user
 from app.dependencies_subscription import require_premium_or_trial
 from app.models import User, utcnow
 from app.rate_limit import limiter
-from app.schemas import (
-    EntitlementPublic,
+from app.contracts.billing import EntitlementPublic
+from app.contracts.outcomes import (
     GoalForecastPublic,
     OutputMetricsPublic,
     WeeklyReviewPublic,
@@ -101,4 +101,3 @@ def output_metrics_current(
         output_increase=out.output_increase,
         baseline_tracks_30d=out.baseline_tracks_30d,
     )
-

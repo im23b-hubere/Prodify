@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import AnalyticsEventDedupe, GrowthEvent, ProductionSession, PushToken, User, UserSubscription, utcnow
-from app.schemas import KpiDashboardPublic, KpiSummaryPublic, KpiTrendPointPublic
+from app.contracts.outcomes import KpiDashboardPublic, KpiSummaryPublic, KpiTrendPointPublic
 
 _log = logging.getLogger(__name__)
 

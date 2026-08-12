@@ -9,7 +9,7 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
-from app.schemas import PushBulkResultPublic, PushPingBody, PushTokenRegister, SmartNudgeBody
+from app.contracts.notifications import PushBulkResultPublic, PushPingBody, PushTokenRegister, SmartNudgeBody
 from app.services.push_notification_service import register_token, send_self_ping, send_smart_nudge
 
 router = APIRouter()

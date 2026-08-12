@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import ProductionSession, UserGoal, utcnow
-from app.schemas import GoalForecastPublic
+from app.contracts.outcomes import GoalForecastPublic
 from app.timeutil import as_utc_aware
 
 

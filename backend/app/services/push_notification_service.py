@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.models import PushToken, utcnow
-from app.schemas import PushBulkResultPublic, PushPingBody, PushTokenRegister, SmartNudgeBody
+from app.contracts.notifications import PushBulkResultPublic, PushPingBody, PushTokenRegister, SmartNudgeBody
 from app.services import push_templates
 from app.services.kpi_tracker import track_event
 from app.services.push_dispatch import send_ping

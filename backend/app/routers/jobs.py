@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.jobs.send_streak_reminders import run_streak_reminder_job
-from app.schemas import SeedScreenshotAccountBody
+from app.contracts.outcomes import SeedScreenshotAccountBody
 from app.services.screenshot_seed_service import seed_screenshot_account
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])

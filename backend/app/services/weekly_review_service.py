@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
 from app.models import ProductionSession, UserGoal, WeeklyReviewSnapshot, utcnow
-from app.schemas import WeeklyReviewPublic
+from app.contracts.outcomes import WeeklyReviewPublic
 from app.services.ollama_client import generate_weekly_coach_note
 from app.timeutil import as_utc_aware
 

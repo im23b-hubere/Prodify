@@ -13,7 +13,7 @@ from app.contracts.insights import (
     PersonalRecordsPublic,
     StatsInsightsPublic,
 )
-from app.schemas import KpiDashboardPublic, KpiSummaryPublic
+from app.contracts.outcomes import KpiDashboardPublic, KpiSummaryPublic
 from app.services.kpi_tracker import kpi_dashboard, kpi_summary
 from app.services.stats_service import build_heatmap, build_personal_records, build_stats_insights
 

@@ -7,7 +7,7 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import Session
 
 from app.models import Friendship, FriendshipStatus, NotificationReadState, ProductionSession, SocialComment, Streak, User, UserAchievement, utcnow
-from app.schemas import NotificationInboxItemPublic
+from app.contracts.notifications import NotificationInboxItemPublic
 
 
 def build_notification_inbox(

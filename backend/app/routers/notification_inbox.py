@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import NotificationReadState, User, utcnow
-from app.schemas import NotificationInboxItemPublic, NotificationInboxReadBody
+from app.contracts.notifications import NotificationInboxItemPublic, NotificationInboxReadBody
 from app.services.notification_inbox_service import build_notification_inbox
 
 router = APIRouter()

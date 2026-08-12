@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import UserProgression, XpLedger, utcnow
-from app.schemas import ProgressionPublic
+from app.contracts.outcomes import ProgressionPublic
 
 SESSION_XP_MINUTES_FLOOR = 5
 BASE_SESSION_XP = 5

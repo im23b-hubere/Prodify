@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User, UserProgression
-from app.schemas import ProgressionLevelPublic, ProgressionPublic
+from app.contracts.outcomes import ProgressionLevelPublic, ProgressionPublic
 from app.services.progression_service import (
     XP_LEVEL_CATALOG_MAX,
     level_catalog,
