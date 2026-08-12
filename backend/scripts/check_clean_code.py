@@ -15,7 +15,6 @@ DEFAULT_MAX_MODULE_LINES = 300
 FUNCTION_LINE_BUDGETS = {}
 MODULE_LINE_BUDGETS = {}
 ROUTER_TRANSACTION_BUDGETS = {
-    "auth.py": 2,
     "challenges.py": 3,
     "friend_relationships.py": 4,
     "outcomes.py": 4,
