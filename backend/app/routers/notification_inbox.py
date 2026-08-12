@@ -4,14 +4,13 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import NotificationReadState, User, utcnow
+from app.models import User
 from app.contracts.notifications import NotificationInboxItemPublic, NotificationInboxReadBody
-from app.services.notification_inbox_service import build_notification_inbox
+from app.services.notification_inbox_service import build_notification_inbox, mark_inbox_read
 
 router = APIRouter()
 
@@ -42,17 +41,6 @@ def mark_notifications_read(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    target = _parse_epoch_ms(body.up_to_ms, field_name="up_to_ms") or utcnow()
-    row = db.scalar(select(NotificationReadState).where(NotificationReadState.user_id == current.id))
-    if row is None:
-        row = NotificationReadState(user_id=current.id, last_read_at=target, updated_at=utcnow())
-        db.add(row)
-    else:
-        previous = row.last_read_at or target
-        if previous.tzinfo is None:
-            previous = previous.replace(tzinfo=timezone.utc)
-        row.last_read_at = max(previous, target)
-        row.updated_at = utcnow()
-        db.add(row)
-    db.commit()
+    target = _parse_epoch_ms(body.up_to_ms, field_name="up_to_ms")
+    mark_inbox_read(db, current.id, target)
     return None

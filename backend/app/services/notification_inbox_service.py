@@ -39,6 +39,19 @@ def build_notification_inbox(
     return items[:limit]
 
 
+def mark_inbox_read(db: Session, user_id: int, target: datetime | None) -> None:
+    marked_at = target or utcnow()
+    state = db.scalar(select(NotificationReadState).where(NotificationReadState.user_id == user_id))
+    if state is None:
+        state = NotificationReadState(user_id=user_id, last_read_at=marked_at, updated_at=utcnow())
+    else:
+        previous = _aware(state.last_read_at) if state.last_read_at else marked_at
+        state.last_read_at = max(previous, marked_at)
+        state.updated_at = utcnow()
+    db.add(state)
+    db.commit()
+
+
 def _friend_request_items(db: Session, user_id: int) -> Iterable[NotificationInboxItemPublic]:
     requests = db.scalars(
         select(Friendship)

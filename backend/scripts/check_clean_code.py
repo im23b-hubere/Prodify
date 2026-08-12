@@ -19,7 +19,6 @@ ROUTER_TRANSACTION_BUDGETS = {
     "challenges.py": 3,
     "friend_relationships.py": 4,
     "goals.py": 2,
-    "notification_inbox.py": 1,
     "outcomes.py": 4,
     "progression.py": 1,
     "session_lifecycle.py": 1,
