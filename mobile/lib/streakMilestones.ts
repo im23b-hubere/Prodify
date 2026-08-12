@@ -6,3 +6,10 @@ export const STREAK_MILESTONES: { days: number; title: string; reward: string }[
   { days: 60, title: "Unstoppable", reward: "Special badge + template" },
   { days: 100, title: "Producer God", reward: "Hall of Fame" },
 ];
+
+export function latestNewMilestone(currentStreak: number, highestSeenStreak: number) {
+  const newlyPassed = STREAK_MILESTONES.filter(
+    (milestone) => currentStreak >= milestone.days && milestone.days > highestSeenStreak,
+  );
+  return newlyPassed[newlyPassed.length - 1] ?? null;
+}
