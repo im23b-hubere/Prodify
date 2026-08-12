@@ -16,13 +16,15 @@ export function buildFocusHeadline(score: number, tier: string, t: TFunction): s
 
 export function translateInsightItem(item: InsightItemDto, t: TFunction): string {
   if (item.key === "prod_peak_pattern") {
-    const wdIdx = Number(item.params.weekday ?? 0);
+    const weekdayIndex = Number(item.params.weekday ?? 0);
     const names = t("common.weekdaysFull", { returnObjects: true }) as string[];
-    const weekday = names[wdIdx % 7] ?? String(wdIdx);
-    const h = Number(item.params.hour ?? 0);
-    const hEnd = (h + 3) % 24;
-    const hourRange = `${h}:00–${hEnd}:00`;
-    return t("sessionInsights.api.prod_peak_pattern", { weekday, hourRange });
+    const weekday = names[weekdayIndex % 7] ?? String(weekdayIndex);
+    const startHour = Number(item.params.hour ?? 0);
+    const endHour = (startHour + 3) % 24;
+    return t("sessionInsights.api.prod_peak_pattern", {
+      weekday,
+      hourRange: `${startHour}:00–${endHour}:00`,
+    });
   }
   return t(`sessionInsights.api.${item.key}`, item.params as Record<string, string | number>);
 }
