@@ -24,119 +24,123 @@ type Props = {
   onAddFriend: () => void;
 };
 
-export function ChallengeCreateModal(props: Props) {
-  const {
-    t,
-    open: challengeCreateOpen,
-    title: challengeTitle,
-    onTitleChange: setChallengeTitle,
-    target: challengeTarget,
-    onTargetChange: setChallengeTarget,
-    duration: challengeDuration,
-    onDurationChange: setChallengeDuration,
-    entries,
-    currentUserId,
-    selectedMembers,
-    setSelectedMembers,
-    busy: challengeCreateBusy,
-    onSubmit: submitCreateChallenge,
-    onReset: resetChallengeModal,
-    onAddFriend,
-  } = props;
-  const setAddOpen = (value: boolean) => {
-    if (value) onAddFriend();
-  };
+function ChallengeFields({ props }: { props: Props }) {
+  const { t } = props;
+  const fields = [
+    {
+      label: t("friendsScreen.challengeTitleLabel"),
+      value: props.title,
+      onChangeText: props.onTitleChange,
+      placeholder: t("friendsScreen.challengeTitlePlaceholder"),
+      keyboardType: "default" as const,
+    },
+    {
+      label: t("friendsScreen.challengeTargetLabel"),
+      value: props.target,
+      onChangeText: props.onTargetChange,
+      placeholder: t("friendsScreen.challengeTargetPlaceholder"),
+      keyboardType: "number-pad" as const,
+    },
+    {
+      label: t("friendsScreen.challengeDurationLabel"),
+      value: props.duration,
+      onChangeText: props.onDurationChange,
+      placeholder: t("friendsScreen.challengeDurationPlaceholder"),
+      keyboardType: "number-pad" as const,
+    },
+  ];
   return (
-    <Modal
-      visible={challengeCreateOpen}
-      animationType="slide"
-      transparent
-      onRequestClose={resetChallengeModal}
-    >
-      <Pressable style={styles.modalBackdrop} onPress={resetChallengeModal}>
+    <>
+      {fields.map((field) => (
+        <View key={field.label}>
+          <Text style={styles.fieldLabel}>{field.label}</Text>
+          <TextInput
+            accessibilityLabel={field.label}
+            value={field.value}
+            onChangeText={field.onChangeText}
+            keyboardType={field.keyboardType}
+            placeholder={field.placeholder}
+            placeholderTextColor={colors.textSecondary}
+            style={styles.input}
+          />
+        </View>
+      ))}
+    </>
+  );
+}
+
+function MemberPicker({ props }: { props: Props }) {
+  const candidates = props.entries
+    .filter((entry) => entry.user_id !== props.currentUserId)
+    .slice(0, 8);
+  if (candidates.length === 0) {
+    return (
+      <View style={styles.modalEmpty}>
+        <Text style={styles.modalEmptyTitle}>
+          {props.t("friendsScreen.challengeMemberEmptyTitle")}
+        </Text>
+        <Text style={styles.userMeta}>{props.t("friendsScreen.challengeMemberEmptyMessage")}</Text>
+        <PrimaryButton
+          label={props.t("friendsScreen.challengeMemberEmptyCta")}
+          onPress={() => {
+            props.onReset();
+            props.onAddFriend();
+          }}
+        />
+      </View>
+    );
+  }
+  return (
+    <View style={styles.memberChips}>
+      {candidates.map((entry) => {
+        const selected = props.selectedMembers.includes(entry.user_id);
+        return (
+          <Pressable
+            key={entry.user_id}
+            accessibilityRole="button"
+            accessibilityLabel={entry.username}
+            accessibilityState={{ selected }}
+            style={[styles.memberChip, selected && styles.memberChipSelected]}
+            onPress={() =>
+              props.setSelectedMembers((previous) =>
+                previous.includes(entry.user_id) ? [] : [entry.user_id],
+              )
+            }
+          >
+            <Text style={[styles.memberChipText, selected && styles.memberChipTextSelected]}>
+              {entry.username}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export function ChallengeCreateModal(props: Props) {
+  const { t, open, busy, onSubmit, onReset } = props;
+  return (
+    <Modal visible={open} animationType="slide" transparent onRequestClose={onReset}>
+      <Pressable style={styles.modalBackdrop} onPress={onReset}>
         <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.modalTitle}>{t("friendsScreen.createChallengeTitle")}</Text>
           <Text style={styles.modalHint}>{t("friendsScreen.createChallengeHint")}</Text>
-          <Text style={styles.fieldLabel}>{t("friendsScreen.challengeTitleLabel")}</Text>
-          <TextInput
-            value={challengeTitle}
-            onChangeText={setChallengeTitle}
-            placeholder={t("friendsScreen.challengeTitlePlaceholder")}
-            placeholderTextColor={colors.textSecondary}
-            style={styles.input}
-          />
-          <Text style={styles.fieldLabel}>{t("friendsScreen.challengeTargetLabel")}</Text>
-          <TextInput
-            value={challengeTarget}
-            onChangeText={setChallengeTarget}
-            keyboardType="number-pad"
-            placeholder={t("friendsScreen.challengeTargetPlaceholder")}
-            placeholderTextColor={colors.textSecondary}
-            style={styles.input}
-          />
-          <Text style={styles.fieldLabel}>{t("friendsScreen.challengeDurationLabel")}</Text>
-          <TextInput
-            value={challengeDuration}
-            onChangeText={setChallengeDuration}
-            keyboardType="number-pad"
-            placeholder={t("friendsScreen.challengeDurationPlaceholder")}
-            placeholderTextColor={colors.textSecondary}
-            style={styles.input}
-          />
+          <ChallengeFields props={props} />
           <Text style={styles.modalHint}>{t("friendsScreen.challengePickFriendLabel")}</Text>
-          <View style={styles.memberChips}>
-            {entries.filter((entry) => entry.user_id !== currentUserId).length === 0 ? (
-              <View style={styles.modalEmpty}>
-                <Text style={styles.modalEmptyTitle}>
-                  {t("friendsScreen.challengeMemberEmptyTitle")}
-                </Text>
-                <Text style={styles.userMeta}>
-                  {t("friendsScreen.challengeMemberEmptyMessage")}
-                </Text>
-                <PrimaryButton
-                  label={t("friendsScreen.challengeMemberEmptyCta")}
-                  onPress={() => {
-                    resetChallengeModal();
-                    setAddOpen(true);
-                  }}
-                />
-              </View>
-            ) : (
-              entries
-                .filter((entry) => entry.user_id !== currentUserId)
-                .slice(0, 8)
-                .map((entry) => {
-                  const selected = selectedMembers.includes(entry.user_id);
-                  return (
-                    <Pressable
-                      key={entry.user_id}
-                      style={[styles.memberChip, selected && styles.memberChipSelected]}
-                      onPress={() =>
-                        setSelectedMembers((prev) =>
-                          prev.includes(entry.user_id) ? [] : [entry.user_id],
-                        )
-                      }
-                    >
-                      <Text
-                        style={[styles.memberChipText, selected && styles.memberChipTextSelected]}
-                      >
-                        {entry.username}
-                      </Text>
-                    </Pressable>
-                  );
-                })
-            )}
-          </View>
+          <MemberPicker props={props} />
           <PrimaryButton
             label={
-              challengeCreateBusy
-                ? t("friendsScreen.creatingChallenge")
-                : t("friendsScreen.createChallengeCta")
+              busy ? t("friendsScreen.creatingChallenge") : t("friendsScreen.createChallengeCta")
             }
-            disabled={challengeCreateBusy}
-            onPress={() => void submitCreateChallenge()}
+            disabled={busy}
+            onPress={() => void onSubmit()}
           />
-          <Pressable style={styles.modalCancel} onPress={resetChallengeModal}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("friendsScreen.modalCancel")}
+            style={styles.modalCancel}
+            onPress={onReset}
+          >
             <Text style={styles.modalCancelText}>{t("friendsScreen.modalCancel")}</Text>
           </Pressable>
         </Pressable>
