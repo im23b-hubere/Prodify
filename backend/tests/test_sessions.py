@@ -111,6 +111,38 @@ def test_session_track_outcome_update_persists(client):
     assert set_wip.json()["track_title"] is None
 
 
+def test_completed_session_is_visible_to_friends_but_not_strangers(client):
+    owner = _auth_headers(client, "record-owner@example.com", "record-owner")
+    friend = _auth_headers(client, "record-friend@example.com", "record-friend")
+    stranger = _auth_headers(client, "record-stranger@example.com", "record-stranger")
+    request = client.post(
+        "/friends/request",
+        headers=friend,
+        json={"username": "record-owner"},
+    )
+    assert request.status_code == 201
+    accepted = client.post(f"/friends/{request.json()['id']}/accept", headers=owner)
+    assert accepted.status_code == 200
+
+    started = client.post(
+        "/sessions/start",
+        headers=owner,
+        json={"session_type": "mixing"},
+    )
+    session_id = started.json()["id"]
+    assert client.post(
+        "/sessions/stop",
+        headers=owner,
+        json={"session_id": session_id},
+    ).status_code == 200
+
+    visible = client.get(f"/sessions/item/{session_id}", headers=friend)
+    hidden = client.get(f"/sessions/item/{session_id}", headers=stranger)
+
+    assert visible.status_code == 200
+    assert hidden.status_code == 404
+
+
 def test_completed_session_insights_contract(client):
     headers = _auth_headers(client, "session-insights@example.com", "session-insights-user")
     started = client.post(
