@@ -103,7 +103,7 @@ function FriendsLoadedSections({ controller }: Props) {
 }
 
 function FriendsScreenOverlays({ controller }: Props) {
-  const { t, userId, state, actions } = controller;
+  const { state } = controller;
   return (
     <>
       {state.toastMessage ? (
@@ -111,39 +111,7 @@ function FriendsScreenOverlays({ controller }: Props) {
           <Text style={styles.toastText}>{state.toastMessage}</Text>
         </Animated.View>
       ) : null}
-      <FriendsModals
-        t={t}
-        reactionUsersOpen={state.reactionUsersOpen}
-        setReactionUsersOpen={state.setReactionUsersOpen}
-        reactionUsersLoading={state.reactionUsersLoading}
-        reactionUsers={state.reactionUsers}
-        buddyPickerOpen={state.buddyPickerOpen}
-        setBuddyPickerOpen={state.setBuddyPickerOpen}
-        friendCandidates={actions.friendCandidates}
-        busyActionKey={state.busyActionKey}
-        inviteBuddy={actions.inviteBuddy}
-        challengeCreateOpen={state.challengeCreateOpen}
-        setChallengeCreateOpen={state.setChallengeCreateOpen}
-        challengeTitle={state.challengeTitle}
-        setChallengeTitle={state.setChallengeTitle}
-        challengeTarget={state.challengeTarget}
-        setChallengeTarget={state.setChallengeTarget}
-        challengeDuration={state.challengeDuration}
-        setChallengeDuration={state.setChallengeDuration}
-        entries={actions.entries}
-        currentUserId={userId}
-        selectedMembers={state.selectedMembers}
-        setSelectedMembers={state.setSelectedMembers}
-        challengeCreateBusy={state.challengeCreateBusy}
-        submitCreateChallenge={actions.submitCreateChallenge}
-        resetChallengeModal={actions.resetChallengeModal}
-        addOpen={state.addOpen}
-        setAddOpen={state.setAddOpen}
-        addName={state.addName}
-        setAddName={state.setAddName}
-        addBusy={state.addBusy}
-        sendRequest={actions.sendRequest}
-      />
+      <FriendsModals controller={controller} />
     </>
   );
 }
