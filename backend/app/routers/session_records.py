@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import ProductionSession, User, utcnow
-from app.schemas import SessionPublic, SessionUpdate
+from app.contracts.sessions import SessionPublic, SessionUpdate
 from app.services.friend_graph import friend_user_ids
 from app.services.streak_reconcile_service import reconcile_streak_row_for_user
 

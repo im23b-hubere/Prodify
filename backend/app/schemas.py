@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from typing import Literal
 
@@ -14,162 +13,19 @@ from app.contracts.auth import (
     UserPublic,
 )
 from app.contracts.billing import BillingSyncBody, EntitlementPublic
+from app.contracts.sessions import (
+    InsightItemPublic,
+    SessionPublic,
+    SessionQuickStart,
+    SessionStart,
+    SessionStatsPublic,
+    SessionStatsSummary,
+    SessionStatsTrendPoint,
+    SessionStatsTypeBreakdownItem,
+    SessionStop,
+    SessionUpdate,
+)
 from app.models import FriendshipStatus, SessionType
-
-
-class SessionQuickStart(BaseModel):
-    session_type: SessionType = SessionType.beat_making
-
-
-class SessionStart(BaseModel):
-    session_type: SessionType
-    notes: str | None = Field(default=None, max_length=200)
-    mood_level: int | None = Field(default=None, ge=1, le=5)
-    tags: list[str] | None = None
-
-    @field_validator("notes")
-    @classmethod
-    def sanitize_notes(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = " ".join(value.strip().split())
-        return cleaned or None
-
-    @field_validator("tags", mode="before")
-    @classmethod
-    def normalize_tags(cls, v: object) -> list[str] | None:
-        if v is None:
-            return None
-        if not isinstance(v, list):
-            raise ValueError("tags must be a list of strings")
-        out: list[str] = []
-        for item in v[:20]:
-            s = str(item).strip()
-            if not s:
-                continue
-            if len(s) > 32:
-                raise ValueError("each tag must be at most 32 characters")
-            out.append(s)
-        return out or None
-
-
-class SessionStop(BaseModel):
-    session_id: int = Field(gt=0)
-
-
-class SessionUpdate(BaseModel):
-    session_type: SessionType | None = None
-    notes: str | None = Field(default=None, max_length=2000)
-    mood_level: int | None = Field(default=None, ge=1, le=5)
-    tags: list[str] | None = None
-    track_outcome: Literal["none", "wip", "finished"] | None = None
-    track_title: str | None = Field(default=None, max_length=160)
-
-    @field_validator("notes")
-    @classmethod
-    def sanitize_notes(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = " ".join(value.strip().split())
-        return cleaned or None
-
-    @field_validator("tags", mode="before")
-    @classmethod
-    def normalize_tags(cls, v: object) -> list[str] | None:
-        if v is None:
-            return None
-        if not isinstance(v, list):
-            raise ValueError("tags must be a list of strings")
-        out: list[str] = []
-        for item in v[:20]:
-            s = str(item).strip()
-            if not s:
-                continue
-            if len(s) > 32:
-                raise ValueError("each tag must be at most 32 characters")
-            out.append(s)
-        return out or None
-
-    @field_validator("track_title")
-    @classmethod
-    def sanitize_track_title(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = " ".join(value.strip().split())
-        return cleaned or None
-
-
-class SessionPublic(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    user_id: int
-    started_at: datetime
-    stopped_at: datetime | None
-    duration_seconds: int | None
-    session_type: str
-    notes: str | None
-    mood_level: int | None = None
-    tags: list[str] | None = None
-    paused_duration_seconds: int = 0
-    pause_started_at: datetime | None = None
-    focus_score: int | None = None
-    track_outcome: Literal["none", "wip", "finished"] | None = None
-    track_title: str | None = None
-
-    @field_validator("tags", mode="before")
-    @classmethod
-    def parse_tags_json(cls, v: object) -> list[str] | None:
-        if v is None or v == "":
-            return None
-        if isinstance(v, list):
-            return [str(x) for x in v]
-        if isinstance(v, str):
-            try:
-                data = json.loads(v)
-                if isinstance(data, list):
-                    return [str(x) for x in data]
-            except json.JSONDecodeError:
-                return None
-        return None
-
-
-class SessionStatsSummary(BaseModel):
-    total_seconds: int
-    total_sessions: int
-    best_streak_days: int
-    avg_session_seconds: int
-    current_streak_days: int = 0
-    hours_delta_vs_prior_period: float | None = None
-
-
-class SessionStatsTrendPoint(BaseModel):
-    label: str
-    sessions: int
-    seconds: int
-
-
-class SessionStatsTypeBreakdownItem(BaseModel):
-    session_type: str
-    sessions: int
-    percent: float
-
-
-class InsightItemPublic(BaseModel):
-    """Stable keys + params for client-side i18n (see mobile `sessionInsights.api.*`)."""
-
-    key: str
-    params: dict[str, int | float | str] = Field(default_factory=dict)
-
-
-class SessionStatsPublic(BaseModel):
-    period: str
-    summary: SessionStatsSummary
-    trend: list[SessionStatsTrendPoint]
-    breakdown: list[SessionStatsTypeBreakdownItem]
-    recent_sessions: list[SessionPublic] = Field(default_factory=list)
-    productivity_hint: str | None = None
-    productivity_hint_item: InsightItemPublic | None = None
 
 
 class FriendRequestCreate(BaseModel):

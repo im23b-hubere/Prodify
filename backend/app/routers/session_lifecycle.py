@@ -9,7 +9,7 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import ProductionSession, User
-from app.schemas import SessionPublic, SessionQuickStart, SessionStart, SessionStop
+from app.contracts.sessions import SessionPublic, SessionQuickStart, SessionStart, SessionStop
 from app.services.push_dispatch import schedule_notify_session_complete
 from app.services.session_lifecycle_service import (
     complete_session,

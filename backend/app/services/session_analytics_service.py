@@ -6,18 +6,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.achievementsutil import session_focus_metrics
-from app.models import ProductionSession, Streak, UserGoal, utcnow
-from app.schemas import (
+from app.contracts.sessions import (
     InsightItemPublic,
-    RelatedSessionPublic,
-    SessionDetailInsightsPublic,
     SessionPublic,
     SessionStatsPublic,
     SessionStatsSummary,
     SessionStatsTrendPoint,
     SessionStatsTypeBreakdownItem,
-    SessionTimelineSegmentPublic,
 )
+from app.models import ProductionSession, Streak, UserGoal, utcnow
+from app.schemas import RelatedSessionPublic, SessionDetailInsightsPublic, SessionTimelineSegmentPublic
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.timeutil import as_utc_aware
 

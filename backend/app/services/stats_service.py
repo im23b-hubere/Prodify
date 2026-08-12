@@ -6,11 +6,11 @@ from datetime import date, datetime, time, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
+from app.contracts.sessions import InsightItemPublic
 from app.models import ProductionSession, Streak, UserGoal, utcnow
 from app.schemas import (
     HeatmapDayPublic,
     HeatmapPublic,
-    InsightItemPublic,
     PersonalRecordItem,
     PersonalRecordsPublic,
     ProductivityInsightsPublic,
