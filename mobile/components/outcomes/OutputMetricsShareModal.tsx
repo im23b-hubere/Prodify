@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
-import { useCallback, useRef, useState } from "react";
+import { type RefObject, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import ViewShot from "react-native-view-shot";
@@ -29,6 +29,105 @@ type Props = {
   busyLabel: string;
 };
 
+const TEMPLATE_LABEL_KEYS: Record<OutputShareTemplateId, string> = {
+  minimal: "stats.shareProofTemplateMinimal",
+  bold: "stats.shareProofTemplateBold",
+  gradient: "stats.shareProofTemplateGradient",
+};
+
+function useOutputShareExport(shotRef: RefObject<ViewShot | null>) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const captureAndShare = useCallback(async () => {
+    setBusy(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 160));
+      const uri = await shotRef.current?.capture?.();
+      if (!uri) {
+        Alert.alert(t("stats.shareProofExportFailedTitle"), t("stats.shareProofExportFailedBody"));
+        return;
+      }
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert(t("stats.shareProofUnavailableTitle"), t("stats.shareProofUnavailableBody"));
+        return;
+      }
+      await Sharing.shareAsync(uri, {
+        mimeType: "image/png",
+        UTI: "public.png",
+        dialogTitle: t("stats.shareProofShareDialogTitle"),
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : t("stats.shareProofUnexpectedBody");
+      Alert.alert(t("stats.shareProofShareFailedTitle"), message);
+    } finally {
+      setBusy(false);
+    }
+  }, [shotRef, t]);
+  return { busy, captureAndShare };
+}
+
+function TemplatePicker({
+  selected,
+  onSelect,
+}: {
+  selected: OutputShareTemplateId;
+  onSelect: (template: OutputShareTemplateId) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.chips}>
+      {(Object.keys(TEMPLATE_LABEL_KEYS) as OutputShareTemplateId[]).map((id) => {
+        const label = t(TEMPLATE_LABEL_KEYS[id]);
+        return (
+          <Pressable
+            key={id}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            style={[styles.chip, selected === id && styles.chipOn]}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => undefined);
+              onSelect(id);
+            }}
+          >
+            <Text style={[styles.chipTxt, selected === id && styles.chipTxtOn]}>{label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function SharePreview({
+  metrics,
+  template,
+}: Pick<Props, "metrics"> & { template: OutputShareTemplateId }) {
+  return (
+    <View style={styles.previewStage}>
+      <View
+        style={[
+          styles.previewClip,
+          {
+            width: OUTPUT_SHARE_WIDTH * PREVIEW_SCALE,
+            height: OUTPUT_SHARE_HEIGHT * PREVIEW_SCALE,
+          },
+        ]}
+      >
+        <View
+          style={{
+            width: OUTPUT_SHARE_WIDTH,
+            height: OUTPUT_SHARE_HEIGHT,
+            transform: [{ scale: PREVIEW_SCALE }],
+          }}
+        >
+          <OutputMetricsShareCard metrics={metrics} template={template} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function OutputMetricsShareModal({
   visible,
   onClose,
@@ -39,39 +138,9 @@ export function OutputMetricsShareModal({
   closeLabel,
   busyLabel,
 }: Props) {
-  const { t } = useTranslation();
   const shotRef = useRef<ViewShot | null>(null);
-  const [busy, setBusy] = useState(false);
   const [template, setTemplate] = useState<OutputShareTemplateId>("gradient");
-
-  const captureAndShare = useCallback(async () => {
-    setBusy(true);
-    try {
-      await new Promise((r) => setTimeout(r, 160));
-      const uri = await shotRef.current?.capture?.();
-      if (!uri) {
-        Alert.alert(t("stats.shareProofExportFailedTitle"), t("stats.shareProofExportFailedBody"));
-        return;
-      }
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: "image/png",
-          UTI: "public.png",
-          dialogTitle: t("stats.shareProofShareDialogTitle"),
-        });
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      } else {
-        Alert.alert(t("stats.shareProofUnavailableTitle"), t("stats.shareProofUnavailableBody"));
-      }
-    } catch (e) {
-      Alert.alert(
-        t("stats.shareProofShareFailedTitle"),
-        e instanceof Error ? e.message : t("stats.shareProofUnexpectedBody"),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }, [t]);
+  const { busy, captureAndShare } = useOutputShareExport(shotRef);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -79,48 +148,8 @@ export function OutputMetricsShareModal({
         <View style={styles.sheet}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.sub}>{subtitle}</Text>
-          <View style={styles.chips}>
-            {(
-              [
-                ["minimal", t("stats.shareProofTemplateMinimal")],
-                ["bold", t("stats.shareProofTemplateBold")],
-                ["gradient", t("stats.shareProofTemplateGradient")],
-              ] as const
-            ).map(([id, label]) => (
-              <Pressable
-                key={id}
-                style={[styles.chip, template === id && styles.chipOn]}
-                onPress={() => {
-                  Haptics.selectionAsync().catch(() => undefined);
-                  setTemplate(id);
-                }}
-              >
-                <Text style={[styles.chipTxt, template === id && styles.chipTxtOn]}>{label}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <View style={styles.previewStage}>
-            <View
-              style={[
-                styles.previewClip,
-                {
-                  width: OUTPUT_SHARE_WIDTH * PREVIEW_SCALE,
-                  height: OUTPUT_SHARE_HEIGHT * PREVIEW_SCALE,
-                },
-              ]}
-            >
-              <View
-                style={{
-                  width: OUTPUT_SHARE_WIDTH,
-                  height: OUTPUT_SHARE_HEIGHT,
-                  transform: [{ scale: PREVIEW_SCALE }],
-                }}
-              >
-                <OutputMetricsShareCard metrics={metrics} template={template} />
-              </View>
-            </View>
-          </View>
+          <TemplatePicker selected={template} onSelect={setTemplate} />
+          <SharePreview metrics={metrics} template={template} />
 
           <PrimaryButton
             label={busy ? busyLabel : shareLabel}
@@ -128,7 +157,13 @@ export function OutputMetricsShareModal({
             loading={busy}
           />
 
-          <Pressable style={styles.closeGhost} onPress={onClose} disabled={busy}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={closeLabel}
+            style={styles.closeGhost}
+            onPress={onClose}
+            disabled={busy}
+          >
             <Text style={styles.closeGhostTxt}>{closeLabel}</Text>
           </Pressable>
 
