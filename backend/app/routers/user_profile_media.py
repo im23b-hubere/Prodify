@@ -12,10 +12,8 @@ from app.models import User
 from app.services.profile_picture_service import (
     ALLOWED_IMAGE_MIME_TYPES,
     MAX_PROFILE_IMAGE_BYTES,
-    delete_profile_picture,
     detect_image_mime,
-    normalize_image,
-    store_profile_picture,
+    replace_profile_picture,
 )
 
 router = APIRouter()
@@ -42,16 +40,7 @@ async def upload_profile_picture(
     if detected_mime not in ALLOWED_IMAGE_MIME_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image format")
 
-    old_url = current.profile_picture_url
-    current.profile_picture_url = store_profile_picture(
-        current.id,
-        normalize_image(content, detected_mime),
-        detected_mime,
-    )
-    db.add(current)
-    db.commit()
-    db.refresh(current)
-    delete_profile_picture(old_url)
+    current = replace_profile_picture(db, current, content, detected_mime)
 
     base_url = str(request.base_url).rstrip("/")
     absolute_url = f"{base_url}{current.profile_picture_url}" if current.profile_picture_url else None

@@ -27,7 +27,6 @@ ROUTER_TRANSACTION_BUDGETS = {
     "social_feed.py": 2,
     "social_streak.py": 2,
     "streak.py": 6,
-    "user_profile_media.py": 1,
 }
 
 

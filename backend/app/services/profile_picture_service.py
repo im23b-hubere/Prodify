@@ -1,8 +1,12 @@
-"""Storage and normalization helpers for user profile pictures."""
+"""Processing, storage, and replacement operations for profile pictures."""
 
 import secrets
 from io import BytesIO
 from pathlib import Path
+
+from sqlalchemy.orm import Session
+
+from app.models import User
 
 PROFILE_UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "profile_pictures"
 PROFILE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -50,6 +54,23 @@ def store_profile_picture(user_id: int, content: bytes, mime_type: str) -> str:
     filename = f"{user_id}-{secrets.token_hex(8)}{MIME_TO_EXTENSION[mime_type]}"
     (PROFILE_UPLOAD_DIR / filename).write_bytes(content)
     return f"{PROFILE_PICTURE_URL_PREFIX}{filename}"
+
+
+def replace_profile_picture(db: Session, user: User, content: bytes, mime_type: str) -> User:
+    old_url = user.profile_picture_url
+    new_url = store_profile_picture(user.id, normalize_image(content, mime_type), mime_type)
+    user.profile_picture_url = new_url
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    except Exception:
+        db.rollback()
+        user.profile_picture_url = old_url
+        delete_profile_picture(new_url)
+        raise
+    delete_profile_picture(old_url)
+    return user
 
 
 def delete_profile_picture(profile_picture_url: str | None) -> None:
