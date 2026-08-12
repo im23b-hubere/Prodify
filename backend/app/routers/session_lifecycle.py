@@ -2,7 +2,6 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -12,8 +11,9 @@ from app.models import ProductionSession, User
 from app.contracts.sessions import SessionPublic, SessionQuickStart, SessionStart, SessionStop
 from app.services.push_dispatch import schedule_notify_session_complete
 from app.services.session_lifecycle_service import (
+    ActiveSessionExistsError,
     complete_session,
-    create_session,
+    create_unique_active_session,
     find_active_session,
     pause_active_session,
     resume_active_session,
@@ -30,9 +30,8 @@ def start_session(
     db: Annotated[Session, Depends(get_db)],
     body: SessionStart,
 ) -> ProductionSession:
-    _ensure_no_active_session(db, current.id)
     try:
-        session = create_session(
+        session = create_unique_active_session(
             db,
             current.id,
             body.session_type.value,
@@ -40,8 +39,8 @@ def start_session(
             mood_level=body.mood_level,
             tags=body.tags,
         )
-    except IntegrityError:
-        _raise_concurrent_session_conflict(db, current.id)
+    except ActiveSessionExistsError as error:
+        _raise_active_conflict(error.session_id)
     logger.info("session_started user_id=%s session_id=%s", current.id, session.id)
     return session
 
@@ -112,11 +111,10 @@ def quick_start_session(
     db: Annotated[Session, Depends(get_db)],
     body: SessionQuickStart = SessionQuickStart(),
 ) -> ProductionSession:
-    _ensure_no_active_session(db, current.id)
     try:
-        return create_session(db, current.id, body.session_type.value)
-    except IntegrityError:
-        _raise_concurrent_session_conflict(db, current.id)
+        return create_unique_active_session(db, current.id, body.session_type.value)
+    except ActiveSessionExistsError as error:
+        _raise_active_conflict(error.session_id)
 
 
 def _owned_session(db: Session, user_id: int, session_id: int) -> ProductionSession:
@@ -131,18 +129,6 @@ def _active_owned_session(db: Session, user_id: int, session_id: int) -> Product
     if session.stopped_at is not None:
         raise HTTPException(status_code=400, detail="Session already stopped")
     return session
-
-
-def _ensure_no_active_session(db: Session, user_id: int) -> None:
-    active = find_active_session(db, user_id)
-    if active is not None:
-        _raise_active_conflict(active.id)
-
-
-def _raise_concurrent_session_conflict(db: Session, user_id: int) -> None:
-    db.rollback()
-    active = find_active_session(db, user_id)
-    _raise_active_conflict(active.id if active else None)
 
 
 def _raise_active_conflict(session_id: int | None) -> None:

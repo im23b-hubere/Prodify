@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.achievementsutil import compute_focus_score_for_session, grant_achievements_after_completed_session
@@ -21,6 +22,12 @@ class SessionCompletion:
     session: ProductionSession
     previous_streak: int
     current_streak: int
+
+
+class ActiveSessionExistsError(Exception):
+    def __init__(self, session_id: int | None) -> None:
+        super().__init__("Active session already exists")
+        self.session_id = session_id
 
 
 def find_active_session(db: Session, user_id: int) -> ProductionSession | None:
@@ -62,6 +69,25 @@ def create_session(
     db.commit()
     db.refresh(session)
     return session
+
+
+def create_unique_active_session(
+    db: Session,
+    user_id: int,
+    session_type: str,
+    **session_details,
+) -> ProductionSession:
+    active = find_active_session(db, user_id)
+    if active is not None:
+        raise ActiveSessionExistsError(active.id)
+    try:
+        return create_session(db, user_id, session_type, **session_details)
+    except IntegrityError as error:
+        db.rollback()
+        concurrent_session = find_active_session(db, user_id)
+        raise ActiveSessionExistsError(
+            concurrent_session.id if concurrent_session else None
+        ) from error
 
 
 def complete_session(
