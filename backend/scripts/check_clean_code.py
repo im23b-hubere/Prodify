@@ -16,7 +16,6 @@ FUNCTION_LINE_BUDGETS = {
     ("jobs/send_streak_reminders.py", "run_streak_reminder_job"): 73,
     ("services/ollama_client.py", "_generate_text"): 65,
     ("services/screenshot_seed_service.py", "seed_screenshot_account"): 85,
-    ("services/social_challenge_service.py", "sync_challenge_progress_on_session_complete"): 51,
 }
 MODULE_LINE_BUDGETS = {
     "models.py": 495,

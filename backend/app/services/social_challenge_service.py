@@ -172,44 +172,68 @@ def sync_challenge_progress_on_session_complete(
         return []
 
     completed_challenge_ids: list[int] = []
-    memberships = db.scalars(
-        select(SocialChallengeMember)
-        .join(SocialChallenge, SocialChallenge.id == SocialChallengeMember.challenge_id)
-        .where(
-            SocialChallengeMember.user_id == user_id,
-            SocialChallenge.status == "active",
-        )
-    ).all()
-
-    for member in memberships:
-        challenge = db.get(SocialChallenge, member.challenge_id)
-        if challenge is None or challenge.status != "active":
-            continue
-        meta = load_challenge_meta(challenge)
-        if not session_qualifies_for_challenge(
+    for member in _active_challenge_memberships(db, user_id):
+        completed_id = _credit_member_session(
+            db,
+            member=member,
+            user_id=user_id,
+            session_id=session_id,
             stopped_at=stopped_at,
             duration_seconds=duration_seconds,
-            challenge=challenge,
-            meta=meta,
-        ):
-            continue
-        if not _credit_session(meta, user_id, session_id):
-            continue
-        save_challenge_meta(challenge, meta)
-        member.progress_sessions = int(member.progress_sessions or 0) + 1
-        member.updated_at = utcnow()
-        db.flush()
-        if member.progress_sessions >= challenge.target_sessions:
-            complete_challenge(
-                db,
-                challenge,
-                winner_user_id=member.user_id,
-                reason="target_reached",
-                is_tie=False,
-            )
-            completed_challenge_ids.append(challenge.id)
-
+        )
+        if completed_id is not None:
+            completed_challenge_ids.append(completed_id)
     return completed_challenge_ids
+
+
+def _active_challenge_memberships(db: Session, user_id: int) -> list[SocialChallengeMember]:
+    return list(
+        db.scalars(
+            select(SocialChallengeMember)
+            .join(SocialChallenge, SocialChallenge.id == SocialChallengeMember.challenge_id)
+            .where(
+                SocialChallengeMember.user_id == user_id,
+                SocialChallenge.status == "active",
+            )
+        ).all()
+    )
+
+
+def _credit_member_session(
+    db: Session,
+    *,
+    member: SocialChallengeMember,
+    user_id: int,
+    session_id: int,
+    stopped_at: datetime,
+    duration_seconds: int,
+) -> int | None:
+    challenge = db.get(SocialChallenge, member.challenge_id)
+    if challenge is None or challenge.status != "active":
+        return None
+    meta = load_challenge_meta(challenge)
+    if not session_qualifies_for_challenge(
+        stopped_at=stopped_at,
+        duration_seconds=duration_seconds,
+        challenge=challenge,
+        meta=meta,
+    ) or not _credit_session(meta, user_id, session_id):
+        return None
+
+    save_challenge_meta(challenge, meta)
+    member.progress_sessions = int(member.progress_sessions or 0) + 1
+    member.updated_at = utcnow()
+    db.flush()
+    if member.progress_sessions < challenge.target_sessions:
+        return None
+    complete_challenge(
+        db,
+        challenge,
+        winner_user_id=member.user_id,
+        reason="target_reached",
+        is_tie=False,
+    )
+    return challenge.id
 
 
 def finalize_visible_active_challenges(db: Session, challenges: list[SocialChallenge]) -> None:
