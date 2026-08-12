@@ -1,4 +1,5 @@
-import { useState } from "react";
+import type { TFunction } from "i18next";
+import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 import type { CustomerInfo, PurchasesPackage } from "react-native-purchases";
@@ -33,69 +34,78 @@ type PaywallPurchasesOptions = {
   resolveExitAfterUnlock: () => PaywallExit;
 };
 
-export function usePaywallPurchases({
-  token,
+type PurchaseActionContext = PaywallPurchasesOptions & {
+  setBusy: Dispatch<SetStateAction<boolean>>;
+  t: TFunction;
+};
+
+async function recoverExistingSubscription({
   appUserId,
-  previewMode,
   finalizeUnlock,
-  refreshUser,
-  requestExit,
-  resolveExitAfterUnlock,
-}: PaywallPurchasesOptions) {
-  const { t } = useTranslation();
-  const [busy, setBusy] = useState(false);
-
-  async function recoverExistingSubscription(): Promise<boolean> {
-    const customerInfo = await getRevenueCatCustomerInfo(appUserId ?? undefined).catch(() => null);
-    if (customerInfo && isPremiumActive(customerInfo)) {
-      await finalizeUnlock(customerInfo, undefined, true);
-      return true;
-    }
-    const restored = await restoreRevenueCatPurchases(appUserId ?? undefined).catch(() => null);
-    if (restored && isPremiumActive(restored)) {
-      await finalizeUnlock(restored, undefined, true);
-      return true;
-    }
-    Alert.alert(
-      t("paywall.alerts.restoreFailedTitle"),
-      t("paywall.errors.alreadySubscribedRestoreFailed"),
-    );
-    return false;
+  t,
+}: Pick<PurchaseActionContext, "appUserId" | "finalizeUnlock" | "t">): Promise<boolean> {
+  const customerInfo = await getRevenueCatCustomerInfo(appUserId ?? undefined).catch(() => null);
+  if (customerInfo && isPremiumActive(customerInfo)) {
+    await finalizeUnlock(customerInfo, undefined, true);
+    return true;
   }
+  const restored = await restoreRevenueCatPurchases(appUserId ?? undefined).catch(() => null);
+  if (restored && isPremiumActive(restored)) {
+    await finalizeUnlock(restored, undefined, true);
+    return true;
+  }
+  Alert.alert(
+    t("paywall.alerts.restoreFailedTitle"),
+    t("paywall.errors.alreadySubscribedRestoreFailed"),
+  );
+  return false;
+}
 
-  async function purchasePackage(pkg: PurchasesPackage | null) {
-    if (!pkg) {
-      Alert.alert(t("paywall.alerts.unavailableTitle"), t("paywall.alerts.unavailableBody"));
-      return;
-    }
-    setBusy(true);
-    try {
-      const result = await purchaseRevenueCatPackage(pkg, appUserId ?? undefined);
-      if (!isPremiumActive(result.customerInfo)) {
-        throw new Error(t("paywall.errors.entitlementNotActive"));
-      }
-      await finalizeUnlock(result.customerInfo, undefined, true);
-    } catch (purchaseError) {
-      if (isPurchaseCancelledError(purchaseError)) return;
-      if (isPurchaseAlreadyOwnedError(purchaseError) && (await recoverExistingSubscription()))
+function usePurchaseAction(context: PurchaseActionContext) {
+  const { appUserId, finalizeUnlock, setBusy, t } = context;
+  return useCallback(
+    async (pkg: PurchasesPackage | null) => {
+      if (!pkg) {
+        Alert.alert(t("paywall.alerts.unavailableTitle"), t("paywall.alerts.unavailableBody"));
         return;
-      if (isPaymentPendingError(purchaseError)) {
+      }
+      setBusy(true);
+      try {
+        const result = await purchaseRevenueCatPackage(pkg, appUserId ?? undefined);
+        if (!isPremiumActive(result.customerInfo)) {
+          throw new Error(t("paywall.errors.entitlementNotActive"));
+        }
+        await finalizeUnlock(result.customerInfo, undefined, true);
+      } catch (purchaseError) {
+        if (isPurchaseCancelledError(purchaseError)) return;
+        if (isPurchaseAlreadyOwnedError(purchaseError)) {
+          await recoverExistingSubscription({ appUserId, finalizeUnlock, t });
+          return;
+        }
+        if (isPaymentPendingError(purchaseError)) {
+          Alert.alert(
+            t("paywall.alerts.purchasePendingTitle"),
+            t("paywall.alerts.purchasePendingBody"),
+          );
+          return;
+        }
         Alert.alert(
-          t("paywall.alerts.purchasePendingTitle"),
-          t("paywall.alerts.purchasePendingBody"),
+          t("paywall.alerts.purchaseFailedTitle"),
+          purchaseError instanceof Error
+            ? purchaseError.message
+            : t("paywall.errors.purchaseFailed"),
         );
-        return;
+      } finally {
+        setBusy(false);
       }
-      Alert.alert(
-        t("paywall.alerts.purchaseFailedTitle"),
-        purchaseError instanceof Error ? purchaseError.message : t("paywall.errors.purchaseFailed"),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+    },
+    [appUserId, finalizeUnlock, setBusy, t],
+  );
+}
 
-  async function restore() {
+function useRestoreAction(context: PurchaseActionContext) {
+  const { appUserId, finalizeUnlock, refreshUser, setBusy, t, token } = context;
+  return useCallback(async () => {
     setBusy(true);
     try {
       const info = await restoreRevenueCatPurchases(appUserId ?? undefined);
@@ -124,9 +134,12 @@ export function usePaywallPurchases({
     } finally {
       setBusy(false);
     }
-  }
+  }, [appUserId, finalizeUnlock, refreshUser, setBusy, t, token]);
+}
 
-  async function skipSubscriptionForDev() {
+function useDevBypassAction(context: PurchaseActionContext) {
+  const { previewMode, requestExit, resolveExitAfterUnlock, setBusy, token } = context;
+  return useCallback(async () => {
     if (!previewMode) return;
     setBusy(true);
     try {
@@ -145,7 +158,17 @@ export function usePaywallPurchases({
     } finally {
       setBusy(false);
     }
-  }
+  }, [previewMode, requestExit, resolveExitAfterUnlock, setBusy, token]);
+}
 
-  return { busy, purchasePackage, restore, skipSubscriptionForDev };
+export function usePaywallPurchases(options: PaywallPurchasesOptions) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const context = { ...options, setBusy, t };
+  return {
+    busy,
+    purchasePackage: usePurchaseAction(context),
+    restore: useRestoreAction(context),
+    skipSubscriptionForDev: useDevBypassAction(context),
+  };
 }
