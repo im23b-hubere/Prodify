@@ -19,11 +19,29 @@ import {
 import { syncWeeklyRecapReminder } from "../../lib/weeklyRecapNotifications";
 import { filterNotifications, latestNotificationTimestamp } from "./notificationPresentation";
 
+function useNotificationSettings(token?: string | null) {
+  const [settings, setSettings] = useState<NotificationSettings | null>(null);
+  const updateSetting = useCallback(
+    async (patch: Partial<NotificationSettings>) => {
+      if (!settings) return;
+      const updated = { ...settings, ...patch };
+      setSettings(updated);
+      await saveSettings(updated);
+      if ("tips" in patch || "frequency" in patch) {
+        void syncWeeklyRecapReminder(Boolean(token) && updated.tips && updated.frequency !== "off");
+      }
+      Haptics.selectionAsync().catch(() => undefined);
+    },
+    [settings, token],
+  );
+  return { settings, setSettings, updateSetting };
+}
+
 export function useNotificationInbox() {
   const { t } = useTranslation();
   const { token } = useAuth();
   const [items, setItems] = useState<InboxItem[]>([]);
-  const [settings, setSettings] = useState<NotificationSettings | null>(null);
+  const { settings, setSettings, updateSetting } = useNotificationSettings(token);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<NotificationCategory | "all">("all");
@@ -56,7 +74,7 @@ export function useNotificationInbox() {
     }
     setServerSyncError(errors.length ? errors.join("\n") : null);
     setInitialLoading(false);
-  }, [t, token]);
+  }, [setSettings, t, token]);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,20 +88,6 @@ export function useNotificationInbox() {
     await load().catch(() => undefined);
     setRefreshing(false);
   }, [load]);
-
-  const updateSetting = useCallback(
-    async (patch: Partial<NotificationSettings>) => {
-      if (!settings) return;
-      const updated = { ...settings, ...patch };
-      setSettings(updated);
-      await saveSettings(updated);
-      if ("tips" in patch || "frequency" in patch) {
-        void syncWeeklyRecapReminder(Boolean(token) && updated.tips && updated.frequency !== "off");
-      }
-      Haptics.selectionAsync().catch(() => undefined);
-    },
-    [settings, token],
-  );
 
   const remove = useCallback(
     async (id: string) => {
