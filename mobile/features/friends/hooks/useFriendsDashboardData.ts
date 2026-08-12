@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef } from "react";
 
 import { isScreenDataStale } from "../../../lib/screenDataStale";
 import { loadFriendsDashboard } from "../services/friendsDashboardApi";
+import {
+  applyFriendsDashboardSnapshot,
+  clearFriendsDashboardSnapshot,
+} from "./friendsDashboardState";
+import { useFriendsDashboardWriter } from "./useFriendsDashboardWriter";
 import type { FriendsScreenState } from "./useFriendsScreenState";
 
 type Params = {
@@ -13,32 +18,31 @@ type Params = {
   state: FriendsScreenState;
 };
 
+function shouldUseCachedDashboard(force: boolean, lastFetch: number) {
+  return !force && !isScreenDataStale(lastFetch);
+}
+
+function isCurrentRequest(
+  mounted: { current: boolean },
+  loadSequence: { current: number },
+  sequence: number,
+) {
+  return mounted.current && sequence === loadSequence.current;
+}
+
+function dashboardLoadError(error: unknown, t: TFunction) {
+  return error instanceof Error ? error.message : t("friendsScreen.loadError");
+}
+
 export function useFriendsDashboardData({ token, periodParam, t, state }: Params) {
   const lastFetchRef = useRef(0);
-  const lastPeriodParamRef = useRef<string | null>(null);
-  const {
-    loadSeq,
-    mounted,
-    setLoading,
-    setError,
-    setLeaderboard,
-    setActivity,
-    setIncoming,
-    setBuddy,
-    setCheckin,
-    setChallenges,
-    setCommitment,
-    setRecap,
-    setFeedMetricsBySession,
-    setRefreshing,
-  } = state;
+  const dashboardWriter = useFriendsDashboardWriter(state);
+  const { loadSeq, mounted, setLoading, setError, setRefreshing } = state;
 
   const load = useCallback(
     async (opts?: { force?: boolean }) => {
       const force = Boolean(opts?.force);
-      if (!force && !isScreenDataStale(lastFetchRef.current)) {
-        return;
-      }
+      if (shouldUseCachedDashboard(force, lastFetchRef.current)) return;
 
       const seq = ++loadSeq.current;
       if (!token) {
@@ -48,66 +52,32 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
       if (mounted.current) setError(null);
       try {
         const snapshot = await loadFriendsDashboard(token, periodParam);
-        if (!mounted.current || seq !== loadSeq.current) return;
-        setLeaderboard(snapshot.leaderboard);
-        setActivity(snapshot.activity);
-        setIncoming(snapshot.incoming);
-        setBuddy(snapshot.buddy);
-        setCheckin(snapshot.checkin);
-        setChallenges(snapshot.challenges);
-        setCommitment(snapshot.commitment);
-        setRecap(snapshot.recap);
-        const metricsSeed: Record<
-          number,
-          { reactionsCount: number; commentsCount: number; viewerReaction: string | null }
-        > = {};
-        for (const item of snapshot.activity) {
-          metricsSeed[item.session_id] = {
-            reactionsCount: item.reactions_count ?? 0,
-            commentsCount: item.comments_count ?? 0,
-            viewerReaction: item.viewer_reaction ?? null,
-          };
-        }
-        setFeedMetricsBySession(metricsSeed);
+        if (!isCurrentRequest(mounted, loadSeq, seq)) return;
+        applyFriendsDashboardSnapshot(dashboardWriter, snapshot);
         lastFetchRef.current = Date.now();
       } catch (e) {
-        if (!mounted.current || seq !== loadSeq.current) return;
-        setError(e instanceof Error ? e.message : t("friendsScreen.loadError"));
-        setActivity([]);
-        setIncoming([]);
-        setBuddy(null);
-        setCheckin(null);
-        setChallenges([]);
-        setCommitment(null);
-        setRecap(null);
-        setFeedMetricsBySession({});
+        if (!isCurrentRequest(mounted, loadSeq, seq)) return;
+        setError(dashboardLoadError(e, t));
+        clearFriendsDashboardSnapshot(dashboardWriter);
       } finally {
-        if (!mounted.current || seq !== loadSeq.current) return;
+        if (!isCurrentRequest(mounted, loadSeq, seq)) return;
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [
-      token,
-      periodParam,
-      t,
-      loadSeq,
-      mounted,
-      setLoading,
-      setError,
-      setLeaderboard,
-      setActivity,
-      setIncoming,
-      setBuddy,
-      setCheckin,
-      setChallenges,
-      setCommitment,
-      setRecap,
-      setFeedMetricsBySession,
-      setRefreshing,
-    ],
+    [token, periodParam, t, loadSeq, mounted, setLoading, setError, setRefreshing, dashboardWriter],
   );
 
+  const onRefresh = useFriendsDashboardRefresh(load, periodParam, setRefreshing);
+  return { load, onRefresh };
+}
+
+function useFriendsDashboardRefresh(
+  load: (options?: { force?: boolean }) => Promise<void>,
+  periodParam: "week" | "all",
+  setRefreshing: (refreshing: boolean) => void,
+) {
+  const lastPeriodParamRef = useRef<string | null>(null);
   useFocusEffect(
     useCallback(() => {
       load().catch(() => undefined);
@@ -129,5 +99,5 @@ export function useFriendsDashboardData({ token, periodParam, t, state }: Params
     load({ force: true }).catch(() => undefined);
   }, [load, setRefreshing]);
 
-  return { load, onRefresh };
+  return onRefresh;
 }
