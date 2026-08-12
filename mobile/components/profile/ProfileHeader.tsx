@@ -27,6 +27,31 @@ function initials(name: string): string {
   return `${p[0]![0] ?? ""}${p[1]![0] ?? ""}`.toUpperCase();
 }
 
+function FriendshipBadge({ status, onAddFriend }: Pick<Props, "status" | "onAddFriend">) {
+  const { t } = useTranslation();
+  if (status === "none") {
+    return (
+      <Pressable style={styles.followBtn} onPress={onAddFriend}>
+        <Text style={styles.followTxt}>{t("profileHeader.addFriend")}</Text>
+      </Pressable>
+    );
+  }
+  if (status === "pending") {
+    return (
+      <View style={styles.pendingPill}>
+        <Text style={styles.pendingTxt}>{t("profileHeader.requestPending")}</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.followingPill}>
+      <Text style={styles.followingTxt}>
+        {t(status === "accepted" ? "profileHeader.friendsBadge" : "profileHeader.you")}
+      </Text>
+    </View>
+  );
+}
+
 export const ProfileHeader = memo(function ProfileHeader({
   username,
   totalSessions,
@@ -89,23 +114,7 @@ export const ProfileHeader = memo(function ProfileHeader({
             <Text style={styles.qLbl}>{t("profileHeader.friends")}</Text>
           </View>
         </View>
-        {status === "none" ? (
-          <Pressable style={styles.followBtn} onPress={onAddFriend}>
-            <Text style={styles.followTxt}>{t("profileHeader.addFriend")}</Text>
-          </Pressable>
-        ) : status === "pending" ? (
-          <View style={styles.pendingPill}>
-            <Text style={styles.pendingTxt}>{t("profileHeader.requestPending")}</Text>
-          </View>
-        ) : status === "accepted" ? (
-          <View style={styles.followingPill}>
-            <Text style={styles.followingTxt}>{t("profileHeader.friendsBadge")}</Text>
-          </View>
-        ) : (
-          <View style={styles.followingPill}>
-            <Text style={styles.followingTxt}>{t("profileHeader.you")}</Text>
-          </View>
-        )}
+        <FriendshipBadge status={status} onAddFriend={onAddFriend} />
       </View>
     </View>
   );

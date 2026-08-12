@@ -1,6 +1,6 @@
 import { ESLint } from "eslint";
 
-const MAX_EXISTING_SIZE_VIOLATIONS = 63;
+const MAX_EXISTING_SIZE_VIOLATIONS = 62;
 const PRODUCTION_PATHS = ["app", "features", "components", "hooks", "lib", "types"];
 const SIZE_RULES = new Set(["max-lines", "max-lines-per-function"]);
 
