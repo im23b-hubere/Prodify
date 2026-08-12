@@ -12,6 +12,25 @@ import { fetchProgression, syncProgression } from "../../../lib/progressionSync"
 import type { ProgressionDto } from "../../../types/outcomes";
 
 type LoadOptions = { silent?: boolean; sync?: boolean; force?: boolean };
+type ProgressionSnapshot = {
+  lastFetch: number;
+  progression: ProgressionDto | null;
+  catalogLength: number;
+};
+type LoadingControls = {
+  setRefreshing: (value: boolean) => void;
+  setLoadingProgression: (value: boolean) => void;
+  setLoadingCatalog: (value: boolean) => void;
+};
+
+function useLoadProgressionOnFocus(load: () => Promise<void>) {
+  useFocusEffect(
+    useCallback(() => {
+      prefetchLevelCatalog();
+      void load();
+    }, [load]),
+  );
+}
 
 export function useProgressionOverview(token: string | null, loadErrorMessage: string) {
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
@@ -31,37 +50,25 @@ export function useProgressionOverview(token: string | null, loadErrorMessage: s
       const silent = options.silent ?? false;
       const shouldSync = options.sync ?? false;
       const force = Boolean(options.force || shouldSync);
-      if (
-        _hasFreshData(
-          force,
-          silent,
-          lastFetchRef.current,
-          progressionRef.current,
-          catalogLengthRef.current,
-        )
-      ) {
+      const snapshot = {
+        lastFetch: lastFetchRef.current,
+        progression: progressionRef.current,
+        catalogLength: catalogLengthRef.current,
+      };
+      if (hasFreshData(force, silent, snapshot)) {
         return;
       }
       setLoadError(null);
       if (!token) {
-        _clearState(
-          setProgression,
-          setLevelCatalog,
+        clearState(setProgression, setLevelCatalog, {
           setLoadingProgression,
           setLoadingCatalog,
           setRefreshing,
-        );
+        });
         return;
       }
       prefetchLevelCatalog();
-      _startLoading(
-        silent,
-        progressionRef.current,
-        catalogLengthRef.current,
-        setRefreshing,
-        setLoadingProgression,
-        setLoadingCatalog,
-      );
+      startLoading(silent, snapshot, { setRefreshing, setLoadingProgression, setLoadingCatalog });
       try {
         const progressionRequest = shouldSync
           ? syncProgression(token, { force: true })
@@ -86,12 +93,7 @@ export function useProgressionOverview(token: string | null, loadErrorMessage: s
     [loadErrorMessage, token],
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      prefetchLevelCatalog();
-      void load();
-    }, [load]),
-  );
+  useLoadProgressionOnFocus(load);
 
   return {
     progression,
@@ -104,44 +106,33 @@ export function useProgressionOverview(token: string | null, loadErrorMessage: s
   };
 }
 
-function _hasFreshData(
-  force: boolean,
-  silent: boolean,
-  lastFetch: number,
-  progression: ProgressionDto | null,
-  catalogLength: number,
-) {
+function hasFreshData(force: boolean, silent: boolean, snapshot: ProgressionSnapshot) {
   return (
-    !force && !silent && !isScreenDataStale(lastFetch) && progression !== null && catalogLength > 0
+    !force &&
+    !silent &&
+    !isScreenDataStale(snapshot.lastFetch) &&
+    snapshot.progression !== null &&
+    snapshot.catalogLength > 0
   );
 }
 
-function _startLoading(
-  silent: boolean,
-  progression: ProgressionDto | null,
-  catalogLength: number,
-  setRefreshing: (value: boolean) => void,
-  setLoadingProgression: (value: boolean) => void,
-  setLoadingCatalog: (value: boolean) => void,
-) {
+function startLoading(silent: boolean, snapshot: ProgressionSnapshot, controls: LoadingControls) {
   if (silent) {
-    setRefreshing(true);
+    controls.setRefreshing(true);
     return;
   }
-  if (!progression) setLoadingProgression(true);
-  if (catalogLength === 0) setLoadingCatalog(true);
+  if (!snapshot.progression) controls.setLoadingProgression(true);
+  if (snapshot.catalogLength === 0) controls.setLoadingCatalog(true);
 }
 
-function _clearState(
+function clearState(
   setProgression: (value: ProgressionDto | null) => void,
   setCatalog: (value: ProgressionLevelItem[]) => void,
-  setLoadingProgression: (value: boolean) => void,
-  setLoadingCatalog: (value: boolean) => void,
-  setRefreshing: (value: boolean) => void,
+  controls: LoadingControls,
 ) {
   setProgression(null);
   setCatalog([]);
-  setLoadingProgression(false);
-  setLoadingCatalog(false);
-  setRefreshing(false);
+  controls.setLoadingProgression(false);
+  controls.setLoadingCatalog(false);
+  controls.setRefreshing(false);
 }
