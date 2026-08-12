@@ -20,6 +20,86 @@ type SessionDetailMetadataProps = {
   onNoteChange: (note: string) => void;
 };
 
+function SessionTypeSection({
+  session,
+  isOwnSession,
+  selectedType,
+  onTypeChange,
+}: Pick<SessionDetailMetadataProps, "session" | "isOwnSession" | "selectedType" | "onTypeChange">) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
+      {isOwnSession ? (
+        <View style={styles.chips}>
+          {SESSION_TYPE_IDS.map((type) => (
+            <SessionTypeChip
+              key={type}
+              label={sessionTypeLabel(type, t)}
+              active={selectedType === type}
+              onPress={() => onTypeChange(type)}
+            />
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.readOnlyValue}>{sessionTypeLabel(session.session_type, t)}</Text>
+      )}
+    </View>
+  );
+}
+
+function NotesSection({
+  isOwnSession,
+  note,
+  onNoteChange,
+}: Pick<SessionDetailMetadataProps, "isOwnSession" | "note" | "onNoteChange">) {
+  const { t } = useTranslation();
+  let content = <Text style={styles.mutedNote}>{t("sessionDetail.noNotes")}</Text>;
+  if (isOwnSession) {
+    content = (
+      <>
+        <TextInput
+          style={styles.noteInput}
+          value={note}
+          onChangeText={onNoteChange}
+          placeholder={t("sessionDetail.notesPlaceholder")}
+          placeholderTextColor={colors.textSecondary}
+          multiline
+          maxLength={NOTES_MAX_LENGTH}
+        />
+        <Text style={styles.noteCounter}>
+          {note.length}/{NOTES_MAX_LENGTH}
+        </Text>
+      </>
+    );
+  } else if (note.trim()) {
+    content = <Text style={styles.noteReadOnly}>{note}</Text>;
+  }
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{t("sessionDetail.notes")}</Text>
+      {content}
+    </View>
+  );
+}
+
+function TagsSection({ tags }: { tags: string[] }) {
+  const { t } = useTranslation();
+  if (tags.length === 0) return null;
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{t("sessionDetail.tags")}</Text>
+      <View style={styles.tagRow}>
+        {tags.map((tag) => (
+          <View key={tag} style={styles.tag}>
+            <Text style={styles.tagText}>{tag}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export function SessionDetailMetadata({
   session,
   presentation,
@@ -52,60 +132,14 @@ export function SessionDetailMetadata({
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
-        {isOwnSession ? (
-          <View style={styles.chips}>
-            {SESSION_TYPE_IDS.map((type) => (
-              <SessionTypeChip
-                key={type}
-                label={sessionTypeLabel(type, t)}
-                active={selectedType === type}
-                onPress={() => onTypeChange(type)}
-              />
-            ))}
-          </View>
-        ) : (
-          <Text style={styles.readOnlyValue}>{sessionTypeLabel(session.session_type, t)}</Text>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t("sessionDetail.notes")}</Text>
-        {isOwnSession ? (
-          <>
-            <TextInput
-              style={styles.noteInput}
-              value={note}
-              onChangeText={onNoteChange}
-              placeholder={t("sessionDetail.notesPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              multiline
-              maxLength={NOTES_MAX_LENGTH}
-            />
-            <Text style={styles.noteCounter}>
-              {note.length}/{NOTES_MAX_LENGTH}
-            </Text>
-          </>
-        ) : note.trim() ? (
-          <Text style={styles.noteReadOnly}>{note}</Text>
-        ) : (
-          <Text style={styles.mutedNote}>{t("sessionDetail.noNotes")}</Text>
-        )}
-      </View>
-
-      {presentation.tags.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("sessionDetail.tags")}</Text>
-          <View style={styles.tagRow}>
-            {presentation.tags.map((tag) => (
-              <View key={tag} style={styles.tag}>
-                <Text style={styles.tagText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      ) : null}
+      <SessionTypeSection
+        session={session}
+        isOwnSession={isOwnSession}
+        selectedType={selectedType}
+        onTypeChange={onTypeChange}
+      />
+      <NotesSection isOwnSession={isOwnSession} note={note} onNoteChange={onNoteChange} />
+      <TagsSection tags={presentation.tags} />
     </>
   );
 }
