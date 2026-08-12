@@ -59,5 +59,4 @@ def progression_sync(
     db: Annotated[Session, Depends(get_db)],
 ):
     row = sync_user_progression(db, current.id)
-    db.commit()
     return to_progression_public(row)

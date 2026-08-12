@@ -255,7 +255,7 @@ def _apply_xp_grant(
 
 
 def sync_user_progression(db: Session, user_id: int) -> UserProgression:
-    """Apply inactivity decay, ensure a progression row exists, and reconcile level fields."""
+    """Apply inactivity decay, reconcile level fields, and persist the result."""
     row, _decayed = apply_inactivity_decay(db, user_id)
     if row is None:
         row = db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
@@ -265,6 +265,7 @@ def sync_user_progression(db: Session, user_id: int) -> UserProgression:
             db.flush()
     _recompute_progression_fields(row)
     row.updated_at = utcnow()
+    db.commit()
     return row
 
 
