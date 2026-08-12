@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, or_, select
@@ -57,18 +56,6 @@ SESSION_TAGS = [
     ["master-prep", "bounce"],
     ["beat", "808"],
 ]
-
-
-@dataclass(frozen=True)
-class ScreenshotSeedResult:
-    main_email: str
-    main_username: str
-    main_user_id: int
-    sessions_created: int
-    current_streak: int
-    longest_streak: int
-    friends_seeded: int
-    premium_enabled: bool
 
 
 def _norm_email(v: str) -> str:
@@ -295,88 +282,3 @@ def _ensure_premium(db, user_id: int) -> None:
     row.expires_at = user.premium_until
 
 
-def seed_screenshot_account(
-    db,
-    *,
-    main_email: str = "eric.huber.ch@gmail.com",
-    main_username: str = "erix",
-    main_password: str = "demo123456",
-    friend_password: str = "demo123456",
-    days_back: int = 84,
-    current_streak: int = 52,
-    longest_streak: int = 71,
-    main_level: int = 24,
-) -> ScreenshotSeedResult:
-    main_user = _ensure_user(
-        db,
-        email=main_email,
-        username=main_username,
-        password=main_password,
-        reset_password=True,
-    )
-    _clear_main_friendships(db, main_user.id)
-    _clear_user_sessions(db, main_user.id)
-    sessions_created = _seed_realistic_sessions(
-        db,
-        main_user.id,
-        days_back=days_back,
-        sessions_per_day=2,
-        base_minutes=48,
-    )
-
-    main_streak = _ensure_streak(db, main_user.id)
-    main_streak.current_streak = current_streak
-    main_streak.longest_streak = max(longest_streak, current_streak)
-    main_streak.last_session_date = utcnow()
-    main_streak.freezes_remaining = 3
-
-    _ensure_progression(db, main_user.id, level=main_level, xp_total=2840, xp_to_next=210)
-    _ensure_weekly_goal(db, main_user.id, target=7)
-    _ensure_premium(db, main_user.id)
-
-    friends_seeded = 0
-    for username, email, friend_streak, friend_level, session_count in SCREENSHOT_FRIENDS:
-        friend = _ensure_user(
-            db,
-            email=email,
-            username=username,
-            password=friend_password,
-        )
-        _ensure_friendship_accepted(db, main_user.id, friend.id)
-        _clear_user_sessions(db, friend.id)
-        base_minutes = 34 + friend_level
-        if session_count is not None:
-            _seed_session_count(db, friend.id, count=session_count, base_minutes=base_minutes)
-        else:
-            _seed_realistic_sessions(
-                db,
-                friend.id,
-                days_back=28 + (friend_level % 6),
-                sessions_per_day=1,
-                base_minutes=base_minutes,
-            )
-        fs = _ensure_streak(db, friend.id)
-        fs.current_streak = friend_streak
-        fs.longest_streak = max(int(fs.longest_streak or 0), friend_streak + 4)
-        fs.last_session_date = utcnow() - timedelta(hours=2 + friends_seeded * 5)
-        _ensure_progression(
-            db,
-            friend.id,
-            level=friend_level,
-            xp_total=420 + friend_level * 95,
-            xp_to_next=140,
-        )
-        friends_seeded += 1
-
-    db.commit()
-
-    return ScreenshotSeedResult(
-        main_email=main_email,
-        main_username=main_username,
-        main_user_id=main_user.id,
-        sessions_created=sessions_created,
-        current_streak=current_streak,
-        longest_streak=longest_streak,
-        friends_seeded=friends_seeded,
-        premium_enabled=True,
-    )
