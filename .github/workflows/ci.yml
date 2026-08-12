@@ -52,6 +52,9 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall -q app
 
+      - name: Enforce Clean Code regression budgets
+        run: python scripts/check_clean_code.py
+
       - name: Run backend tests with coverage
         run: pytest --cov=app --cov-report=term-missing --cov-report=xml -q
 
