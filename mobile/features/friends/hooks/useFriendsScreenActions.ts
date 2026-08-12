@@ -65,3 +65,5 @@ export function useFriendsScreenActions(params: Params) {
     openSessionHref,
   };
 }
+
+export type FriendsScreenActions = ReturnType<typeof useFriendsScreenActions>;
