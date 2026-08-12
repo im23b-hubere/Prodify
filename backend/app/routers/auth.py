@@ -1,45 +1,27 @@
 import logging
-import secrets
-from datetime import timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.contracts.auth import RefreshRequest, TokenPair, UserAccountPublic, UserCreate, UserLogin
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import RefreshToken, Streak, User, utcnow
+from app.models import Streak, User
 from app.rate_limit import limiter
-from app.schemas import RefreshRequest, TokenPair, UserAccountPublic, UserCreate, UserLogin
-from app.security import create_access_token, hash_password, hash_refresh_token, verify_password
+from app.security import hash_password, verify_password
+from app.services.auth_token_service import (
+    RefreshTokenRejected,
+    issue_tokens_for_user,
+    revoke_user_tokens,
+    rotate_refresh_token,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 _log = logging.getLogger(__name__)
-
-
-def _expires_at_utc(dt) -> object:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
-
-
-def issue_tokens_for_user(db: Session, user: User, *, replace_all: bool) -> TokenPair:
-    if replace_all:
-        db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
-    access = create_access_token(str(user.id), token_version=int(user.access_token_version or 0))
-    raw_refresh = secrets.token_urlsafe(48)
-    db.add(
-        RefreshToken(
-            user_id=user.id,
-            token_hash=hash_refresh_token(raw_refresh),
-            expires_at=utcnow() + timedelta(days=settings.refresh_token_expire_days),
-        )
-    )
-    db.commit()
-    return TokenPair(access_token=access, refresh_token=raw_refresh)
 
 
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
@@ -89,26 +71,15 @@ def refresh_tokens(
     payload: RefreshRequest,
     db: Annotated[Session, Depends(get_db)],
 ):
-    th = hash_refresh_token(payload.refresh_token.strip())
-    row = db.scalar(select(RefreshToken).where(RefreshToken.token_hash == th))
-    now = utcnow()
-    if row is None or _expires_at_utc(row.expires_at) < now:
-        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
-    user = db.get(User, row.user_id)
-    if user is None:
-        db.delete(row)
-        db.commit()
-        raise HTTPException(status_code=401, detail="User not found")
-    db.delete(row)
-    db.flush()
-    return issue_tokens_for_user(db, user, replace_all=False)
+    try:
+        return rotate_refresh_token(db, payload.refresh_token)
+    except RefreshTokenRejected as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
 
 
 @router.post("/logout")
 def logout(current: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
-    current.access_token_version = int(current.access_token_version or 0) + 1
-    db.execute(delete(RefreshToken).where(RefreshToken.user_id == current.id))
-    db.commit()
+    revoke_user_tokens(db, current)
     return {"ok": True}
 
 

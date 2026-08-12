@@ -2,80 +2,19 @@ import json
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.contracts.auth import (
+    RefreshRequest,
+    Token,
+    TokenPair,
+    UserAccountPublic,
+    UserCreate,
+    UserLogin,
+    UserPublic,
+)
 from app.contracts.billing import BillingSyncBody, EntitlementPublic
 from app.models import FriendshipStatus, SessionType
-
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    username: str = Field(min_length=2, max_length=64)
-    password: str = Field(min_length=8, max_length=128)
-
-    @field_validator("email")
-    @classmethod
-    def normalize_email(cls, value: EmailStr) -> str:
-        # Treat email identity as case-insensitive and ignore accidental whitespace.
-        return str(value).strip().lower()
-
-    @field_validator("username")
-    @classmethod
-    def normalize_username(cls, value: str) -> str:
-        normalized = value.strip().lower()
-        if len(normalized) < 2:
-            raise ValueError("username must contain at least 2 characters")
-        return normalized
-
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-    @field_validator("email")
-    @classmethod
-    def normalize_email(cls, value: EmailStr) -> str:
-        return str(value).strip().lower()
-
-
-class UserPublic(BaseModel):
-    """Friend-visible / non-account fields (no email)."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    username: str
-    profile_picture_url: str | None = None
-    is_premium: bool = False
-    created_at: datetime
-
-
-class UserAccountPublic(BaseModel):
-    """Authenticated account view — includes email for the signed-in user only."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    email: EmailStr
-    username: str
-    profile_picture_url: str | None = None
-    is_premium: bool = False
-    created_at: datetime
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-
-
-class TokenPair(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-
-class RefreshRequest(BaseModel):
-    refresh_token: str = Field(min_length=8, max_length=4096)
 
 
 class SessionQuickStart(BaseModel):

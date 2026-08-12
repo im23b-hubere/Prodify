@@ -5,10 +5,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.contracts.auth import UserAccountPublic
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
-from app.schemas import UserAccountPublic
 from app.services.profile_picture_service import (
     ALLOWED_IMAGE_MIME_TYPES,
     MAX_PROFILE_IMAGE_BYTES,
