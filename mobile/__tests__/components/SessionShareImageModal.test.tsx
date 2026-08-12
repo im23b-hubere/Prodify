@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react-native";
+import * as Sharing from "expo-sharing";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { SessionShareImageModal } from "../../components/session/SessionShareImageModal";
 import type { SessionDto } from "../../types/session";
@@ -55,7 +56,9 @@ jest.mock("../../components/session/SessionShareStoryCard", () => {
   return {
     STORY_CAPTURE_WIDTH: 1080,
     STORY_CAPTURE_HEIGHT: 1920,
-    SessionShareStoryCard: () => <Text>story-card</Text>,
+    SessionShareStoryCard: ({ template }: { template: string }) => (
+      <Text>{`story-card:${template}`}</Text>
+    ),
   };
 });
 
@@ -73,6 +76,8 @@ const session: SessionDto = {
 };
 
 describe("SessionShareImageModal", () => {
+  beforeEach(() => jest.clearAllMocks());
+
   it("renders English i18n copy instead of hardcoded strings", () => {
     render(
       <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
@@ -85,5 +90,32 @@ describe("SessionShareImageModal", () => {
     expect(screen.getByText("sessionInsights.shareTemplateGradient")).toBeTruthy();
     expect(screen.getByText("sessionInsights.sharePngCta")).toBeTruthy();
     expect(screen.getByText("sessionInsights.shareClose")).toBeTruthy();
+  });
+
+  it("switches preview and capture card to the same template", () => {
+    render(
+      <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
+    );
+
+    fireEvent.press(screen.getByLabelText("sessionInsights.shareTemplateMinimal"));
+    expect(screen.getAllByText("story-card:minimal")).toHaveLength(2);
+  });
+
+  it("captures and shares the story image", async () => {
+    jest.useFakeTimers();
+    render(
+      <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
+    );
+
+    fireEvent.press(screen.getByText("sessionInsights.sharePngCta"));
+    await act(async () => jest.advanceTimersByTime(160));
+    await waitFor(() =>
+      expect(Sharing.shareAsync).toHaveBeenCalledWith("file:///mock.png", {
+        mimeType: "image/png",
+        UTI: "public.png",
+        dialogTitle: "sessionInsights.shareDialogTitle",
+      }),
+    );
+    jest.useRealTimers();
   });
 });

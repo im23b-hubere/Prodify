@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
-import { useCallback, useMemo, useRef, useState } from "react";
+import type { TFunction } from "i18next";
+import { type RefObject, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import ViewShot from "react-native-view-shot";
@@ -38,42 +39,32 @@ const TEMPLATE_LABEL_KEYS: Record<ShareTemplateId, string> = {
 
 const PREVIEW_SCALE = 0.68;
 
-export function SessionShareImageModal({
-  visible,
-  onClose,
-  session,
-  insights,
-  focusScore,
-  producerName,
-}: Props) {
-  const { t } = useTranslation();
-  const shotRef = useRef<ViewShot | null>(null);
-  const [template, setTemplate] = useState<ShareTemplateId>("gradient");
+type StoryPresentation = {
+  sessionType: string;
+  durationLabel: string;
+  focusScore: number;
+  producerName?: string;
+};
+
+function storyPresentation(props: Props, t: TFunction): StoryPresentation {
+  const { session, insights, focusScore, producerName } = props;
+  return {
+    sessionType: sessionTypeLabel(String(session.session_type), t),
+    durationLabel: formatDurationWords(session.duration_seconds ?? 0),
+    focusScore: Math.max(
+      0,
+      Math.min(100, Math.round(insights?.focus_score ?? focusScore ?? session.focus_score ?? 0)),
+    ),
+    producerName,
+  };
+}
+
+function useSessionShareExport(shotRef: RefObject<ViewShot | null>, t: TFunction) {
   const [busy, setBusy] = useState(false);
-
-  const templates = useMemo(
-    () =>
-      TEMPLATE_IDS.map((id) => ({
-        id,
-        label: t(TEMPLATE_LABEL_KEYS[id]),
-      })),
-    [t],
-  );
-
-  const typeLabel = useMemo(
-    () => sessionTypeLabel(String(session.session_type), t),
-    [session.session_type, t],
-  );
-  const durationLabel = formatDurationWords(session.duration_seconds ?? 0);
-  const safeFocusScore = Math.max(
-    0,
-    Math.min(100, Math.round(insights?.focus_score ?? focusScore ?? session.focus_score ?? 0)),
-  );
-
   const captureAndShare = useCallback(async () => {
     setBusy(true);
     try {
-      await new Promise((r) => setTimeout(r, 160));
+      await new Promise((resolve) => setTimeout(resolve, 160));
       const uri = await shotRef.current?.capture?.();
       if (!uri) {
         Alert.alert(
@@ -82,28 +73,101 @@ export function SessionShareImageModal({
         );
         return;
       }
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: "image/png",
-          UTI: "public.png",
-          dialogTitle: t("sessionInsights.shareDialogTitle"),
-        });
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      } else {
+      if (!(await Sharing.isAvailableAsync())) {
         Alert.alert(
           t("sessionInsights.shareUnavailableTitle"),
           t("sessionInsights.shareUnavailableBody"),
         );
+        return;
       }
-    } catch (e) {
-      Alert.alert(
-        t("sessionInsights.shareFailedTitle"),
-        e instanceof Error ? e.message : t("stats.shareProofUnexpectedBody"),
-      );
+      await Sharing.shareAsync(uri, {
+        mimeType: "image/png",
+        UTI: "public.png",
+        dialogTitle: t("sessionInsights.shareDialogTitle"),
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : t("stats.shareProofUnexpectedBody");
+      Alert.alert(t("sessionInsights.shareFailedTitle"), message);
     } finally {
       setBusy(false);
     }
-  }, [t]);
+  }, [shotRef, t]);
+  return { busy, captureAndShare };
+}
+
+function SessionTemplatePicker({
+  t,
+  selected,
+  onSelect,
+}: {
+  t: TFunction;
+  selected: ShareTemplateId;
+  onSelect: (template: ShareTemplateId) => void;
+}) {
+  return (
+    <View style={styles.chips}>
+      {TEMPLATE_IDS.map((id) => {
+        const label = t(TEMPLATE_LABEL_KEYS[id]);
+        return (
+          <Pressable
+            key={id}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            style={[styles.chip, selected === id && styles.chipOn]}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => undefined);
+              onSelect(id);
+            }}
+          >
+            <Text style={[styles.chipTxt, selected === id && styles.chipTxtOn]}>{label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function SessionSharePreview({
+  template,
+  presentation,
+}: {
+  template: ShareTemplateId;
+  presentation: StoryPresentation;
+}) {
+  return (
+    <View style={styles.previewStage}>
+      <View
+        style={[
+          styles.previewClip,
+          {
+            width: STORY_CAPTURE_WIDTH * PREVIEW_SCALE,
+            height: STORY_CAPTURE_HEIGHT * PREVIEW_SCALE,
+          },
+        ]}
+      >
+        <View
+          style={{
+            width: STORY_CAPTURE_WIDTH,
+            height: STORY_CAPTURE_HEIGHT,
+            transform: [{ scale: PREVIEW_SCALE }],
+          }}
+        >
+          <SessionShareStoryCard template={template} {...presentation} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export function SessionShareImageModal(props: Props) {
+  const { t } = useTranslation();
+  const shotRef = useRef<ViewShot | null>(null);
+  const [template, setTemplate] = useState<ShareTemplateId>("gradient");
+  const { busy, captureAndShare } = useSessionShareExport(shotRef, t);
+  const presentation = storyPresentation(props, t);
+  const { visible, onClose } = props;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -112,50 +176,8 @@ export function SessionShareImageModal({
           <Text style={styles.title}>{t("sessionInsights.shareModalTitle")}</Text>
           <Text style={styles.sub}>{t("sessionInsights.shareModalSubtitle")}</Text>
 
-          <View style={styles.chips}>
-            {templates.map((item) => (
-              <Pressable
-                key={item.id}
-                style={[styles.chip, template === item.id && styles.chipOn]}
-                onPress={() => {
-                  Haptics.selectionAsync().catch(() => undefined);
-                  setTemplate(item.id);
-                }}
-              >
-                <Text style={[styles.chipTxt, template === item.id && styles.chipTxtOn]}>
-                  {item.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <View style={styles.previewStage}>
-            <View
-              style={[
-                styles.previewClip,
-                {
-                  width: STORY_CAPTURE_WIDTH * PREVIEW_SCALE,
-                  height: STORY_CAPTURE_HEIGHT * PREVIEW_SCALE,
-                },
-              ]}
-            >
-              <View
-                style={{
-                  width: STORY_CAPTURE_WIDTH,
-                  height: STORY_CAPTURE_HEIGHT,
-                  transform: [{ scale: PREVIEW_SCALE }],
-                }}
-              >
-                <SessionShareStoryCard
-                  template={template}
-                  sessionType={typeLabel}
-                  durationLabel={durationLabel}
-                  focusScore={safeFocusScore}
-                  producerName={producerName}
-                />
-              </View>
-            </View>
-          </View>
+          <SessionTemplatePicker t={t} selected={template} onSelect={setTemplate} />
+          <SessionSharePreview template={template} presentation={presentation} />
 
           <PrimaryButton
             label={busy ? t("sessionInsights.sharePngBusy") : t("sessionInsights.sharePngCta")}
@@ -163,7 +185,13 @@ export function SessionShareImageModal({
             loading={busy}
           />
 
-          <Pressable style={styles.closeGhost} onPress={onClose} disabled={busy}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("sessionInsights.shareClose")}
+            style={styles.closeGhost}
+            onPress={onClose}
+            disabled={busy}
+          >
             <Text style={styles.closeGhostTxt}>{t("sessionInsights.shareClose")}</Text>
           </Pressable>
 
@@ -173,13 +201,7 @@ export function SessionShareImageModal({
               options={{ format: "png", quality: 1 }}
               style={styles.shotInner}
             >
-              <SessionShareStoryCard
-                template={template}
-                sessionType={typeLabel}
-                durationLabel={durationLabel}
-                focusScore={safeFocusScore}
-                producerName={producerName}
-              />
+              <SessionShareStoryCard template={template} {...presentation} />
             </ViewShot>
           </View>
         </View>
