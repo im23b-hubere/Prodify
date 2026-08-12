@@ -7,17 +7,15 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.contracts.billing import BillingSyncBody, EntitlementPublic
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
-from app.schemas import BillingSyncBody, EntitlementPublic
-from app.services.kpi_tracker import track_event
 from app.dependencies_subscription import resolve_effective_entitlement
 from app.services.subscription_service import (
     is_revenuecat_secret_configured,
-    sync_from_webhook_payload,
-    to_entitlement_public,
-    upsert_subscription,
+    process_webhook_payload,
+    save_verified_subscription,
     verify_billing_sync,
 )
 
@@ -60,25 +58,7 @@ def sync_entitlement(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception:
         raise HTTPException(status_code=502, detail="Could not verify purchase state with billing provider")
-
-    verified_body = BillingSyncBody(
-        app_user_id=verified.app_user_id,
-        entitlement="premium" if verified.entitlement == "premium" else "free",
-        trial_active=verified.trial_active,
-        expires_at=verified.expires_at,
-    )
-    row = upsert_subscription(db, current.id, verified_body)
-    current.is_premium = 1 if verified_body.entitlement == "premium" or verified_body.trial_active else 0
-    current.premium_until = verified_body.expires_at
-    track_event(
-        db,
-        "trial_started" if verified_body.trial_active else "billing_sync",
-        current.id,
-        {"entitlement": verified_body.entitlement, "verified_by": verified.verification_source},
-    )
-    db.commit()
-    db.refresh(row)
-    return to_entitlement_public(row)
+    return save_verified_subscription(db, current, verified)
 
 
 @router.post("/webhooks/revenuecat", status_code=status.HTTP_204_NO_CONTENT)
@@ -98,19 +78,7 @@ async def revenuecat_webhook(
         raise HTTPException(status_code=400, detail="Invalid JSON body") from None
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="Unsupported webhook payload")
-    user_id, row = sync_from_webhook_payload(db, payload)
+    row = process_webhook_payload(db, payload)
     if row is None:
         raise HTTPException(status_code=400, detail="Unsupported webhook payload")
-    if user_id is not None:
-        u = db.get(User, user_id)
-        if u is not None:
-            u.is_premium = 1 if row.entitlement == "premium" or bool(row.trial_active) else 0
-            u.premium_until = row.expires_at
-    track_event(
-        db,
-        "trial_converted_paid" if row.entitlement == "premium" and not bool(row.trial_active) else "billing_webhook",
-        user_id,
-        {"entitlement": row.entitlement},
-    )
-    db.commit()
     return None

@@ -13,6 +13,12 @@ def _auth_headers(client, email: str, username: str, password: str = "strong-pas
     return {"Authorization": f"Bearer {token}"}
 
 
+def _signed_webhook(payload: dict, secret: str) -> tuple[bytes, str]:
+    raw = json.dumps(payload).encode("utf-8")
+    signature = hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
+    return raw, f"sha256={signature}"
+
+
 def test_billing_entitlement_sync_and_get(client, monkeypatch):
     # Dev sync trusts the client payload only when RevenueCat verification is not configured.
     monkeypatch.setattr("app.routers.billing.settings.revenuecat_secret_key", None)
@@ -121,9 +127,8 @@ def test_revenuecat_webhook_accepts_valid_signature(client, monkeypatch):
             "is_trial_period": True,
         }
     }
-    raw = json.dumps(payload).encode("utf-8")
     secret = "test-webhook-secret-0123456789"
-    signature = hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
+    raw, signature = _signed_webhook(payload, secret)
 
     monkeypatch.setattr("app.routers.billing.settings.webhook_secret", secret)
 
@@ -132,7 +137,35 @@ def test_revenuecat_webhook_accepts_valid_signature(client, monkeypatch):
         content=raw,
         headers={
             "Content-Type": "application/json",
-            "X-Webhook-Signature": f"sha256={signature}",
+            "X-Webhook-Signature": signature,
         },
     )
     assert response.status_code == 204
+
+
+def test_revenuecat_purchase_webhook_grants_premium_access(client, monkeypatch):
+    headers = _auth_headers(client, "bill-purchase@example.com", "bill-purchase-user")
+    user_id = str(client.get("/auth/me", headers=headers).json()["id"])
+    payload = {
+        "event": {
+            "app_user_id": user_id,
+            "type": "INITIAL_PURCHASE",
+            "is_active": True,
+            "is_trial_period": False,
+        }
+    }
+    secret = "test-webhook-secret-0123456789"
+    raw, signature = _signed_webhook(payload, secret)
+    monkeypatch.setattr("app.routers.billing.settings.webhook_secret", secret)
+
+    response = client.post(
+        "/billing/webhooks/revenuecat",
+        content=raw,
+        headers={"Content-Type": "application/json", "X-Webhook-Signature": signature},
+    )
+
+    assert response.status_code == 204
+    entitlement = client.get("/billing/entitlement", headers=headers)
+    assert entitlement.status_code == 200
+    assert entitlement.json()["entitlement"] == "premium"
+    assert client.get("/auth/me", headers=headers).json()["is_premium"] is True

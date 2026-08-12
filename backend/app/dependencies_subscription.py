@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.contracts.billing import EntitlementPublic
 from app.models import User, UserSubscription
-from app.schemas import EntitlementPublic
 from app.services.entitlements import EntitlementService
 from app.services.subscription_service import to_entitlement_public
 

@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.contracts.billing import BillingSyncBody, EntitlementPublic
 from app.models import FriendshipStatus, SessionType
 
 
@@ -582,28 +583,6 @@ class UserFriendStatsPublic(BaseModel):
     best_day: str | None
     heatmap_days: list[HeatmapDayPublic]
     achievements: list[AchievementUnlockedPublic]
-
-
-class EntitlementPublic(BaseModel):
-    provider: str = "revenuecat"
-    entitlement: Literal["free", "premium"] = "free"
-    trial_active: bool = False
-    expires_at: datetime | None = None
-
-
-class BillingSyncBody(BaseModel):
-    app_user_id: str = Field(min_length=1, max_length=255)
-    entitlement: Literal["free", "premium"] = "free"
-    trial_active: bool = False
-    expires_at: datetime | None = None
-
-    @field_validator("app_user_id")
-    @classmethod
-    def sanitize_app_user_id(cls, value: str) -> str:
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("app_user_id must not be empty")
-        return cleaned
 
 
 class SeedScreenshotAccountBody(BaseModel):

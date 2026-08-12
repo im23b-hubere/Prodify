@@ -7,8 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import UserSubscription, utcnow
-from app.schemas import BillingSyncBody, EntitlementPublic
+from app.contracts.billing import BillingSyncBody, EntitlementPublic
+from app.models import User, UserSubscription, utcnow
+from app.services.kpi_tracker import track_event
 
 
 def is_revenuecat_secret_configured(secret: str | None) -> bool:
@@ -117,6 +118,33 @@ def verify_billing_sync(body: BillingSyncBody) -> BillingVerificationResult:
     return _verification_from_revenuecat(body)
 
 
+def save_verified_subscription(
+    db: Session,
+    user: User,
+    verified: BillingVerificationResult,
+) -> EntitlementPublic:
+    verified_body = BillingSyncBody(
+        app_user_id=verified.app_user_id,
+        entitlement="premium" if verified.entitlement == "premium" else "free",
+        trial_active=verified.trial_active,
+        expires_at=verified.expires_at,
+    )
+    row = upsert_subscription(db, user.id, verified_body)
+    apply_subscription_to_user(user, row)
+    track_event(
+        db,
+        "trial_started" if verified_body.trial_active else "billing_sync",
+        user.id,
+        {
+            "entitlement": verified_body.entitlement,
+            "verified_by": verified.verification_source,
+        },
+    )
+    db.commit()
+    db.refresh(row)
+    return to_entitlement_public(row)
+
+
 def sync_from_webhook_payload(db: Session, payload: dict) -> tuple[int | None, UserSubscription | None]:
     event = _webhook_event(payload)
     user_id_raw = event.get("app_user_id") or event.get("user_id")
@@ -132,6 +160,34 @@ def sync_from_webhook_payload(db: Session, payload: dict) -> tuple[int | None, U
         expires_at=_webhook_expiration(event),
     )
     return user_id, upsert_subscription(db, user_id, body)
+
+
+def process_webhook_payload(db: Session, payload: dict) -> UserSubscription | None:
+    user_id, row = sync_from_webhook_payload(db, payload)
+    if row is None:
+        return None
+
+    if user_id is not None:
+        user = db.get(User, user_id)
+        if user is not None:
+            apply_subscription_to_user(user, row)
+    track_event(
+        db,
+        "trial_converted_paid"
+        if row.entitlement == "premium" and not bool(row.trial_active)
+        else "billing_webhook",
+        user_id,
+        {"entitlement": row.entitlement},
+    )
+    db.commit()
+    return row
+
+
+def apply_subscription_to_user(user: User, subscription: UserSubscription) -> None:
+    user.is_premium = (
+        1 if subscription.entitlement == "premium" or bool(subscription.trial_active) else 0
+    )
+    user.premium_until = subscription.expires_at
 
 
 def _webhook_event(payload: dict) -> dict:
