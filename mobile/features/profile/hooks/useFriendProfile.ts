@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
@@ -53,6 +53,48 @@ export type FriendSessionItem = {
   mood_level: number | null;
 };
 
+async function loadFriendContext(token: string, userId: number) {
+  const [friendStatus, overview, buddyStatus, socialRecap] = await Promise.all([
+    apiJson<FriendStatusPayload>(`/friends/status/${userId}`, { token }),
+    apiJson<StreakOverviewDto>("/streak/overview", { token }).catch(() => null),
+    fetchBuddyStatus(token).catch(() => null),
+    fetchWeeklyRecap(token).catch(() => null),
+  ]);
+  return { friendStatus, overview, buddyStatus, socialRecap };
+}
+
+async function loadVisibleProfile(token: string, userId: number) {
+  const [profile, stats, sessions] = await Promise.all([
+    apiJson<FriendProfilePayload>(`/users/${userId}/profile`, { token }),
+    apiJson<FriendStatsPayload>(`/users/${userId}/stats`, { token }),
+    apiJson<FriendSessionItem[]>(`/users/${userId}/sessions?limit=10`, { token }),
+  ]);
+  return { profile, stats, sessions: Array.isArray(sessions) ? sessions : [] };
+}
+
+function useFriendProfileLifecycle(load: (options?: { silent?: boolean }) => Promise<void>) {
+  useEffect(() => {
+    void load();
+  }, [load]);
+}
+
+function canViewProfile(status: FriendStatus): boolean {
+  return status === "self" || status === "accepted";
+}
+
+function loadErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function useFriendProfileRefresh(load: (options?: { silent?: boolean }) => Promise<void>) {
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = useCallback(() => {
+    setRefreshing(true);
+    void load({ silent: true }).finally(() => setRefreshing(false));
+  }, [load]);
+  return { refreshing, refresh };
+}
+
 export function useFriendProfile(userId: number | null) {
   const { t } = useTranslation();
   const { token, user } = useAuth();
@@ -67,66 +109,54 @@ export function useFriendProfile(userId: number | null) {
   const [error, setError] = useState<string | null>(null);
   const [buddyStatus, setBuddyStatus] = useState<BuddyStatusDto | null>(null);
   const [socialRecap, setSocialRecap] = useState<SocialRecapDto | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const target = useMemo(
+    () => (token && userId != null ? { token, userId } : null),
+    [token, userId],
+  );
 
   const load = useCallback(
     async (options?: { silent?: boolean }) => {
-      if (!token || userId == null) {
+      if (!target) {
         setLoadState("error");
         setError(t("friendProfile.invalidProfile"));
-        setRefreshing(false);
         return;
       }
       if (!options?.silent) setLoadState("loading");
       setError(null);
       try {
-        const [friendStatus, overview, buddy, recap] = await Promise.all([
-          apiJson<FriendStatusPayload>(`/friends/status/${userId}`, { token }),
-          apiJson<StreakOverviewDto>("/streak/overview", { token }).catch(() => null),
-          fetchBuddyStatus(token).catch(() => null),
-          fetchWeeklyRecap(token).catch(() => null),
-        ]);
+        const { friendStatus, overview, buddyStatus, socialRecap } = await loadFriendContext(
+          target.token,
+          target.userId,
+        );
         setStatus(friendStatus.status);
         setTargetUsername(friendStatus.username ?? null);
         setPendingDirection(friendStatus.pending_direction ?? null);
         setYourStreak(overview?.current_streak ?? 0);
-        setBuddyStatus(buddy);
-        setSocialRecap(recap);
+        setBuddyStatus(buddyStatus);
+        setSocialRecap(socialRecap);
 
-        if (friendStatus.status !== "self" && friendStatus.status !== "accepted") {
+        if (!canViewProfile(friendStatus.status)) {
           setProfile(null);
           setStats(null);
           setSessions([]);
           setLoadState("ready");
           return;
         }
-        const [loadedProfile, loadedStats, loadedSessions] = await Promise.all([
-          apiJson<FriendProfilePayload>(`/users/${userId}/profile`, { token }),
-          apiJson<FriendStatsPayload>(`/users/${userId}/stats`, { token }),
-          apiJson<FriendSessionItem[]>(`/users/${userId}/sessions?limit=10`, { token }),
-        ]);
-        setProfile(loadedProfile);
-        setStats(loadedStats);
-        setSessions(Array.isArray(loadedSessions) ? loadedSessions : []);
+        const visibleProfile = await loadVisibleProfile(target.token, target.userId);
+        setProfile(visibleProfile.profile);
+        setStats(visibleProfile.stats);
+        setSessions(visibleProfile.sessions);
         setLoadState("ready");
       } catch (loadError) {
         setLoadState("error");
-        setError(loadError instanceof Error ? loadError.message : t("friendProfile.loadError"));
-      } finally {
-        setRefreshing(false);
+        setError(loadErrorMessage(loadError, t("friendProfile.loadError")));
       }
     },
-    [t, token, userId],
+    [t, target],
   );
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const refresh = useCallback(() => {
-    setRefreshing(true);
-    void load({ silent: true });
-  }, [load]);
+  useFriendProfileLifecycle(load);
+  const { refreshing, refresh } = useFriendProfileRefresh(load);
 
   return {
     status,
