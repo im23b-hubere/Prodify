@@ -1,5 +1,3 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
@@ -13,85 +11,72 @@ import {
 } from "react-native";
 
 import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
-import { useAuth } from "../../context/AuthContext";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
-import { ApiError } from "../../lib/client";
-import { readOnboardingComplete } from "../../lib/postAuthNavigation";
+import {
+  type RegisterFormController,
+  useRegisterForm,
+} from "../../features/auth/hooks/useRegisterForm";
+
+function RegisterCard({ form }: { form: RegisterFormController }) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.card}>
+      <Text style={styles.fieldLabel}>{t("auth.register.email")}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder={t("auth.register.placeholderEmail")}
+        placeholderTextColor={colors.textSecondary}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoComplete="email"
+        value={form.email}
+        onChangeText={form.setEmail}
+        accessibilityLabel={t("auth.register.email")}
+      />
+      <Text style={styles.fieldLabel}>{t("auth.register.username")}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder={t("auth.register.placeholderUsername")}
+        placeholderTextColor={colors.textSecondary}
+        autoCapitalize="none"
+        autoComplete="username"
+        value={form.username}
+        onChangeText={form.setUsername}
+        accessibilityLabel={t("auth.register.username")}
+      />
+      <Text style={styles.fieldLabel}>{t("auth.register.password")}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder={t("auth.register.placeholderPassword")}
+        placeholderTextColor={colors.textSecondary}
+        secureTextEntry
+        autoComplete="new-password"
+        value={form.password}
+        onChangeText={form.setPassword}
+        accessibilityLabel={t("auth.register.password")}
+      />
+
+      {form.error ? <Text style={styles.error}>{form.error}</Text> : null}
+      {form.showConnectionHint ? (
+        <Text accessibilityLiveRegion="polite" style={styles.connectionHint}>
+          {t("auth.connectionHint")}
+        </Text>
+      ) : null}
+
+      <PrimaryButton
+        label={t("auth.register.createAccount")}
+        onPress={form.submit}
+        loading={form.loading}
+      />
+    </View>
+  );
+}
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
-  const { signUp } = useAuth();
-  const router = useRouter();
-  const params = useLocalSearchParams<{ next?: string; source?: string; variant?: string }>();
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showConnectionHint, setShowConnectionHint] = useState(false);
-  const pendingPaywall = params.next === "paywall";
-  const paywallVariant =
-    params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
-
-  useEffect(() => {
-    if (!loading) {
-      setShowConnectionHint(false);
-      return;
-    }
-    const timer = setTimeout(() => setShowConnectionHint(true), 4_000);
-    return () => clearTimeout(timer);
-  }, [loading]);
-
-  async function onSubmit() {
-    if (loading) return;
-    const trimmedEmail = email.trim();
-    const trimmedUsername = username.trim();
-    if (!trimmedEmail) {
-      setError(t("errors.validation.emailRequired"));
-      return;
-    }
-    if (!trimmedUsername) {
-      setError(t("errors.validation.usernameRequired"));
-      return;
-    }
-    if (trimmedUsername.length < 2) {
-      setError(t("errors.validation.usernameShort"));
-      return;
-    }
-    if (!password.trim()) {
-      setError(t("errors.validation.passwordRequired"));
-      return;
-    }
-    if (password.length < 8) {
-      setError(t("errors.validation.passwordShort"));
-      return;
-    }
-    setError(null);
-    setLoading(true);
-    try {
-      await signUp(trimmedEmail, trimmedUsername, password);
-      const onboarded = await readOnboardingComplete();
-      if (pendingPaywall || onboarded) {
-        router.replace({
-          pathname: "/paywall",
-          params: { source: "post_auth", variant: paywallVariant },
-        });
-        return;
-      }
-      router.replace("/onboarding");
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 429) {
-        setError(t("errors.tooManyRequests"));
-      } else {
-        setError(e instanceof Error ? e.message : t("auth.register.registerFailed"));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  const form = useRegisterForm(t);
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -103,69 +88,13 @@ export default function RegisterScreen() {
           <Text style={styles.title}>{t("auth.register.title")}</Text>
           <Text style={styles.subtitle}>{t("auth.register.subtitle")}</Text>
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.fieldLabel}>{t("auth.register.email")}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={t("auth.register.placeholderEmail")}
-            placeholderTextColor={colors.textSecondary}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-            value={email}
-            onChangeText={setEmail}
-            accessibilityLabel={t("auth.register.email")}
-          />
-          <Text style={styles.fieldLabel}>{t("auth.register.username")}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={t("auth.register.placeholderUsername")}
-            placeholderTextColor={colors.textSecondary}
-            autoCapitalize="none"
-            autoComplete="username"
-            value={username}
-            onChangeText={setUsername}
-            accessibilityLabel={t("auth.register.username")}
-          />
-          <Text style={styles.fieldLabel}>{t("auth.register.password")}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={t("auth.register.placeholderPassword")}
-            placeholderTextColor={colors.textSecondary}
-            secureTextEntry
-            autoComplete="new-password"
-            value={password}
-            onChangeText={setPassword}
-            accessibilityLabel={t("auth.register.password")}
-          />
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {showConnectionHint ? (
-            <Text accessibilityLiveRegion="polite" style={styles.connectionHint}>
-              {t("auth.connectionHint")}
-            </Text>
-          ) : null}
-
-          <PrimaryButton
-            label={t("auth.register.createAccount")}
-            onPress={onSubmit}
-            loading={loading}
-          />
-        </View>
+        <RegisterCard form={form} />
 
         <Pressable
           style={styles.linkWrap}
           accessibilityRole="button"
           accessibilityLabel={t("auth.register.hasAccount")}
-          onPress={() => {
-            router.push({
-              pathname: "/(auth)/login",
-              params: pendingPaywall
-                ? { next: "paywall", source: "onboarding", variant: paywallVariant }
-                : undefined,
-            });
-          }}
+          onPress={form.openLogin}
         >
           <Text style={styles.link}>{t("auth.register.hasAccount")}</Text>
         </Pressable>
