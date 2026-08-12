@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -20,6 +21,21 @@ logger = logging.getLogger(__name__)
 SLOT_STREAK_UTC_22 = "streak_utc_22"
 SLOT_STREAK_UTC_23 = "streak_utc_23"
 SLOT_STREAK_UTC_2330 = "streak_utc_2330"
+
+
+@dataclass
+class ReminderCounts:
+    sent: int = 0
+    duplicate: int = 0
+    not_at_risk: int = 0
+
+    def record(self, outcome: str) -> None:
+        if outcome == "sent":
+            self.sent += 1
+        elif outcome == "duplicate":
+            self.duplicate += 1
+        elif outcome == "not_at_risk":
+            self.not_at_risk += 1
 
 
 def pick_reminder_slot(now_utc: datetime) -> str | None:
@@ -43,70 +59,99 @@ def run_streak_reminder_job(db: DBSession, settings: Settings) -> dict:
     day_key = now.date().isoformat()
 
     if slot is None:
-        return {
-            "utc_day_key": day_key,
-            "slot": None,
-            "reminders_sent": 0,
-            "users_with_tokens": 0,
-            "skipped_outside_window": True,
-            "message": "Current UTC time is outside streak reminder windows.",
-        }
+        return _outside_window_result(day_key)
 
     user_ids = list(db.scalars(select(PushToken.user_id).distinct()).all())
-    reminders_sent = 0
-    skipped_dedupe = 0
-    skipped_not_at_risk = 0
+    counts = ReminderCounts()
+    for user_id in user_ids:
+        counts.record(_process_user(db, settings, user_id, day_key, slot))
+    return {
+        "utc_day_key": day_key,
+        "slot": slot,
+        "reminders_sent": counts.sent,
+        "users_with_tokens": len(user_ids),
+        "skipped_already_sent_or_duplicate": counts.duplicate,
+        "skipped_not_at_risk": counts.not_at_risk,
+        "skipped_outside_window": False,
+    }
 
-    for uid in user_ids:
-        exists = db.scalar(
+
+def _outside_window_result(day_key: str) -> dict:
+    return {
+        "utc_day_key": day_key,
+        "slot": None,
+        "reminders_sent": 0,
+        "users_with_tokens": 0,
+        "skipped_outside_window": True,
+        "message": "Current UTC time is outside streak reminder windows.",
+    }
+
+
+def _process_user(
+    db: DBSession,
+    settings: Settings,
+    user_id: int,
+    day_key: str,
+    slot: str,
+) -> str:
+    if _was_already_reminded(db, user_id, day_key, slot):
+        return "duplicate"
+    current_streak, at_risk = streak_snapshot(db, user_id)
+    if not at_risk:
+        return "not_at_risk"
+    return "sent" if _send_reminder(db, settings, user_id, day_key, slot, current_streak) else "failed"
+
+
+def _was_already_reminded(db: DBSession, user_id: int, day_key: str, slot: str) -> bool:
+    return (
+        db.scalar(
             select(StreakReminderDispatchLog.id).where(
-                StreakReminderDispatchLog.user_id == uid,
+                StreakReminderDispatchLog.user_id == user_id,
                 StreakReminderDispatchLog.utc_day_key == day_key,
                 StreakReminderDispatchLog.slot_kind == slot,
             )
         )
-        if exists is not None:
-            skipped_dedupe += 1
-            continue
+        is not None
+    )
 
-        cur, at_risk = streak_snapshot(db, uid)
-        if not at_risk:
-            skipped_not_at_risk += 1
-            continue
 
-        title, body = push_templates.streak_reminder_slot(slot, cur)
-        data = {**push_data_dashboard(), "kind": slot}
-        try:
-            attempted, ok, msg = dispatch_to_user(settings, db, uid, title, body, data=data)
-            db.commit()
-        except Exception:
-            db.rollback()
-            logger.exception("streak reminder push failed user_id=%s", uid)
-            continue
-
-        if ok > 0:
-            db.add(
-                StreakReminderDispatchLog(
-                    user_id=uid,
-                    utc_day_key=day_key,
-                    slot_kind=slot,
-                    created_at=utcnow(),
-                )
-            )
-            db.commit()
-            reminders_sent += 1
-        elif attempted > 0 and msg:
-            logger.info("streak reminder no delivery user_id=%s: %s", uid, msg)
-
-    return {
-        "utc_day_key": day_key,
-        "slot": slot,
-        "reminders_sent": reminders_sent,
-        "users_with_tokens": len(user_ids),
-        "skipped_already_sent_or_duplicate": skipped_dedupe,
-        "skipped_not_at_risk": skipped_not_at_risk,
-        "skipped_outside_window": False,
-    }
+def _send_reminder(
+    db: DBSession,
+    settings: Settings,
+    user_id: int,
+    day_key: str,
+    slot: str,
+    current_streak: int,
+) -> bool:
+    title, body = push_templates.streak_reminder_slot(slot, current_streak)
+    try:
+        attempted, delivered, message = dispatch_to_user(
+            settings,
+            db,
+            user_id,
+            title,
+            body,
+            data={**push_data_dashboard(), "kind": slot},
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("streak reminder push failed user_id=%s", user_id)
+        return False
+    if delivered <= 0:
+        if attempted > 0 and message:
+            logger.info("streak reminder no delivery user_id=%s: %s", user_id, message)
+        return False
+    db.add(
+        StreakReminderDispatchLog(
+            user_id=user_id,
+            utc_day_key=day_key,
+            slot_kind=slot,
+            created_at=utcnow(),
+        )
+    )
+    db.commit()
+    return True
 
 
 def main() -> None:
