@@ -92,3 +92,5 @@ export function usePaywallController() {
     confirmDeleteAccount,
   };
 }
+
+export type PaywallController = ReturnType<typeof usePaywallController>;
