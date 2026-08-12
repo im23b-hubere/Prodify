@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.dependencies_subscription import user_has_premium_access
 from app.models import SocialCommitment, User, utcnow
-from app.schemas import CommitmentBody, CommitmentPublic
+from app.contracts.social import CommitmentBody, CommitmentPublic
 from app.services.commitment_witness_service import (
     notify_witnesses,
     save_witness_config,

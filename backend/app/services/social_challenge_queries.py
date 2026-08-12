@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.dependencies_subscription import user_has_premium_access
 from app.models import SocialChallenge, SocialChallengeMember, User
-from app.schemas import SocialChallengeMemberPublic, SocialChallengePublic
+from app.contracts.social import SocialChallengeMemberPublic, SocialChallengePublic
 from app.services.friend_graph import friend_user_ids
 from app.services.social_challenge_service import (
     challenge_completed_recently,

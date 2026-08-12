@@ -12,7 +12,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.dependencies_subscription import user_has_premium_access
 from app.models import BuddyStatus, ProductionSession, Streak, StreakRescue, User, utcnow
-from app.schemas import BuddyRiskPublic, StreakRescueBody
+from app.contracts.social import BuddyRiskPublic, StreakRescueBody
 from app.services.buddy_service import current_buddy_relationship, get_buddy_status
 from app.services.friend_graph import friend_user_ids
 from app.services.kpi_tracker import track_event

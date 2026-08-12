@@ -20,7 +20,7 @@ FUNCTION_LINE_BUDGETS = {
 }
 MODULE_LINE_BUDGETS = {
     "models.py": 495,
-    "schemas.py": 740,
+    "schemas.py": 531,
     "services/screenshot_seed_service.py": 382,
     "services/session_analytics_service.py": 316,
 }

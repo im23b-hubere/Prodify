@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import CheckinLog, CheckinPlan, User, utcnow
-from app.schemas import CheckinDayStatePublic, CheckinStatusPublic
+from app.contracts.social import CheckinDayStatePublic, CheckinStatusPublic
 from app.services.progression_service import grant_xp
 from app.services.social_week_service import current_week_start
 

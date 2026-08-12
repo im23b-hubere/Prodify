@@ -4,7 +4,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models import BuddyRelationship, BuddyStatus, User
-from app.schemas import BuddyStatusPublic
+from app.contracts.social import BuddyStatusPublic
 from app.services.social_week_service import current_week_start, session_count
 
 
