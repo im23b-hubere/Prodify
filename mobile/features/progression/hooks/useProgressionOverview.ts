@@ -106,6 +106,8 @@ export function useProgressionOverview(token: string | null, loadErrorMessage: s
   };
 }
 
+export type ProgressionOverviewState = ReturnType<typeof useProgressionOverview>;
+
 function hasFreshData(force: boolean, silent: boolean, snapshot: ProgressionSnapshot) {
   return (
     !force &&
