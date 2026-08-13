@@ -113,3 +113,5 @@ export function useNotificationInbox() {
     remove,
   };
 }
+
+export type NotificationInboxState = ReturnType<typeof useNotificationInbox>;
