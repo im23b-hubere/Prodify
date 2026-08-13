@@ -86,3 +86,5 @@ export function useOnboardingPresentation(answers: OnboardingQuizAnswers, weekly
     planAccessLine,
   };
 }
+
+export type OnboardingPresentation = ReturnType<typeof useOnboardingPresentation>;

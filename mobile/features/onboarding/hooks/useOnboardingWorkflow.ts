@@ -157,3 +157,5 @@ export function useOnboardingWorkflow() {
     finish,
   };
 }
+
+export type OnboardingWorkflow = ReturnType<typeof useOnboardingWorkflow>;

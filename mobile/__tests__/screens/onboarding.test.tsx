@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React from "react";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import OnboardingScreen from "../../app/onboarding/index";
 import { ONBOARDING_COMPLETE_KEY } from "../../constants/storageKeys";
@@ -97,18 +97,18 @@ jest.mock("../../lib/premiumAccess", () => ({
   resolvePremiumAccess: jest.fn(),
 }));
 
-describe("OnboardingScreen", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
-    mockUseAuth.mockReturnValue({ token: null, user: null });
-    (resolvePremiumAccess as jest.Mock).mockResolvedValue(false);
-  });
+beforeEach(() => {
+  jest.clearAllMocks();
+  jest.useFakeTimers();
+  mockUseAuth.mockReturnValue({ token: null, user: null });
+  (resolvePremiumAccess as jest.Mock).mockResolvedValue(false);
+});
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
+afterEach(() => {
+  jest.useRealTimers();
+});
 
+describe("Onboarding navigation and quiz", () => {
   it("skips quiz to weekly goal and routes anonymous users to account creation before paywall", async () => {
     const { getByText } = render(<OnboardingScreen />);
 
@@ -146,6 +146,34 @@ describe("OnboardingScreen", () => {
     });
   });
 
+  it("moves through intro and every personalization step", () => {
+    const { getByText } = render(<OnboardingScreen />);
+
+    fireEvent.press(getByText("onboarding.next"));
+    expect(getByText("onboarding.slide2.title")).toBeTruthy();
+    fireEvent.press(getByText("onboarding.next"));
+    fireEvent.press(getByText("onboarding.continue"));
+    expect(getByText("onboarding.quiz.experience.title")).toBeTruthy();
+
+    fireEvent.press(getByText("onboarding.quiz.experience.options.under_1y"));
+    act(() => jest.advanceTimersByTime(200));
+    expect(getByText("onboarding.quiz.genre.title")).toBeTruthy();
+
+    fireEvent.press(getByText("onboarding.quiz.genre.options.hip_hop"));
+    act(() => jest.advanceTimersByTime(200));
+    expect(getByText("onboarding.quiz.producerGoal.title")).toBeTruthy();
+
+    fireEvent.press(getByText("onboarding.quiz.producerGoal.options.finish_tracks"));
+    act(() => jest.advanceTimersByTime(200));
+    expect(getByText("onboarding.quiz.weeklyGoal.title")).toBeTruthy();
+
+    fireEvent.press(getByText("14"));
+    fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
+    expect(getByText("onboarding.quiz.plan.title")).toBeTruthy();
+  });
+});
+
+describe("Onboarding completion routing", () => {
   it("sends an existing premium user to the dashboard after onboarding", async () => {
     mockUseAuth.mockReturnValue({
       token: "access-token",
