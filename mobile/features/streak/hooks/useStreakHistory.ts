@@ -58,6 +58,8 @@ export function useStreakHistory(token: string | null, fallbackError: string) {
   return { runs, currentStreak, loading, refreshing, error, refresh, retry };
 }
 
+export type StreakHistoryState = ReturnType<typeof useStreakHistory>;
+
 function readCurrentStreak(result: PromiseSettledResult<StreakOverviewDto>): number | null {
   if (result.status !== "fulfilled") return null;
   return typeof result.value.current_streak === "number" ? result.value.current_streak : null;
