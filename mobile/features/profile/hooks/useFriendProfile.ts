@@ -176,3 +176,5 @@ export function useFriendProfile(userId: number | null) {
     refresh,
   };
 }
+
+export type FriendProfileState = ReturnType<typeof useFriendProfile>;
