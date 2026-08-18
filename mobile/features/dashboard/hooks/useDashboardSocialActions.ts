@@ -16,10 +16,7 @@ import { rescueBuddyStreak } from "../../../lib/social";
 import type { BuddyRiskDto, IdentityStateDto } from "../../../types/friends";
 import type { DashboardPrimaryNudge } from "./useDashboardSocialNudges";
 
-/** Minimal navigation surface used by social actions (Expo Router–compatible). */
-export type DashboardSocialRouter = {
-  push: (href: Href) => void;
-};
+export type DashboardSocialRouter = { push: (href: Href) => void };
 
 type Params = {
   token: string | null;
@@ -35,53 +32,67 @@ type Params = {
   setSocialActionBusy: Dispatch<SetStateAction<string | null>>;
 };
 
-export function useDashboardSocialActions({
-  token,
-  userId,
-  buddyRisk,
-  primaryNudge,
-  identityState,
-  router,
-  t,
-  loadSocial,
-  advancePrimaryNudge,
-  applyMomentumAction,
-  setSocialActionBusy,
-}: Params) {
+type IdentityFeedback = { rescue: string; session: string };
+
+export function useDashboardSocialActions(params: Params) {
+  const { socialToast, showSocialToast } = useSocialToast();
+  const identityFeedback = useIdentityFeedback(params.identityState, params.t);
+  const runRescueNow = useRescueAction(params, identityFeedback, showSocialToast);
+  const runStartSessionNow = useStartSessionAction(params, identityFeedback, showSocialToast);
+  const runPrimaryAction = useCallback(() => {
+    const nudge = params.primaryNudge;
+    if (!nudge) return;
+    if (nudge.actionKey === "rescue") return void runRescueNow();
+    if (nudge.actionKey === "start_session") return void runStartSessionNow(nudge.category);
+    params.router.push("/(tabs)/friends");
+  }, [params.primaryNudge, params.router, runRescueNow, runStartSessionNow]);
+
+  return { socialToast, runRescueNow, runStartSessionNow, runPrimaryAction };
+}
+
+function useSocialToast() {
   const [socialToast, setSocialToast] = useState<string | null>(null);
-  const socialToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (socialToastTimeoutRef.current) {
-        clearTimeout(socialToastTimeoutRef.current);
-      }
-    };
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    },
+    [],
+  );
+  const showSocialToast = useCallback((message: string) => {
+    setSocialToast(message);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setSocialToast(null), 1700);
   }, []);
+  return { socialToast, showSocialToast };
+}
 
-  const showSocialToast = useCallback((msg: string) => {
-    setSocialToast(msg);
-    if (socialToastTimeoutRef.current) {
-      clearTimeout(socialToastTimeoutRef.current);
-    }
-    socialToastTimeoutRef.current = setTimeout(() => setSocialToast(null), 1700);
-  }, []);
-
-  const identityFeedback = useMemo(() => {
+function useIdentityFeedback(identityState: IdentityStateDto | null, t: TFunction) {
+  return useMemo<IdentityFeedback>(() => {
     const tag = identityState?.primary_tag;
     return {
-      rescue:
+      rescue: t(
         tag === "collaborative"
-          ? t("dashboard.identityRescueCollaborative")
-          : t("dashboard.identityRescueDefault"),
-      session:
+          ? "dashboard.identityRescueCollaborative"
+          : "dashboard.identityRescueDefault",
+      ),
+      session: t(
         tag === "locked_in"
-          ? t("dashboard.identitySessionLockedIn")
-          : t("dashboard.identitySessionDefault"),
+          ? "dashboard.identitySessionLockedIn"
+          : "dashboard.identitySessionDefault",
+      ),
     };
   }, [identityState?.primary_tag, t]);
+}
 
-  const runRescueNow = useCallback(() => {
+function useRescueAction(
+  params: Params,
+  feedback: IdentityFeedback,
+  showToast: (message: string) => void,
+) {
+  const { advancePrimaryNudge, applyMomentumAction, buddyRisk, loadSocial } = params;
+  const { router, setSocialActionBusy, t, token, userId } = params;
+  return useCallback(() => {
     if (!token || !buddyRisk?.buddy_user_id || !buddyRisk.rescue_available) return;
     Alert.alert(t("dashboard.rescueTitle"), t("dashboard.rescueBody"), [
       { text: t("common.cancel"), style: "cancel" },
@@ -93,23 +104,12 @@ export function useDashboardSocialActions({
           try {
             await rescueBuddyStreak(token, buddyRisk.buddy_user_id as number);
             await loadSocial();
-            if (userId) {
-              await applyMomentumAction(userId, "rescue");
-            }
-            showSocialToast(identityFeedback.rescue);
+            if (userId) await applyMomentumAction(userId, "rescue");
+            showToast(feedback.rescue);
             await advancePrimaryNudge("buddy_risk");
-            Alert.alert(t("dashboard.rescueSuccessTitle"), t("dashboard.rescueSuccessBody"), [
-              { text: t("dashboard.later"), style: "cancel" },
-              {
-                text: t("dashboard.inviteProducer"),
-                onPress: () => router.push("/(tabs)/friends"),
-              },
-            ]);
-          } catch (e) {
-            Alert.alert(
-              t("dashboard.couldNotSendSupport"),
-              e instanceof Error ? e.message : t("common.tryAgain"),
-            );
+            showRescueSuccess(t, router);
+          } catch (error) {
+            showActionError(t, "dashboard.couldNotSendSupport", error);
           } finally {
             setSocialActionBusy(null);
           }
@@ -117,69 +117,63 @@ export function useDashboardSocialActions({
       },
     ]);
   }, [
-    token,
-    buddyRisk,
-    loadSocial,
-    showSocialToast,
     advancePrimaryNudge,
-    userId,
-    identityFeedback.rescue,
-    router,
-    t,
     applyMomentumAction,
+    buddyRisk,
+    feedback.rescue,
+    loadSocial,
+    router,
     setSocialActionBusy,
+    showToast,
+    t,
+    token,
+    userId,
   ]);
+}
 
-  const runStartSessionNow = useCallback(
+function useStartSessionAction(
+  params: Params,
+  feedback: IdentityFeedback,
+  showToast: (message: string) => void,
+) {
+  const { advancePrimaryNudge, applyMomentumAction, router } = params;
+  const { setSocialActionBusy, t, token, userId } = params;
+  return useCallback(
     async (category: string) => {
       if (!token) return;
       setSocialActionBusy("commitment");
       try {
-        if (userId) {
-          await applyMomentumAction(userId, "session");
-        }
-        showSocialToast(identityFeedback.session);
+        if (userId) await applyMomentumAction(userId, "session");
+        showToast(feedback.session);
         await advancePrimaryNudge(category);
         router.push("/session/setup");
-      } catch (e) {
-        Alert.alert(
-          t("dashboard.couldNotStartProducing"),
-          e instanceof Error ? e.message : t("common.tryAgain"),
-        );
+      } catch (error) {
+        showActionError(t, "dashboard.couldNotStartProducing", error);
       } finally {
         setSocialActionBusy(null);
       }
     },
     [
-      token,
-      showSocialToast,
       advancePrimaryNudge,
-      userId,
-      identityFeedback.session,
-      t,
       applyMomentumAction,
-      setSocialActionBusy,
+      feedback.session,
       router,
+      setSocialActionBusy,
+      showToast,
+      t,
+      token,
+      userId,
     ],
   );
+}
 
-  const runPrimaryAction = useCallback(() => {
-    if (!primaryNudge) return;
-    if (primaryNudge.actionKey === "rescue") {
-      void runRescueNow();
-      return;
-    }
-    if (primaryNudge.actionKey === "start_session") {
-      void runStartSessionNow(primaryNudge.category);
-      return;
-    }
-    router.push("/(tabs)/friends");
-  }, [primaryNudge, runRescueNow, runStartSessionNow, router]);
+function showRescueSuccess(t: TFunction, router: DashboardSocialRouter) {
+  Alert.alert(t("dashboard.rescueSuccessTitle"), t("dashboard.rescueSuccessBody"), [
+    { text: t("dashboard.later"), style: "cancel" },
+    { text: t("dashboard.inviteProducer"), onPress: () => router.push("/(tabs)/friends") },
+  ]);
+}
 
-  return {
-    socialToast,
-    runRescueNow,
-    runStartSessionNow,
-    runPrimaryAction,
-  };
+function showActionError(t: TFunction, titleKey: string, error: unknown) {
+  Alert.alert(t(titleKey), error instanceof Error ? error.message : t("common.tryAgain"));
 }
