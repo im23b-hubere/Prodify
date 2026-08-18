@@ -53,3 +53,5 @@ export function useYourWeekGoalEditor({ goal, commitment, onSaveGoal }: GoalEdit
     save,
   };
 }
+
+export type YourWeekGoalEditorState = ReturnType<typeof useYourWeekGoalEditor>;
