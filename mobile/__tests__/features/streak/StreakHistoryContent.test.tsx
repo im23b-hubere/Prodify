@@ -35,6 +35,10 @@ function renderContent(state: StreakHistoryState, signedIn: boolean) {
 }
 
 describe("StreakHistoryContent", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("offers sign-in without exposing authenticated empty actions", () => {
     const actions = renderContent(history(), false);
 
@@ -60,6 +64,8 @@ describe("StreakHistoryContent", () => {
   });
 
   it("renders run progress and the history footnote", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-08-14T12:00:00Z"));
     renderContent(
       history({
         currentStreak: 3,
