@@ -4,6 +4,7 @@ import {
 } from "../../../features/weeklyRecap/weeklyRecapPresentation";
 import type { TFunction } from "i18next";
 import type { WeeklyReviewDto } from "../../../types/outcomes";
+import { buildWrappedSlides } from "../../../features/weeklyRecap/wrappedSlides";
 
 const t = ((key: string) => key) as TFunction;
 
@@ -37,5 +38,17 @@ describe("weeklyRecapPresentation", () => {
         "1.0",
       ).url,
     ).toBe("https://prodify.app/card.png");
+  });
+
+  it("builds an explicit empty journey ending with the outro", () => {
+    const slides = buildWrappedSlides({
+      t,
+      review: null,
+      stats: null,
+      displaySessions: 0,
+      displayHours: "0.0",
+      weekRange: "",
+    });
+    expect(slides.map((slide) => slide.id)).toEqual(["intro", "empty", "outro"]);
   });
 });
