@@ -12,7 +12,6 @@ import type { SessionFeedbackComputed } from "../../lib/sessionFeedbackEngine";
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
 import { WeeklyQuestCard } from "../studio/WeeklyQuestCard";
-import { StatTile } from "../ui/StatTile";
 import { styles } from "./DashboardStudioHud.styles";
 import { DashboardWeekDots } from "./DashboardWeekDots";
 
@@ -36,7 +35,6 @@ type Props = {
   todaySessions: number;
   todayMinutes: number;
   level: number | null;
-  statusLine: string | null;
   freezeBusy: boolean;
   onUseFreeze: () => void;
   onFreezeUnavailable: () => void;
@@ -45,31 +43,35 @@ type Props = {
 
 export const DashboardStudioHud = memo(function DashboardStudioHud(props: Props) {
   return (
-    <LinearGradient
-      colors={["#3d1510", "#1a1010", "#0a0a0a"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.card}
-      testID="dashboard-studio-hud"
-    >
-      {props.loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator color={colors.primary} />
+    <View style={styles.stack} testID="dashboard-studio-hud">
+      <LinearGradient
+        colors={["#3d1510", "#1a1010", "#0a0a0a"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
+        {props.loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : null}
+        <SessionAction props={props} />
+      </LinearGradient>
+      <View style={styles.goalCard}>
+        <WeeklyGoalBlock props={props} />
+      </View>
+      <DashboardStats props={props} />
+      {props.streakOverview ? (
+        <View style={styles.streakCard}>
+          <DashboardWeekDots
+            overview={props.streakOverview}
+            onOpenHistory={props.onOpenStreakHistory}
+            t={props.t}
+          />
+          <FreezeAction props={props} />
         </View>
       ) : null}
-      <WeeklyGoalBlock props={props} />
-      <SessionAction props={props} />
-      <DashboardStats props={props} />
-      {props.statusLine ? <Text style={styles.statusLine}>{props.statusLine}</Text> : null}
-      {props.streakOverview ? (
-        <DashboardWeekDots
-          overview={props.streakOverview}
-          onOpenHistory={props.onOpenStreakHistory}
-          t={props.t}
-        />
-      ) : null}
-      <FreezeAction props={props} />
-    </LinearGradient>
+    </View>
   );
 });
 
@@ -147,14 +149,13 @@ function SessionAction({ props }: { props: Props }) {
 
 function DashboardStats({ props }: { props: Props }) {
   return (
-    <View style={styles.statGrid}>
-      <StatTile
+    <View style={styles.metricsCard}>
+      <MetricItem
         label={props.t("sessionComplete.statStreakLabel")}
         value={`${props.streakCount}d`}
-        icon={props.streakCount > 0 ? "flame" : undefined}
-        accent={props.streakCount > 0}
       />
-      <StatTile
+      <View style={styles.metricDivider} />
+      <MetricItem
         label={props.t("dashboard.studioTodayLabel")}
         value={props.t("dashboard.studioTodayValue", {
           sessions: props.todaySessions,
@@ -162,8 +163,20 @@ function DashboardStats({ props }: { props: Props }) {
         })}
       />
       {props.level != null ? (
-        <StatTile label={props.t("sessionComplete.statLevelLabel")} value={`${props.level}`} />
+        <>
+          <View style={styles.metricDivider} />
+          <MetricItem label={props.t("sessionComplete.statLevelLabel")} value={`${props.level}`} />
+        </>
       ) : null}
+    </View>
+  );
+}
+
+function MetricItem({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.metricItem}>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
     </View>
   );
 }

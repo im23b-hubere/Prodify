@@ -4,10 +4,13 @@ import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 
 export const styles = StyleSheet.create({
-  card: {
+  stack: {
+    width: "100%",
+    gap: spacing.sm,
+  },
+  heroCard: {
     borderRadius: radii.xl,
     padding: spacing.md,
-    gap: spacing.md,
     borderWidth: 1,
     borderColor: "rgba(255,61,0,0.22)",
     overflow: "hidden",
@@ -51,18 +54,54 @@ export const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
   },
-  statGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
+  goalCard: {
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.035)",
   },
-  statusLine: {
+  metricsCard: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.025)",
+    paddingVertical: spacing.sm,
+  },
+  metricItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    paddingHorizontal: spacing.xs,
+  },
+  metricValue: {
     color: colors.textPrimary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.body,
-    textAlign: "center",
+    fontFamily: fontFamily.heading,
+    fontSize: 17,
     lineHeight: 21,
-    paddingHorizontal: spacing.sm,
+  },
+  metricLabel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 10,
+    lineHeight: 14,
+    textAlign: "center",
+  },
+  metricDivider: {
+    width: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xs,
+  },
+  streakCard: {
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.025)",
   },
   weekRow: {
     flexDirection: "row",

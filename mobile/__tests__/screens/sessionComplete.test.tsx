@@ -144,12 +144,12 @@ describe("SessionCompleteScreen", () => {
     });
   });
 
-  it("renders the simplified completion screen with quest progress and action buttons", async () => {
+  it("renders the simplified completion screen with weekly progress and action buttons", async () => {
     const { findByTestId, getByText } = render(<SessionCompleteScreen />);
 
     expect(await findByTestId("session-complete-screen")).toBeTruthy();
     expect(getByText("sessionComplete.heroEyebrow")).toBeTruthy();
-    expect(getByText("sessionComplete.weekQuestTitle")).toBeTruthy();
+    expect(getByText("dashboard.weeklyGoalTitle")).toBeTruthy();
     expect(getByText("sessionComplete.viewDetails")).toBeTruthy();
     expect(getByText("sessionComplete.backToDashboard")).toBeTruthy();
   });

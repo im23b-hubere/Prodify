@@ -43,47 +43,21 @@ function WeeklyQuestSetup({
     <View style={styles.wrap} testID={testID}>
       <Text style={styles.setupTitle}>{t("dashboard.weeklyGoalNudgeTitle")}</Text>
       <Text style={styles.setupHint}>{t("dashboard.weeklyGoalInlineHint")}</Text>
-      <View style={styles.chipRow}>
-        {GOAL_CHIPS.map((value) => (
-          <Pressable
-            key={value}
-            accessibilityRole="button"
-            accessibilityLabel={t("dashboard.weeklyGoalChipA11y", { count: value })}
-            disabled={busy}
-            style={({ pressed }) => [
-              styles.chip,
-              pressed && !busy && styles.chipPressed,
-              busy && styles.chipDisabled,
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-              void onSave(value);
-            }}
-          >
-            {busy ? (
-              <ActivityIndicator color={colors.primary} size="small" />
-            ) : (
-              <Text style={styles.chipText}>{value}</Text>
-            )}
-          </Pressable>
-        ))}
-      </View>
+      <GoalChoices t={t} busy={busy} onSelect={onSave} />
     </View>
   );
 }
 
-function QuestGoalEditor({
+function GoalChoices({
   t,
-  target,
   busy,
-  onChangeTarget,
-  onSaved,
+  target,
+  onSelect,
 }: {
   t: TFunction;
-  target: number;
   busy?: boolean;
-  onChangeTarget: (target: number) => Promise<void>;
-  onSaved: () => void;
+  target?: number;
+  onSelect: (target: number) => Promise<void>;
 }) {
   return (
     <View style={styles.chipRow}>
@@ -101,14 +75,14 @@ function QuestGoalEditor({
           ]}
           onPress={() => {
             Haptics.selectionAsync().catch(() => undefined);
-            void onChangeTarget(value).then(onSaved);
+            void onSelect(value);
           }}
         >
           {busy ? (
             <ActivityIndicator color={colors.primary} size="small" />
           ) : (
             <Text style={[styles.chipText, value === target && styles.chipTextActive]}>
-              {value}
+              {t("dashboard.weeklyGoalChoice", { count: value })}
             </Text>
           )}
         </Pressable>
@@ -128,64 +102,56 @@ function WeeklyQuestProgress({
   testID = "dashboard-quest-progress",
 }: Omit<ProgressProps, "mode">) {
   const [editing, setEditing] = useState(false);
-  const presentation = weeklyQuestPresentation(feedback, paceForecast);
-
+  const progress = weeklyQuestPresentation(feedback, paceForecast).progressPercent;
+  const remaining = Math.max(
+    0,
+    feedback.remainingSessionsToGoal ?? weeklyGoalTarget - weekSessionsCount,
+  );
+  const toggleEditing = () => {
+    if (!onChangeTarget) return;
+    Haptics.selectionAsync().catch(() => undefined);
+    setEditing((value) => !value);
+  };
+  const saveTarget = async (target: number) => {
+    if (!onChangeTarget) return;
+    await onChangeTarget(target);
+    setEditing(false);
+  };
   return (
     <View style={styles.wrap} testID={testID}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>{t("sessionComplete.weekQuestTitle")}</Text>
-        <View style={styles.headerRight}>
-          <View style={[styles.statusChip, styles[`chip_${presentation.status}`]]}>
-            <Text style={styles.statusChipText}>
-              {t(`sessionComplete.questStatus.${presentation.status}`)}
-            </Text>
-          </View>
-          {onChangeTarget ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                editing ? t("dashboard.weeklyGoalDone") : t("dashboard.weeklyGoalEdit")
-              }
-              onPress={() => {
-                Haptics.selectionAsync().catch(() => undefined);
-                setEditing((value) => !value);
-              }}
-              style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.8 }]}
-            >
-              <Text style={styles.editBtnText}>
-                {editing ? t("dashboard.weeklyGoalDone") : t("dashboard.weeklyGoalEdit")}
-              </Text>
-            </Pressable>
-          ) : null}
+      <Pressable
+        accessibilityRole={onChangeTarget ? "button" : undefined}
+        accessibilityLabel={
+          onChangeTarget
+            ? editing
+              ? t("dashboard.weeklyGoalDone")
+              : t("dashboard.weeklyGoalEdit")
+            : undefined
+        }
+        disabled={!onChangeTarget}
+        onPress={toggleEditing}
+        style={({ pressed }) => [styles.headerRow, pressed && styles.headerPressed]}
+      >
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>{t("dashboard.weeklyGoalTitle")}</Text>
+          <Text style={styles.remainingText}>
+            {remaining === 0
+              ? t("dashboard.weeklyGoalComplete")
+              : t("dashboard.weeklyGoalRemaining", { count: remaining })}
+          </Text>
         </View>
-      </View>
-
-      <Text style={styles.progressNumbers}>
-        {t("sessionComplete.weekProgress", {
-          current: weekSessionsCount,
-          target: weeklyGoalTarget,
-        })}
-      </Text>
+        <Text style={styles.progressNumbers}>
+          {t("dashboard.weeklyGoalProgressSimple", {
+            current: weekSessionsCount,
+            target: weeklyGoalTarget,
+          })}
+        </Text>
+      </Pressable>
       <View style={styles.goalProgressTrack}>
-        <View style={[styles.goalProgressFill, { width: `${presentation.progressPercent}%` }]} />
-        {paceForecast ? (
-          <View
-            style={[
-              styles.goalProgressMarker,
-              { left: `${paceForecast.todayExpectedMarkerPercent}%` },
-            ]}
-          />
-        ) : null}
+        <View style={[styles.goalProgressFill, { width: `${progress}%` }]} />
       </View>
-
       {editing && onChangeTarget ? (
-        <QuestGoalEditor
-          t={t}
-          target={weeklyGoalTarget}
-          busy={busy}
-          onChangeTarget={onChangeTarget}
-          onSaved={() => setEditing(false)}
-        />
+        <GoalChoices t={t} target={weeklyGoalTarget} busy={busy} onSelect={saveTarget} />
       ) : null}
     </View>
   );

@@ -24,7 +24,7 @@ describe("WeeklyQuestCard", () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     render(<WeeklyQuestCard mode="setup" t={t} onSave={onSave} />);
 
-    fireEvent.press(screen.getByText("5"));
+    fireEvent.press(screen.getByLabelText('dashboard.weeklyGoalChipA11y:{"count":5}'));
     await waitFor(() => expect(onSave).toHaveBeenCalledWith(5));
   });
 
@@ -43,8 +43,9 @@ describe("WeeklyQuestCard", () => {
     );
 
     fireEvent.press(screen.getByLabelText("dashboard.weeklyGoalEdit"));
-    fireEvent.press(screen.getByText("7"));
+    const sevenChoice = 'dashboard.weeklyGoalChipA11y:{"count":7}';
+    fireEvent.press(screen.getByLabelText(sevenChoice));
     await waitFor(() => expect(onChangeTarget).toHaveBeenCalledWith(7));
-    await waitFor(() => expect(screen.queryByText("7")).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText(sevenChoice)).toBeNull());
   });
 });

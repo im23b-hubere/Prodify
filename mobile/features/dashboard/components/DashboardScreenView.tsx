@@ -132,7 +132,6 @@ function StudioSection({ controller }: { controller: DashboardScreenController }
       todaySessions={presentation.todayStats.count}
       todayMinutes={presentation.todayStats.minutes}
       level={level}
-      statusLine={presentation.studioStatusLine}
       freezeBusy={sessionActions.freezeBusy}
       onUseFreeze={sessionActions.useFreeze}
       onFreezeUnavailable={sessionActions.explainFreezeUnavailable}
