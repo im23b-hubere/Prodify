@@ -71,7 +71,7 @@ concurrency:
 jobs:
   agent-device-ios:
     runs-on: macos-15
-    timeout-minutes: ${{ github.event.inputs.maestro_suite == 'regression' && (github.event.inputs.qa_mode == 'replay-only' && 50 || 75) || (github.event.inputs.qa_mode == 'replay-only' && 25 || 45) }}
+    timeout-minutes: ${{ github.event.inputs.maestro_suite == 'regression' && 75 || (github.event.inputs.qa_mode == 'replay-only' && 25 || 45) }}
     env:
       MAESTRO_VERSION: "1.39.13"
       MAESTRO_INSTALLER_SHA256: "40115b628eb491f29d02275bc7e3db5334024ba4fdff7210a334fd3cf4a8f306"
@@ -311,6 +311,10 @@ jobs:
           echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
           echo "Installing $APP_PATH on ${{ steps.sim.outputs.device_udid }}"
           xcrun simctl install "${{ steps.sim.outputs.device_udid }}" "$APP_PATH"
+          # Warm the installed binary so Maestro's iOS driver is less likely to hang on replay.
+          xcrun simctl launch "${{ steps.sim.outputs.device_udid }}" com.prodify.app || true
+          sleep 8
+          xcrun simctl terminate "${{ steps.sim.outputs.device_udid }}" com.prodify.app || true
 
       - name: Cache Maestro CLI
         uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
@@ -340,6 +344,7 @@ jobs:
           maestro --version | grep -Fq "${MAESTRO_VERSION}"
 
       - name: Run Maestro on iOS simulator
+        timeout-minutes: ${{ github.event.inputs.maestro_suite == 'regression' && 40 || 20 }}
         env:
           SIMULATOR_UDID: ${{ steps.sim.outputs.device_udid }}
           AGENT_DEVICE_REPLAY_TIMEOUT_MS: ${{ contains(github.event.inputs.maestro_flow, 'full_app_test') && '900000' || contains(github.event.inputs.maestro_flow, 'bootstrap_dashboard') && '300000' || '600000' }}
