@@ -1,0 +1,6 @@
+# Default stabilization regression suite.
+# Paths are relative to mobile/. One flow per line.
+# Consumed by scripts/qa/resolve-maestro-flows.sh and scripts/run-agent-device-qa.ps1.
+maestro/flows/e2e_login_smoke.yaml
+maestro/flows/paywall_preview.yaml
+maestro/flows/full_app_test.yaml

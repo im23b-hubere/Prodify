@@ -28,12 +28,21 @@ on:
           - maestro/flows/bootstrap_dashboard.yaml
           - maestro/flows/login_error_recovery.yaml
           - maestro/flows/onboarding_to_login.yaml
+          - maestro/flows/e2e_login_smoke.yaml
           - maestro/flows/paywall_preview.yaml
           - maestro/flows/secondary_deep_links.yaml
           - maestro/flows/stats_profile_details.yaml
           - maestro/flows/tab_navigation.yaml
           - maestro/flows/smoke_test.yaml
           - maestro/flows/full_app_test.yaml
+      maestro_suite:
+        description: Named Maestro suite (overrides maestro_flow when not none). Uses one simulator build for all flows.
+        required: false
+        default: none
+        type: choice
+        options:
+          - none
+          - regression
       qa_mode:
         description: Build a fresh simulator app or replay Maestro against a previous app artifact
         required: false
@@ -56,13 +65,13 @@ permissions:
   actions: read
 
 concurrency:
-  group: agent-device-ios-${{ github.ref }}-${{ github.event.inputs.qa_mode || 'build-and-test' }}
+  group: agent-device-ios-${{ github.ref }}-${{ github.event.inputs.qa_mode || 'build-and-test' }}-${{ github.event.inputs.maestro_suite || 'none' }}
   cancel-in-progress: true
 
 jobs:
   agent-device-ios:
     runs-on: macos-15
-    timeout-minutes: ${{ github.event.inputs.qa_mode == 'replay-only' && 25 || 45 }}
+    timeout-minutes: ${{ github.event.inputs.maestro_suite == 'regression' && (github.event.inputs.qa_mode == 'replay-only' && 50 || 75) || (github.event.inputs.qa_mode == 'replay-only' && 25 || 45) }}
     env:
       MAESTRO_VERSION: "1.39.13"
       MAESTRO_INSTALLER_SHA256: "40115b628eb491f29d02275bc7e3db5334024ba4fdff7210a334fd3cf4a8f306"
@@ -81,6 +90,7 @@ jobs:
       SENTRY_ALLOW_FAILURE: "true"
       CI: "true"
       MAESTRO_FLOW: ${{ github.event.inputs.maestro_flow || 'maestro/flows/smoke_test.yaml' }}
+      MAESTRO_SUITE: ${{ github.event.inputs.maestro_suite || 'none' }}
     defaults:
       run:
         shell: bash
@@ -354,6 +364,9 @@ jobs:
             ~/.maestro/tests/
             artifacts/agent-device-ios/maestro-tests/
             artifacts/agent-device-ios/maestro-output.log
+            artifacts/agent-device-ios/suite-summary.txt
+            artifacts/agent-device-ios/*/maestro-tests/
+            artifacts/agent-device-ios/*/maestro-output.log
           retention-days: 7
           if-no-files-found: ignore
 

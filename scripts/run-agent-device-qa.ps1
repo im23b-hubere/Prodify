@@ -5,6 +5,7 @@
 #   .\scripts\run-agent-device-qa.ps1 -Watch
 #   .\scripts\run-agent-device-qa.ps1 -FullApp -Watch
 #   .\scripts\run-agent-device-qa.ps1 -FastSmoke -Watch
+#   .\scripts\run-agent-device-qa.ps1 -RegressionSuite -Watch
 #   .\scripts\run-agent-device-qa.ps1 -NoAuto -FullApp -Watch
 #   .\scripts\run-agent-device-qa.ps1 -ReplayOnly -AppArtifactRunId 123456789 -Watch
 
@@ -17,6 +18,7 @@ param(
     [string]$AppArtifactRunId,
     [switch]$FullApp,
     [switch]$FastSmoke,
+    [switch]$RegressionSuite,
     [switch]$NoAuto,
     [switch]$ReplayOnly,
     [switch]$SkipSeed,
@@ -52,10 +54,22 @@ function Resolve-GhCommand {
     throw "GitHub CLI (gh) not found. Run: .\scripts\setup-gh.ps1"
 }
 
-if ($FullApp) {
-    $Flow = "maestro/flows/full_app_test.yaml"
+if (($FullApp -and $FastSmoke) -or ($FullApp -and $RegressionSuite) -or ($FastSmoke -and $RegressionSuite)) {
+    throw "Use only one of -RegressionSuite, -FullApp, or -FastSmoke."
 }
-if ($FastSmoke) {
+
+$MaestroSuite = "none"
+$SuiteFlows = @()
+if ($RegressionSuite) {
+    $MaestroSuite = "regression"
+    $SuiteFlows = @(Get-MaestroSuiteFlows -Suite $MaestroSuite -RepoRoot $RepoRoot)
+    if ($SuiteFlows.Count -eq 0) {
+        throw "Regression suite '$MaestroSuite' resolved zero flows."
+    }
+    $Flow = $SuiteFlows[0]
+} elseif ($FullApp) {
+    $Flow = "maestro/flows/full_app_test.yaml"
+} elseif ($FastSmoke) {
     $Flow = "maestro/flows/bootstrap_dashboard.yaml"
 }
 
@@ -95,7 +109,7 @@ if ($SeedApiUser -eq "true") {
 }
 
 Write-Host ""
-Write-AgentDeviceQaModeSummary -Resolution $resolution -Flow $Flow
+Write-AgentDeviceQaModeSummary -Resolution $resolution -Flow $Flow -Suite $MaestroSuite -SuiteFlows $SuiteFlows
 Write-Host "Triggering workflow: $WorkflowFile"
 & $Gh workflow run $WorkflowFile `
     --ref $Ref `
@@ -104,6 +118,7 @@ Write-Host "Triggering workflow: $WorkflowFile"
     -f "test_password=$TestPassword" `
     -f "test_username=$TestUsername" `
     -f "maestro_flow=$Flow" `
+    -f "maestro_suite=$MaestroSuite" `
     -f "qa_mode=$QaMode" `
     -f "app_artifact_run_id=$AppArtifactRunId" `
     -f "seed_api_user=$SeedApiUser"
@@ -147,4 +162,5 @@ Write-Host "  Open the run URL above in your browser"
 Write-Host "  Watch locally:     & `"$Gh`" run watch $runId"
 Write-Host "  Download artifacts: .\scripts\run-agent-device-qa.ps1 -SkipSeed -DownloadArtifacts"
 Write-Host "  Replay same app:   .\scripts\run-agent-device-qa.ps1 -FullApp -ReplayOnly -AppArtifactRunId $runId -SkipSeed -Watch"
+Write-Host "  Regression suite:  .\scripts\run-agent-device-qa.ps1 -RegressionSuite -Watch"
 Write-Host "  Docs: docs/qa/agent-device-setup.md"

@@ -167,22 +167,61 @@ function Resolve-AgentDeviceQaMode {
     return [pscustomobject]$result
 }
 
+function Get-MaestroSuiteFlows {
+    param(
+        [string]$Suite,
+        [string]$RepoRoot
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Suite) -or $Suite -eq "none") {
+        return @()
+    }
+
+    $path = Join-Path $RepoRoot "mobile\maestro\suites\$Suite.txt"
+    if (-not (Test-Path $path)) {
+        throw "Unknown Maestro suite '$Suite' (missing $path)"
+    }
+
+    return @(
+        Get-Content $path |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -and -not $_.StartsWith("#") }
+    )
+}
+
 function Write-AgentDeviceQaModeSummary {
     param(
         [pscustomobject]$Resolution,
-        [string]$Flow
+        [string]$Flow,
+        [string]$Suite = "none",
+        [string[]]$SuiteFlows = @()
     )
 
-    Write-Host "Maestro flow: $Flow"
+    if ($Suite -and $Suite -ne "none") {
+        Write-Host "Maestro suite: $Suite"
+        foreach ($suiteFlow in $SuiteFlows) {
+            Write-Host "  - $suiteFlow"
+        }
+    } else {
+        Write-Host "Maestro flow: $Flow"
+    }
     Write-Host "QA mode:      $($Resolution.QaMode)"
     if ($Resolution.AutoEnabled) {
         Write-Host "Auto mode:    enabled ($($Resolution.AutoReason))"
     }
     if ($Resolution.QaMode -eq "replay-only") {
         Write-Host "App artifact: run $($Resolution.AppArtifactRunId)"
-        Write-Host "Est. runtime: ~5-10 min"
+        if ($Suite -and $Suite -ne "none") {
+            Write-Host "Est. runtime: ~15-25 min (replay suite)"
+        } else {
+            Write-Host "Est. runtime: ~5-10 min"
+        }
     } else {
-        Write-Host "Est. runtime: ~25-35 min (build + test)"
+        if ($Suite -and $Suite -ne "none") {
+            Write-Host "Est. runtime: ~40-60 min (one simulator build + suite)"
+        } else {
+            Write-Host "Est. runtime: ~25-35 min (build + test)"
+        }
         if ($Resolution.ChangedAppFiles.Count -gt 0 -and $Resolution.ChangedAppFiles[0] -ne "*") {
             Write-Host "Rebuild due to:"
             $Resolution.ChangedAppFiles | Select-Object -First 8 | ForEach-Object { Write-Host "  - $_" }

@@ -30,6 +30,9 @@ Prodify iOS QA from Windows runs on **GitHub Actions** (`macos-15` runner) via a
 # Fast bootstrap smoke only (~3-5 min replay-only)
 .\scripts\run-agent-device-qa.ps1 -FastSmoke -Watch
 
+# Stabilization regression suite: one simulator build, then login + paywall + full app
+.\scripts\run-agent-device-qa.ps1 -RegressionSuite -Watch
+
 # Force a fresh build (skip auto replay)
 .\scripts\run-agent-device-qa.ps1 -NoAuto -FullApp -Watch
 
@@ -43,7 +46,9 @@ Prodify iOS QA from Windows runs on **GitHub Actions** (`macos-15` runner) via a
 |----------|------------------|
 | Replay-only + FastSmoke | ~3–5 min |
 | Replay-only + smoke / full app | ~5–10 min |
+| Replay-only + regression suite | ~15–25 min |
 | Build-and-test (app code changed) | ~25–35 min |
+| Build-and-test + regression suite | ~40–60 min |
 
 Auto mode compares your current commit to the last successful `ios-simulator-app` artifact. Changes under `mobile/maestro/` or `scripts/` do **not** trigger a rebuild.
 
@@ -55,8 +60,8 @@ Or manually in GitHub: **Actions → agent-device iOS QA → Run workflow** (set
 
 1. Seeds E2E user (`test@prodify.app`) when building a fresh app
 2. Builds Prodify for iOS Simulator with `EXPO_PUBLIC_E2E_MODE=true` **or** reuses a previous `.app` artifact (replay-only)
-3. Runs Maestro natively on the booted simulator (default: smoke; use `-FullApp` for full coverage)
-4. Uploads artifacts (`artifacts/agent-device-ios/`) — screenshots on success/failure
+3. Runs Maestro natively on the booted simulator (default: smoke; use `-FullApp` for full coverage, `-RegressionSuite` for login + paywall + full app against one build)
+4. Uploads artifacts (`artifacts/agent-device-ios/`) — screenshots on success/failure; suite runs nest output per flow
 
 ### Cursor on Windows
 
