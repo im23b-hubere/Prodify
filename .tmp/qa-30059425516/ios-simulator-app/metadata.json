@@ -1,7 +1,0 @@
-{
-  "head_sha": "944e38464e1ee6f5626fab3d0d92360a1fd3f1a7",
-  "app_path": "mobile/ios/build/Build/Products/Debug-iphonesimulator/Prodify.app",
-  "created_at": "2026-07-24T01:54:47Z",
-  "e2e_mode": "true",
-  "workflow": "agent-device iOS QA"
-}

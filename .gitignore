@@ -50,3 +50,4 @@ Thumbs.db
 
 # agent-device / QA artifacts (local + CI downloads)
 artifacts/
+.tmp/
