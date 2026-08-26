@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prodify — Pitch Deck</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=Syne:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --surface: #141414;
+        --border: #1f1f1f;
+        --primary: #ff3d00;
+        --secondary: #a259ff;
+        --success: #00ff88;
+        --text: #ffffff;
+        --muted: #888888;
+        --radius: 20px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "DM Sans", system-ui, sans-serif;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(ellipse 80% 50% at 10% 20%, rgba(255, 61, 0, 0.07), transparent 50%),
+          radial-gradient(ellipse 60% 40% at 90% 80%, rgba(162, 89, 255, 0.06), transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .deck {
+        z-index: 1;
+      }
+
+      .deck {
+        height: 100vh;
+        width: 100vw;
+        position: relative;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        padding: clamp(24px, 4vw, 56px);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(12px);
+        transition: opacity 0.45s ease, transform 0.45s ease, visibility 0.45s;
+      }
+
+      .slide.active {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+
+      .slide-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .brand {
+        font-family: "Syne", sans-serif;
+        font-weight: 800;
+        font-size: clamp(18px, 2vw, 24px);
+        letter-spacing: -0.02em;
+      }
+
+      .brand span {
+        color: var(--primary);
+      }
+
+      .slide-label {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--primary);
+      }
+
+      .slide-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .progress {
+        display: flex;
+        gap: 8px;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--border);
+        transition: background 0.3s ease, transform 0.3s ease;
+      }
+
+      .dot.active {
+        background: var(--primary);
+        transform: scale(1.15);
+      }
+
+      .hint {
+        opacity: 0.7;
+      }
+
+      /* Slide 1 — Persona */
+      .persona-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: clamp(24px, 3vw, 48px);
+        align-items: center;
+        min-height: 0;
+      }
+
+      .persona-image-wrap {
+        position: relative;
+        border-radius: calc(var(--radius) + 4px);
+        overflow: hidden;
+        border: 1px solid var(--border);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+        aspect-ratio: 16 / 10;
+      }
+
+      .persona-image-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .persona-image-wrap::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(255, 61, 0, 0.12), transparent 45%, rgba(162, 89, 255, 0.1));
+        pointer-events: none;
+      }
+
+      .persona-card {
+        background: rgba(20, 20, 20, 0.85);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: clamp(24px, 3vw, 40px);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .persona-name {
+        font-family: "Syne", sans-serif;
+        font-size: clamp(36px, 5vw, 56px);
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+      }
+
+      .persona-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .meta-item {
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+      }
+
+      .meta-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .meta-value {
+        font-size: 16px;
+        font-weight: 500;
+      }
+
+      .pain-block {
+        border-left: 3px solid var(--primary);
+        padding-left: 16px;
+      }
+
+      .pain-block h3 {
+        font-family: "Syne", sans-serif;
+        font-size: 18px;
+        margin-bottom: 8px;
+      }
+
+      .pain-block p {
+        color: var(--muted);
+        line-height: 1.6;
+        font-size: 15px;
+      }
+
+      .speaker-note {
+        margin-top: auto;
+        padding: 16px 18px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(255, 61, 0, 0.12), rgba(162, 89, 255, 0.08));
+        border: 1px solid rgba(255, 61, 0, 0.25);
+      }
+
+      .speaker-note-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--primary);
+        margin-bottom: 8px;
+      }
+
+      .speaker-note p {
+        font-size: 15px;
+        line-height: 1.55;
+        font-style: italic;
+        color: #ddd;
+      }
+
+      /* Slide 2 — Solution / Demo */
+      .solution-slide {
+        grid-template-rows: auto 1fr auto;
+      }
+
+      .solution-hero {
+        position: relative;
+        border-radius: calc(var(--radius) + 8px);
+        overflow: hidden;
+        border: 1px solid var(--border);
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .solution-hero img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .demo-badge {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 18px;
+        border-radius: 999px;
+        background: rgba(10, 10, 10, 0.75);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(0, 255, 136, 0.35);
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--success);
+      }
+
+      .demo-badge::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--success);
+        box-shadow: 0 0 12px var(--success);
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.55;
+          transform: scale(0.85);
+        }
+      }
+
+      .solution-caption {
+        margin-top: 20px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .solution-caption strong {
+        color: var(--text);
+      }
+
+      /* Business slides shared */
+      .content-slide {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: clamp(24px, 3vh, 40px);
+        min-height: 0;
+      }
+
+      .slide-title {
+        font-family: "Syne", sans-serif;
+        font-size: clamp(32px, 4.5vw, 52px);
+        line-height: 1.08;
+        letter-spacing: -0.03em;
+        max-width: 14ch;
+      }
+
+      .slide-subtitle {
+        color: var(--muted);
+        font-size: clamp(16px, 1.8vw, 20px);
+        max-width: 52ch;
+        line-height: 1.55;
+      }
+
+      .cards {
+        display: grid;
+        gap: 16px;
+      }
+
+      .cards.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .cards.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: clamp(20px, 2.5vw, 28px);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .card.highlight {
+        border-color: rgba(255, 61, 0, 0.45);
+        background: linear-gradient(160deg, rgba(255, 61, 0, 0.08), var(--surface));
+      }
+
+      .card.premium {
+        border-color: rgba(162, 89, 255, 0.45);
+        background: linear-gradient(160deg, rgba(162, 89, 255, 0.08), var(--surface));
+      }
+
+      .card-tag {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--primary);
+      }
+
+      .card-tag.purple {
+        color: var(--secondary);
+      }
+
+      .card h3 {
+        font-family: "Syne", sans-serif;
+        font-size: clamp(22px, 2.5vw, 28px);
+      }
+
+      .price {
+        font-family: "Syne", sans-serif;
+        font-size: clamp(28px, 3vw, 36px);
+        color: var(--text);
+      }
+
+      .price span {
+        font-size: 16px;
+        color: var(--muted);
+        font-family: "DM Sans", sans-serif;
+        font-weight: 400;
+      }
+
+      .card ul {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .card li {
+        position: relative;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .card li::before {
+        content: "→";
+        position: absolute;
+        left: 0;
+        color: var(--primary);
+        font-weight: 700;
+      }
+
+      .card.premium li::before {
+        color: var(--secondary);
+      }
+
+      .stat-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+      }
+
+      .stat-value {
+        font-family: "Syne", sans-serif;
+        font-size: clamp(28px, 3.5vw, 42px);
+        line-height: 1;
+        margin-bottom: 8px;
+        background: linear-gradient(135deg, var(--text), var(--primary));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .stat-label {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .funnel {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .funnel.compact {
+        margin-top: 8px;
+      }
+
+      .funnel-step {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px 16px;
+        text-align: center;
+        position: relative;
+      }
+
+      .funnel-step:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        right: -14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--primary);
+        font-weight: 700;
+        z-index: 1;
+      }
+
+      .funnel-num {
+        font-family: "Syne", sans-serif;
+        font-size: 28px;
+        margin-bottom: 6px;
+      }
+
+      .funnel-label {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      .roi-banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 22px 28px;
+        border-radius: var(--radius);
+        border: 1px solid rgba(0, 255, 136, 0.35);
+        background: linear-gradient(135deg, rgba(0, 255, 136, 0.08), rgba(20, 20, 20, 0.9));
+      }
+
+      .roi-banner p {
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .roi-banner strong {
+        color: var(--success);
+        font-family: "Syne", sans-serif;
+        font-size: clamp(24px, 3vw, 32px);
+        white-space: nowrap;
+      }
+
+      @media (max-width: 960px) {
+        .persona-grid,
+        .cards.two,
+        .cards.three,
+        .stat-row,
+        .funnel {
+          grid-template-columns: 1fr;
+        }
+
+        .funnel-step:not(:last-child)::after {
+          content: "↓";
+          right: 50%;
+          top: auto;
+          bottom: -18px;
+          transform: translateX(50%);
+        }
+
+        .roi-banner {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck" id="deck">
+      <!-- Slide 1: Persona -->
+      <section class="slide active" data-slide="0">
+        <header class="slide-header">
+          <div class="brand">Prodi<span>fy</span></div>
+          <div class="slide-label">Persona</div>
+        </header>
+
+        <div class="persona-grid">
+          <div class="persona-image-wrap">
+            <img src="assets/persona-marco.png" alt="Marco in his home studio" />
+          </div>
+
+          <div class="persona-card">
+            <h1 class="persona-name">Marco</h1>
+
+            <div class="persona-meta">
+              <div class="meta-item">
+                <div class="meta-label">Age</div>
+                <div class="meta-value">24</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Location</div>
+                <div class="meta-value">Zurich, CH</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Genre</div>
+                <div class="meta-value">Hip-Hop / Trap</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Experience</div>
+                <div class="meta-value">2 years producing</div>
+              </div>
+            </div>
+
+            <div class="pain-block">
+              <h3>The problem</h3>
+              <p>
+                Marco opens his DAW with big plans every weekend — but without structure, his streak
+                breaks, tracks stay unfinished, and motivation fades by Wednesday.
+              </p>
+            </div>
+
+            <div class="speaker-note">
+              <div class="speaker-note-label">Say this</div>
+              <p>
+                "Marco is a 24-year-old bedroom producer who has the talent and the gear — but
+                struggles to turn weekend bursts of motivation into a weekly studio rhythm."
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <footer class="slide-footer">
+          <div class="progress" aria-hidden="true"></div>
+          <span class="hint">← → or swipe to navigate</span>
+        </footer>
+      </section>
+
+      <!-- Slide 2: Solution + Live Demo -->
+      <section class="slide solution-slide" data-slide="1">
+        <header class="slide-header">
+          <div class="brand">Prodi<span>fy</span></div>
+          <div class="slide-label">Solution · Live demo</div>
+        </header>
+
+        <div>
+          <div class="solution-hero">
+            <img src="assets/solution-banner.png" alt="Prodify — Build your studio consistency" />
+            <div class="demo-badge">Live demo — screen share now</div>
+          </div>
+          <p class="solution-caption">
+            <strong>Prodify</strong> helps music producers log studio sessions, protect streaks, set
+            weekly goals, and stay accountable — so time in the studio actually compounds.
+          </p>
+        </div>
+
+        <footer class="slide-footer">
+          <div class="progress" aria-hidden="true"></div>
+          <span class="hint">Switch to your app for the demo</span>
+        </footer>
+      </section>
+
+      <!-- Slide 3: Business Model -->
+      <section class="slide" data-slide="2">
+        <header class="slide-header">
+          <div class="brand">Prodi<span>fy</span></div>
+          <div class="slide-label">Business model</div>
+        </header>
+
+        <div class="content-slide">
+          <div>
+            <h2 class="slide-title">Freemium subscription</h2>
+            <p class="slide-subtitle">
+              Weekly goal setup and core tracking are free. Premium unlocks forecast, weekly review,
+              and expanded social accountability.
+            </p>
+          </div>
+
+          <div class="cards two">
+            <article class="card">
+              <div class="card-tag">Free</div>
+              <h3>CHF 0</h3>
+              <ul>
+                <li>Structured studio sessions &amp; streaks</li>
+                <li>Weekly session goals &amp; Stats progress</li>
+                <li>Heatmap, trends &amp; personal records</li>
+                <li>Buddy, feed &amp; 1 active friend challenge</li>
+              </ul>
+            </article>
+
+            <article class="card premium">
+              <div class="card-tag purple">Premium</div>
+              <h3>Paid plans</h3>
+              <p class="price">CHF 7.90 <span>/ week</span></p>
+              <p class="price">CHF 39.90 <span>/ 6 months · best value</span></p>
+              <ul>
+                <li>Goal forecast — early warnings when you slip off pace</li>
+                <li>Sunday weekly review with insights for next week</li>
+                <li>More parallel challenges &amp; longer commitment periods</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+
+        <footer class="slide-footer">
+          <div class="progress" aria-hidden="true"></div>
+          <span class="hint">No free trial — clear upgrade path from habit to premium</span>
+        </footer>
+      </section>
+
+      <!-- Slide 4: Market Size -->
+      <section class="slide" data-slide="3">
+        <header class="slide-header">
+          <div class="brand">Prodi<span>fy</span></div>
+          <div class="slide-label">Market size</div>
+        </header>
+
+        <div class="content-slide">
+          <div>
+            <h2 class="slide-title">A large, underserved niche</h2>
+            <p class="slide-subtitle">
+              Millions of hobbyist and semi-pro producers want consistency tools — not another DAW
+              plugin. Prodify sits in Music × Productivity.
+            </p>
+          </div>
+
+          <div class="stat-row">
+            <div class="stat">
+              <div class="stat-value">~45M</div>
+              <div class="stat-label">
+                Global TAM — people who actively produce music (bedroom to semi-pro)
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">~10M</div>
+              <div class="stat-label">
+                Europe SAM — producers who use a DAW weekly and would pay for habit tooling
+              </div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">~250K</div>
+              <div class="stat-label">
+                SOM (3 yr) — reachable via producer communities, App Store, and short-form content
+              </div>
+            </div>
+          </div>
+
+          <div class="card highlight">
+            <div class="card-tag">Why now</div>
+            <p style="color: var(--muted); line-height: 1.6; font-size: 15px">
+              Creator economy growth, affordable home studios, and algorithm-driven pressure to
+              ship consistently make "studio rhythm" a daily pain — not a nice-to-have.
+            </p>
+          </div>
+        </div>
+
+        <footer class="slide-footer">
+          <div class="progress" aria-hidden="true"></div>
+          <span class="hint">Sources: IFPI, MIDiA, DAW user surveys — conservative estimates</span>
+        </footer>
+      </section>
+
+      <!-- Slide 5: Go-to-Market -->
+      <section class="slide" data-slide="4">
+        <header class="slide-header">
+          <div class="brand">Prodi<span>fy</span></div>
+          <div class="slide-label">Go-to-market</div>
+        </header>
+
+        <div class="content-slide">
+          <div>
+            <h2 class="slide-title">CHF 500 test budget</h2>
+            <p class="slide-subtitle">
+              Targeted ads in producer-native channels. Measure installs → premium conversion → 1-year
+              LTV.
+            </p>
+          </div>
+
+          <div class="cards three">
+            <article class="card">
+              <div class="card-tag">Channels</div>
+              <h3>Distribution</h3>
+              <ul>
+                <li>TikTok &amp; Instagram Reels (producer workflow clips)</li>
+                <li>Reddit r/makinghiphop, r/WeAreTheMusicMakers</li>
+                <li>App Store search (music production, streak tracker)</li>
+              </ul>
+            </article>
+
+            <article class="card highlight">
+              <div class="card-tag">CHF 500 spend</div>
+              <h3>Expected funnel</h3>
+              <div class="funnel compact">
+                <div class="funnel-step">
+                  <div class="funnel-num">~120</div>
+                  <div class="funnel-label">App installs<br />(CPI ~CHF 4.20)</div>
+                </div>
+                <div class="funnel-step">
+                  <div class="funnel-num">~8</div>
+                  <div class="funnel-label">Premium subs<br />(~7% conversion)</div>
+                </div>
+                <div class="funnel-step">
+                  <div class="funnel-num">CHF 320</div>
+                  <div class="funnel-label">Avg. 1-yr LTV<br />(~40 wks retained)</div>
+                </div>
+              </div>
+            </article>
+
+            <article class="card premium">
+              <div class="card-tag purple">Unit economics</div>
+              <h3>Payback</h3>
+              <ul>
+                <li>8 subs × CHF 320 LTV ≈ <strong style="color: var(--success)">CHF 2,560</strong></li>
+                <li>Ad spend: CHF 500</li>
+                <li>Net return ratio: ~5× in year 1</li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="roi-banner">
+            <p>
+              With conservative assumptions, <strong>1-year customer value exceeds ad spend</strong>
+              — validating paid acquisition before scaling content and creator partnerships.
+            </p>
+            <strong>5× ROI → scale</strong>
+          </div>
+        </div>
+
+        <footer class="slide-footer">
+          <div class="progress" aria-hidden="true"></div>
+          <span class="hint">Prodify · Build your studio consistency.</span>
+        </footer>
+      </section>
+    </div>
+
+    <script>
+      const slides = [...document.querySelectorAll(".slide")];
+      let current = 0;
+
+      function renderProgress() {
+        document.querySelectorAll(".progress").forEach((bar) => {
+          bar.innerHTML = slides
+            .map((_, i) => `<span class="dot${i === current ? " active" : ""}"></span>`)
+            .join("");
+        });
+      }
+
+      function goTo(index) {
+        if (index < 0 || index >= slides.length) return;
+        slides[current].classList.remove("active");
+        current = index;
+        slides[current].classList.add("active");
+        renderProgress();
+      }
+
+      function next() {
+        goTo(current + 1);
+      }
+
+      function prev() {
+        goTo(current - 1);
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+          e.preventDefault();
+          next();
+        }
+        if (e.key === "ArrowLeft" || e.key === "PageUp") {
+          e.preventDefault();
+          prev();
+        }
+        if (e.key === "Home") goTo(0);
+        if (e.key === "End") goTo(slides.length - 1);
+        if (e.key === "f" || e.key === "F") {
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+          else document.exitFullscreen();
+        }
+      });
+
+      let touchStartX = 0;
+      document.addEventListener(
+        "touchstart",
+        (e) => {
+          touchStartX = e.changedTouches[0].screenX;
+        },
+        { passive: true },
+      );
+      document.addEventListener(
+        "touchend",
+        (e) => {
+          const delta = e.changedTouches[0].screenX - touchStartX;
+          if (Math.abs(delta) < 50) return;
+          if (delta < 0) next();
+          else prev();
+        },
+        { passive: true },
+      );
+
+      renderProgress();
+    </script>
+  </body>
+</html>
