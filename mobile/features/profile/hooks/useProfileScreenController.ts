@@ -12,7 +12,7 @@ export function useProfileScreenController() {
   const { t } = useTranslation();
   const { user, signOut, deleteAccount, token } = useAuth();
   const router = useRouter();
-  const data = useProfileData(token);
+  const data = useProfileData(token, user?.id);
   const accountActions = useProfileAccountActions({ signOut, deleteAccount });
   const pushTest = useProfilePushTest(token);
   const openPublicProfile = useCallback(() => {

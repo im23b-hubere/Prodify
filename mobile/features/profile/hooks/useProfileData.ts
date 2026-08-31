@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiJson } from "../../../lib/client";
+import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import { fetchProgression } from "../../../lib/progressionSync";
 import { isScreenDataStale } from "../../../lib/screenDataStale";
 import { tryParseHeatmapDays, tryParseSessionStatsDto } from "../../../lib/statsDto";
@@ -10,6 +11,7 @@ import type { ReliabilityScoreDto } from "../../../types/friends";
 import type { ProgressionDto } from "../../../types/outcomes";
 import type { SessionStatsDto } from "../../../types/session";
 import type { StreakMilestonesDto } from "../../../types/streak";
+import { createClearedProfileState } from "./profileAuthReset";
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 
@@ -73,7 +75,10 @@ function profileErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export function useProfileData(token?: string | null) {
+export function useProfileData(
+  token?: string | null,
+  userId?: number | null,
+) {
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -87,6 +92,25 @@ export function useProfileData(token?: string | null) {
   const mounted = useRef(true);
   const lastFetchAt = useRef(0);
   useRequestLifetime(mounted, requestSequence);
+
+  const resetProfileAuthScope = useCallback(() => {
+    requestSequence.current += 1;
+    lastFetchAt.current = 0;
+    const cleared = createClearedProfileState({
+      token: token ?? null,
+      userId,
+    });
+    setRefreshing(cleared.refreshing);
+    setLoading(cleared.loading);
+    setStats(cleared.stats);
+    setMilestones(cleared.milestones);
+    setReliability(cleared.reliability);
+    setHeatmapDays(cleared.heatmapDays);
+    setProgression(cleared.progression);
+    setError(cleared.error);
+  }, [token, userId]);
+
+  useAuthScopedReset(token ?? null, userId, resetProfileAuthScope);
 
   const load = useCallback(
     async (options?: { force?: boolean }) => {
