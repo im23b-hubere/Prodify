@@ -14,6 +14,7 @@ import type { StreakOverviewDto } from "../../../types/streak";
 type Options = {
   token?: string | null;
   active: SessionDto | null;
+  activeResolved: boolean;
   suggestedSessionType: string;
   displayOverview: StreakOverviewDto | null;
   t: TFunction;
@@ -38,7 +39,7 @@ export function useDashboardSessionActions(options: Options) {
 }
 
 function useSessionNavigation(options: Options, router: Router) {
-  const { active, refreshDashboard, setRefreshing, suggestedSessionType } = options;
+  const { active, activeResolved, refreshDashboard, setRefreshing, suggestedSessionType } = options;
   const openFullscreenActive = useCallback(() => {
     if (!active || typeof active.id !== "number" || !Number.isFinite(active.id)) return;
     ignoreHaptic(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
@@ -54,8 +55,10 @@ function useSessionNavigation(options: Options, router: Router) {
     setRefreshing(false);
   }, [refreshDashboard, setRefreshing]);
   const openSessionSetup = useCallback(() => {
-    if (active) {
-      ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
+    if (!activeResolved || active) {
+      if (active) {
+        ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
+      }
       return;
     }
     ignoreHaptic(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
@@ -63,7 +66,7 @@ function useSessionNavigation(options: Options, router: Router) {
       pathname: "/session/setup",
       params: { suggestedType: suggestedSessionType, source: "dashboard" },
     });
-  }, [active, router, suggestedSessionType]);
+  }, [active, activeResolved, router, suggestedSessionType]);
   const openStats = useCallback(() => {
     ignoreHaptic(Haptics.selectionAsync());
     router.push({ pathname: "/(tabs)/stats", params: { focus: "yourWeek" } });

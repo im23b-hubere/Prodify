@@ -42,6 +42,28 @@ describe("postAuthNavigation", () => {
     ).toBe("/(auth)/login");
   });
 
+  it("resolvePostAuthRoute keeps authenticated onboarded users on dashboard at cold start", () => {
+    expect(
+      resolvePostAuthRoute({
+        hasToken: true,
+        onboardingComplete: true,
+        entryPoint: "app_launch",
+        allowPaywallPrompt: false,
+      }).pathname,
+    ).toBe("/(tabs)/dashboard");
+  });
+
+  it("resolvePostAuthRoute sends authenticated users back to onboarding when the flag is missing", () => {
+    expect(
+      resolvePostAuthRoute({
+        hasToken: true,
+        onboardingComplete: false,
+        entryPoint: "app_launch",
+        allowPaywallPrompt: false,
+      }).pathname,
+    ).toBe("/onboarding");
+  });
+
   it("getPostLoginHref returns dashboard when onboarding flag is set", async () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce("1");
     await expect(getPostLoginHref()).resolves.toBe("/(tabs)/dashboard");

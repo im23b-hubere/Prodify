@@ -253,6 +253,7 @@ const createDashboardState = (overrides: Record<string, unknown> = {}) => ({
   setSessions: jest.fn(),
   active: null,
   setActive: jest.fn(),
+  activeResolved: true,
   loading: false,
   error: null,
   setError: jest.fn(),

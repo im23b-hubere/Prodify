@@ -39,6 +39,7 @@ export function useDashboardScreenController() {
   const sessionActions = useDashboardSessionActions({
     token,
     active: data.active,
+    activeResolved: data.activeResolved,
     suggestedSessionType: presentation.todayPlan.suggestedSessionType,
     displayOverview: presentation.displayOverview,
     t,

@@ -19,6 +19,18 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: spacing.xs,
   },
+  sessionLoadingWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+  },
+  sessionLoadingText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+    textAlign: "center",
+  },
   actionWrap: {
     width: "100%",
   },

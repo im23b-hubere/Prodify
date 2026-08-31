@@ -18,6 +18,7 @@ import { DashboardWeekDots } from "./DashboardWeekDots";
 type Props = {
   t: TFunction;
   loading?: boolean;
+  activeResolved: boolean;
   active: SessionDto | null;
   stopBusy: boolean;
   onQuickStart: () => void;
@@ -113,6 +114,16 @@ function SessionAction({ props }: { props: Props }) {
       </View>
     );
   }
+  if (!props.activeResolved) {
+    return (
+      <View style={styles.actionWrap} testID="dashboard-start-session-loading">
+        <View style={styles.sessionLoadingWrap}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={styles.sessionLoadingText}>{props.t("dashboard.loadingActiveSession")}</Text>
+        </View>
+      </View>
+    );
+  }
   const quickStart = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
     props.onQuickStart();
@@ -127,6 +138,7 @@ function SessionAction({ props }: { props: Props }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={props.t("sessionStarter.title")}
+          accessibilityState={{ disabled: false }}
           onPress={quickStart}
           style={({ pressed }) => [styles.startBtn, pressed && { opacity: 0.92 }]}
         >

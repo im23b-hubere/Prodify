@@ -976,6 +976,7 @@
     "newSessionTitle": "New Session",
     "milestoneNotifTitle": "Milestone reached",
     "loadSessionsFailed": "Failed to load sessions.",
+    "loadingActiveSession": "Checking for an active session…",
     "loadFailed": "Failed to load",
     "socialLoadFailed": "Social insights are temporarily unavailable. Showing your last known data.",
     "deleteFailed": "Delete failed",

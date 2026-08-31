@@ -52,7 +52,10 @@ export function DashboardScreenView({ controller }: { controller: DashboardScree
         }
         ListHeaderComponent={<DashboardHeader controller={controller} />}
         ListEmptyComponent={
-          !data.loading && presentation.visibleSessions.length === 0 && !data.active ? (
+          !data.loading &&
+          data.activeResolved &&
+          presentation.visibleSessions.length === 0 &&
+          !data.active ? (
             <EmptyState
               iconNode={<Flame color={colors.primary} size={48} />}
               title={controller.t("dashboard.emptyStreakTitle")}
@@ -115,6 +118,7 @@ function StudioSection({ controller }: { controller: DashboardScreenController }
     <DashboardStudioHud
       t={t}
       loading={data.loading && !presentation.displayOverview}
+      activeResolved={data.activeResolved}
       active={data.active}
       stopBusy={sessionActions.stopBusy}
       onQuickStart={sessionActions.openSessionSetup}

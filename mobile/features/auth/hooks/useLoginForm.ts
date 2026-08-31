@@ -20,7 +20,7 @@ const TUTORIAL_SEEN_KEY = "prodify_tutorial_v1";
 export function useLoginForm(t: TFunction) {
   const { signIn } = useAuth();
   const router = useRouter();
-  const params = useLocalSearchParams<{ next?: string; variant?: string }>();
+  const params = useLocalSearchParams<{ next?: string; variant?: string; source?: string }>();
   const preset = getE2eTestCredentials();
   const [email, setEmail] = useState(() => preset?.email ?? "");
   const [password, setPassword] = useState(() => preset?.password ?? "");
@@ -28,6 +28,7 @@ export function useLoginForm(t: TFunction) {
   const [loading, setLoading] = useState(false);
   const [showConnectionHint, setShowConnectionHint] = useState(false);
   const pendingPaywall = params.next === "paywall";
+  const existingAccountLogin = params.source === "existing_account";
   const paywallVariant =
     params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
 
@@ -56,6 +57,9 @@ export function useLoginForm(t: TFunction) {
     try {
       await signIn(credentials.email, credentials.password);
       await prepareE2eAccount();
+      if (existingAccountLogin) {
+        await markOnboardingComplete();
+      }
       if (pendingPaywall) {
         router.replace({
           pathname: "/paywall",
@@ -74,7 +78,17 @@ export function useLoginForm(t: TFunction) {
     } finally {
       setLoading(false);
     }
-  }, [email, loading, password, paywallVariant, pendingPaywall, router, signIn, t]);
+  }, [
+    email,
+    existingAccountLogin,
+    loading,
+    password,
+    paywallVariant,
+    pendingPaywall,
+    router,
+    signIn,
+    t,
+  ]);
 
   const openRegistration = useCallback(() => {
     router.push({
@@ -96,6 +110,10 @@ export function useLoginForm(t: TFunction) {
     submit,
     openRegistration,
   };
+}
+
+async function markOnboardingComplete(): Promise<void> {
+  await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "1").catch(() => undefined);
 }
 
 async function prepareE2eAccount(): Promise<void> {

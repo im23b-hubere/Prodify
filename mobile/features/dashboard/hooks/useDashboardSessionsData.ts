@@ -8,6 +8,7 @@ import type { SessionDto } from "../../../types/session";
 export function useDashboardSessionsData(token: string | null, t: TFunction) {
   const [sessions, setSessions] = useState<SessionDto[]>([]);
   const [active, setActive] = useState<SessionDto | null>(null);
+  const [activeResolved, setActiveResolved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const loadSequence = useRef(0);
@@ -26,13 +27,26 @@ export function useDashboardSessionsData(token: string | null, t: TFunction) {
 
       setActive(activeSession);
       setLastUpdated(new Date());
+      setError(null);
+      setActiveResolved(true);
     } catch (error) {
       if (sequence !== loadSequence.current) return;
       setError(error instanceof Error ? error.message : t("dashboard.loadSessionsFailed"));
+      setActiveResolved(false);
     }
   }, [token, t]);
 
-  return { sessions, setSessions, active, setActive, error, setError, lastUpdated, loadSessions };
+  return {
+    sessions,
+    setSessions,
+    active,
+    setActive,
+    activeResolved,
+    error,
+    setError,
+    lastUpdated,
+    loadSessions,
+  };
 }
 
 async function resolveActiveSession(
