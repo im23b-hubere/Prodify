@@ -94,5 +94,6 @@ describe("friends dashboard state", () => {
     expect(writer.setBuddy).toHaveBeenCalledWith(null);
     expect(writer.setRecap).toHaveBeenCalledWith(null);
     expect(writer.setFeedMetricsBySession).toHaveBeenCalledWith({});
+    expect(writer.setLeaderboard).not.toHaveBeenCalled();
   });
 });

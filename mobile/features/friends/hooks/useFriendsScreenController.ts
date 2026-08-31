@@ -15,7 +15,13 @@ export function useFriendsScreenController() {
   const router = useRouter();
   const state = useFriendsScreenState();
   const periodParam = state.mode === "week" ? "week" : "all";
-  const { load, onRefresh } = useFriendsDashboardData({ token, periodParam, t, state });
+  const { load, onRefresh } = useFriendsDashboardData({
+    token,
+    userId: user?.id,
+    periodParam,
+    t,
+    state,
+  });
 
   const openStatsYourWeek = useCallback(() => {
     router.push({ pathname: "/(tabs)/stats", params: { focus: "yourWeek" } } as Href);

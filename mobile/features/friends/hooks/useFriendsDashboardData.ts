@@ -5,6 +5,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { isScreenDataStale } from "../../../lib/screenDataStale";
 import { loadFriendsDashboard } from "../services/friendsDashboardApi";
 import {
+  resetFriendsAccountOwnedState,
+  useFriendsAuthReset,
+} from "./friendsAuthReset";
+import {
   applyFriendsDashboardSnapshot,
   clearFriendsDashboardSnapshot,
 } from "./friendsDashboardState";
@@ -13,6 +17,7 @@ import type { FriendsScreenState } from "./useFriendsScreenState";
 
 type Params = {
   token: string | null;
+  userId: number | null | undefined;
   periodParam: "week" | "all";
   t: TFunction;
   state: FriendsScreenState;
@@ -34,10 +39,17 @@ function dashboardLoadError(error: unknown, t: TFunction) {
   return error instanceof Error ? error.message : t("friendsScreen.loadError");
 }
 
-export function useFriendsDashboardData({ token, periodParam, t, state }: Params) {
+export function useFriendsDashboardData({ token, userId, periodParam, t, state }: Params) {
   const lastFetchRef = useRef(0);
   const dashboardWriter = useFriendsDashboardWriter(state);
   const { loadSeq, mounted, setLoading, setError, setRefreshing } = state;
+
+  const resetFriendsAuthScope = useCallback(() => {
+    lastFetchRef.current = 0;
+    resetFriendsAccountOwnedState(state, { token, userId });
+  }, [state, token, userId]);
+
+  useFriendsAuthReset(token, userId, resetFriendsAuthScope);
 
   const load = useCallback(
     async (opts?: { force?: boolean }) => {

@@ -153,6 +153,7 @@ function useFriendsFeedbackState() {
     actionBusy,
     setActionBusy,
     toastMessage,
+    setToastMessage,
     showToast,
     challengeCreateBusy,
     setChallengeCreateBusy,
