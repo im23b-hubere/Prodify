@@ -71,10 +71,48 @@ export function useNotificationInbox() {
 
   useAuthScopedReset(token ?? null, userId, resetNotificationAuthScope);
 
+  const applyReadState = useCallback(
+    async (
+      sequence: number,
+      inbox: InboxItem[],
+      currentToken: string | null | undefined,
+      errors: string[],
+    ) => {
+      await markAllRead();
+      if (sequence !== loadSequence.current || !mounted.current) return;
+
+      setItems((current) => current.map((item) => ({ ...item, read: true })));
+      if (currentToken && userId != null) {
+        try {
+          await markServerInboxRead(
+            currentToken,
+            latestNotificationTimestamp(inbox, Date.now()),
+          );
+        } catch (readError) {
+          if (sequence !== loadSequence.current) return;
+          errors.push(
+            readError instanceof Error ? readError.message : t("notificationsUi.readSyncFailed"),
+          );
+        }
+      }
+      if (sequence !== loadSequence.current || !mounted.current) return;
+      setServerSyncError(errors.length ? errors.join("\n") : null);
+    },
+    [t, userId],
+  );
+
   const load = useCallback(async () => {
     const sequence = ++loadSequence.current;
     const currentToken = tokenRef.current;
     const errors: string[] = [];
+
+    const [localInbox, loadedSettings] = await Promise.all([loadInbox(), loadSettings()]);
+    if (sequence !== loadSequence.current || !mounted.current) return;
+
+    setSettings(loadedSettings);
+    setItems(localInbox);
+    setInitialLoading(false);
+
     if (currentToken && userId != null) {
       try {
         await syncServerInbox(currentToken, 60);
@@ -84,33 +122,18 @@ export function useNotificationInbox() {
           syncError instanceof Error ? syncError.message : t("notificationsUi.syncFailed"),
         );
       }
+      if (sequence !== loadSequence.current || !mounted.current) return;
+
+      const syncedInbox = await loadInbox();
+      if (sequence !== loadSequence.current || !mounted.current) return;
+
+      setItems(syncedInbox);
+      await applyReadState(sequence, syncedInbox, currentToken, errors);
+      return;
     }
-    if (sequence !== loadSequence.current || !mounted.current) return;
 
-    const [inbox, loadedSettings] = await Promise.all([loadInbox(), loadSettings()]);
-    if (sequence !== loadSequence.current || !mounted.current) return;
-
-    setItems(inbox);
-    setSettings(loadedSettings);
-    await markAllRead();
-    if (sequence !== loadSequence.current || !mounted.current) return;
-
-    setItems((current) => current.map((item) => ({ ...item, read: true })));
-    if (currentToken && userId != null) {
-      try {
-        await markServerInboxRead(currentToken, latestNotificationTimestamp(inbox, Date.now()));
-      } catch (readError) {
-        if (sequence !== loadSequence.current) return;
-        errors.push(
-          readError instanceof Error ? readError.message : t("notificationsUi.readSyncFailed"),
-        );
-      }
-    }
-    if (sequence !== loadSequence.current || !mounted.current) return;
-
-    setServerSyncError(errors.length ? errors.join("\n") : null);
-    setInitialLoading(false);
-  }, [setSettings, t, userId]);
+    await applyReadState(sequence, localInbox, currentToken, errors);
+  }, [applyReadState, setSettings, t, userId]);
 
   useFocusEffect(
     useCallback(() => {

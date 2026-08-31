@@ -236,3 +236,164 @@ describe("useNotificationInbox auth scope", () => {
     });
   });
 });
+
+describe("useNotificationInbox local loading", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockLoadInbox.mockResolvedValue(userAInbox);
+    mockLoadSettings.mockResolvedValue(defaultSettings);
+    mockMarkAllRead.mockResolvedValue(undefined);
+    mockMarkServerInboxRead.mockResolvedValue(undefined);
+    mockSyncServerInbox.mockResolvedValue(0);
+  });
+
+  it("exposes settings before a slow server sync resolves", async () => {
+    let syncResolve: ((value: number) => void) | undefined;
+    mockSyncServerInbox.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          syncResolve = resolve;
+        }),
+    );
+
+    const { result } = renderNotificationInboxHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.settings).toEqual(defaultSettings);
+    });
+
+    expect(result.current.initialLoading).toBe(false);
+    expect(syncResolve).toBeDefined();
+    syncResolve?.(0);
+  });
+
+  it("exposes local inbox before a slow server sync resolves", async () => {
+    let syncResolve: ((value: number) => void) | undefined;
+    mockSyncServerInbox.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          syncResolve = resolve;
+        }),
+    );
+
+    const { result } = renderNotificationInboxHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: "a-1", read: false })]),
+      );
+    });
+
+    expect(result.current.initialLoading).toBe(false);
+    syncResolve?.(0);
+  });
+
+  it("keeps local settings and inbox available when server sync fails", async () => {
+    mockSyncServerInbox.mockRejectedValue(new Error("network down"));
+
+    const { result } = renderNotificationInboxHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.serverSyncError).toBe("network down");
+    });
+
+    expect(result.current.settings).toEqual(defaultSettings);
+    expect(result.current.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "a-1", read: true })]),
+    );
+    expect(result.current.initialLoading).toBe(false);
+  });
+
+  it("refreshes inbox after a successful background sync", async () => {
+    const syncedInbox = [
+      ...userAInbox,
+      {
+        id: "server-1",
+        category: "social" as const,
+        priority: "normal" as const,
+        title: "Synced",
+        body: "From server",
+        createdAt: 1_700_000_200_000,
+        expiresAt: 1_800_000_200_000,
+        read: false,
+      },
+    ];
+
+    mockSyncServerInbox.mockImplementation(async () => {
+      mockLoadInbox.mockResolvedValue(syncedInbox);
+      return 0;
+    });
+
+    const { result } = renderNotificationInboxHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: "server-1", read: true })]),
+      );
+    });
+
+    expect(mockSyncServerInbox).toHaveBeenCalledWith("token-a", 60);
+    expect(mockLoadInbox.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("marks synced inbox read after server sync completes", async () => {
+    const syncedInbox = [
+      {
+        id: "server-1",
+        category: "social" as const,
+        priority: "normal" as const,
+        title: "Synced",
+        body: "From server",
+        createdAt: 1_700_000_200_000,
+        expiresAt: 1_800_000_200_000,
+        read: false,
+      },
+    ];
+
+    mockLoadInbox.mockResolvedValue([]);
+    mockSyncServerInbox.mockImplementation(async () => {
+      mockLoadInbox.mockResolvedValue(syncedInbox);
+      return 0;
+    });
+
+    const { result } = renderNotificationInboxHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: "server-1", read: true })]),
+      );
+    });
+
+    expect(mockMarkAllRead).toHaveBeenCalled();
+    expect(mockMarkServerInboxRead).toHaveBeenCalledWith("token-a", 1_700_000_200_000);
+  });
+
+  it("keeps preferences visible during explicit refresh", async () => {
+    const { result } = renderNotificationInboxHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.initialLoading).toBe(false);
+      expect(result.current.settings).toEqual(defaultSettings);
+    });
+
+    let syncResolve: ((value: number) => void) | undefined;
+    mockSyncServerInbox.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          syncResolve = resolve;
+        }),
+    );
+
+    void result.current.refresh();
+
+    await waitFor(() => {
+      expect(result.current.settings).toEqual(defaultSettings);
+    });
+
+    syncResolve?.(0);
+
+    await waitFor(() => {
+      expect(result.current.refreshing).toBe(false);
+    });
+  });
+});
