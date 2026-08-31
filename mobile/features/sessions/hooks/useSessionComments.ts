@@ -3,46 +3,85 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 
+import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import { createSessionComment, fetchSessionComments } from "../../../lib/social";
 import type { SocialCommentDto } from "../../../types/friends";
 import { validSessionId } from "./sessionSocialUtils";
 
 export function useSessionComments(
   token: string | null | undefined,
+  userId: number | null | undefined,
   sessionId: string | undefined,
   t: TFunction,
 ) {
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+  const loadSequence = useRef(0);
   const [comments, setComments] = useState<SocialCommentDto[]>([]);
   const [commentInput, setCommentInput] = useState("");
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [commentSending, setCommentSending] = useState(false);
   const success = useCommentSuccessFeedback();
+
+  const resetCommentsState = useCallback(() => {
+    loadSequence.current += 1;
+    setComments([]);
+    setCommentsError(null);
+    setCommentsLoading(false);
+    setCommentSending(false);
+  }, []);
+
+  useAuthScopedReset(token ?? null, userId, resetCommentsState);
+
   const loadComments = useCallback(async () => {
+    const currentToken = tokenRef.current;
     const id = validSessionId(sessionId);
-    if (!token || id === null) return;
+    const sequence = ++loadSequence.current;
+
+    if (!currentToken || userId == null || id === null) {
+      if (sequence !== loadSequence.current) return;
+      setComments([]);
+      setCommentsError(null);
+      setCommentsLoading(false);
+      return;
+    }
+
     setCommentsLoading(true);
     setCommentsError(null);
     try {
-      const loaded = await fetchSessionComments(token, id);
+      const loaded = await fetchSessionComments(currentToken, id);
+      if (sequence !== loadSequence.current) return;
       setComments(Array.isArray(loaded) ? loaded : []);
     } catch {
+      if (sequence !== loadSequence.current) return;
       setComments([]);
       setCommentsError(t("sessionDetail.commentsLoadFailed"));
     } finally {
-      setCommentsLoading(false);
+      if (sequence === loadSequence.current) setCommentsLoading(false);
     }
-  }, [sessionId, t, token]);
+  }, [sessionId, t, userId]);
+
   useEffect(() => {
+    if (!tokenRef.current || userId == null) {
+      if (!tokenRef.current) {
+        setComments([]);
+        setCommentsError(null);
+        setCommentsLoading(false);
+      }
+      return;
+    }
     void loadComments();
-  }, [loadComments]);
+  }, [loadComments, sessionId, userId]);
+
   const submitComment = useCallback(async () => {
+    const currentToken = tokenRef.current;
     const id = validSessionId(sessionId);
     const body = commentInput.trim();
-    if (!token || id === null || !body) return;
+    if (!currentToken || userId == null || id === null || !body) return;
     setCommentSending(true);
     try {
-      const created = await createSessionComment(token, id, body);
+      const created = await createSessionComment(currentToken, id, body);
       setCommentInput("");
       await loadComments();
       success.show(created.id);
@@ -55,7 +94,8 @@ export function useSessionComments(
     } finally {
       setCommentSending(false);
     }
-  }, [commentInput, loadComments, sessionId, success, t, token]);
+  }, [commentInput, loadComments, sessionId, success, t, userId]);
+
   return {
     comments,
     commentInput,

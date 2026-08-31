@@ -1,10 +1,11 @@
 import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ScrollView } from "react-native";
 
 import { useAuth } from "../../../context/AuthContext";
+import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import {
   buildSessionDetailPresentation,
   resolveSessionDetailParams,
@@ -23,10 +24,18 @@ export function useSessionDetailController() {
     params.ownerName,
     useSegments() as string[],
   );
-  const social = useSessionSocial({ token, sessionId, t });
-  const data = useSessionDetailData({ token, sessionId, t, refreshSocial: social.refresh });
+  const social = useSessionSocial({ token, userId: user?.id, sessionId, t });
+  const data = useSessionDetailData({
+    token,
+    userId: user?.id,
+    sessionId,
+    t,
+    refreshSocial: social.refresh,
+  });
   const [shareOpen, setShareOpen] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
+  const closeShare = useCallback(() => setShareOpen(false), []);
+  useAuthScopedReset(token, user?.id, closeShare);
   const editor = useSessionEditor({
     token,
     sessionId,
@@ -55,7 +64,7 @@ export function useSessionDetailController() {
     presentation: data.session
       ? buildSessionDetailPresentation(data.session, data.insights, t)
       : null,
-    closeShare: () => setShareOpen(false),
+    closeShare,
     openShare: () => setShareOpen(true),
     goBack: () => router.back(),
     resumeActive: () => {
