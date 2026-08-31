@@ -380,5 +380,212 @@ describe("useStatsScreenData auth scope", () => {
 
     expect(result.current.error).toBe("network down");
     expect(result.current.stats).toEqual(userAPrimary.stats);
+    expect(result.current.refreshing).toBe(false);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("ends refreshing and sets error when pull-to-refresh fails", async () => {
+    const { result } = renderStatsDataHook("token-a", 1);
+
+    await loadUserAStats(result);
+
+    mockFetchPrimaryStats.mockRejectedValue(new Error("network down"));
+
+    await act(async () => {
+      await result.current.onRefresh();
+    });
+
+    expect(result.current.error).toBe("network down");
+    expect(result.current.refreshing).toBe(false);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.stats).toEqual(userAPrimary.stats);
+    expect(result.current.heatmapDays).toEqual(userAPrimary.heatmapDays);
+    expect(result.current.records).toEqual(userAPrimary.records);
+  });
+
+  it("shows error on initial Stats load failure without fabricating KPI data", async () => {
+    mockFetchPrimaryStats.mockRejectedValue(new Error("offline"));
+    const { result } = renderStatsDataHook("token-a", 1);
+
+    await act(async () => {
+      await result.current.loadStats();
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe("offline");
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.stats).toBeNull();
+    expect(result.current.heatmapDays).toEqual([]);
+    expect(result.current.records).toEqual([]);
+    expect(result.current.progression).toBeNull();
+  });
+
+  it("clears error and replaces values after a successful refresh following failure", async () => {
+    const { result } = renderStatsDataHook("token-a", 1);
+
+    await loadUserAStats(result);
+
+    mockFetchPrimaryStats.mockRejectedValueOnce(new Error("network down"));
+    await act(async () => {
+      await result.current.loadStats({ force: true });
+    });
+    expect(result.current.error).toBe("network down");
+
+    mockFetchPrimaryStats.mockResolvedValue(userBPrimary as never);
+    mockFetchSupplementalStats.mockResolvedValue(userBSupplemental as never);
+
+    await act(async () => {
+      await result.current.loadStats({ force: true });
+    });
+
+    await waitFor(() => {
+      expect(result.current.stats).toEqual(userBPrimary.stats);
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.progression).toEqual(userBSupplemental.progression);
+  });
+
+  it("treats a successful zero-KPI response as valid data", async () => {
+    const zeroPrimary = {
+      stats: {
+        period: "week",
+        summary: {
+          total_seconds: 0,
+          total_sessions: 0,
+          avg_session_seconds: 0,
+          current_streak_days: 0,
+          best_streak_days: 0,
+          hours_delta_vs_prior_period: 0,
+        },
+        trend: [],
+        breakdown: [],
+        recent_sessions: [],
+        productivity_hint: null,
+      },
+      heatmapDays: [],
+      records: [],
+    };
+    mockFetchPrimaryStats.mockResolvedValue(zeroPrimary as never);
+    mockFetchSupplementalStats.mockResolvedValue({
+      progression: null,
+      weeklyGoal: null,
+      commitment: null,
+      goalConfigured: false,
+      forecast: null,
+    } as never);
+
+    const { result } = renderStatsDataHook("token-a", 1);
+
+    await act(async () => {
+      await result.current.loadStats();
+    });
+
+    await waitFor(() => {
+      expect(result.current.stats).toEqual(zeroPrimary.stats);
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.stats?.summary.total_sessions).toBe(0);
+  });
+
+  it("does not mark cache fresh after a failed refresh", async () => {
+    mockIsScreenDataStale.mockReturnValue(false);
+    const nowSpy = jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+    const { result } = renderStatsDataHook("token-a", 1);
+
+    await loadUserAStats(result);
+
+    mockFetchPrimaryStats.mockClear();
+    mockFetchSupplementalStats.mockClear();
+    mockFetchPrimaryStats.mockRejectedValue(new Error("network down"));
+
+    await act(async () => {
+      await result.current.loadStats({ force: true });
+    });
+
+    expect(result.current.error).toBe("network down");
+    mockFetchPrimaryStats.mockClear();
+    mockFetchSupplementalStats.mockClear();
+    mockFetchPrimaryStats.mockResolvedValue(userAPrimary as never);
+
+    await act(async () => {
+      await result.current.loadStats();
+    });
+
+    // Fresh cache from the earlier success should still skip non-force loads.
+    expect(mockFetchPrimaryStats).not.toHaveBeenCalled();
+    expect(result.current.stats).toEqual(userAPrimary.stats);
+    nowSpy.mockRestore();
+  });
+
+  it("keeps primary Stats usable when supplemental domains are unavailable", async () => {
+    mockFetchSupplementalStats.mockResolvedValue({
+      progression: null,
+      weeklyGoal: null,
+      commitment: null,
+      goalConfigured: false,
+      forecast: null,
+    } as never);
+
+    const { result } = renderStatsDataHook("token-a", 1);
+
+    await act(async () => {
+      await result.current.loadStats();
+    });
+
+    await waitFor(() => {
+      expect(result.current.stats).toEqual(userAPrimary.stats);
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.progression).toBeNull();
+    expect(result.current.progressionSettled).toBe(true);
+    expect(result.current.weeklyGoal).toBeNull();
+    expect(result.current.forecast).toBeNull();
+  });
+
+  it("sets progression unavailable when supplemental returns null progression", async () => {
+    mockFetchSupplementalStats.mockResolvedValue({
+      ...userASupplemental,
+      progression: null,
+    } as never);
+
+    const { result } = renderStatsDataHook("token-a", 1);
+
+    await loadUserAStats(result);
+
+    expect(result.current.progression).toBeNull();
+    expect(result.current.progressionSettled).toBe(true);
+    expect(result.current.stats).toEqual(userAPrimary.stats);
+    expect(result.current.error).toBeNull();
+  });
+
+  it("preserves heatmap and records when those requests fail but stats succeed", async () => {
+    const { result } = renderStatsDataHook("token-a", 1);
+
+    await loadUserAStats(result);
+
+    mockFetchPrimaryStats.mockResolvedValue({
+      stats: userBPrimary.stats,
+      heatmapDays: undefined,
+      records: undefined,
+    } as never);
+    mockFetchSupplementalStats.mockResolvedValue(userBSupplemental as never);
+
+    await act(async () => {
+      await result.current.loadStats({ force: true });
+    });
+
+    await waitFor(() => {
+      expect(result.current.stats).toEqual(userBPrimary.stats);
+    });
+
+    expect(result.current.heatmapDays).toEqual(userAPrimary.heatmapDays);
+    expect(result.current.records).toEqual(userAPrimary.records);
+    expect(result.current.error).toBeNull();
   });
 });

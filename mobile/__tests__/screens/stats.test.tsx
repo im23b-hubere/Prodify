@@ -5,6 +5,8 @@ import StatsScreen from "../../app/(tabs)/stats";
 
 const mockPush = jest.fn();
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, setParams: jest.fn() }),
   useLocalSearchParams: () => ({}),
@@ -250,8 +252,28 @@ describe("Stats Screen", () => {
       if (path.includes("/stats/records")) return [];
       return null;
     });
-    const { findByText } = render(<StatsScreen />);
+    const { findByText, queryByTestId } = render(<StatsScreen />);
     expect(await findByText("Stats unavailable")).toBeTruthy();
+    expect(queryByTestId("stats-kpi-strip")).toBeNull();
+    expect(queryByTestId("stats-merged-hero")).toBeNull();
+  });
+
+  it("keeps last-known KPI content when a refresh fails", async () => {
+    const { findByTestId, findByText, getByTestId } = render(<StatsScreen />);
+    expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
+
+    apiJson.mockImplementation(async (path: string) => {
+      if (path.includes("/sessions/stats")) throw new Error("Refresh failed");
+      if (path.includes("/stats/heatmap")) return [];
+      if (path.includes("/stats/records")) return [];
+      return null;
+    });
+
+    // Force a reload via period filter change.
+    fireEvent.press(await findByText("stats.filter30d"));
+
+    expect(await findByText("Refresh failed")).toBeTruthy();
+    expect(getByTestId("stats-kpi-strip")).toBeTruthy();
   });
 
   it("shows view-all link when session log exceeds preview", async () => {

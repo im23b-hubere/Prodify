@@ -47,18 +47,35 @@ export function useStatsLoader(
         if (!mounted.current || request !== sequence.current) return;
         if (!primary.stats) {
           debugLog("stats", "invalid_stats_payload", { period });
-          setState((current) => ({
-            ...current,
-            stats: null,
-            heatmapDays: [],
-            records: [],
-            progression: null,
-            progressionSettled: true,
-            error: t("stats.invalidResponse"),
-          }));
+          setState((current) => {
+            // Refresh with invalid payload: keep last-known-good KPIs.
+            if (current.stats) {
+              return {
+                ...current,
+                error: t("stats.invalidResponse"),
+                progressionSettled: true,
+              };
+            }
+            return {
+              ...current,
+              stats: null,
+              heatmapDays: [],
+              records: [],
+              progression: null,
+              progressionSettled: true,
+              error: t("stats.invalidResponse"),
+            };
+          });
           return;
         }
-        setState((current) => ({ ...current, ...primary, loading: false }));
+        setState((current) => ({
+          ...current,
+          stats: primary.stats,
+          heatmapDays:
+            primary.heatmapDays !== undefined ? primary.heatmapDays : current.heatmapDays,
+          records: primary.records !== undefined ? primary.records : current.records,
+          loading: false,
+        }));
         const supplemental = await fetchSupplementalStats(token, forceProgression);
         if (!mounted.current || request !== sequence.current) return;
         setState((current) => ({ ...current, ...supplemental, progressionSettled: true }));
@@ -67,6 +84,8 @@ export function useStatsLoader(
         if (!mounted.current || request !== sequence.current) return;
         const message = cause instanceof Error ? cause.message : t("stats.loadFailed");
         debugLog("stats", "stats_fetch_failed", { period, message });
+        // Preserve last-known-good snapshot on transient failure.
+        // Auth reset clears via createClearedStatsScreenState separately.
         setState((current) => ({ ...current, error: message }));
       } finally {
         if (mounted.current && request === sequence.current) {

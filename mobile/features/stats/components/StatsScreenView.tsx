@@ -12,6 +12,12 @@ import { StatsSkeleton } from "./StatsSkeleton";
 
 export function StatsScreenView({ controller }: { controller: StatsScreenController }) {
   const { t } = controller;
+  const hasValidStats = controller.stats != null;
+  // Initial failure: error + no stats → error/retry only (no fake 0h KPIs).
+  // Refresh failure: keep last-known-good content under the existing error banner.
+  const showStatsContent =
+    !controller.showInitialLoading && (hasValidStats || !controller.error);
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="stats-screen">
       <ScrollView
@@ -37,7 +43,7 @@ export function StatsScreenView({ controller }: { controller: StatsScreenControl
             onRetry={() => void controller.loadStats({ force: true, forceProgressionSync: true })}
           />
         ) : null}
-        {!controller.showInitialLoading ? <StatsScreenContent controller={controller} /> : null}
+        {showStatsContent ? <StatsScreenContent controller={controller} /> : null}
       </ScrollView>
     </SafeAreaView>
   );
