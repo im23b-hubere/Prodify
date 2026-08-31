@@ -15,8 +15,8 @@ export { ACTIVE_NOTES_MAX_LENGTH } from "./useActiveSessionMetadata";
 
 export function useActiveSession(id: string | undefined) {
   const { t } = useTranslation();
-  const { token } = useAuth();
-  const loader = useActiveSessionLoader(token, id);
+  const { token, user } = useAuth();
+  const loader = useActiveSessionLoader(token, user?.id, id);
   const clock = useActiveSessionClock(loader.session);
   const pauseControls = useActiveSessionPauseControls({
     token,
