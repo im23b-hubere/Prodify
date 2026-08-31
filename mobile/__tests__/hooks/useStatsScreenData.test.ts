@@ -167,11 +167,15 @@ describe("createClearedStatsScreenState", () => {
       goalConfigured: false,
       weekBusy: false,
       progression: null,
+      progressionSettled: false,
     });
   });
 
   it("sets loading true when switching to a signed-in account", () => {
     expect(createClearedStatsScreenState({ token: "token-b", userId: 2 }).loading).toBe(true);
+    expect(createClearedStatsScreenState({ token: "token-b", userId: 2 }).progressionSettled).toBe(
+      false,
+    );
   });
 });
 

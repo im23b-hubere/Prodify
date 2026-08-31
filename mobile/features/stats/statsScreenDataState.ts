@@ -17,6 +17,7 @@ export type StatsScreenDataState = {
   goalConfigured: boolean;
   weekBusy: boolean;
   progression: ProgressionDto | null;
+  progressionSettled: boolean;
 };
 
 export const INITIAL_STATS_SCREEN_DATA: StatsScreenDataState = {
@@ -32,4 +33,5 @@ export const INITIAL_STATS_SCREEN_DATA: StatsScreenDataState = {
   goalConfigured: false,
   weekBusy: false,
   progression: null,
+  progressionSettled: false,
 };

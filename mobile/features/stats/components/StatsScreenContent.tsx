@@ -50,6 +50,7 @@ export function StatsScreenContent({ controller }: { controller: StatsScreenCont
         <View style={styles.progressionInner}>
           <ProgressionBarCard
             progression={controller.progression}
+            loading={!controller.progressionSettled}
             onPress={controller.openProgression}
           />
         </View>

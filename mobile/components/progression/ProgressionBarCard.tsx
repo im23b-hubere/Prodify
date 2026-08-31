@@ -9,21 +9,46 @@ import type { ProgressionDto } from "../../types/outcomes";
 
 type Props = {
   progression: ProgressionDto | null;
+  loading?: boolean;
   onPress?: () => void;
 };
 
 export const ProgressionBarCard = memo(function ProgressionBarCard({
   progression,
+  loading = false,
   onPress,
 }: Props) {
   const { t } = useTranslation();
-  const level = progression?.current_level ?? 1;
-  const xp = progression?.xp_total ?? 0;
-  const xpToNext = progression?.xp_to_next_level ?? 50;
-  const pct = Math.max(0, Math.min(100, progression?.progress_percent ?? 0));
-  const nextLevel = level + 1;
-  const rankName = useMemo(() => progressionLevelName(t, level), [level, t]);
-  const nextRankName = useMemo(() => progressionLevelName(t, nextLevel), [nextLevel, t]);
+  const level = progression?.current_level;
+  const nextLevel = level != null ? level + 1 : null;
+  const rankName = useMemo(
+    () => (level != null ? progressionLevelName(t, level) : ""),
+    [level, t],
+  );
+  const nextRankName = useMemo(
+    () => (nextLevel != null ? progressionLevelName(t, nextLevel) : ""),
+    [nextLevel, t],
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.card} testID="progression-bar-loading">
+        <Text style={styles.sub}>{t("progression.loading")}</Text>
+      </View>
+    );
+  }
+
+  if (!progression) {
+    return (
+      <View style={styles.card} testID="progression-bar-unavailable">
+        <Text style={styles.sub}>{t("progression.loadError")}</Text>
+      </View>
+    );
+  }
+
+  const xp = progression.xp_total;
+  const xpToNext = progression.xp_to_next_level;
+  const pct = Math.max(0, Math.min(100, progression.progress_percent));
 
   return (
     <Pressable
@@ -31,9 +56,12 @@ export const ProgressionBarCard = memo(function ProgressionBarCard({
       style={({ pressed }) => [styles.card, onPress && pressed && styles.cardPressed]}
       onPress={onPress}
       disabled={!onPress}
+      testID="progression-bar-ready"
     >
       <View style={styles.row}>
-        <Text style={styles.title}>{t("progression.levelTitle", { level, name: rankName })}</Text>
+        <Text style={styles.title}>
+          {t("progression.levelTitle", { level: progression.current_level, name: rankName })}
+        </Text>
         <Text style={styles.sub}>{t("progression.xpTotal", { xp })}</Text>
       </View>
       <Text style={styles.hint}>{t("progression.hint")}</Text>

@@ -55,14 +55,37 @@ export function tryParseGoalForecastDto(raw: unknown): GoalForecastDto | null {
 
 export function tryParseProgressionDto(raw: unknown): ProgressionDto | null {
   if (!isObj(raw)) return null;
+  const current_level = finiteMetric(raw.current_level);
+  const xp_total = finiteMetric(raw.xp_total);
+  const xp_to_next_level = finiteMetric(raw.xp_to_next_level);
+  const progress_percent = finiteMetric(raw.progress_percent);
+  if (
+    current_level == null ||
+    xp_total == null ||
+    xp_to_next_level == null ||
+    progress_percent == null
+  ) {
+    return null;
+  }
+  if (current_level < 1 || xp_total < 0 || xp_to_next_level < 0) return null;
+  if (progress_percent < 0 || progress_percent > 100) return null;
+
+  const decay_grace_days = finiteMetric(raw.decay_grace_days);
+  const decay_xp_per_day = finiteMetric(raw.decay_xp_per_day);
+
   return {
-    xp_total: Number(raw.xp_total ?? 0),
-    current_level: Number(raw.current_level ?? 1),
-    xp_to_next_level: Number(raw.xp_to_next_level ?? 50),
-    progress_percent: Number(raw.progress_percent ?? 0),
-    decay_grace_days: Number(raw.decay_grace_days ?? 2),
-    decay_xp_per_day: Number(raw.decay_xp_per_day ?? 12),
+    xp_total,
+    current_level: Math.floor(current_level),
+    xp_to_next_level,
+    progress_percent,
+    decay_grace_days: decay_grace_days ?? 2,
+    decay_xp_per_day: decay_xp_per_day ?? 12,
   };
+}
+
+function finiteMetric(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function tryParseOutputMetricsDto(raw: unknown): OutputMetricsDto | null {

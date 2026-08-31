@@ -41,7 +41,7 @@ export function useStatsLoader(
       )
         return;
       const request = ++sequence.current;
-      setState((current) => ({ ...current, loading: true, error: null }));
+      setState((current) => ({ ...current, loading: true, error: null, progressionSettled: false }));
       try {
         const primary = await fetchPrimaryStats(token, period);
         if (!mounted.current || request !== sequence.current) return;
@@ -53,6 +53,7 @@ export function useStatsLoader(
             heatmapDays: [],
             records: [],
             progression: null,
+            progressionSettled: true,
             error: t("stats.invalidResponse"),
           }));
           return;
@@ -60,7 +61,7 @@ export function useStatsLoader(
         setState((current) => ({ ...current, ...primary, loading: false }));
         const supplemental = await fetchSupplementalStats(token, forceProgression);
         if (!mounted.current || request !== sequence.current) return;
-        setState((current) => ({ ...current, ...supplemental }));
+        setState((current) => ({ ...current, ...supplemental, progressionSettled: true }));
         lastFetch.current = { at: Date.now(), period };
       } catch (cause) {
         if (!mounted.current || request !== sequence.current) return;
@@ -69,7 +70,7 @@ export function useStatsLoader(
         setState((current) => ({ ...current, error: message }));
       } finally {
         if (mounted.current && request === sequence.current) {
-          setState((current) => ({ ...current, loading: false }));
+          setState((current) => ({ ...current, loading: false, progressionSettled: true }));
         }
       }
     },
