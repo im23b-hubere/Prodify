@@ -43,14 +43,3 @@ export function applyFriendsDashboardSnapshot(
   state.setRecap(snapshot.recap);
   state.setFeedMetricsBySession(buildFeedMetrics(snapshot.activity));
 }
-
-export function clearFriendsDashboardSnapshot(state: FriendsDashboardWriter) {
-  state.setActivity([]);
-  state.setIncoming([]);
-  state.setBuddy(null);
-  state.setCheckin(null);
-  state.setChallenges([]);
-  state.setCommitment(null);
-  state.setRecap(null);
-  state.setFeedMetricsBySession({});
-}

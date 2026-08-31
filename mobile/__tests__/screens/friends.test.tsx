@@ -7,6 +7,8 @@ const mockPush = jest.fn();
 const mockLoad = jest.fn().mockResolvedValue(undefined);
 const mockOnRefresh = jest.fn().mockResolvedValue(undefined);
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
@@ -163,9 +165,58 @@ describe("Friends Screen", () => {
     mockUseFriendsScreenState.mockReturnValue(
       createFriendsState({ loading: false, error: "Network down" }),
     );
-    const { getByText } = render(<FriendsScreen />);
+    const { getByText, queryByText } = render(<FriendsScreen />);
     expect(getByText("Network down")).toBeTruthy();
     expect(getByText("common.tryAgain")).toBeTruthy();
+    expect(queryByText("friendsScreen.feedEmptyTitle")).toBeNull();
+  });
+
+  it("keeps last known Friends data visible when refresh fails", () => {
+    mockUseFriendsScreenState.mockReturnValue(
+      createFriendsState({
+        loading: false,
+        error: "Network down",
+        leaderboard: {
+          period: "week",
+          entries: [
+            {
+              rank: 1,
+              user_id: 2,
+              username: "bob",
+              current_streak_days: 5,
+              sessions_in_period: 3,
+            },
+          ],
+        },
+        incoming: [{ id: 42, user_id: 3, username: "carol", created_at: "2026-07-01T10:00:00Z" }],
+        activity: [
+          {
+            session_id: 101,
+            user_id: 2,
+            username: "bob",
+            session_type: "beat_making",
+            activity_at: "2026-01-01T10:00:00Z",
+            duration_seconds: 1800,
+            reactions_count: 0,
+            comments_count: 0,
+          },
+        ],
+      }),
+    );
+    mockUseFriendsScreenActions.mockReturnValue(
+      createFriendsActions({
+        hasOtherFriends: true,
+        entries: [
+          { rank: 1, user_id: 2, username: "bob", current_streak_days: 5, sessions_in_period: 3 },
+          { rank: 2, user_id: 1, username: "alice", current_streak_days: 2, sessions_in_period: 1 },
+        ],
+      }),
+    );
+    const { getByText, getByTestId, queryByText } = render(<FriendsScreen />);
+    expect(getByText("Network down")).toBeTruthy();
+    expect(getByText("carol")).toBeTruthy();
+    expect(getByTestId("friends-leaderboard-podium")).toBeTruthy();
+    expect(queryByText("friendsScreen.feedEmptyTitle")).toBeNull();
   });
 
   it("renders social summary and podium when friends exist", () => {

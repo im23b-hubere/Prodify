@@ -22,7 +22,7 @@ function FriendsStatusMessages({ controller }: Props) {
   const { t, state, actions, load } = controller;
   return (
     <>
-      {!state.loading && !actions.hasOtherFriends && state.sectionTab === "overview" ? (
+      {!state.loading && !state.error && !actions.hasOtherFriends && state.sectionTab === "overview" ? (
         <EmptyState
           iconNode={<UserPlus color={colors.primary} size={36} />}
           title={t("friendsScreen.feedEmptyTitle")}
@@ -118,7 +118,12 @@ function FriendsScreenOverlays({ controller }: Props) {
 
 export function FriendsScreenView({ controller }: Props) {
   const { t, state, onRefresh } = controller;
-  const loaded = !(state.loading && !state.refreshing) && !state.error;
+  // Keep last known good Friends data visible when a refresh fails.
+  // Hide content only while the initial load is in flight, or when there is
+  // an error with no previously successful snapshot.
+  const hasLoadedSnapshot = state.leaderboard != null;
+  const showLoadedSections =
+    !(state.loading && !state.refreshing) && (hasLoadedSnapshot || !state.error);
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="friends-screen">
       <ScrollView
@@ -142,7 +147,7 @@ export function FriendsScreenView({ controller }: Props) {
           addFriendA11y={t("friendsScreen.addFriendA11y")}
         />
         <FriendsStatusMessages controller={controller} />
-        {loaded ? <FriendsLoadedSections controller={controller} /> : null}
+        {showLoadedSections ? <FriendsLoadedSections controller={controller} /> : null}
       </ScrollView>
       <FriendsScreenOverlays controller={controller} />
     </SafeAreaView>

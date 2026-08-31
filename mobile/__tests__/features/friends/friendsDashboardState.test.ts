@@ -1,7 +1,6 @@
 import {
   applyFriendsDashboardSnapshot,
   buildFeedMetrics,
-  clearFriendsDashboardSnapshot,
 } from "../../../features/friends/hooks/friendsDashboardState";
 import type { FriendsDashboardSnapshot } from "../../../features/friends/services/friendsDashboardApi";
 import type { FriendActivityDto } from "../../../types/friends";
@@ -85,15 +84,24 @@ describe("friends dashboard state", () => {
     });
   });
 
-  it("clears stale optional data after a failed load", () => {
+  it("applies a successful empty snapshot without fabricating prior data", () => {
     const writer = dashboardWriter();
+    const emptySnapshot = {
+      leaderboard: { period: "week", entries: [] },
+      activity: [],
+      incoming: [],
+      buddy: null,
+      checkin: null,
+      challenges: [],
+      commitment: null,
+      recap: null,
+    } as FriendsDashboardSnapshot;
 
-    clearFriendsDashboardSnapshot(writer);
+    applyFriendsDashboardSnapshot(writer, emptySnapshot);
 
+    expect(writer.setLeaderboard).toHaveBeenCalledWith(emptySnapshot.leaderboard);
     expect(writer.setActivity).toHaveBeenCalledWith([]);
-    expect(writer.setBuddy).toHaveBeenCalledWith(null);
-    expect(writer.setRecap).toHaveBeenCalledWith(null);
+    expect(writer.setIncoming).toHaveBeenCalledWith([]);
     expect(writer.setFeedMetricsBySession).toHaveBeenCalledWith({});
-    expect(writer.setLeaderboard).not.toHaveBeenCalled();
   });
 });

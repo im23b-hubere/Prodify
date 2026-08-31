@@ -351,4 +351,110 @@ describe("useFriendsDashboardData auth scope", () => {
 
     expect(result.current.state.leaderboard).toEqual(userASnapshot.leaderboard);
   });
+
+  it("preserves incoming requests on refresh failure", async () => {
+    const { result } = renderFriendsDataHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.state.incoming).toEqual(userASnapshot.incoming);
+    });
+
+    mockLoadFriendsDashboard.mockRejectedValue(new Error("network down"));
+    await result.current.load({ force: true });
+
+    await waitFor(() => {
+      expect(result.current.state.error).toBe("network down");
+    });
+
+    expect(result.current.state.incoming).toEqual(userASnapshot.incoming);
+    expect(result.current.state.incoming).toHaveLength(1);
+  });
+
+  it("preserves activity on refresh failure", async () => {
+    const { result } = renderFriendsDataHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.state.activity).toEqual(userASnapshot.activity);
+    });
+
+    mockLoadFriendsDashboard.mockRejectedValue(new Error("network down"));
+    await result.current.load({ force: true });
+
+    await waitFor(() => {
+      expect(result.current.state.error).toBe("network down");
+    });
+
+    expect(result.current.state.activity).toEqual(userASnapshot.activity);
+    expect(result.current.state.buddy).toEqual(userASnapshot.buddy);
+    expect(result.current.state.challenges).toEqual(userASnapshot.challenges);
+    expect(result.current.state.commitment).toEqual(userASnapshot.commitment);
+    expect(result.current.state.recap).toEqual(userASnapshot.recap);
+  });
+
+  it("shows error on initial load failure without fabricating a successful empty snapshot", async () => {
+    mockLoadFriendsDashboard.mockRejectedValue(new Error("offline"));
+    const { result } = renderFriendsDataHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.state.error).toBe("offline");
+    });
+
+    expect(result.current.state.loading).toBe(false);
+    expect(result.current.state.leaderboard).toBeNull();
+    expect(result.current.state.activity).toEqual([]);
+    expect(result.current.state.incoming).toEqual([]);
+    expect(result.current.state.buddy).toBeNull();
+    expect(result.current.state.challenges).toEqual([]);
+  });
+
+  it("applies a successful empty server response after previously loaded data", async () => {
+    const { result } = renderFriendsDataHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.state.incoming).toEqual(userASnapshot.incoming);
+    });
+
+    const emptySnapshot = {
+      leaderboard: { period: "week", entries: [] },
+      activity: [],
+      incoming: [],
+      buddy: null,
+      checkin: null,
+      challenges: [],
+      commitment: null,
+      recap: null,
+    } satisfies FriendsDashboardSnapshot;
+
+    mockLoadFriendsDashboard.mockResolvedValue(emptySnapshot);
+    await result.current.load({ force: true });
+
+    await waitFor(() => {
+      expect(result.current.state.incoming).toEqual([]);
+    });
+
+    expect(result.current.state.error).toBeNull();
+    expect(result.current.state.leaderboard).toEqual(emptySnapshot.leaderboard);
+    expect(result.current.state.activity).toEqual([]);
+    expect(result.current.state.buddy).toBeNull();
+    expect(result.current.state.challenges).toEqual([]);
+  });
+
+  it("clears refreshing after a refresh failure while keeping data", async () => {
+    const { result } = renderFriendsDataHook("token-a", 1);
+
+    await waitFor(() => {
+      expect(result.current.state.leaderboard).toEqual(userASnapshot.leaderboard);
+    });
+
+    mockLoadFriendsDashboard.mockRejectedValue(new Error("network down"));
+    result.current.onRefresh();
+
+    await waitFor(() => {
+      expect(result.current.state.error).toBe("network down");
+    });
+
+    expect(result.current.state.refreshing).toBe(false);
+    expect(result.current.state.loading).toBe(false);
+    expect(result.current.state.incoming).toEqual(userASnapshot.incoming);
+  });
 });

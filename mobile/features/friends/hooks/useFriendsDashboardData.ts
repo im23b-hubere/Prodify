@@ -8,10 +8,7 @@ import {
   resetFriendsAccountOwnedState,
   useFriendsAuthReset,
 } from "./friendsAuthReset";
-import {
-  applyFriendsDashboardSnapshot,
-  clearFriendsDashboardSnapshot,
-} from "./friendsDashboardState";
+import { applyFriendsDashboardSnapshot } from "./friendsDashboardState";
 import { useFriendsDashboardWriter } from "./useFriendsDashboardWriter";
 import type { FriendsScreenState } from "./useFriendsScreenState";
 
@@ -69,8 +66,9 @@ export function useFriendsDashboardData({ token, userId, periodParam, t, state }
         lastFetchRef.current = Date.now();
       } catch (e) {
         if (!isCurrentRequest(mounted, loadSeq, seq)) return;
+        // Preserve last known good snapshot on transient failure.
+        // Auth/account reset clears via resetFriendsAccountOwnedState separately.
         setError(dashboardLoadError(e, t));
-        clearFriendsDashboardSnapshot(dashboardWriter);
       } finally {
         if (!isCurrentRequest(mounted, loadSeq, seq)) return;
         setLoading(false);
