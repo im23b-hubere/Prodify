@@ -12,17 +12,27 @@ import { styles } from "../progressionOverview.styles";
 type Props = { progression: ProgressionDto | null; loadError: string | null };
 
 export function ProgressionHero({ progression, loadError }: Props) {
+  if (!progression || loadError) return null;
+  return <ProgressionHeroReady progression={progression} />;
+}
+
+function ProgressionHeroReady({ progression }: { progression: ProgressionDto }) {
   const { t } = useTranslation();
-  const level = progression?.current_level ?? 1;
+  const level = progression.current_level;
   const rankName = useMemo(() => progressionLevelName(t, level), [level, t]);
   const nextRankName = useMemo(() => progressionLevelName(t, level + 1), [level, t]);
   const tier = useMemo(() => levelTierFor(level), [level]);
-  if (!progression || loadError) return null;
-  const percent = Math.max(0, Math.min(100, progression.progress_percent ?? 0));
+  const percent = Math.max(0, Math.min(100, progression.progress_percent));
+
   return (
-    <AppCard style={[styles.heroCard, { borderColor: tier.accentSoft }]}>
+    <AppCard
+      style={[styles.heroCard, { borderColor: tier.accentSoft }]}
+      testID="progression-hero-ready"
+    >
       <LevelRankHeroEmblem level={level} t={t} />
-      <Text style={styles.metaLine}>{t("progression.xpTotal", { xp: progression.xp_total })}</Text>
+      <Text style={styles.metaLine} testID="progression-hero-xp-total">
+        {t("progression.xpTotal", { xp: progression.xp_total })}
+      </Text>
       <View
         style={styles.track}
         accessible
@@ -37,9 +47,9 @@ export function ProgressionHero({ progression, loadError }: Props) {
       >
         <View style={[styles.fill, { width: `${percent}%`, backgroundColor: tier.accent }]} />
       </View>
-      <Text style={styles.metaLine}>
+      <Text style={styles.metaLine} testID="progression-hero-to-next">
         {t("progression.toNext", {
-          xp: progression.xp_to_next_level ?? 50,
+          xp: progression.xp_to_next_level,
           nextName: nextRankName,
           percent: Math.round(percent),
         })}

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshControl, ScrollView, Text } from "react-native";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
 
 import { ProgressionOverviewSkeleton } from "../../../components/progression/ProgressionOverviewSkeleton";
 import { ErrorState } from "../../../components/states/ErrorState";
@@ -65,22 +65,28 @@ function progressionRefreshControl(props: Props) {
 
 function ProgressionCatalogState({ props, tierGroups }: { props: Props; tierGroups: TierGroups }) {
   const { overview, signedIn } = props;
+  const currentLevel = overview.progression?.current_level ?? null;
   const state = progressionCatalogVisibility({
     signedIn,
     loadError: overview.loadError,
     loading: overview.loadingCatalog,
     catalogLength: overview.levelCatalog.length,
     groupCount: tierGroups.length,
+    hasProgression: currentLevel != null,
   });
   const showBack = Boolean(overview.progression) || tierGroups.length > 0;
   return (
     <>
-      {state === "loading" ? <ProgressionOverviewSkeleton hero={false} rankRows={8} /> : null}
-      <ProgressionRankCatalog
-        groups={tierGroups}
-        currentLevel={overview.progression?.current_level ?? 1}
-        visible={state === "ready"}
-      />
+      {state === "loading" && !(overview.loadingProgression && !overview.progression) ? (
+        <ProgressionOverviewSkeleton hero={false} rankRows={8} />
+      ) : null}
+      {currentLevel != null ? (
+        <ProgressionRankCatalog
+          groups={tierGroups}
+          currentLevel={currentLevel}
+          visible={state === "ready"}
+        />
+      ) : null}
       {showBack ? <PrimaryButton label={props.backLabel} onPress={props.onBack} /> : null}
     </>
   );
@@ -92,11 +98,13 @@ type CatalogVisibilityOptions = {
   loading: boolean;
   catalogLength: number;
   groupCount: number;
+  hasProgression: boolean;
 };
 
 function progressionCatalogVisibility(options: CatalogVisibilityOptions) {
   if (!options.signedIn || options.loadError) return "hidden";
   if (options.loading && options.catalogLength === 0) return "loading";
+  if (!options.hasProgression) return "hidden";
   return options.groupCount > 0 ? "ready" : "hidden";
 }
 
@@ -121,7 +129,22 @@ function ProgressionFeedback({ overview, signedIn, onSignIn }: Props) {
       />
     );
   }
-  const showFullSkeleton =
-    overview.loadingProgression && !overview.progression && overview.loadingCatalog;
-  return showFullSkeleton ? <ProgressionOverviewSkeleton hero rankRows={8} /> : null;
+  if (overview.loadingProgression && !overview.progression) {
+    return (
+      <View testID="progression-overview-loading">
+        <ProgressionOverviewSkeleton hero rankRows={overview.loadingCatalog ? 8 : 0} />
+      </View>
+    );
+  }
+  if (!overview.progression) {
+    return (
+      <ErrorState
+        title={t("common.oops")}
+        message={t("progression.loadError")}
+        retryLabel={t("common.tryAgain")}
+        onRetry={() => void overview.load({ force: true })}
+      />
+    );
+  }
+  return null;
 }
