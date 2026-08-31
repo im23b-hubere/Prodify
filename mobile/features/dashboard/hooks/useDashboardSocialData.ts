@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 
 import { apiJson } from "../../../lib/client";
@@ -18,8 +18,13 @@ import type {
   IdentityStateDto,
   SocialChallengeDto,
 } from "../../../types/friends";
+import { useDashboardAuthReset } from "./dashboardAuthReset";
 
-export function useDashboardSocialData(token: string | null, t: TFunction) {
+export function useDashboardSocialData(
+  token: string | null,
+  userId: number | null | undefined,
+  t: TFunction,
+) {
   const [socialError, setSocialError] = useState<string | null>(null);
   const [socialLoading, setSocialLoading] = useState(false);
   const [friendActivity, setFriendActivity] = useState<FriendActivityDto[]>([]);
@@ -29,13 +34,31 @@ export function useDashboardSocialData(token: string | null, t: TFunction) {
   const [commitmentStatus, setCommitmentStatus] = useState<CommitmentDto | null>(null);
   const [socialChallenges, setSocialChallenges] = useState<SocialChallengeDto[]>([]);
   const [identityState, setIdentityState] = useState<IdentityStateDto | null>(null);
+  const loadSequence = useRef(0);
+
+  const resetSocialState = useCallback(() => {
+    loadSequence.current += 1;
+    setSocialError(null);
+    setSocialLoading(false);
+    setFriendActivity([]);
+    setFriendLeaderboard(null);
+    setBuddyRisk(null);
+    setCheckinStatus(null);
+    setCommitmentStatus(null);
+    setSocialChallenges([]);
+    setIdentityState(null);
+  }, []);
+
+  useDashboardAuthReset(token, userId, resetSocialState);
 
   const loadSocial = useCallback(async () => {
     if (!token) return;
+    const sequence = ++loadSequence.current;
     setSocialLoading(true);
     setSocialError(null);
     try {
       const snapshot = await fetchSocialSnapshot(token);
+      if (sequence !== loadSequence.current) return;
       setFriendLeaderboard(snapshot.friendLeaderboard);
       setFriendActivity(snapshot.friendActivity);
       setBuddyRisk(snapshot.buddyRisk);
@@ -44,9 +67,12 @@ export function useDashboardSocialData(token: string | null, t: TFunction) {
       setSocialChallenges(snapshot.socialChallenges);
       setIdentityState(snapshot.identityState);
     } catch {
+      if (sequence !== loadSequence.current) return;
       setSocialError(t("dashboard.socialLoadFailed"));
     } finally {
-      setSocialLoading(false);
+      if (sequence === loadSequence.current) {
+        setSocialLoading(false);
+      }
     }
   }, [token, t]);
 

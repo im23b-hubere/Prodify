@@ -4,14 +4,30 @@ import type { TFunction } from "i18next";
 import { apiJson } from "../../../lib/client";
 import { parseSessionList, tryParseSessionDto } from "../../../lib/sessionDto";
 import type { SessionDto } from "../../../types/session";
+import { useDashboardAuthReset } from "./dashboardAuthReset";
 
-export function useDashboardSessionsData(token: string | null, t: TFunction) {
+export function useDashboardSessionsData(
+  token: string | null,
+  userId: number | null | undefined,
+  t: TFunction,
+) {
   const [sessions, setSessions] = useState<SessionDto[]>([]);
   const [active, setActive] = useState<SessionDto | null>(null);
   const [activeResolved, setActiveResolved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const loadSequence = useRef(0);
+
+  const resetSessionsState = useCallback(() => {
+    loadSequence.current += 1;
+    setSessions([]);
+    setActive(null);
+    setActiveResolved(false);
+    setError(null);
+    setLastUpdated(null);
+  }, []);
+
+  useDashboardAuthReset(token, userId, resetSessionsState);
 
   const loadSessions = useCallback(async () => {
     if (!token) return;

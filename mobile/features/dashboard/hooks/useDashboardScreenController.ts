@@ -23,7 +23,7 @@ export function useDashboardScreenController() {
   const { token, user } = useAuth();
   const { level } = useRankProgression(Boolean(token));
   const router = useRouter();
-  const data = useDashboardData(token);
+  const data = useDashboardData(token, user?.id);
   const setup = useDashboardSessionSetupModal();
   const presentation = useDashboardPresentation({
     sessions: data.sessions,
