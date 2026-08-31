@@ -24,7 +24,12 @@ export function useStatsLoader(
       sequence.current += 1;
     };
   }, []);
-  return useCallback(
+  const invalidateLoader = useCallback(() => {
+    sequence.current += 1;
+    lastFetch.current = null;
+  }, []);
+
+  const loadStats = useCallback(
     async (options: StatsLoadOptions = {}) => {
       const forceProgression = Boolean(options.forceProgressionSync);
       if (!token) return;
@@ -70,4 +75,6 @@ export function useStatsLoader(
     },
     [period, setState, t, token],
   );
+
+  return { loadStats, invalidateLoader };
 }

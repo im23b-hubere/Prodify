@@ -11,13 +11,13 @@ import { useStatsFilters, useStatsPresentation } from "./useStatsPresentation";
 
 export function useStatsScreenController() {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const rawFocus = useLocalSearchParams<{ focus?: string | string[] }>().focus;
   const focusParam = Array.isArray(rawFocus) ? rawFocus[0] : rawFocus;
   const [filterIdx, setFilterIdx] = useState(0);
   const { filters, filter, periodParam } = useStatsFilters(t, filterIdx);
-  const data = useStatsScreenData(token, periodParam, t);
+  const data = useStatsScreenData(token, user?.id, periodParam, t);
   const presentation = useStatsPresentation(data.stats, data.records, filter.period, t);
   const showInitialLoading = data.loading && !data.refreshing && !data.stats && !data.error;
   const lifecycle = useStatsScreenLifecycle({
