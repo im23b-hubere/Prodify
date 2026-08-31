@@ -15,7 +15,7 @@ import {
   writeTokenPair,
 } from "../lib/authTokenStorage";
 import { isE2eModeEnabled } from "../lib/e2eMode";
-import { clearNotificationInbox, setNotificationUserContext } from "../lib/notificationInbox";
+import { setNotificationUserContext } from "../lib/notificationInbox";
 import { cancelWeeklyRecapScheduled } from "../lib/weeklyRecapNotifications";
 import { syncPendingWeeklyGoal } from "../lib/onboardingGoalSync";
 import { configureRevenueCat } from "../lib/revenuecat";
@@ -87,7 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setApiUnauthorizedHandler(async () => {
       await clearTokenPair();
-      await clearNotificationInbox().catch(() => undefined);
       await cancelWeeklyRecapScheduled().catch(() => undefined);
       await setNotificationUserContext(null).catch(() => undefined);
       setToken(null);
@@ -104,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const me = await apiJson<AuthenticatedUser>("/auth/me", { token });
       setUser(me);
-      await setNotificationUserContext(me.created_at ?? null).catch(() => undefined);
+      await setNotificationUserContext(me.id, me.created_at ?? null).catch(() => undefined);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setUser(null);
@@ -146,8 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       await persistTokenPair(pair);
       setUser(authenticatedUser);
-      void clearNotificationInbox().catch(() => undefined);
-      void setNotificationUserContext(authenticatedUser.created_at ?? null).catch(() => undefined);
+      void setNotificationUserContext(authenticatedUser.id, authenticatedUser.created_at ?? null).catch(
+        () => undefined,
+      );
       void syncPendingWeeklyGoal(pair.access_token).catch(() => undefined);
       if (!isE2eModeEnabled()) syncBillingInBackground(pair.access_token, authenticatedUser);
     },

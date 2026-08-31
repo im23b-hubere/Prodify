@@ -1,9 +1,10 @@
 import { useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../context/AuthContext";
+import { useAuthScopedReset } from "../../lib/authScopedReset";
 import {
   loadInbox,
   loadSettings,
@@ -39,48 +40,91 @@ function useNotificationSettings(token?: string | null) {
 
 export function useNotificationInbox() {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const userId = user?.id;
   const [items, setItems] = useState<InboxItem[]>([]);
   const { settings, setSettings, updateSetting } = useNotificationSettings(token);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<NotificationCategory | "all">("all");
   const [serverSyncError, setServerSyncError] = useState<string | null>(null);
+  const loadSequence = useRef(0);
+  const mounted = useRef(true);
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      loadSequence.current += 1;
+    };
+  }, []);
+
+  const resetNotificationAuthScope = useCallback(() => {
+    loadSequence.current += 1;
+    setItems([]);
+    setServerSyncError(null);
+    setRefreshing(false);
+    setInitialLoading(Boolean(tokenRef.current && userId != null));
+  }, [userId]);
+
+  useAuthScopedReset(token ?? null, userId, resetNotificationAuthScope);
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    const currentToken = tokenRef.current;
     const errors: string[] = [];
-    if (token) {
+    if (currentToken && userId != null) {
       try {
-        await syncServerInbox(token, 60);
+        await syncServerInbox(currentToken, 60);
       } catch (syncError) {
+        if (sequence !== loadSequence.current) return;
         errors.push(
           syncError instanceof Error ? syncError.message : t("notificationsUi.syncFailed"),
         );
       }
     }
+    if (sequence !== loadSequence.current || !mounted.current) return;
+
     const [inbox, loadedSettings] = await Promise.all([loadInbox(), loadSettings()]);
+    if (sequence !== loadSequence.current || !mounted.current) return;
+
     setItems(inbox);
     setSettings(loadedSettings);
     await markAllRead();
+    if (sequence !== loadSequence.current || !mounted.current) return;
+
     setItems((current) => current.map((item) => ({ ...item, read: true })));
-    if (token) {
+    if (currentToken && userId != null) {
       try {
-        await markServerInboxRead(token, latestNotificationTimestamp(inbox, Date.now()));
+        await markServerInboxRead(currentToken, latestNotificationTimestamp(inbox, Date.now()));
       } catch (readError) {
+        if (sequence !== loadSequence.current) return;
         errors.push(
           readError instanceof Error ? readError.message : t("notificationsUi.readSyncFailed"),
         );
       }
     }
+    if (sequence !== loadSequence.current || !mounted.current) return;
+
     setServerSyncError(errors.length ? errors.join("\n") : null);
     setInitialLoading(false);
-  }, [setSettings, t, token]);
+  }, [setSettings, t, userId]);
 
   useFocusEffect(
     useCallback(() => {
       load().catch(() => undefined);
     }, [load]),
   );
+
+  useEffect(() => {
+    if (!tokenRef.current || userId == null) {
+      setInitialLoading(false);
+      return;
+    }
+    load().catch(() => undefined);
+  }, [load, userId]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);

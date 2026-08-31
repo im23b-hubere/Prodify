@@ -10,7 +10,7 @@ import {
   syncEntitlement,
 } from "./billing";
 import { clearDevBillingBypass } from "./devBillingBypass";
-import { clearNotificationInbox, setNotificationUserContext } from "./notificationInbox";
+import { setNotificationUserContext } from "./notificationInbox";
 import { clearPendingDeepLinkPath } from "./pendingDeepLink";
 import { clearLevelCatalogCache } from "./progressionLevelCatalog";
 import { clearProgressionSyncCache } from "./progressionSync";
@@ -94,9 +94,8 @@ export async function clearLocalAuthSession(
   if (clearOnboarding) {
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY).catch(() => undefined);
   }
-  await clearNotificationInbox().catch(() => undefined);
-  await cancelWeeklyRecapScheduled().catch(() => undefined);
   await setNotificationUserContext(null).catch(() => undefined);
+  await cancelWeeklyRecapScheduled().catch(() => undefined);
   await clearPendingDeepLinkPath();
   await clearDevBillingBypass();
   await configureRevenueCat(undefined).catch(() => undefined);

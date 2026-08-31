@@ -32,6 +32,26 @@ export const WEEKLY_GOAL_CONFIGURED_KEY = "prodify_weekly_goal_configured_v1";
 export const NOTIFICATION_INBOX_KEY = "prodify_notification_inbox_v1";
 export const NOTIFICATION_UNREAD_KEY = "prodify_notification_unread_v1";
 export const NOTIFICATION_SETTINGS_KEY = "prodify_notification_settings_v1";
+/** Legacy device-global sync cursor — superseded by user-scoped keys. */
+export const NOTIFICATION_SERVER_SYNC_MS_KEY = "prodify_notification_server_sync_ms_v1";
+/** Legacy device-global user-created-at — superseded by user-scoped keys. */
+export const NOTIFICATION_USER_CREATED_AT_KEY = "prodify_notification_user_created_at_v1";
+
+export function userScopedNotificationInboxKey(userId: number): string {
+  return withUserScope(NOTIFICATION_INBOX_KEY, userId);
+}
+
+export function userScopedNotificationUnreadKey(userId: number): string {
+  return withUserScope(NOTIFICATION_UNREAD_KEY, userId);
+}
+
+export function userScopedNotificationServerSyncKey(userId: number): string {
+  return withUserScope(NOTIFICATION_SERVER_SYNC_MS_KEY, userId);
+}
+
+export function userScopedNotificationUserCreatedAtKey(userId: number): string {
+  return withUserScope(NOTIFICATION_USER_CREATED_AT_KEY, userId);
+}
 
 /** Expo Go dev only: skip paywall locally without Store purchase. */
 export const DEV_BILLING_BYPASS_KEY = "prodify_dev_billing_bypass_v1";

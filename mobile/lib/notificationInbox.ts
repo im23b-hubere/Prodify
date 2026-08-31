@@ -6,6 +6,8 @@ export type {
 } from "./notificationTypes";
 export {
   clearNotificationInbox,
+  getActiveNotificationUserId,
+  getNotificationServerSyncMs,
   getUnreadCount,
   loadInbox,
   loadSettings,
@@ -15,6 +17,7 @@ export {
   removeItem,
   saveInbox,
   saveSettings,
+  setNotificationServerSyncMs,
   setNotificationUserContext,
   setUnreadCount,
 } from "./notificationLocalStore";

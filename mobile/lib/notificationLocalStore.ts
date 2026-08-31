@@ -3,7 +3,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   NOTIFICATION_INBOX_KEY,
   NOTIFICATION_SETTINGS_KEY,
+  NOTIFICATION_SERVER_SYNC_MS_KEY,
   NOTIFICATION_UNREAD_KEY,
+  NOTIFICATION_USER_CREATED_AT_KEY,
+  userScopedNotificationInboxKey,
+  userScopedNotificationServerSyncKey,
+  userScopedNotificationUnreadKey,
+  userScopedNotificationUserCreatedAtKey,
 } from "../constants/storageKeys";
 import type {
   InboxItem,
@@ -12,12 +18,14 @@ import type {
   NotificationSettings,
 } from "./notificationTypes";
 
-const NOTIFICATION_USER_CREATED_AT_KEY = "prodify_notification_user_created_at_v1";
-export const NOTIFICATION_SERVER_SYNC_MS_KEY = "prodify_notification_server_sync_ms_v1";
+/** @deprecated Legacy global key — retained for test cleanup only. */
+export { NOTIFICATION_SERVER_SYNC_MS_KEY };
+
 const MAX_INBOX_ITEMS = 200;
 const DEFAULT_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const FIRST_WEEK_QUIET_MS = 7 * 24 * 60 * 60 * 1000;
 let inboxMutationQueue: Promise<unknown> = Promise.resolve();
+let activeNotificationUserId: number | null = null;
 
 const defaultSettings: NotificationSettings = {
   streak: true,
@@ -28,6 +36,49 @@ const defaultSettings: NotificationSettings = {
   quietEndHour: 7,
   frequency: "all",
 };
+
+export function getActiveNotificationUserId(): number | null {
+  return activeNotificationUserId;
+}
+
+function inboxStorageKey(): string | null {
+  if (activeNotificationUserId == null) return null;
+  return userScopedNotificationInboxKey(activeNotificationUserId);
+}
+
+function unreadStorageKey(): string | null {
+  if (activeNotificationUserId == null) return null;
+  return userScopedNotificationUnreadKey(activeNotificationUserId);
+}
+
+function userCreatedAtStorageKey(): string | null {
+  if (activeNotificationUserId == null) return null;
+  return userScopedNotificationUserCreatedAtKey(activeNotificationUserId);
+}
+
+export async function getNotificationServerSyncMs(): Promise<number> {
+  const key =
+    activeNotificationUserId == null
+      ? null
+      : userScopedNotificationServerSyncKey(activeNotificationUserId);
+  if (!key) return 0;
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    const parsed = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function setNotificationServerSyncMs(ms: number): Promise<void> {
+  const key =
+    activeNotificationUserId == null
+      ? null
+      : userScopedNotificationServerSyncKey(activeNotificationUserId);
+  if (!key) return;
+  await AsyncStorage.setItem(key, String(ms));
+}
 
 export async function loadSettings(): Promise<NotificationSettings> {
   try {
@@ -44,8 +95,10 @@ export async function saveSettings(s: NotificationSettings): Promise<void> {
 }
 
 export async function loadInbox(): Promise<InboxItem[]> {
+  const key = inboxStorageKey();
+  if (!key) return [];
   try {
-    const raw = await AsyncStorage.getItem(NOTIFICATION_INBOX_KEY);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as InboxItem[];
     if (!Array.isArray(parsed)) return [];
@@ -73,7 +126,9 @@ export async function loadInbox(): Promise<InboxItem[]> {
 }
 
 export async function saveInbox(items: InboxItem[]): Promise<void> {
-  await AsyncStorage.setItem(NOTIFICATION_INBOX_KEY, JSON.stringify(items));
+  const key = inboxStorageKey();
+  if (!key) return;
+  await AsyncStorage.setItem(key, JSON.stringify(items));
 }
 
 function unreadCountFromInbox(items: InboxItem[]): number {
@@ -90,8 +145,10 @@ async function runSerializedInboxMutation<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export async function getUnreadCount(): Promise<number> {
+  const key = unreadStorageKey();
+  if (!key) return 0;
   try {
-    const raw = await AsyncStorage.getItem(NOTIFICATION_UNREAD_KEY);
+    const raw = await AsyncStorage.getItem(key);
     return raw ? parseInt(raw, 10) || 0 : 0;
   } catch {
     return 0;
@@ -99,7 +156,9 @@ export async function getUnreadCount(): Promise<number> {
 }
 
 export async function setUnreadCount(n: number): Promise<void> {
-  await AsyncStorage.setItem(NOTIFICATION_UNREAD_KEY, String(Math.max(0, n)));
+  const key = unreadStorageKey();
+  if (!key) return;
+  await AsyncStorage.setItem(key, String(Math.max(0, n)));
 }
 
 export async function prependNotification(
@@ -114,6 +173,7 @@ export async function prependNotification(
     bypassFirstWeekQuietMode?: boolean;
   },
 ): Promise<boolean> {
+  if (activeNotificationUserId == null) return false;
   return runSerializedInboxMutation(async () => {
     const now = Date.now();
     const baseCreatedAt =
@@ -184,6 +244,7 @@ export async function prependNotification(
 }
 
 export async function markAllRead(): Promise<void> {
+  if (activeNotificationUserId == null) return;
   await runSerializedInboxMutation(async () => {
     const inbox = await loadInbox();
     const next = inbox.map((i) => ({ ...i, read: true }));
@@ -193,6 +254,7 @@ export async function markAllRead(): Promise<void> {
 }
 
 export async function markRead(id: string): Promise<void> {
+  if (activeNotificationUserId == null) return;
   await runSerializedInboxMutation(async () => {
     const inbox = await loadInbox();
     const next = inbox.map((i) => {
@@ -207,6 +269,7 @@ export async function markRead(id: string): Promise<void> {
 }
 
 export async function removeItem(id: string): Promise<void> {
+  if (activeNotificationUserId == null) return;
   await runSerializedInboxMutation(async () => {
     const inbox = await loadInbox();
     const next = inbox.filter((i) => i.id !== id);
@@ -217,23 +280,38 @@ export async function removeItem(id: string): Promise<void> {
 
 export async function clearNotificationInbox(): Promise<void> {
   await runSerializedInboxMutation(async () => {
+    if (activeNotificationUserId != null) {
+      const userId = activeNotificationUserId;
+      await Promise.all([
+        AsyncStorage.removeItem(userScopedNotificationInboxKey(userId)),
+        AsyncStorage.removeItem(userScopedNotificationUnreadKey(userId)),
+        AsyncStorage.removeItem(userScopedNotificationServerSyncKey(userId)),
+        AsyncStorage.removeItem(userScopedNotificationUserCreatedAtKey(userId)),
+      ]);
+      return;
+    }
     await Promise.all([
       AsyncStorage.removeItem(NOTIFICATION_INBOX_KEY),
       AsyncStorage.removeItem(NOTIFICATION_UNREAD_KEY),
       AsyncStorage.removeItem(NOTIFICATION_SERVER_SYNC_MS_KEY),
+      AsyncStorage.removeItem(NOTIFICATION_USER_CREATED_AT_KEY),
     ]);
   });
 }
 
 export async function setNotificationUserContext(
-  createdAtIso: string | null | undefined,
+  userId: number | null | undefined,
+  createdAtIso?: string | null,
 ): Promise<void> {
+  activeNotificationUserId = userId ?? null;
+  const createdAtKey = userCreatedAtStorageKey();
+  if (!createdAtKey) return;
   const normalized = (createdAtIso ?? "").trim();
   if (!normalized) {
-    await AsyncStorage.removeItem(NOTIFICATION_USER_CREATED_AT_KEY);
+    await AsyncStorage.removeItem(createdAtKey);
     return;
   }
-  await AsyncStorage.setItem(NOTIFICATION_USER_CREATED_AT_KEY, normalized);
+  await AsyncStorage.setItem(createdAtKey, normalized);
 }
 
 export function isNotificationPriority(value: unknown): value is NotificationPriority {
@@ -260,7 +338,9 @@ async function shouldSuppressForFirstWeek(
   if (priority === "critical" || category === "streak" || category === "achievement") {
     return false;
   }
-  const raw = await AsyncStorage.getItem(NOTIFICATION_USER_CREATED_AT_KEY);
+  const key = userCreatedAtStorageKey();
+  if (!key) return false;
+  const raw = await AsyncStorage.getItem(key);
   if (!raw) return false;
   const createdAtMs = Date.parse(raw);
   if (!Number.isFinite(createdAtMs)) return false;

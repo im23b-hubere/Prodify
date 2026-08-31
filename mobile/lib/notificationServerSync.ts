@@ -1,13 +1,12 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { apiJson } from "./client";
 import i18n from "./i18n";
 import {
+  getNotificationServerSyncMs,
   isNotificationPriority,
   loadInbox,
   markRead,
-  NOTIFICATION_SERVER_SYNC_MS_KEY,
   prependNotification,
+  setNotificationServerSyncMs,
 } from "./notificationLocalStore";
 import type { NotificationCategory, NotificationPriority } from "./notificationTypes";
 
@@ -30,9 +29,8 @@ type ServerInboxItem = {
 
 export async function syncServerInbox(token: string, limit = 40): Promise<number> {
   const safeLimit = Math.max(1, Math.min(limit, 100));
-  const lastSyncRaw = await AsyncStorage.getItem(NOTIFICATION_SERVER_SYNC_MS_KEY);
-  const lastSyncMs = lastSyncRaw ? parseInt(lastSyncRaw, 10) : 0;
-  const sinceQuery = Number.isFinite(lastSyncMs) && lastSyncMs > 0 ? `&since_ms=${lastSyncMs}` : "";
+  const lastSyncMs = await getNotificationServerSyncMs();
+  const sinceQuery = lastSyncMs > 0 ? `&since_ms=${lastSyncMs}` : "";
   const rows = await apiJson<ServerInboxItem[]>(
     `/notifications/inbox?limit=${safeLimit}${sinceQuery}`,
     {
@@ -41,7 +39,7 @@ export async function syncServerInbox(token: string, limit = 40): Promise<number
   );
   const syncNowMs = Date.now();
   if (!Array.isArray(rows) || rows.length === 0) {
-    await AsyncStorage.setItem(NOTIFICATION_SERVER_SYNC_MS_KEY, String(syncNowMs));
+    await setNotificationServerSyncMs(syncNowMs);
     return 0;
   }
 
@@ -79,7 +77,6 @@ export async function syncServerInbox(token: string, limit = 40): Promise<number
       expiresAtMs: Number.isFinite(expiresAtMs as number) ? (expiresAtMs as number) : undefined,
       dedupeWindowMs: 60_000,
       respectQuietHours: true,
-      // Social requests/invites should never be silently dropped for new users.
       bypassFirstWeekQuietMode:
         row.category === "social" &&
         typeof row.id === "string" &&
@@ -97,7 +94,7 @@ export async function syncServerInbox(token: string, limit = 40): Promise<number
   }
 
   if (!sawProcessableRow || !anySoftSkip) {
-    await AsyncStorage.setItem(NOTIFICATION_SERVER_SYNC_MS_KEY, String(syncNowMs));
+    await setNotificationServerSyncMs(syncNowMs);
   }
   return insertedCount;
 }
