@@ -60,24 +60,14 @@ export const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: "rgba(255,255,255,0.1)",
   },
-  progressionInner: {
-    marginTop: -spacing.md,
-  },
   hintCard: {
-    backgroundColor: "rgba(162,89,255,0.12)",
-    borderColor: colors.secondary,
-    gap: spacing.xs,
+    gap: 4,
+    paddingVertical: spacing.xs,
   },
   hintLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    ...typography.meta,
   },
-  hintText: { color: colors.textSecondary, ...typography.meta, lineHeight: 20 },
-  weeklyRecapBottomCta: {
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
-  },
+  hintText: { color: colors.textSecondary, ...typography.body, lineHeight: 22 },
 });

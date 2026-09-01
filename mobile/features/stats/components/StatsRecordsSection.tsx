@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { RecordGlyph } from "../../../components/icons/ProdifyGlyphs";
 import { EmptyState } from "../../../components/states/EmptyState";
 import { fontFamily } from "../../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../../constants/theme";
+import { colors, spacing, typography } from "../../../constants/theme";
 import type { DecoratedRecord } from "../types";
 import { formatRecordContext, formatRecordDate, recordTitle } from "../utils/records";
 import { StatsSection } from "./StatsSection";
@@ -12,10 +12,9 @@ import { StatsSection } from "./StatsSection";
 type Props = {
   t: TFunction;
   records: DecoratedRecord[];
-  onStartSession: () => void;
 };
 
-export function StatsRecordsSection({ t, records, onStartSession }: Props) {
+export function StatsRecordsSection({ t, records }: Props) {
   return (
     <StatsSection
       title={t("stats.recordsTitle")}
@@ -23,48 +22,25 @@ export function StatsRecordsSection({ t, records, onStartSession }: Props) {
       testID="stats-section-records"
     >
       {records.length === 0 ? (
-        <EmptyState
-          compact
-          title={t("stats.recordsEmptyTitle")}
-          message={t("stats.recordsEmpty")}
-          actionLabel={t("common.startSession")}
-          onAction={onStartSession}
-        />
+        <EmptyState compact title={t("stats.recordsEmptyTitle")} message={t("stats.recordsEmpty")} />
       ) : (
         <View style={styles.wrap}>
-          {records.slice(0, 3).map((record, idx) => {
+          {records.slice(0, 3).map((record) => {
             const meta = formatRecordDate(record.occurred_at, t);
             const displayContext = formatRecordContext(record, t);
             return (
-              <View
-                key={`top-${record.key}${record.occurred_at ?? ""}`}
-                style={[styles.card, idx === 0 && styles.cardFeatured]}
-              >
-                <View style={styles.titleRow}>
-                  <View style={styles.labelWrap}>
+              <View key={`top-${record.key}${record.occurred_at ?? ""}`} style={styles.row}>
+                <View style={styles.accent} />
+                <View style={styles.copy}>
+                  <View style={styles.titleRow}>
                     <RecordGlyph recordKey={record.key} size={16} />
                     <Text style={styles.label}>{recordTitle(record.key, record.label, t)}</Text>
+                    {record.isFresh ? <Text style={styles.fresh}>{t("stats.recordFresh")}</Text> : null}
                   </View>
-                  <View style={styles.badgesRow}>
-                    {record.isFresh ? (
-                      <View style={[styles.badge, styles.badgeFresh]}>
-                        <Text style={[styles.badgeText, styles.badgeTextFresh]}>
-                          {t("stats.recordFresh")}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {idx === 0 ? (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{t("stats.recordBest")}</Text>
-                      </View>
-                    ) : null}
-                  </View>
+                  <Text style={styles.value}>{record.value}</Text>
+                  {displayContext ? <Text style={styles.meta}>{displayContext}</Text> : null}
+                  {meta ? <Text style={styles.meta}>{meta}</Text> : null}
                 </View>
-                <Text style={[styles.value, idx === 0 && styles.valueFeatured]}>
-                  {record.value}
-                </Text>
-                {displayContext ? <Text style={styles.ctx}>{displayContext}</Text> : null}
-                {meta ? <Text style={styles.meta}>{meta}</Text> : null}
               </View>
             );
           })}
@@ -76,47 +52,29 @@ export function StatsRecordsSection({ t, records, onStartSession }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
-  card: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    padding: spacing.md,
-    gap: 6,
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  cardFeatured: {
-    borderColor: "rgba(162,89,255,0.45)",
-    backgroundColor: "rgba(162,89,255,0.08)",
-    shadowColor: colors.secondary,
-    shadowOpacity: 0.2,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+  accent: {
+    width: 3,
+    height: 28,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginTop: 4,
+  },
+  copy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  labelWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    flexShrink: 1,
-  },
-  badge: {
-    borderRadius: radii.round,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    backgroundColor: "rgba(255,61,0,0.2)",
-  },
-  badgeFresh: {
-    backgroundColor: "rgba(162,89,255,0.2)",
-  },
-  badgesRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
@@ -127,33 +85,19 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     flexShrink: 1,
   },
-  badgeText: {
+  fresh: {
     color: colors.primary,
     fontFamily: fontFamily.bodyBold,
-    fontSize: 11,
-  },
-  badgeTextFresh: {
-    color: colors.secondary,
+    ...typography.meta,
   },
   value: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    fontSize: 24,
-    lineHeight: 30,
-  },
-  valueFeatured: {
-    fontSize: 32,
-    lineHeight: 38,
-    letterSpacing: -0.5,
-  },
-  ctx: {
-    color: colors.textSecondary,
-    ...typography.meta,
+    fontSize: 22,
+    lineHeight: 28,
   },
   meta: {
-    marginTop: 2,
     color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 11,
+    ...typography.meta,
   },
 });

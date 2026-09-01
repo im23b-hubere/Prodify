@@ -19,7 +19,9 @@ export function useStatsScreenController() {
   const { filters, filter, periodParam } = useStatsFilters(t, filterIdx);
   const data = useStatsScreenData(token, user?.id, periodParam, t);
   const presentation = useStatsPresentation(data.stats, data.records, filter.period, t);
-  const showInitialLoading = data.loading && !data.refreshing && !data.stats && !data.error;
+  const showInitialLoading =
+    !data.refreshing && !data.error && (!data.stats || !data.progressionSettled);
+  const showScanLine = !data.refreshing && !data.error && (data.loading || !data.progressionSettled);
   const lifecycle = useStatsScreenLifecycle({
     token,
     focusParam,
@@ -48,11 +50,10 @@ export function useStatsScreenController() {
     ...presentation,
     ...lifecycle,
     showInitialLoading,
-    showInlineLoading: data.loading && !data.refreshing && !!data.stats,
+    showScanLine,
     selectFilter,
     refresh,
     startSession: () => router.push("/session/setup"),
-    openWeeklyRecap: () => router.push("/weekly-recap"),
     openProgression: () => router.push(progressionOverviewHref("stats")),
   };
 }

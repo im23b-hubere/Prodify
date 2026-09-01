@@ -66,24 +66,26 @@ export function YourWeekProgress({ props, editor, model }: SectionProps) {
         </Text>
         <Text style={styles.metricLabel}>{t("stats.yourWeek.sessionsThisWeek")}</Text>
       </View>
-      <View
-        style={[
-          styles.statusPill,
-          model.status === "on_track" && styles.statusOnTrack,
-          model.status === "behind" && styles.statusBehind,
-          model.status === "completed" && styles.statusDone,
-        ]}
-      >
-        <Text style={styles.statusText}>
-          {t(
-            model.status === "completed"
-              ? "stats.yourWeek.statusCompleted"
-              : model.status === "behind"
-                ? "stats.yourWeek.statusBehind"
-                : "stats.yourWeek.statusOnTrack",
-          )}
-        </Text>
-      </View>
+      {!hero ? (
+        <View
+          style={[
+            styles.statusPill,
+            model.status === "on_track" && styles.statusOnTrack,
+            model.status === "behind" && styles.statusBehind,
+            model.status === "completed" && styles.statusDone,
+          ]}
+        >
+          <Text style={styles.statusText}>
+            {t(
+              model.status === "completed"
+                ? "stats.yourWeek.statusCompleted"
+                : model.status === "behind"
+                  ? "stats.yourWeek.statusBehind"
+                  : "stats.yourWeek.statusOnTrack",
+            )}
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${model.progressPercent}%` }]} />
       </View>

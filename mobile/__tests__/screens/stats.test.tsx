@@ -310,8 +310,10 @@ describe("Stats Screen", () => {
     expect(await findByText("stats.viewAllSessions")).toBeTruthy();
   });
 
-  it("shows weekly recap fallback CTA when teaser is hidden", async () => {
-    const { findByText } = render(<StatsScreen />);
-    expect(await findByText("stats.openWeeklyRecap")).toBeTruthy();
+  it("does not show a leftover weekly recap link", async () => {
+    const { findByTestId, queryByText, queryByTestId } = render(<StatsScreen />);
+    expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
+    expect(queryByText("stats.openWeeklyRecap")).toBeNull();
+    expect(queryByTestId("stats-open-weekly-recap")).toBeNull();
   });
 });

@@ -19,14 +19,13 @@ type Props = {
   t: TFunction;
   chartData: BarPoint[];
   breakdownData: BreakdownItem[];
-  onStartSession: () => void;
 };
 
 function barWidth(value: number): DimensionValue {
   return `${Math.max(0, Math.min(100, value))}%`;
 }
 
-export function StatsTrendsSection({ t, chartData, breakdownData, onStartSession }: Props) {
+export function StatsTrendsSection({ t, chartData, breakdownData }: Props) {
   return (
     <StatsSection
       title={t("stats.trendsSectionTitle")}
@@ -34,13 +33,7 @@ export function StatsTrendsSection({ t, chartData, breakdownData, onStartSession
       testID="stats-section-trends"
     >
       {chartData.length === 0 ? (
-        <EmptyState
-          compact
-          title={t("stats.perDayEmptyTitle")}
-          message={t("stats.perDayEmpty")}
-          actionLabel={t("common.startSession")}
-          onAction={onStartSession}
-        />
+        <EmptyState compact title={t("stats.perDayEmptyTitle")} message={t("stats.perDayEmpty")} />
       ) : (
         <View style={styles.chartInner}>
           <SessionsPerDayChart data={chartData} />
@@ -65,7 +58,7 @@ export function StatsTrendsSection({ t, chartData, breakdownData, onStartSession
                   />
                 </View>
                 <Text style={styles.breakdownValue}>
-                  {item.sessions} · {item.value}%
+                  {t("stats.typeMixMeta", { sessions: item.sessions, percent: item.value })}
                 </Text>
               </View>
             ))}
@@ -74,13 +67,7 @@ export function StatsTrendsSection({ t, chartData, breakdownData, onStartSession
       ) : chartData.length > 0 ? (
         <>
           <View style={styles.divider} />
-          <EmptyState
-            compact
-            title={t("stats.typeMixEmptyTitle")}
-            message={t("stats.typeMixEmpty")}
-            actionLabel={t("common.startSession")}
-            onAction={onStartSession}
-          />
+          <EmptyState compact title={t("stats.typeMixEmptyTitle")} message={t("stats.typeMixEmpty")} />
         </>
       ) : null}
     </StatsSection>
@@ -134,7 +121,7 @@ const styles = StyleSheet.create({
   },
   breakdownValue: {
     color: colors.textSecondary,
-    width: 72,
+    minWidth: 108,
     textAlign: "right",
     fontFamily: fontFamily.bodyMedium,
     ...typography.meta,

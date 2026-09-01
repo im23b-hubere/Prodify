@@ -41,7 +41,7 @@ export function useStatsLoader(
       )
         return;
       const request = ++sequence.current;
-      setState((current) => ({ ...current, loading: true, error: null, progressionSettled: false }));
+      setState((current) => ({ ...current, loading: true, error: null }));
       try {
         const primary = await fetchPrimaryStats(token, period);
         if (!mounted.current || request !== sequence.current) return;

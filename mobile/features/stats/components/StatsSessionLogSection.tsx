@@ -17,10 +17,9 @@ type Props = {
   t: TFunction;
   sessions: SessionDto[];
   statsPeriod: StatsPeriod;
-  onStartSession: () => void;
 };
 
-export function StatsSessionLogSection({ t, sessions, statsPeriod, onStartSession }: Props) {
+export function StatsSessionLogSection({ t, sessions, statsPeriod }: Props) {
   const router = useRouter();
   const preview = sessions.slice(0, STATS_SESSION_LOG_PREVIEW);
   const subtitle =
@@ -36,13 +35,7 @@ export function StatsSessionLogSection({ t, sessions, statsPeriod, onStartSessio
   return (
     <StatsSection title={t("stats.recentTitle")} subtitle={subtitle} testID="stats-section-recent">
       {sessions.length === 0 ? (
-        <EmptyState
-          compact
-          title={t("stats.recentEmptyTitle")}
-          message={t("stats.recentEmpty")}
-          actionLabel={t("common.startSession")}
-          onAction={onStartSession}
-        />
+        <EmptyState compact title={t("stats.recentEmptyTitle")} message={t("stats.recentEmpty")} />
       ) : (
         <>
           <View style={styles.list}>
@@ -96,8 +89,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   viewAllText: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
     ...typography.meta,
   },
 });

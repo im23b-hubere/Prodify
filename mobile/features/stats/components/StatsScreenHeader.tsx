@@ -1,15 +1,14 @@
 import { Pressable, Text, View } from "react-native";
 
-import { RankHudChip } from "../../../components/progression/RankHudChip";
 import { ScreenHeader } from "../../../components/ui/ScreenHeader";
 import type { StatsScreenController } from "../hooks/useStatsScreenController";
 import { styles } from "../statsScreen.styles";
 
 export function StatsScreenHeader({ controller }: { controller: StatsScreenController }) {
-  const { t, filters, filter, filterIdx, selectFilter } = controller;
+  const { t, filters, filterIdx, selectFilter } = controller;
   return (
     <View style={styles.headerRow}>
-      <ScreenHeader title={t("stats.title")} actionNode={<RankHudChip from="stats" />} />
+      <ScreenHeader title={t("stats.title")} />
       <View style={styles.filterRow}>
         {filters.map((item, index) => (
           <Pressable
@@ -27,7 +26,7 @@ export function StatsScreenHeader({ controller }: { controller: StatsScreenContr
           </Pressable>
         ))}
       </View>
-      <Text style={styles.filterHint}>{t("stats.filterScopeHint", { period: filter.label })}</Text>
+      <Text style={styles.filterHint}>{t("stats.filterScopeHint")}</Text>
     </View>
   );
 }

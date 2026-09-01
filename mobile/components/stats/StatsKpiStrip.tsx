@@ -58,7 +58,8 @@ export const StatsKpiStrip = memo(function StatsKpiStrip({
               style={[
                 styles.sub,
                 useHeroRow && styles.subHero,
-                item.subPositive === false ? styles.subNeg : styles.subPos,
+                item.subPositive === true && styles.subPos,
+                item.subPositive === false && styles.subNeg,
               ]}
               numberOfLines={2}
             >
@@ -175,26 +176,27 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    fontSize: 11,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: "center",
   },
   labelHero: {
-    color: "rgba(255,255,255,0.55)",
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 10,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
+    color: "rgba(255,255,255,0.62)",
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 13,
+    lineHeight: 18,
   },
   sub: {
     fontFamily: fontFamily.body,
-    fontSize: 10,
+    fontSize: 12,
     textAlign: "center",
-    lineHeight: 13,
+    lineHeight: 16,
+    color: colors.textSecondary,
   },
   subHero: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
   },
   subPos: { color: colors.success },
   subNeg: { color: colors.danger },

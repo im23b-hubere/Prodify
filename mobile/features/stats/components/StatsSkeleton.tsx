@@ -1,111 +1,59 @@
-import { useEffect, useRef } from "react";
-import { Animated, Easing, ScrollView, StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, StyleSheet, View } from "react-native";
 
-import { AppCard } from "../../../components/ui/AppCard";
-import { spacing } from "../../../constants/theme";
+import { colors } from "../../../constants/theme";
 
-function SkeletonLine({
-  style,
-  durationMs = 850,
-  minOpacity = 0.5,
-}: {
-  style?: object;
-  durationMs?: number;
-  minOpacity?: number;
-}) {
-  const pulse = useRef(new Animated.Value(0.5)).current;
+const BAR_WIDTH = 96;
+
+export function StatsScanLine() {
+  const [width, setWidth] = useState(0);
+  const translateX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (width <= 0) return;
+    translateX.setValue(-BAR_WIDTH);
     const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: durationMs,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: minOpacity,
-          duration: durationMs,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.timing(translateX, {
+        toValue: width,
+        duration: 1100,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }),
     );
     loop.start();
     return () => loop.stop();
-  }, [durationMs, minOpacity, pulse]);
+  }, [translateX, width]);
 
-  return <Animated.View style={[styles.line, { opacity: pulse }, style]} />;
-}
-
-export function StatsSkeleton() {
   return (
-    <View style={styles.wrap}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.cardRow}
-      >
-        {[0, 1, 2].map((idx) => (
-          <AppCard key={`sk-stat-${idx}`} style={styles.statCard}>
-            <SkeletonLine style={styles.label} durationMs={760} minOpacity={0.56} />
-            <SkeletonLine style={styles.value} durationMs={760} minOpacity={0.56} />
-            <SkeletonLine style={styles.sub} durationMs={760} minOpacity={0.56} />
-          </AppCard>
-        ))}
-      </ScrollView>
-      {[0, 1, 2].map((idx) => (
-        <AppCard key={`sk-card-${idx}`} style={styles.blockCard}>
-          <SkeletonLine style={styles.title} durationMs={980} minOpacity={0.5} />
-          <SkeletonLine style={styles.body} durationMs={980} minOpacity={0.5} />
-          <SkeletonLine style={styles.bodyShort} durationMs={980} minOpacity={0.5} />
-        </AppCard>
-      ))}
+    <View
+      testID="stats-scan-line"
+      style={styles.track}
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+    >
+      <Animated.View style={[styles.bar, { transform: [{ translateX }] }]}>
+        <LinearGradient
+          colors={["rgba(255,61,0,0)", "rgba(255,255,255,0.9)", colors.primary, "rgba(255,61,0,0)"]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    gap: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  cardRow: {
-    gap: spacing.sm,
-    paddingBottom: spacing.lg,
-  },
-  statCard: {
-    width: 162,
-    gap: spacing.sm,
-  },
-  blockCard: {
-    marginBottom: spacing.xs,
-    gap: spacing.sm,
-  },
-  line: {
-    height: 12,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  label: {
-    width: "46%",
-  },
-  value: {
-    width: "62%",
-    height: 24,
-    backgroundColor: "rgba(255,255,255,0.11)",
-  },
-  sub: {
-    width: "55%",
-  },
-  title: {
-    width: "40%",
-  },
-  body: {
+  track: {
+    height: 2,
     width: "100%",
+    overflow: "hidden",
+    borderRadius: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    marginBottom: 12,
   },
-  bodyShort: {
-    width: "72%",
+  bar: {
+    width: BAR_WIDTH,
+    height: 2,
   },
 });

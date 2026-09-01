@@ -64,7 +64,6 @@ function createController(
     loading: true,
     contentFade: { value: 1 } as unknown as StatsScreenController["contentFade"],
     openProgression: jest.fn(),
-    openWeeklyRecap: jest.fn(),
     startSession: jest.fn(),
     productivityHintText: null,
     chartData: [],
@@ -77,12 +76,13 @@ function createController(
 }
 
 describe("StatsScreenContent progression", () => {
-  it("shows progression loading state before supplemental data settles", () => {
+  it("hides rank until progression data has settled", () => {
     const screen = render(
       <StatsScreenContent controller={createController({ progressionSettled: false })} />,
     );
 
-    expect(screen.getByTestId("progression-bar-loading")).toBeTruthy();
+    expect(screen.queryByTestId("progression-bar-loading")).toBeNull();
+    expect(screen.queryByTestId("stats-section-progression")).toBeNull();
     expect(screen.queryByTestId("progression-bar-ready")).toBeNull();
   });
 

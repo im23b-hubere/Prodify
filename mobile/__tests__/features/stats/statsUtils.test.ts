@@ -1,5 +1,6 @@
 import { buildChartData, buildStatsSummary } from "../../../features/stats/utils/chartData";
 import {
+  buildHeatmapWeekGrid,
   countHeatmapActiveDays,
   getRecentHeatmapDays,
   hasRecentHeatmapActivity,
@@ -28,6 +29,13 @@ describe("stats heatmap utils", () => {
   it("detects recent activity", () => {
     expect(hasRecentHeatmapActivity(days, 2)).toBe(true);
     expect(hasRecentHeatmapActivity([days[0], days[2]], 2)).toBe(false);
+  });
+
+  it("builds monday-start week columns", () => {
+    const grid = buildHeatmapWeekGrid(days);
+    expect(grid.length).toBeGreaterThanOrEqual(1);
+    expect(grid[0]?.days).toHaveLength(7);
+    expect(grid.flatMap((week) => week.days).some((day) => day?.date === "2026-07-02")).toBe(true);
   });
 });
 

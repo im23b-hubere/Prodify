@@ -9,13 +9,9 @@ import type { StatsScreenController } from "../hooks/useStatsScreenController";
 import { styles } from "../statsScreen.styles";
 
 export function StatsHero({ controller }: { controller: StatsScreenController }) {
-  const { t, summary, filter } = controller;
-  const items = useMemo<KpiItem[]>(() => {
-    const middle =
-      filter.period === "week"
-        ? { key: "avg", label: t("stats.avgSession"), value: summary.avgSession }
-        : { key: "sessions", label: t("stats.sessions"), value: summary.sessions };
-    return [
+  const { t, summary } = controller;
+  const items = useMemo<KpiItem[]>(
+    () => [
       {
         key: "hours",
         label: t("stats.totalHours"),
@@ -24,9 +20,9 @@ export function StatsHero({ controller }: { controller: StatsScreenController })
           summary.delta == null
             ? undefined
             : t("stats.vsPrior", { sign: summary.delta >= 0 ? "+" : "", hours: summary.delta }),
-        subPositive: summary.delta == null || summary.delta >= 0,
+        subPositive: summary.delta == null ? undefined : summary.delta >= 0,
       },
-      { ...middle, subPositive: true },
+      { key: "sessions", label: t("stats.sessions"), value: summary.sessions },
       {
         key: "streak",
         label: t("stats.currentStreak"),
@@ -37,10 +33,10 @@ export function StatsHero({ controller }: { controller: StatsScreenController })
           </View>
         ),
         sublabel: t("stats.bestStreakSub", { days: summary.bestStreak }),
-        subPositive: true,
       },
-    ];
-  }, [filter.period, summary, t]);
+    ],
+    [summary, t],
+  );
   if (!controller.token)
     return <StatsKpiStrip items={items} variant="hero" testID="stats-kpi-strip" />;
   return (
