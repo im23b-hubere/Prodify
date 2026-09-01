@@ -25,8 +25,42 @@ def test_register_rejects_duplicate_email(client):
         "/auth/register",
         json={"email": "dup@example.com", "username": "name-b", "password": "strong-pass-123"},
     )
-    assert second.status_code == 400
-    assert second.json()["error"]["message"] == "Unable to register with the provided credentials"
+    assert second.status_code == 409
+    body = second.json()["error"]
+    assert body["code"] == "EMAIL_TAKEN"
+    assert "already registered" in body["message"].lower()
+
+
+def test_register_rejects_duplicate_username(client):
+    first = client.post(
+        "/auth/register",
+        json={"email": "one@example.com", "username": "taken-name", "password": "strong-pass-123"},
+    )
+    assert first.status_code == 201
+
+    second = client.post(
+        "/auth/register",
+        json={"email": "two@example.com", "username": "Taken-Name", "password": "strong-pass-123"},
+    )
+    assert second.status_code == 409
+    body = second.json()["error"]
+    assert body["code"] == "USERNAME_TAKEN"
+    assert "username" in body["message"].lower()
+
+
+def test_register_duplicate_email_takes_precedence_over_username(client):
+    first = client.post(
+        "/auth/register",
+        json={"email": "same@example.com", "username": "same-user", "password": "strong-pass-123"},
+    )
+    assert first.status_code == 201
+
+    second = client.post(
+        "/auth/register",
+        json={"email": "same@example.com", "username": "same-user", "password": "strong-pass-123"},
+    )
+    assert second.status_code == 409
+    assert second.json()["error"]["code"] == "EMAIL_TAKEN"
 
 
 def test_refresh_rotates_and_invalidates_old_refresh(client):
@@ -89,4 +123,6 @@ def test_login_rejects_wrong_password(client):
 
     login = client.post("/auth/login", json={"email": "login@example.com", "password": "wrong-pass"})
     assert login.status_code == 401
-    assert login.json()["error"]["message"] == "Invalid email or password"
+    body = login.json()["error"]
+    assert body["code"] == "INVALID_CREDENTIALS"
+    assert body["message"] == "Invalid email or password"

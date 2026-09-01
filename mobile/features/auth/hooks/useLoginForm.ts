@@ -8,11 +8,11 @@ import {
   WEEKLY_GOAL_CONFIGURED_KEY,
 } from "../../../constants/storageKeys";
 import { useAuth } from "../../../context/AuthContext";
-import { ApiError } from "../../../lib/client";
 import { getE2eTestCredentials } from "../../../lib/e2eCredentials";
 import { isE2eModeEnabled } from "../../../lib/e2eMode";
 import { replaceWithPendingDeepLinkOrDashboard } from "../../../lib/pendingDeepLink";
 import { resolvePostAuthRouteFromStorage, toHref } from "../../../lib/postAuthNavigation";
+import { loginErrorMessage } from "../authErrorMessage";
 import { resolveLoginCredentials } from "../loginCredentials";
 
 const TUTORIAL_SEEN_KEY = "prodify_tutorial_v1";
@@ -123,9 +123,4 @@ async function prepareE2eAccount(): Promise<void> {
     [WEEKLY_GOAL_CONFIGURED_KEY, "1"],
     [TUTORIAL_SEEN_KEY, "1"],
   ]).catch(() => undefined);
-}
-
-function loginErrorMessage(caught: unknown, t: TFunction): string {
-  if (caught instanceof ApiError && caught.status === 429) return t("errors.tooManyRequests");
-  return caught instanceof Error ? caught.message : t("auth.login.signInFailed");
 }

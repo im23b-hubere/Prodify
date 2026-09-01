@@ -11,7 +11,22 @@ export async function readResponsePayload(response: Response): Promise<unknown> 
 }
 
 export function apiErrorFromResponse(response: Response, payload: unknown): ApiError {
-  return new ApiError(response.status, responseErrorMessage(response.status, payload), payload);
+  return new ApiError(
+    response.status,
+    responseErrorMessage(response.status, payload),
+    payload,
+    responseErrorCode(payload),
+  );
+}
+
+function responseErrorCode(payload: unknown): string | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const error = "error" in payload ? payload.error : null;
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = error.code;
+    if (typeof code === "string" && code.trim()) return code.trim();
+  }
+  return null;
 }
 
 function responseErrorMessage(status: number, payload: unknown): string {

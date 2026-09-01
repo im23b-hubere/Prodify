@@ -3,8 +3,8 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "../../../context/AuthContext";
-import { ApiError } from "../../../lib/client";
 import { readOnboardingComplete } from "../../../lib/postAuthNavigation";
+import { registrationErrorMessage } from "../authErrorMessage";
 import { resolveRegistrationCredentials } from "../registerCredentials";
 
 function useConnectionHint(loading: boolean): boolean {
@@ -18,11 +18,6 @@ function useConnectionHint(loading: boolean): boolean {
     return () => clearTimeout(timer);
   }, [loading]);
   return visible;
-}
-
-function registrationErrorMessage(caught: unknown, t: TFunction): string {
-  if (caught instanceof ApiError && caught.status === 429) return t("errors.tooManyRequests");
-  return caught instanceof Error ? caught.message : t("auth.register.registerFailed");
 }
 
 export function useRegisterForm(t: TFunction) {

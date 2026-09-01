@@ -362,10 +362,12 @@
       }
     },
     "cta": {
-      "sixMonth": "6-month plan",
-      "sixMonthWithPrice": "BEST VALUE · 6 months · {{price}}",
-      "weekly": "Weekly plan",
+      "bestValue": "Best value",
+      "sixMonth": "6 months",
+      "sixMonthWithPrice": "6 months · {{price}}",
+      "weekly": "1 week",
       "weeklyWithPrice": "1 week · {{price}}",
+      "continue": "Continue",
       "restore": "Restore purchases",
       "pleaseWait": "Please wait...",
       "skipSubscriptionDev": "Skip for now (dev)"
@@ -1696,7 +1698,15 @@
       "passwordRequired": "Please enter your password.",
       "passwordShort": "Password is too short (at least 8 characters).",
       "usernameRequired": "Please enter a username.",
-      "usernameShort": "Username is too short (at least 2 characters)."
+      "usernameShort": "Username is too short (at least 2 characters).",
+      "usernameLong": "Username is too long (64 characters max).",
+      "passwordLong": "Password is too long (128 characters max)."
+    },
+    "auth": {
+      "emailTaken": "This email is already registered. Try signing in.",
+      "usernameTaken": "This username is already taken. Please choose another.",
+      "registerConflict": "This email or username is already in use. Try signing in, or pick a different username.",
+      "invalidCredentials": "Incorrect email or password."
     },
     "requestTimeout": "Connection timed out. Check your network and try again.",
     "network": "Network error. Check your connection and try again.",

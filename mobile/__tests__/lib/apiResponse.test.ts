@@ -26,7 +26,11 @@ describe("API response decoding", () => {
       detail: "fallback",
     });
 
-    expect(error).toMatchObject({ status: 401, message: "Invalid credentials" });
+    expect(error).toMatchObject({
+      status: 401,
+      message: "Invalid credentials",
+      code: "INVALID_CREDENTIALS",
+    });
   });
 
   it("falls back to FastAPI validation details", () => {

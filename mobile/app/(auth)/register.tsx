@@ -58,7 +58,16 @@ function RegisterCard({ form }: { form: RegisterFormController }) {
         accessibilityLabel={t("auth.register.password")}
       />
 
-      {form.error ? <Text style={styles.error}>{form.error}</Text> : null}
+      {form.error ? (
+        <Text
+          testID="register-error"
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+          style={styles.error}
+        >
+          {form.error}
+        </Text>
+      ) : null}
       {form.showConnectionHint ? (
         <Text accessibilityLiveRegion="polite" style={styles.connectionHint}>
           {t("auth.connectionHint")}

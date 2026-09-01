@@ -3,12 +3,14 @@ import i18n from "./i18n";
 export class ApiError extends Error {
   readonly status: number;
   readonly payload: unknown;
+  readonly code: string | null;
 
-  constructor(status: number, message: string, payload: unknown = null) {
+  constructor(status: number, message: string, payload: unknown = null, code: string | null = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.payload = payload;
+    this.code = code;
   }
 }
 

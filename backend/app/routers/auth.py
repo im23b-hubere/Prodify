@@ -26,6 +26,37 @@ from app.services.auth_token_service import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 _log = logging.getLogger(__name__)
 
+_REGISTRATION_ERRORS: dict[str, tuple[int, dict[str, str]]] = {
+    "email_taken": (
+        status.HTTP_409_CONFLICT,
+        {
+            "code": "EMAIL_TAKEN",
+            "message": "This email is already registered. Try signing in.",
+        },
+    ),
+    "username_taken": (
+        status.HTTP_409_CONFLICT,
+        {
+            "code": "USERNAME_TAKEN",
+            "message": "This username is already taken.",
+        },
+    ),
+}
+
+
+def _registration_http_error(error: RegistrationRejectedError) -> HTTPException:
+    status_code, detail = _REGISTRATION_ERRORS.get(
+        error.reason,
+        (
+            status.HTTP_409_CONFLICT,
+            {
+                "code": "REGISTRATION_CONFLICT",
+                "message": "This email or username is already in use.",
+            },
+        ),
+    )
+    return HTTPException(status_code=status_code, detail=detail)
+
 
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings.rate_limit_auth_register)
@@ -38,10 +69,7 @@ def register(request: Request, payload: UserCreate, db: Annotated[Session, Depen
             payload.password,
         )
     except RegistrationRejectedError as error:
-        raise HTTPException(
-            status_code=400,
-            detail="Unable to register with the provided credentials",
-        ) from error
+        raise _registration_http_error(error) from error
 
     return issue_tokens_for_user(db, user, replace_all=True)
 
@@ -53,7 +81,10 @@ def login(request: Request, payload: UserLogin, db: Annotated[Session, Depends(g
         user = authenticate_account(db, str(payload.email), payload.password)
     except InvalidCredentialsError as error:
         _log.warning("auth_login_failed")
-        raise HTTPException(status_code=401, detail="Invalid email or password") from error
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "INVALID_CREDENTIALS", "message": "Invalid email or password"},
+        ) from error
     return issue_tokens_for_user(db, user, replace_all=True)
 
 

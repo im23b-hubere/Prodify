@@ -58,7 +58,7 @@ function PaywallAccountActions({ busy, onLogout, onDeleteAccount }: Props) {
         onPress={onDeleteAccount}
         disabled={busy}
       >
-        <Text style={styles.accountActionDestructive}>{t("paywall.account.deleteAccount")}</Text>
+        <Text style={styles.accountActionText}>{t("paywall.account.deleteAccount")}</Text>
       </Pressable>
     </View>
   );

@@ -4,6 +4,16 @@ import type { PurchasesPackage } from "react-native-purchases";
 import { PaywallContent } from "../../../features/paywall/components/PaywallContent";
 import type { PaywallController } from "../../../features/paywall/usePaywallController";
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
+jest.mock("react-native-reanimated", () => {
+  const Reanimated = require("react-native-reanimated/mock");
+  Reanimated.useSharedValue = (value: number) => ({ value });
+  Reanimated.withRepeat = (value: unknown) => value;
+  Reanimated.withTiming = (value: unknown) => value;
+  return Reanimated;
+});
+
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: { price?: string }) =>
@@ -52,12 +62,13 @@ function renderPaywall(detail: PaywallController, signedIn = true) {
 }
 
 describe("PaywallContent", () => {
-  it("binds real plans, restore, legal and account actions", () => {
+  it("purchases the selected plan from a single continue action", () => {
     const detail = controller();
     const navigation = renderPaywall(detail);
 
-    fireEvent.press(screen.getByText("paywall.cta.sixMonthWithPrice:CHF 49.00"));
-    fireEvent.press(screen.getByText("paywall.cta.weeklyWithPrice:CHF 4.90"));
+    fireEvent.press(screen.getByText("paywall.cta.continue"));
+    fireEvent.press(screen.getByText("paywall.cta.weekly"));
+    fireEvent.press(screen.getByText("paywall.cta.continue"));
     fireEvent.press(screen.getByLabelText("paywall.cta.restore"));
     fireEvent.press(screen.getByLabelText("paywall.legal.privacyLink"));
     fireEvent.press(screen.getByLabelText("paywall.legal.termsLink"));
@@ -78,7 +89,8 @@ describe("PaywallContent", () => {
     renderPaywall(detail, false);
 
     expect(screen.getByText("Apple unavailable")).toBeTruthy();
-    expect(screen.queryByText("paywall.cta.weeklyWithPrice:CHF 4.90")).toBeNull();
+    expect(screen.queryByText("paywall.cta.weekly")).toBeNull();
+    expect(screen.queryByText("paywall.cta.continue")).toBeNull();
     fireEvent.press(screen.getByText("common.tryAgain"));
     expect(detail.retry).toHaveBeenCalledTimes(1);
     expect(screen.queryByLabelText("paywall.account.signOut")).toBeNull();
@@ -93,8 +105,11 @@ describe("PaywallContent", () => {
     });
     renderPaywall(detail);
 
-    expect(screen.getByText("paywall.cta.weeklyWithPrice:weekly preview")).toBeTruthy();
-    expect(screen.getByText("paywall.cta.sixMonthWithPrice:six month preview")).toBeTruthy();
+    expect(screen.getByText("paywall.cta.bestValue")).toBeTruthy();
+    expect(screen.getByText("paywall.cta.weekly")).toBeTruthy();
+    expect(screen.getByText("weekly preview")).toBeTruthy();
+    expect(screen.getByText("paywall.cta.sixMonth")).toBeTruthy();
+    expect(screen.getByText("six month preview")).toBeTruthy();
     fireEvent.press(screen.getByLabelText("paywall.cta.restore"));
     fireEvent.press(screen.getByLabelText("paywall.a11y.skipSubscription"));
     expect(detail.onRestore).not.toHaveBeenCalled();

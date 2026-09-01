@@ -30,7 +30,7 @@ def test_registration_converts_concurrent_uniqueness_failure(monkeypatch) -> Non
     monkeypatch.setattr(auth_account_service, "_username_exists", lambda *_args: False)
     monkeypatch.setattr(auth_account_service, "hash_password", lambda _password: "hash")
 
-    with pytest.raises(auth_account_service.RegistrationRejectedError):
+    with pytest.raises(auth_account_service.RegistrationRejectedError) as rejected:
         auth_account_service.register_account(
             db,
             "new@example.com",
@@ -38,4 +38,25 @@ def test_registration_converts_concurrent_uniqueness_failure(monkeypatch) -> Non
             "strong-password",
         )
 
+    assert rejected.value.reason == "conflict"
     assert db.rolled_back is True
+
+
+def test_register_account_reports_email_taken(monkeypatch) -> None:
+    monkeypatch.setattr(auth_account_service, "_email_exists", lambda *_args: True)
+    monkeypatch.setattr(auth_account_service, "_username_exists", lambda *_args: False)
+
+    with pytest.raises(auth_account_service.RegistrationRejectedError) as rejected:
+        auth_account_service.register_account(object(), "taken@example.com", "fresh-user", "password")
+
+    assert rejected.value.reason == "email_taken"
+
+
+def test_register_account_reports_username_taken(monkeypatch) -> None:
+    monkeypatch.setattr(auth_account_service, "_email_exists", lambda *_args: False)
+    monkeypatch.setattr(auth_account_service, "_username_exists", lambda *_args: True)
+
+    with pytest.raises(auth_account_service.RegistrationRejectedError) as rejected:
+        auth_account_service.register_account(object(), "fresh@example.com", "taken-user", "password")
+
+    assert rejected.value.reason == "username_taken"

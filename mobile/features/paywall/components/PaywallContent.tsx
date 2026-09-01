@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { paywallStyles as styles } from "../paywall.styles";
@@ -19,13 +20,17 @@ export function PaywallContent({ controller, signedIn, onOpenPrivacy, onOpenTerm
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.card}>
+        <Animated.View entering={FadeInDown.duration(320)} style={styles.hero}>
           <Text style={styles.badge}>{t("paywall.badge")}</Text>
           <Text style={styles.title}>{controller.copy.title}</Text>
           <Text style={styles.body} numberOfLines={3}>
             {controller.copy.body}
           </Text>
-          <PaywallPlans controller={controller} />
+        </Animated.View>
+
+        <PaywallPlans controller={controller} />
+
+        <View>
           <PaywallFooter
             signedIn={signedIn}
             busy={controller.busy}

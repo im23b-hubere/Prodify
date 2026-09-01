@@ -13,9 +13,8 @@ import { radii, spacing, ui } from "../../constants/theme";
 /**
  * Loading placeholder for the paywall purchase options.
  *
- * Mirrors the final layout (two plan buttons + a restore link) so nothing
- * jumps when the real offerings resolve, and pulses subtly instead of showing
- * a spinner wedged between the copy and disabled buttons.
+ * Mirrors the final layout (two plan cards + continue + restore) so nothing
+ * jumps when the real offerings resolve.
  */
 export function PaywallPlansSkeleton() {
   const pulse = useSharedValue(0.5);
@@ -34,6 +33,7 @@ export function PaywallPlansSkeleton() {
     <View style={styles.container} accessibilityRole="progressbar" accessible>
       <Animated.View style={[styles.plan, pulseStyle]} />
       <Animated.View style={[styles.plan, pulseStyle]} />
+      <Animated.View style={[styles.continue, pulseStyle]} />
       <Animated.View style={[styles.restore, pulseStyle]} />
     </View>
   );
@@ -44,9 +44,15 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   plan: {
+    height: 76,
+    borderRadius: radii.lg,
+    backgroundColor: "#242424",
+  },
+  continue: {
     height: ui.buttonHeight,
     borderRadius: ui.cardRadius,
-    backgroundColor: "#242424",
+    backgroundColor: "#2a2a2a",
+    marginTop: spacing.sm,
   },
   restore: {
     alignSelf: "center",
