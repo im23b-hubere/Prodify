@@ -17,6 +17,7 @@ from app.services.streak_reconcile_service import (
 )
 from app.streakutil import (
     best_streak_run,
+    build_calendar_weeks,
     compute_current_streak,
     compute_streak_runs,
     dump_frozen_json,
@@ -77,12 +78,14 @@ def build_streak_overview(db: Session, user_id: int) -> StreakOverviewPublic:
         and not has_session_today
     )
     states, labels = last_7_day_states(session_days, frozen_days)
+    calendar_weeks = build_calendar_weeks(session_days, frozen_days)
     milestone_at, milestone_title, days_left = _next_milestone(current)
     return StreakOverviewPublic(
         current_streak=current,
         longest_streak=streak.longest_streak,
         last_7_day_states=states,
         last_7_day_labels=labels,
+        calendar_weeks=calendar_weeks,
         next_milestone_at=milestone_at,
         next_milestone_title=milestone_title,
         days_to_next_milestone=days_left,

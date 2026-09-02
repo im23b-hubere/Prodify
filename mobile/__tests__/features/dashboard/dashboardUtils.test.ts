@@ -1,9 +1,5 @@
-import {
-  getLast7DaysProgress,
-  getStreak,
-  parseApiDate,
-  toDateKey,
-} from "../../../features/dashboard/utils";
+import { getCurrentWeekProgress, getStreak, parseApiDate } from "../../../features/dashboard/utils";
+import { weekDateKeys } from "../../../lib/weekCalendar";
 import type { SessionDto } from "../../../types/session";
 
 function session(startedAt: string, id = 1): SessionDto {
@@ -43,11 +39,16 @@ describe("dashboard utils", () => {
     expect(getStreak([session(old.toISOString())])).toBe(0);
   });
 
-  it("builds last-7-days progress with today as final slot", () => {
-    const today = new Date();
-    const progress = getLast7DaysProgress([session(`${toDateKey(today)}T10:00:00Z`)]);
+  it("marks sessions on the current Monday–Sunday week", () => {
+    const wednesday = new Date(2026, 8, 2, 12, 0, 0);
+    const keys = weekDateKeys(0, wednesday);
+    expect(keys[0]).toBe("2026-08-31");
+    expect(keys[2]).toBe("2026-09-02");
+
+    const progress = getCurrentWeekProgress([session(wednesday.toISOString())], wednesday);
     expect(progress).toHaveLength(7);
-    expect(progress[6]).toBe(true);
-    expect(progress.slice(0, 6).every((day) => !day)).toBe(true);
+    expect(progress[2]).toBe(true);
+    expect(progress.filter(Boolean)).toHaveLength(1);
+    expect(progress[6]).toBe(false);
   });
 });

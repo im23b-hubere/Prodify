@@ -15,11 +15,26 @@ class StreakPublic(BaseModel):
     last_session_date: datetime | None
 
 
+class StreakWeekDayPublic(BaseModel):
+    date: str
+    label: str
+    state: str
+    is_today: bool
+    is_future: bool
+
+
+class StreakCalendarWeekPublic(BaseModel):
+    week_start: str
+    offset: int
+    days: list[StreakWeekDayPublic]
+
+
 class StreakOverviewPublic(BaseModel):
     current_streak: int
     longest_streak: int
     last_7_day_states: list[str]
     last_7_day_labels: list[str]
+    calendar_weeks: list[StreakCalendarWeekPublic]
     next_milestone_at: int | None
     next_milestone_title: str | None
     days_to_next_milestone: int | None

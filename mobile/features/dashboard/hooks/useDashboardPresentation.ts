@@ -6,10 +6,15 @@ import { adjustedWeeklyTargetForSignupWeek } from "../../../lib/goalPace";
 import { buildSessionFeedback } from "../../../lib/sessionFeedbackEngine";
 import { STREAK_MILESTONES } from "../../../lib/streakMilestones";
 import { buildTodayPlanRecommendation } from "../../../lib/todayPlanEngine";
+import {
+  buildCalendarWeeksFromDays,
+  resolveCalendarWeeks,
+  weekdayShortLabels,
+} from "../../../lib/streakCalendarWeeks";
 import type { SessionDto } from "../../../types/session";
 import type { StreakOverviewDto } from "../../../types/streak";
 import { dashboardSparkKey } from "../dashboardCopy";
-import { getLast7DaysProgress, getStreak, parseApiDate, toDateKey } from "../utils";
+import { getStreak, parseApiDate, toDateKey } from "../utils";
 
 type UseDashboardPresentationOptions = {
   sessions: SessionDto[];
@@ -87,7 +92,7 @@ export function useDashboardPresentation({
     () => sessions.filter((session) => session.stopped_at !== null),
     [sessions],
   );
-  const weekProgress = useMemo(() => getLast7DaysProgress(sessions), [sessions]);
+  const sessionDayKeys = useMemo(() => sessionDayKeySet(visibleSessions), [visibleSessions]);
   const clientStreak = useMemo(() => getStreak(sessions), [sessions]);
   const weekSessionsForGoal = Math.max(
     0,
@@ -133,15 +138,15 @@ export function useDashboardPresentation({
   const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
   const displayOverview = useMemo(
     () =>
-      streakOverview ??
-      buildFallbackStreakOverview({
-        loading,
-        clientStreak,
-        weekProgress,
-        weekDayLetters: localizedWeekDayLetters(t),
-        t,
-      }),
-    [clientStreak, loading, streakOverview, t, weekProgress],
+      streakOverview
+        ? withResolvedWeeks(streakOverview, sessionDayKeys, t)
+        : buildFallbackStreakOverview({
+            loading,
+            clientStreak,
+            sessionDayKeys,
+            t,
+          }),
+    [clientStreak, loading, sessionDayKeys, streakOverview, t],
   );
   return {
     visibleSessions,
@@ -173,40 +178,56 @@ function sessionsForToday(sessions: SessionDto[]) {
   return { count: todaySessions.length, minutes: Math.round(seconds / 60) };
 }
 
-function localizedWeekDayLetters(t: TFunction): string[] {
-  const translated = t("dashboard.weekdayShort", { returnObjects: true }) as unknown;
-  const weekDayLetters =
-    Array.isArray(translated) && translated.length === 7
-      ? translated
-      : ["M", "T", "W", "T", "F", "S", "S"];
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - index));
-    const mondayBasedIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
-    return String(weekDayLetters[mondayBasedIndex] ?? "?");
-  });
+function sessionDayKeySet(sessions: SessionDto[]) {
+  return new Set(
+    sessions
+      .map((session) => {
+        if (!session.started_at?.trim()) return null;
+        const parsed = parseApiDate(session.started_at);
+        return Number.isFinite(parsed.getTime()) ? toDateKey(parsed) : null;
+      })
+      .filter((key): key is string => key != null),
+  );
+}
+
+function withResolvedWeeks(
+  overview: StreakOverviewDto,
+  sessionDayKeys: Set<string>,
+  t: TFunction,
+): StreakOverviewDto {
+  const labels = weekdayShortLabels(t);
+  const calendar_weeks = resolveCalendarWeeks(overview, sessionDayKeys, labels);
+  const current = calendar_weeks[calendar_weeks.length - 1];
+  return {
+    ...overview,
+    calendar_weeks,
+    last_7_day_states: current?.days.map((day) => day.state) ?? overview.last_7_day_states,
+    last_7_day_labels: current?.days.map((day) => day.label) ?? overview.last_7_day_labels,
+  };
 }
 
 function buildFallbackStreakOverview({
   loading,
   clientStreak,
-  weekProgress,
-  weekDayLetters,
+  sessionDayKeys,
   t,
 }: {
   loading: boolean;
   clientStreak: number;
-  weekProgress: boolean[];
-  weekDayLetters: string[];
+  sessionDayKeys: Set<string>;
   t: TFunction;
 }): StreakOverviewDto | null {
   if (loading) return null;
   const nextMilestone = STREAK_MILESTONES.find((milestone) => clientStreak < milestone.days);
+  const labels = weekdayShortLabels(t);
+  const calendar_weeks = buildCalendarWeeksFromDays(sessionDayKeys, new Set(), labels);
+  const current = calendar_weeks[calendar_weeks.length - 1];
   return {
     current_streak: clientStreak,
     longest_streak: clientStreak,
-    last_7_day_states: weekProgress.map((hasSession) => (hasSession ? "session" : "none")),
-    last_7_day_labels: weekDayLetters,
+    last_7_day_states: current?.days.map((day) => day.state) ?? [],
+    last_7_day_labels: current?.days.map((day) => day.label) ?? labels,
+    calendar_weeks,
     next_milestone_at: nextMilestone?.days ?? null,
     next_milestone_title: nextMilestone?.title ?? null,
     days_to_next_milestone: nextMilestone ? nextMilestone.days - clientStreak : null,

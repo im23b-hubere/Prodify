@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 
 import type { SessionDto } from "../../types/session";
+import { weekDateKeys } from "../../lib/weekCalendar";
 
 /** Parse activity timestamps for sorting / recency (friend feed, etc.). */
 export function parseActivityTimestamp(value: string | null | undefined): number {
@@ -69,7 +70,8 @@ export function getStreak(sessions: SessionDto[]) {
   return streak;
 }
 
-export function getLast7DaysProgress(sessions: SessionDto[]) {
+export function getCurrentWeekProgress(sessions: SessionDto[], now = new Date()) {
+  const keys = weekDateKeys(0, now);
   const set = new Set(
     sessions
       .map((session) => {
@@ -79,11 +81,10 @@ export function getLast7DaysProgress(sessions: SessionDto[]) {
       })
       .filter((k): k is string => k !== null),
   );
-  const result: boolean[] = [];
-  for (let i = 6; i >= 0; i -= 1) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    result.push(set.has(toDateKey(d)));
-  }
-  return result;
+  return keys.map((key) => set.has(key));
+}
+
+/** @deprecated Use getCurrentWeekProgress — kept for existing imports. */
+export function getLast7DaysProgress(sessions: SessionDto[], now = new Date()) {
+  return getCurrentWeekProgress(sessions, now);
 }

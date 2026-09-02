@@ -88,26 +88,69 @@ def compute_streak_runs(day_iso_strings: list[str]) -> list[tuple[str, str, int]
     return [(s.isoformat(), e.isoformat(), n) for s, e, n in runs]
 
 
-def last_7_day_states(session_days: list[str], frozen_days: list[str]) -> tuple[list[str], list[str]]:
+def last_7_day_states(
+    session_days: list[str],
+    frozen_days: list[str],
+    *,
+    today: date | None = None,
+) -> tuple[list[str], list[str]]:
+    """Current Monday–Sunday calendar week (index 0 = Monday)."""
+    weeks = build_calendar_weeks(session_days, frozen_days, today=today, week_count=1)
+    current = weeks[-1]["days"]
+    return [day["state"] for day in current], [day["label"] for day in current]
+
+
+CALENDAR_WEEK_COUNT = 4
+_WEEKDAY_LETTERS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+
+
+def monday_of(day: date) -> date:
+    return day - timedelta(days=day.weekday())
+
+
+def build_calendar_weeks(
+    session_days: list[str],
+    frozen_days: list[str],
+    *,
+    today: date | None = None,
+    week_count: int = CALENDAR_WEEK_COUNT,
+) -> list[dict]:
     """
-    Returns parallel arrays length 7: oldest → newest (index 0 = 6 days ago, 6 = today).
-    state is 'session' | 'freeze' | 'none'
-    label is weekday letter M–S for that column.
+    Monday–Sunday weeks, oldest first.
+    offset 0 is the current week; -1 is last week.
     """
-    letters = ["M", "T", "W", "T", "F", "S", "S"]
-    today = utcnow().date()
+    today_date = today or utcnow().date()
+    this_monday = monday_of(today_date)
     sess = set(session_days)
     frz = set(frozen_days)
-    states: list[str] = []
-    labels: list[str] = []
-    for i in range(6, -1, -1):
-        d = today - timedelta(days=i)
-        dk = d.isoformat()
-        labels.append(letters[d.weekday()])
-        if dk in sess:
-            states.append("session")
-        elif dk in frz:
-            states.append("freeze")
-        else:
-            states.append("none")
-    return states, labels
+    count = max(1, week_count)
+    weeks: list[dict] = []
+    for back in range(count - 1, -1, -1):
+        start = this_monday - timedelta(days=7 * back)
+        days = []
+        for index in range(7):
+            day = start + timedelta(days=index)
+            key = day.isoformat()
+            if key in sess:
+                state = "session"
+            elif key in frz:
+                state = "freeze"
+            else:
+                state = "none"
+            days.append(
+                {
+                    "date": key,
+                    "label": _WEEKDAY_LETTERS[day.weekday()],
+                    "state": state,
+                    "is_today": day == today_date,
+                    "is_future": day > today_date,
+                }
+            )
+        weeks.append(
+            {
+                "week_start": start.isoformat(),
+                "offset": -back,
+                "days": days,
+            }
+        )
+    return weeks

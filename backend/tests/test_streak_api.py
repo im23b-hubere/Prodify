@@ -11,8 +11,20 @@ def test_streak_read_models_and_freeze_precondition(client) -> None:
     freeze = client.post("/streak/freeze", headers=headers)
 
     assert overview.status_code == 200
-    assert overview.json()["current_streak"] == 0
-    assert len(overview.json()["last_7_day_states"]) == 7
+    body = overview.json()
+    assert body["current_streak"] == 0
+    assert len(body["last_7_day_states"]) == 7
+
+    weeks = body["calendar_weeks"]
+    assert [week["offset"] for week in weeks] == [-3, -2, -1, 0]
+    current = weeks[-1]
+    assert len(current["days"]) == 7
+    assert sum(1 for day in current["days"] if day["is_today"]) == 1
+    today_index = next(index for index, day in enumerate(current["days"]) if day["is_today"])
+    assert all(not day["is_future"] for day in current["days"][: today_index + 1])
+    assert all(day["is_future"] for day in current["days"][today_index + 1 :])
+    assert body["last_7_day_states"] == [day["state"] for day in current["days"]]
+    assert body["last_7_day_labels"] == [day["label"] for day in current["days"]]
     assert history.status_code == 200
     assert history.json() == []
     assert milestones.status_code == 200

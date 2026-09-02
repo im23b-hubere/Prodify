@@ -68,14 +68,40 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginVertical: 2,
   },
-  weekRow: {
+  weekStripHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  weekStripTitle: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+    flex: 1,
+  },
+  weekStripHistory: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weekStripDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 5,
+    marginTop: spacing.sm,
+  },
+  weekStripDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  weekStripDotActive: {
+    backgroundColor: colors.textPrimary,
   },
   weekDots: {
-    flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 4,
@@ -93,6 +119,9 @@ export const styles = StyleSheet.create({
   dayLabelToday: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
+  },
+  dayColumnFuture: {
+    opacity: 0.4,
   },
   weekBarTrack: {
     height: 22,
