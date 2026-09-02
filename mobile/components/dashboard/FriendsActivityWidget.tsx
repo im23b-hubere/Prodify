@@ -10,9 +10,6 @@ import { colors } from "../../constants/theme";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { formatTimeAgo } from "../../lib/timeAgo";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../types/friends";
-import { EmptyState } from "../states/EmptyState";
-import { LoadingState } from "../states/LoadingState";
-import { GlassCard } from "../ui/GlassCard";
 import { styles } from "./FriendsActivityWidget.styles";
 
 type PrimaryAction = {
@@ -52,7 +49,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
     setExpanded((current) => !current);
   }, []);
   const leaders = leaderboard.filter((entry) => entry.user_id !== currentUserId).slice(0, 3);
-  const feed = activity.slice(0, 5);
+  const feed = activity.slice(0, 3);
   if (loading) return <LoadingWidget t={t} />;
   if (leaders.length === 0 && feed.length === 0) {
     return (
@@ -73,7 +70,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
         collapsed={collapsed}
         hasPrimaryAction={Boolean(primaryAction)}
         onToggle={toggleExpanded}
-        onViewAll={() => navigate(router, "/(tabs)/friends")}
+        onViewAll={collapsed ? undefined : () => navigate(router, "/(tabs)/friends")}
       />
       {!collapsed ? (
         <WidgetContent
@@ -90,9 +87,13 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
 
 function LoadingWidget({ t }: { t: TFunction }) {
   return (
-    <GlassCard>
-      <LoadingState message={t("friendsWidget.loading")} />
-    </GlassCard>
+    <View style={styles.wrap} testID="friends-widget-loading">
+      <Text style={styles.title}>{t("friendsWidget.title")}</Text>
+      <View style={styles.loadingRow}>
+        <ActivityIndicator color={colors.textSecondary} size="small" />
+        <Text style={styles.loading}>{t("friendsWidget.loading")}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -115,15 +116,17 @@ function EmptyWidget({
     );
   }
   return (
-    <GlassCard>
-      <EmptyState
-        compact
-        title={t("friendsWidget.emptyTitle")}
-        message={t("friendsWidget.emptySub")}
-        actionLabel={t("friendsWidget.findFriends")}
-        onAction={onFindFriends}
-      />
-    </GlassCard>
+    <View style={styles.wrap} testID="friends-widget-empty">
+      <Text style={styles.emptyTitle}>{t("friendsWidget.emptyTitle")}</Text>
+      <Text style={styles.emptySub}>{t("friendsWidget.emptySub")}</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onFindFriends}
+        style={({ pressed }) => [styles.emptyBtn, pressed && { opacity: 0.85 }]}
+      >
+        <Text style={styles.emptyBtnTxt}>{t("friendsWidget.findFriends")}</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -143,29 +146,33 @@ function WidgetHeader({
   onViewAll?: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={collapsible ? onToggle : undefined}
-      disabled={!collapsible}
-      style={({ pressed }) => [styles.headerRow, collapsible && pressed && { opacity: 0.88 }]}
-    >
-      <Text style={styles.title}>{t("friendsWidget.title")}</Text>
-      <View style={styles.headerActions}>
+    <View style={styles.headerRow}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={collapsible ? onToggle : undefined}
+        disabled={!collapsible}
+        style={({ pressed }) => [styles.headerTitleHit, collapsible && pressed && { opacity: 0.88 }]}
+      >
+        <Text style={styles.title}>{t("friendsWidget.title")}</Text>
         {hasPrimaryAction && collapsed ? <View style={styles.nudgeDot} /> : null}
-        {onViewAll ? (
-          <Pressable onPress={onViewAll}>
-            <Text style={styles.viewAll}>{t("friendsWidget.viewAll")}</Text>
-          </Pressable>
-        ) : null}
         {collapsible ? (
           collapsed ? (
-            <ChevronDown color={colors.secondary} size={18} />
+            <ChevronDown color={colors.textSecondary} size={18} />
           ) : (
-            <ChevronUp color={colors.secondary} size={18} />
+            <ChevronUp color={colors.textSecondary} size={18} />
           )
         ) : null}
-      </View>
-    </Pressable>
+      </Pressable>
+      {onViewAll ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onViewAll}
+          style={({ pressed }) => pressed && { opacity: 0.85 }}
+        >
+          <Text style={styles.viewAll}>{t("friendsWidget.viewAll")}</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -184,13 +191,10 @@ function WidgetContent({
 }) {
   return (
     <>
-      <LeaderboardBlock t={t} leaders={leaders} />
-      <ActivityFeed t={t} feed={feed} />
+      {leaders.length > 0 ? <LeaderboardBlock t={t} leaders={leaders} /> : <ActivityFeed t={t} feed={feed} />}
       <NudgeAction t={t} action={primaryAction} />
-      {secondaryHint ? (
-        <View style={styles.signalsWrap}>
-          <Text style={styles.signalTxt}>{secondaryHint}</Text>
-        </View>
+      {!primaryAction && secondaryHint ? (
+        <Text style={styles.signalTxt}>{secondaryHint}</Text>
       ) : null}
     </>
   );
@@ -198,21 +202,19 @@ function WidgetContent({
 
 function LeaderboardBlock({ t, leaders }: { t: TFunction; leaders: FriendLeaderboardEntryDto[] }) {
   const router = useRouter();
-  if (leaders.length === 0) return null;
   return (
     <View style={styles.leaderBlock}>
-      <Text style={styles.subtle}>{t("friendsWidget.thisWeek")}</Text>
       {leaders.map((entry) => (
         <Pressable
           key={entry.user_id}
           style={({ pressed }) => [styles.leaderRow, pressed && { opacity: 0.88 }]}
           onPress={() => navigate(router, `/profile/${entry.user_id}` as Href)}
         >
-          <View style={[styles.rankBadge, { backgroundColor: rankColor(entry.rank) }]}>
-            <Text style={styles.rankTxt}>#{entry.rank}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{entry.username}</Text>
+          <Text style={styles.rankTxt}>{entry.rank}</Text>
+          <View style={styles.leaderCopy}>
+            <Text style={styles.name} numberOfLines={1}>
+              {entry.username}
+            </Text>
             <Text style={styles.meta}>
               {t("friendsWidget.sessionsMeta", {
                 sessions: entry.sessions_in_period,
@@ -231,7 +233,6 @@ function ActivityFeed({ t, feed }: { t: TFunction; feed: FriendActivityDto[] }) 
   if (feed.length === 0) return null;
   return (
     <View style={styles.feed}>
-      <Text style={styles.subtle}>{t("friendsWidget.recent")}</Text>
       {feed.map((activity) => (
         <Pressable
           key={`${activity.session_id}-${activity.completed_at}`}
@@ -257,7 +258,7 @@ function NudgeAction({ t, action }: { t: TFunction; action: PrimaryAction | null
       <Text style={styles.primaryMsg}>{action.message}</Text>
       {action.hint ? <Text style={styles.primaryHint}>{action.hint}</Text> : null}
       <Pressable
-        style={styles.primaryBtn}
+        style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.85 }]}
         onPress={action.onPress}
         disabled={action.busy}
         accessibilityRole="button"
@@ -266,7 +267,7 @@ function NudgeAction({ t, action }: { t: TFunction; action: PrimaryAction | null
         {action.busy ? (
           <ActivityIndicator
             size="small"
-            color={colors.textPrimary}
+            color={colors.primary}
             accessibilityLabel={t("common.loading")}
           />
         ) : (
@@ -293,11 +294,4 @@ function openActivity(router: ReturnType<typeof useRouter>, activity: FriendActi
 function timeAgo(value: string | null | undefined, t: TFunction) {
   if (!value || !Number.isFinite(new Date(value).getTime())) return t("friendsWidget.agoNow");
   return formatTimeAgo(value, t, "friendsWidget.agoNow");
-}
-
-function rankColor(rank: number) {
-  if (rank === 1) return "#fbbf24";
-  if (rank === 2) return "#d1d5db";
-  if (rank === 3) return "#cd7f32";
-  return colors.secondary;
 }

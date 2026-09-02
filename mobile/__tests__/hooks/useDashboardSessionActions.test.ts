@@ -35,6 +35,7 @@ function createOptions(
     loadSessions: jest.fn().mockResolvedValue(undefined),
     loadStreakOverview: jest.fn().mockResolvedValue(undefined),
     refreshDashboard: jest.fn().mockResolvedValue(undefined),
+    invalidateDashboard: jest.fn(),
     ...overrides,
   };
 }
@@ -57,9 +58,8 @@ describe("useDashboardSessionActions openSessionSetup", () => {
   });
 
   it("opens setup when active session is resolved and none is running", () => {
-    const { result } = renderHook(() =>
-      useDashboardSessionActions(createOptions({ activeResolved: true, active: null })),
-    );
+    const options = createOptions({ activeResolved: true, active: null });
+    const { result } = renderHook(() => useDashboardSessionActions(options));
 
     act(() => {
       result.current.openSessionSetup();
@@ -69,6 +69,7 @@ describe("useDashboardSessionActions openSessionSetup", () => {
       pathname: "/session/setup",
       params: { suggestedType: "beat_making", source: "dashboard" },
     });
+    expect(options.invalidateDashboard).toHaveBeenCalledTimes(1);
   });
 
   it("blocks setup when an active session exists", () => {

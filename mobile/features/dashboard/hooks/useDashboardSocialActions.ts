@@ -21,6 +21,7 @@ export type DashboardSocialRouter = { push: (href: Href) => void };
 type Params = {
   token: string | null;
   userId: number | undefined;
+  hasActiveSession: boolean;
   buddyRisk: BuddyRiskDto | null;
   primaryNudge: DashboardPrimaryNudge | null;
   identityState: IdentityStateDto | null;
@@ -29,6 +30,7 @@ type Params = {
   loadSocial: () => Promise<void>;
   advancePrimaryNudge: (category: string) => Promise<void>;
   applyMomentumAction: (uid: number, action: MomentumAction) => Promise<void>;
+  invalidateDashboard: () => void;
   setSocialActionBusy: Dispatch<SetStateAction<string | null>>;
 };
 
@@ -140,12 +142,13 @@ function useStartSessionAction(
   const { setSocialActionBusy, t, token, userId } = params;
   return useCallback(
     async (category: string) => {
-      if (!token) return;
+      if (!token || params.hasActiveSession) return;
       setSocialActionBusy("commitment");
       try {
         if (userId) await applyMomentumAction(userId, "session");
         showToast(feedback.session);
         await advancePrimaryNudge(category);
+        params.invalidateDashboard();
         router.push("/session/setup");
       } catch (error) {
         showActionError(t, "dashboard.couldNotStartProducing", error);
@@ -157,6 +160,8 @@ function useStartSessionAction(
       advancePrimaryNudge,
       applyMomentumAction,
       feedback.session,
+      params.hasActiveSession,
+      params.invalidateDashboard,
       router,
       setSocialActionBusy,
       showToast,

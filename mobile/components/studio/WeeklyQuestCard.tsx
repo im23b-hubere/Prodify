@@ -25,6 +25,7 @@ type ProgressProps = {
   feedback: SessionFeedbackComputed;
   weekSessionsCount: number;
   weeklyGoalTarget: number;
+  savedWeeklyGoalTarget?: number | null;
   paceForecast: ForecastComputed | null;
   busy?: boolean;
   onChangeTarget?: (target: number) => Promise<void>;
@@ -96,6 +97,7 @@ function WeeklyQuestProgress({
   feedback,
   weekSessionsCount,
   weeklyGoalTarget,
+  savedWeeklyGoalTarget,
   paceForecast,
   busy,
   onChangeTarget,
@@ -151,7 +153,12 @@ function WeeklyQuestProgress({
         <View style={[styles.goalProgressFill, { width: `${progress}%` }]} />
       </View>
       {editing && onChangeTarget ? (
-        <GoalChoices t={t} target={weeklyGoalTarget} busy={busy} onSelect={saveTarget} />
+        <GoalChoices
+          t={t}
+          target={savedWeeklyGoalTarget ?? weeklyGoalTarget}
+          busy={busy}
+          onSelect={saveTarget}
+        />
       ) : null}
     </View>
   );

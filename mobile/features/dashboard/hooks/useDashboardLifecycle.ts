@@ -15,7 +15,7 @@ import { registerPushTokenWithBackend } from "../../../lib/pushToken";
 type UseDashboardLifecycleOptions = {
   token?: string | null;
   userId?: number | null;
-  refreshDashboard: (options: { withLoading: boolean }) => Promise<unknown>;
+  refreshDashboard: (options: { force?: boolean; withLoading: boolean }) => Promise<unknown>;
   presentSessionSetup: () => void;
 };
 
@@ -39,7 +39,7 @@ export function useDashboardLifecycle({
           .then(refreshUnreadCount)
           .catch(() => undefined);
       }
-      refreshDashboard({ withLoading: false }).catch(() => undefined);
+      refreshDashboard({ force: true, withLoading: false }).catch(() => undefined);
       refreshUnreadCount();
       openPendingSessionSetup(presentSessionSetup);
     }, [presentSessionSetup, refreshDashboard, refreshUnreadCount, token]),

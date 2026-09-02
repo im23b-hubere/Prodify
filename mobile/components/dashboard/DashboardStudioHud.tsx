@@ -1,8 +1,8 @@
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import type { TFunction } from "i18next";
-import { Shield } from "lucide-react-native";
-import { memo } from "react";
+import { Flame, Play, Shield } from "lucide-react-native";
+import { memo, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { colors } from "../../constants/theme";
@@ -11,13 +11,13 @@ import type { ForecastComputed } from "../../lib/forecastEngine";
 import type { SessionFeedbackComputed } from "../../lib/sessionFeedbackEngine";
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
+import { PrimaryButton } from "../ui/PrimaryButton";
 import { WeeklyQuestCard } from "../studio/WeeklyQuestCard";
 import { styles } from "./DashboardStudioHud.styles";
 import { DashboardWeekDots } from "./DashboardWeekDots";
 
 type Props = {
   t: TFunction;
-  loading?: boolean;
   activeResolved: boolean;
   active: SessionDto | null;
   stopBusy: boolean;
@@ -27,6 +27,7 @@ type Props = {
   hasWeeklyGoal: boolean;
   weekSessionsCount: number;
   weeklyGoalTarget: number | null;
+  savedWeeklyGoalTarget?: number | null;
   goalSaving: boolean;
   onSaveWeeklyGoal: (target: number) => Promise<void>;
   feedback: SessionFeedbackComputed;
@@ -45,33 +46,26 @@ type Props = {
 export const DashboardStudioHud = memo(function DashboardStudioHud(props: Props) {
   return (
     <View style={styles.stack} testID="dashboard-studio-hud">
+      <SessionAction props={props} />
       <LinearGradient
-        colors={["#3d1510", "#1a1010", "#0a0a0a"]}
+        colors={["#241410", "#141414"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.heroCard}
+        style={styles.weekPanel}
       >
-        {props.loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
-        ) : null}
-        <SessionAction props={props} />
-      </LinearGradient>
-      <View style={styles.goalCard}>
         <WeeklyGoalBlock props={props} />
-      </View>
-      <DashboardStats props={props} />
-      {props.streakOverview ? (
-        <View style={styles.streakCard}>
-          <DashboardWeekDots
-            overview={props.streakOverview}
-            onOpenHistory={props.onOpenStreakHistory}
-            t={props.t}
-          />
-          <FreezeAction props={props} />
-        </View>
-      ) : null}
+        <DashboardStats props={props} />
+        {props.streakOverview ? (
+          <>
+            <DashboardWeekDots
+              overview={props.streakOverview}
+              onOpenHistory={props.onOpenStreakHistory}
+              t={props.t}
+            />
+            <FreezeAction props={props} />
+          </>
+        ) : null}
+      </LinearGradient>
     </View>
   );
 });
@@ -94,6 +88,7 @@ function WeeklyGoalBlock({ props }: { props: Props }) {
       feedback={props.feedback}
       weekSessionsCount={props.weekSessionsCount}
       weeklyGoalTarget={props.weeklyGoalTarget}
+      savedWeeklyGoalTarget={props.savedWeeklyGoalTarget}
       paceForecast={props.paceForecast}
       busy={props.goalSaving}
       onChangeTarget={props.onSaveWeeklyGoal}
@@ -124,47 +119,28 @@ function SessionAction({ props }: { props: Props }) {
       </View>
     );
   }
-  const quickStart = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-    props.onQuickStart();
-  };
-  const customize = () => {
-    Haptics.selectionAsync().catch(() => undefined);
-    props.onQuickStart();
-  };
   return (
-    <View style={styles.actionWrap}>
-      <View testID="dashboard-start-session">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={props.t("sessionStarter.title")}
-          accessibilityState={{ disabled: false }}
-          onPress={quickStart}
-          style={({ pressed }) => [styles.startBtn, pressed && { opacity: 0.92 }]}
-        >
-          <LinearGradient colors={["#ff6a3d", colors.primary]} style={styles.startBtnInner}>
-            <Text style={styles.startEmoji}>▶</Text>
-            <Text style={styles.startTitle}>{props.t("sessionStarter.title")}</Text>
-          </LinearGradient>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={customize}
-          style={({ pressed }) => [styles.customizeBtn, pressed && { opacity: 0.85 }]}
-        >
-          <Text style={styles.customizeText}>{props.t("sessionStarter.customize")}</Text>
-        </Pressable>
-      </View>
+    <View style={styles.actionWrap} testID="dashboard-start-session">
+      <PrimaryButton
+        label={props.t("dashboard.startSession")}
+        accessibilityLabel={props.t("sessionStarter.title")}
+        icon={<Play color="#ffffff" fill="#ffffff" size={16} />}
+        onPress={props.onQuickStart}
+      />
     </View>
   );
 }
 
 function DashboardStats({ props }: { props: Props }) {
   return (
-    <View style={styles.metricsCard}>
+    <View style={styles.metricsRow}>
       <MetricItem
         label={props.t("sessionComplete.statStreakLabel")}
-        value={`${props.streakCount}d`}
+        value={String(props.streakCount)}
+        icon={
+          props.streakCount > 0 ? <Flame color={colors.primary} size={14} /> : undefined
+        }
+        accent={props.streakCount > 0}
       />
       <View style={styles.metricDivider} />
       <MetricItem
@@ -184,10 +160,23 @@ function DashboardStats({ props }: { props: Props }) {
   );
 }
 
-function MetricItem({ label, value }: { label: string; value: string }) {
+function MetricItem({
+  label,
+  value,
+  icon,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  icon?: ReactNode;
+  accent?: boolean;
+}) {
   return (
     <View style={styles.metricItem}>
-      <Text style={styles.metricValue}>{value}</Text>
+      <View style={styles.metricValueRow}>
+        {icon}
+        <Text style={[styles.metricValue, accent && styles.metricValueAccent]}>{value}</Text>
+      </View>
       <Text style={styles.metricLabel}>{label}</Text>
     </View>
   );
@@ -215,7 +204,7 @@ function FreezeAction({ props }: { props: Props }) {
       ]}
       onPress={activateFreeze}
     >
-      <Shield color={overview.can_use_freeze ? colors.secondary : colors.textSecondary} size={16} />
+      <Shield color={overview.can_use_freeze ? colors.primary : colors.textSecondary} size={16} />
       <Text style={styles.freezeLabel}>{freezeLabel(props.t, overview, props.freezeBusy)}</Text>
     </Pressable>
   );

@@ -24,6 +24,7 @@ type Options = {
   loadSessions: () => Promise<unknown>;
   loadStreakOverview: () => Promise<unknown>;
   refreshDashboard: (options: { force?: boolean; withLoading?: boolean }) => Promise<unknown>;
+  invalidateDashboard: () => void;
 };
 
 type Router = ReturnType<typeof useRouter>;
@@ -39,7 +40,14 @@ export function useDashboardSessionActions(options: Options) {
 }
 
 function useSessionNavigation(options: Options, router: Router) {
-  const { active, activeResolved, refreshDashboard, setRefreshing, suggestedSessionType } = options;
+  const {
+    active,
+    activeResolved,
+    invalidateDashboard,
+    refreshDashboard,
+    setRefreshing,
+    suggestedSessionType,
+  } = options;
   const openFullscreenActive = useCallback(() => {
     if (!active || typeof active.id !== "number" || !Number.isFinite(active.id)) return;
     ignoreHaptic(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
@@ -62,16 +70,13 @@ function useSessionNavigation(options: Options, router: Router) {
       return;
     }
     ignoreHaptic(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
+    invalidateDashboard();
     router.push({
       pathname: "/session/setup",
       params: { suggestedType: suggestedSessionType, source: "dashboard" },
     });
-  }, [active, activeResolved, router, suggestedSessionType]);
-  const openStats = useCallback(() => {
-    ignoreHaptic(Haptics.selectionAsync());
-    router.push({ pathname: "/(tabs)/stats", params: { focus: "yourWeek" } });
-  }, [router]);
-  return { openFullscreenActive, refresh, openSessionSetup, openStats };
+  }, [active, activeResolved, invalidateDashboard, router, suggestedSessionType]);
+  return { openFullscreenActive, refresh, openSessionSetup };
 }
 
 function useWeeklyGoalAction({ refreshDashboard, setError, t, token }: Options) {
@@ -134,7 +139,7 @@ function useFreezeActions({
 }
 
 function useSessionCompletionActions(options: Options, router: Router) {
-  const { active, loadSessions, setActive, setError, t, token } = options;
+  const { active, invalidateDashboard, loadSessions, setActive, setError, t, token } = options;
   const [stopBusy, setStopBusy] = useState(false);
   const inFlight = useRef(false);
   const stopSession = useCallback(
@@ -152,6 +157,7 @@ function useSessionCompletionActions(options: Options, router: Router) {
         });
         debugLog("session", "stop_success", { sessionId: session.id });
         setActive(null);
+        invalidateDashboard();
         router.replace({ pathname: "/session/complete", params: { id: String(session.id) } });
       } catch (error) {
         ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
@@ -164,7 +170,7 @@ function useSessionCompletionActions(options: Options, router: Router) {
         setStopBusy(false);
       }
     },
-    [loadSessions, router, setActive, setError, t, token],
+    [invalidateDashboard, loadSessions, router, setActive, setError, t, token],
   );
   const confirmStop = useCallback(() => {
     if (!active || !token || inFlight.current) return;

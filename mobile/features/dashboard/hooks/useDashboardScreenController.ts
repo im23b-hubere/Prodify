@@ -33,14 +33,13 @@ export function useDashboardScreenController() {
     hasWeeklyGoal: data.hasWeeklyGoal,
     weekSessionsCount: data.weekSessionsCount,
     accountCreatedAtIso: user?.created_at,
-    lastUpdated: data.lastUpdated,
     t,
   });
   const sessionActions = useDashboardSessionActions({
     token,
     active: data.active,
     activeResolved: data.activeResolved,
-    suggestedSessionType: presentation.todayPlan.suggestedSessionType,
+    suggestedSessionType: presentation.suggestedSessionType,
     displayOverview: presentation.displayOverview,
     t,
     setActive: data.setActive,
@@ -49,17 +48,26 @@ export function useDashboardScreenController() {
     loadSessions: data.loadSessions,
     loadStreakOverview: data.loadStreakOverview,
     refreshDashboard: data.refreshDashboard,
+    invalidateDashboard: data.invalidateDashboard,
   });
   const [socialActionBusy, setSocialActionBusy] = useState<string | null>(null);
   const social = useDashboardSocialController({
     token,
     userId: user?.id,
+    hasActiveSession: Boolean(data.active),
     router,
     t,
     data,
     setSocialActionBusy,
   });
-  const experience = useDashboardExperienceController({ token, userId: user?.id, t, data, setup });
+  const experience = useDashboardExperienceController({
+    token,
+    userId: user?.id,
+    t,
+    data,
+    setup,
+    router,
+  });
   return {
     t,
     user,
@@ -80,6 +88,7 @@ export type DashboardScreenController = ReturnType<typeof useDashboardScreenCont
 function useDashboardSocialController({
   token,
   userId,
+  hasActiveSession,
   router,
   t,
   data,
@@ -87,6 +96,7 @@ function useDashboardSocialController({
 }: {
   token: string | null;
   userId?: number;
+  hasActiveSession: boolean;
   router: ReturnType<typeof useRouter>;
   t: TFunction;
   data: DashboardData;
@@ -104,6 +114,7 @@ function useDashboardSocialController({
   const actions = useDashboardSocialActions({
     token,
     userId,
+    hasActiveSession,
     buddyRisk: data.buddyRisk,
     primaryNudge: nudges.primaryNudge,
     identityState: data.identityState,
@@ -112,6 +123,7 @@ function useDashboardSocialController({
     loadSocial: data.loadSocial,
     advancePrimaryNudge: nudges.advancePrimaryNudge,
     applyMomentumAction: nudges.applyMomentumAction,
+    invalidateDashboard: data.invalidateDashboard,
     setSocialActionBusy,
   });
   return { ...nudges, ...actions };
@@ -123,14 +135,15 @@ function useDashboardExperienceController({
   t,
   data,
   setup,
+  router,
 }: {
   token: string | null;
   userId?: number;
   t: TFunction;
   data: DashboardData;
   setup: SessionSetup;
+  router: ReturnType<typeof useRouter>;
 }) {
-  const router = useRouter();
   const lifecycle = useDashboardLifecycle({
     token,
     userId,
@@ -149,8 +162,7 @@ function useDashboardExperienceController({
   const setupResults = useDashboardSessionSetupResults({
     closeSetupModal: setup.closeSetupModal,
     openSetupScreen,
-    loadSessions: data.loadSessions,
-    loadStreakOverview: data.loadStreakOverview,
+    refreshDashboard: data.refreshDashboard,
     setActive: data.setActive,
     setSessions: data.setSessions,
     setError: data.setError,

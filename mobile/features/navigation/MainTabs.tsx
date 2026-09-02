@@ -27,10 +27,7 @@ export function MainTabs() {
       detachInactiveScreens={false}
       screenOptions={{
         lazy: true,
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.textPrimary,
-        headerTitleStyle: { fontFamily: "Syne_700Bold", fontSize: 20 },
-        headerShadowVisible: false,
+        headerShown: false,
         tabBarStyle: {
           backgroundColor: colors.background,
           borderTopColor: colors.border,

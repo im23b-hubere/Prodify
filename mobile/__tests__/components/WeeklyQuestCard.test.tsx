@@ -48,4 +48,25 @@ describe("WeeklyQuestCard", () => {
     await waitFor(() => expect(onChangeTarget).toHaveBeenCalledWith(7));
     await waitFor(() => expect(screen.queryByLabelText(sevenChoice)).toBeNull());
   });
+
+  it("keeps the scaled first-week target on the progress label and the saved target on chips", () => {
+    render(
+      <WeeklyQuestCard
+        mode="progress"
+        t={t}
+        feedback={feedback}
+        weekSessionsCount={2}
+        weeklyGoalTarget={5}
+        savedWeeklyGoalTarget={7}
+        paceForecast={null}
+        onChangeTarget={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(
+      screen.getByText('dashboard.weeklyGoalProgressSimple:{"current":2,"target":5}'),
+    ).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("dashboard.weeklyGoalEdit"));
+    expect(screen.getByLabelText('dashboard.weeklyGoalChipA11y:{"count":7}')).toBeTruthy();
+  });
 });

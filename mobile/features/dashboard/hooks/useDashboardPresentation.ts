@@ -8,6 +8,7 @@ import { STREAK_MILESTONES } from "../../../lib/streakMilestones";
 import { buildTodayPlanRecommendation } from "../../../lib/todayPlanEngine";
 import type { SessionDto } from "../../../types/session";
 import type { StreakOverviewDto } from "../../../types/streak";
+import { dashboardSparkKey } from "../dashboardCopy";
 import { getLast7DaysProgress, getStreak, parseApiDate, toDateKey } from "../utils";
 
 type UseDashboardPresentationOptions = {
@@ -18,7 +19,6 @@ type UseDashboardPresentationOptions = {
   hasWeeklyGoal: boolean;
   weekSessionsCount: number;
   accountCreatedAtIso?: string | null;
-  lastUpdated: Date | null;
   t: TFunction;
 };
 
@@ -28,8 +28,6 @@ type GoalPresentationOptions = {
   clientStreak: number;
   streakOverview: StreakOverviewDto | null;
   visibleSessions: SessionDto[];
-  hasWeeklyGoal: boolean;
-  t: TFunction;
 };
 
 function useGoalPresentation({
@@ -38,8 +36,6 @@ function useGoalPresentation({
   clientStreak,
   streakOverview,
   visibleSessions,
-  hasWeeklyGoal,
-  t,
 }: GoalPresentationOptions) {
   const currentStreak = streakOverview?.current_streak ?? clientStreak;
   const todayPlan = useMemo(
@@ -74,12 +70,7 @@ function useGoalPresentation({
       }),
     [completed, currentStreak, target],
   );
-  const studioStatusLine = useMemo(() => {
-    if (!hasWeeklyGoal) return null;
-    if (streakOverview?.streak_at_risk) return t("streakHero.riskBanner");
-    return paceForecast ? t(paceForecast.todayActionKey, paceForecast.todayActionParams) : null;
-  }, [hasWeeklyGoal, paceForecast, streakOverview?.streak_at_risk, t]);
-  return { todayPlan, paceForecast, sessionFeedback, studioStatusLine };
+  return { todayPlan, paceForecast, sessionFeedback };
 }
 
 export function useDashboardPresentation({
@@ -90,7 +81,6 @@ export function useDashboardPresentation({
   hasWeeklyGoal,
   weekSessionsCount,
   accountCreatedAtIso,
-  lastUpdated,
   t,
 }: UseDashboardPresentationOptions) {
   const visibleSessions = useMemo(
@@ -112,15 +102,35 @@ export function useDashboardPresentation({
     [accountCreatedAtIso, weeklyGoalTarget],
   );
   const todayStats = useMemo(() => sessionsForToday(visibleSessions), [visibleSessions]);
-  const { todayPlan, paceForecast, sessionFeedback, studioStatusLine } = useGoalPresentation({
+  const { todayPlan, paceForecast, sessionFeedback } = useGoalPresentation({
     target: effectiveWeeklyGoalTarget,
     completed: weekSessionsForGoal,
     clientStreak,
     streakOverview,
     visibleSessions,
-    hasWeeklyGoal,
-    t,
   });
+  const sparkLine = useMemo(() => {
+    const spark = dashboardSparkKey({
+      streakAtRisk: Boolean(streakOverview?.streak_at_risk),
+      streakCount: streakOverview?.current_streak ?? clientStreak,
+      todayMinutes: todayStats.minutes,
+      weeklyGoalComplete:
+        hasWeeklyGoal &&
+        effectiveWeeklyGoalTarget != null &&
+        weekSessionsForGoal >= effectiveWeeklyGoalTarget,
+    });
+    return t(spark.key, spark.params);
+  }, [
+    clientStreak,
+    effectiveWeeklyGoalTarget,
+    hasWeeklyGoal,
+    streakOverview?.current_streak,
+    streakOverview?.streak_at_risk,
+    t,
+    todayStats.minutes,
+    weekSessionsForGoal,
+  ]);
+  const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
   const displayOverview = useMemo(
     () =>
       streakOverview ??
@@ -135,21 +145,16 @@ export function useDashboardPresentation({
   );
   return {
     visibleSessions,
-    recentSessions: visibleSessions.slice(0, 3),
+    recentSessions,
     clientStreak,
     weekSessionsForGoal,
     effectiveWeeklyGoalTarget,
     todayStats,
-    todayPlan,
+    suggestedSessionType: todayPlan.suggestedSessionType,
     paceForecast,
     sessionFeedback,
     displayOverview,
-    studioStatusLine,
-    lastUpdatedLabel: lastUpdated
-      ? t("dashboard.updatedAgo", {
-          mins: Math.max(0, Math.round((Date.now() - lastUpdated.getTime()) / 60000)),
-        })
-      : null,
+    sparkLine,
   };
 }
 

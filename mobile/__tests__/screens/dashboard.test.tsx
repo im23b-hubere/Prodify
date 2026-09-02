@@ -5,6 +5,13 @@ import DashboardScreen from "../../app/(tabs)/dashboard";
 
 const mockPush = jest.fn();
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+jest.mock("expo-linear-gradient", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return { LinearGradient: ({ children }: { children: React.ReactNode }) => <View>{children}</View> };
+});
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn() }),
 }));
@@ -14,6 +21,7 @@ jest.mock("react-native-safe-area-context", () => {
   const { View } = require("react-native");
   return {
     SafeAreaView: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
   };
 });
 
@@ -125,14 +133,6 @@ jest.mock("../../components/dashboard/FriendsActivityWidget", () => ({
     return React.createElement(View, { testID: "dashboard-friends-widget" });
   },
 }));
-jest.mock("../../features/weeklyRecap/WeeklyRecapTeaser", () => ({
-  WeeklyRecapTeaser: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View, { testID: "weekly-recap-teaser" });
-  },
-  isWeeklyRecapTeaserVisible: () => true,
-}));
 jest.mock("../../hooks/useRankProgression", () => ({
   useRankProgression: () => ({ level: 2 }),
 }));
@@ -184,14 +184,6 @@ jest.mock("../../features/dashboard/components/DashboardSessionSetupModal", () =
     return React.createElement(View);
   },
 }));
-jest.mock("../../features/dashboard/components/SessionSkeleton", () => ({
-  SessionSkeleton: () => {
-    const React = require("react");
-    const { Text } = require("react-native");
-    return React.createElement(Text, null, "Loading sessions...");
-  },
-}));
-
 jest.mock("../../lib/sessionI18n", () => ({
   sessionTypeLabel: (value: string) => value,
 }));
@@ -278,6 +270,7 @@ const createDashboardState = (overrides: Record<string, unknown> = {}) => ({
   loadStreakOverview: jest.fn().mockResolvedValue(undefined),
   loadSocial: jest.fn().mockResolvedValue(undefined),
   refreshDashboard: jest.fn().mockResolvedValue(undefined),
+  invalidateDashboard: jest.fn(),
   ...overrides,
 });
 
@@ -286,6 +279,12 @@ describe("Dashboard Screen", () => {
     jest.clearAllMocks();
     mockPush.mockClear();
     mockUseDashboardData.mockReturnValue(createDashboardState());
+  });
+
+  it("pins greeting chrome above the scrolling studio hud", () => {
+    const { getByTestId } = render(<DashboardScreen />);
+    expect(getByTestId("dashboard-chrome")).toBeTruthy();
+    expect(getByTestId("dashboard-studio-hud")).toBeTruthy();
   });
 
   it("renders studio hud while dashboard data is loading", () => {
@@ -374,20 +373,19 @@ describe("Dashboard Screen", () => {
   it("shows username in greeting", () => {
     const { getByText } = render(<DashboardScreen />);
     expect(getByText("alice")).toBeTruthy();
-    expect(getByText("dashboard.heyPrefix")).toBeTruthy();
   });
 
-  it("renders weekly recap teaser and friends widget", () => {
-    const { getByTestId } = render(<DashboardScreen />);
-    expect(getByTestId("weekly-recap-teaser")).toBeTruthy();
+  it("renders friends widget without weekly recap teaser", () => {
+    const { getByTestId, queryByTestId } = render(<DashboardScreen />);
     expect(getByTestId("dashboard-friends-widget")).toBeTruthy();
+    expect(queryByTestId("weekly-recap-teaser")).toBeNull();
   });
 
-  it("shows section navigation links for sessions", () => {
-    const { getByText } = render(<DashboardScreen />);
+  it("shows a see-all link for recent sessions", () => {
+    const { getByText, queryByText } = render(<DashboardScreen />);
     expect(getByText("dashboard.allSessionsLink")).toBeTruthy();
-    expect(getByText("dashboard.trashLink")).toBeTruthy();
-    expect(getByText("dashboard.statsLink")).toBeTruthy();
+    expect(queryByText("dashboard.trashLink")).toBeNull();
+    expect(queryByText("dashboard.statsLink")).toBeNull();
   });
 
   it("navigates to session history from all sessions link", () => {
@@ -398,9 +396,10 @@ describe("Dashboard Screen", () => {
 
   it("shows empty state when there are no completed sessions", () => {
     mockUseDashboardData.mockReturnValue(createDashboardState({ sessions: [], active: null }));
-    const { getByText } = render(<DashboardScreen />);
+    const { getByText, getByTestId, queryByText } = render(<DashboardScreen />);
     expect(getByText("dashboard.emptyStreakTitle")).toBeTruthy();
-    expect(getByText("dashboard.startSession")).toBeTruthy();
+    expect(getByTestId("dashboard-start-session")).toBeTruthy();
+    expect(queryByText("dashboard.startSession")).toBeNull();
   });
 
   it("hides empty state when an active session exists", () => {

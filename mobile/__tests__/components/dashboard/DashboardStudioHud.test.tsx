@@ -7,6 +7,8 @@ import type { SessionDto } from "../../../types/session";
 
 jest.mock("lucide-react-native", () => ({
   Shield: () => null,
+  Play: () => null,
+  Flame: () => null,
 }));
 
 jest.mock("react-native-reanimated", () => {
@@ -41,7 +43,6 @@ const mockT = ((key: string) => key) as TFunction;
 
 const baseProps = {
   t: mockT,
-  loading: false,
   activeResolved: true,
   active: null,
   stopBusy: false,

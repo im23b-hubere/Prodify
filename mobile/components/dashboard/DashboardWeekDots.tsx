@@ -9,6 +9,12 @@ import { styles } from "./DashboardStudioHud.styles";
 
 type WeekDotKind = "none" | "session" | "freeze";
 
+const BAR_HEIGHT = {
+  none: 6,
+  freeze: 12,
+  session: 22,
+} as const;
+
 export function DashboardWeekDots({
   overview,
   onOpenHistory,
@@ -39,21 +45,23 @@ export function DashboardWeekDots({
           return (
             <View key={`${label}-${index}`} style={styles.dayColumn}>
               <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
-                {label.slice(0, 1)}
+                {label.slice(0, 2)}
               </Text>
-              <View
-                style={[
-                  styles.dayDot,
-                  kind === "session" && styles.dayDotSession,
-                  kind === "freeze" && styles.dayDotFreeze,
-                  isToday && styles.dayDotToday,
-                ]}
-              />
+              <View style={[styles.weekBarTrack, isToday && styles.weekBarTrackToday]}>
+                <View
+                  style={[
+                    styles.weekBarFill,
+                    { height: BAR_HEIGHT[kind] },
+                    kind === "session" && styles.weekBarSession,
+                    kind === "freeze" && styles.weekBarFreeze,
+                  ]}
+                />
+              </View>
             </View>
           );
         })}
       </View>
-      <ChevronRight color={colors.secondary} size={18} />
+      <ChevronRight color={colors.textSecondary} size={16} />
     </Pressable>
   );
 }

@@ -23,36 +23,51 @@ export function useDashboardData(token: string | null, userId: number | null | u
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const lastDashboardFetch = useRef(0);
+  const refreshInFlight = useRef<Promise<void> | null>(null);
 
   const resetDashboardShell = useCallback(() => {
     lastDashboardFetch.current = 0;
+    refreshInFlight.current = null;
     setRefreshing(false);
     setLoading(Boolean(token && userId != null));
   }, [token, userId]);
 
   useDashboardAuthReset(token, userId, resetDashboardShell);
 
+  const invalidateDashboard = useCallback(() => {
+    lastDashboardFetch.current = 0;
+  }, []);
+
   const refreshDashboard = useCallback(
     async ({
       force = false,
       withLoading = false,
     }: { force?: boolean; withLoading?: boolean } = {}) => {
-      if (!token || userId == null || (!force && isDashboardFresh(lastDashboardFetch.current))) {
-        return;
-      }
-      if (withLoading) setLoading(true);
+      if (!token || userId == null) return;
+      if (!force && isDashboardFresh(lastDashboardFetch.current)) return;
+      if (refreshInFlight.current) return refreshInFlight.current;
 
-      try {
-        await Promise.all([loadSessions(), loadStreakOverview(), loadWeeklyGoal()]);
-        await syncWeeklyRecapReminder(true);
-        lastDashboardFetch.current = Date.now();
-        if (withLoading) setLoading(false);
-        void loadSocial().then(() => {
+      const run = (async () => {
+        if (withLoading) setLoading(true);
+        try {
+          await Promise.all([loadSessions(), loadStreakOverview(), loadWeeklyGoal()]);
+          await syncWeeklyRecapReminder(true);
           lastDashboardFetch.current = Date.now();
-        });
-      } catch (error) {
-        setError(error instanceof Error ? error.message : t("dashboard.loadFailed"));
-        if (withLoading) setLoading(false);
+          void loadSocial().then(() => {
+            lastDashboardFetch.current = Date.now();
+          });
+        } catch (error) {
+          setError(error instanceof Error ? error.message : t("dashboard.loadFailed"));
+        } finally {
+          if (withLoading) setLoading(false);
+        }
+      })();
+
+      refreshInFlight.current = run;
+      try {
+        await run;
+      } finally {
+        if (refreshInFlight.current === run) refreshInFlight.current = null;
       }
     },
     [loadSessions, setError, loadSocial, loadStreakOverview, t, token, userId, loadWeeklyGoal],
@@ -76,6 +91,7 @@ export function useDashboardData(token: string | null, userId: number | null | u
     refreshing,
     setRefreshing,
     refreshDashboard,
+    invalidateDashboard,
   };
 }
 

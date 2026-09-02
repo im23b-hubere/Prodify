@@ -1,23 +1,12 @@
 import { StyleSheet } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../constants/theme";
+import { colors, radii, spacing, typography, ui } from "../../constants/theme";
 
 export const styles = StyleSheet.create({
   stack: {
     width: "100%",
-    gap: spacing.sm,
-  },
-  heroCard: {
-    borderRadius: radii.xl,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: "rgba(255,61,0,0.22)",
-    overflow: "hidden",
-  },
-  loadingWrap: {
-    alignItems: "center",
-    paddingVertical: spacing.xs,
+    gap: spacing.md,
   },
   sessionLoadingWrap: {
     alignItems: "center",
@@ -34,53 +23,18 @@ export const styles = StyleSheet.create({
   actionWrap: {
     width: "100%",
   },
-  startBtn: {
-    width: "100%",
-  },
-  startBtnInner: {
-    borderRadius: radii.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    alignItems: "center",
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  startEmoji: {
-    fontSize: 32,
-    color: "#fff",
-  },
-  startTitle: {
-    color: "#fff",
-    fontFamily: fontFamily.heading,
-    fontSize: 22,
-    letterSpacing: 1,
-  },
-  customizeBtn: {
-    alignItems: "center",
-    paddingVertical: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  customizeText: {
-    color: colors.secondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  goalCard: {
-    borderRadius: radii.lg,
+  weekPanel: {
+    borderRadius: ui.cardRadius,
     padding: spacing.md,
+    gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.035)",
+    borderColor: "rgba(255,61,0,0.22)",
+    overflow: "hidden",
   },
-  metricsCard: {
+  metricsRow: {
     flexDirection: "row",
     alignItems: "stretch",
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.025)",
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.xs,
   },
   metricItem: {
     flex: 1,
@@ -89,38 +43,36 @@ export const styles = StyleSheet.create({
     gap: 2,
     paddingHorizontal: spacing.xs,
   },
+  metricValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   metricValue: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    fontSize: 17,
-    lineHeight: 21,
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  metricValueAccent: {
+    color: colors.primary,
   },
   metricLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyMedium,
-    fontSize: 10,
-    lineHeight: 14,
+    ...typography.meta,
     textAlign: "center",
   },
   metricDivider: {
-    width: 1,
+    width: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
-    marginVertical: spacing.xs,
-  },
-  streakCard: {
-    borderRadius: radii.lg,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.025)",
+    marginVertical: 2,
   },
   weekRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
-    paddingTop: spacing.xs,
   },
   weekDots: {
     flex: 1,
@@ -131,53 +83,57 @@ export const styles = StyleSheet.create({
   dayColumn: {
     flex: 1,
     alignItems: "center",
-    gap: 4,
+    gap: 6,
   },
   dayLabel: {
     color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 10,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.meta,
   },
   dayLabelToday: {
     color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
   },
-  dayDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  weekBarTrack: {
+    height: 22,
+    width: 7,
+    borderRadius: 4,
     backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: "flex-end",
+    overflow: "hidden",
   },
-  dayDotSession: {
+  weekBarTrackToday: {
+    backgroundColor: "rgba(255,61,0,0.18)",
+  },
+  weekBarFill: {
+    width: "100%",
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  weekBarSession: {
     backgroundColor: colors.primary,
-    borderColor: "rgba(255,61,0,0.6)",
   },
-  dayDotFreeze: {
-    backgroundColor: colors.secondary,
-    borderColor: "rgba(162,89,255,0.6)",
-  },
-  dayDotToday: {
-    transform: [{ scale: 1.15 }],
+  weekBarFreeze: {
+    backgroundColor: "rgba(255,255,255,0.45)",
   },
   freezeBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-    borderRadius: radii.round,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "rgba(162,89,255,0.35)",
-    backgroundColor: "rgba(162,89,255,0.1)",
+    borderColor: "rgba(255,61,0,0.35)",
+    backgroundColor: "rgba(255,61,0,0.08)",
+    minHeight: 44,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
   },
   freezeDisabled: {
-    opacity: 0.65,
+    opacity: 0.55,
   },
   freezeLabel: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
+    ...typography.meta,
   },
 });

@@ -256,4 +256,47 @@ describe("useDashboardData", () => {
     expect(result.current.weeklyGoalTarget).toBe(4);
     expect(result.current.weekSessionsCount).toBe(2);
   });
+
+  it("skips a non-forced refresh while the dashboard snapshot is still fresh", async () => {
+    mockDashboardApi({ weeklyTarget: 4, weeklySessions: 2 });
+
+    const { result } = renderHook(() => useDashboardData("token", 1));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const goalCalls = mockFetchCurrentGoal.mock.calls.length;
+    const sessionCalls = mockApiJson.mock.calls.filter(([path]) =>
+      String(path).startsWith("/sessions/list"),
+    ).length;
+
+    await act(async () => {
+      await result.current.refreshDashboard({ withLoading: false });
+    });
+
+    expect(mockFetchCurrentGoal.mock.calls.length).toBe(goalCalls);
+    expect(
+      mockApiJson.mock.calls.filter(([path]) => String(path).startsWith("/sessions/list")).length,
+    ).toBe(sessionCalls);
+  });
+
+  it("refetches after invalidateDashboard even inside the freshness window", async () => {
+    mockDashboardApi({ weeklyTarget: 4, weeklySessions: 2 });
+
+    const { result } = renderHook(() => useDashboardData("token", 1));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const goalCalls = mockFetchCurrentGoal.mock.calls.length;
+
+    await act(async () => {
+      result.current.invalidateDashboard();
+      await result.current.refreshDashboard({ withLoading: false });
+    });
+
+    expect(mockFetchCurrentGoal.mock.calls.length).toBeGreaterThan(goalCalls);
+  });
 });

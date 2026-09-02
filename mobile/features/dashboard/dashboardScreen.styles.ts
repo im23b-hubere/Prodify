@@ -1,7 +1,7 @@
 import { StyleSheet } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, motion, radii, shadows, spacing, typography, ui } from "../../constants/theme";
+import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
 
 export const styles = StyleSheet.create({
   safe: {
@@ -37,8 +37,8 @@ export const styles = StyleSheet.create({
   socialWarning: {
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "rgba(255,170,0,0.35)",
-    backgroundColor: "rgba(255,170,0,0.08)",
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     gap: 4,
@@ -50,7 +50,7 @@ export const styles = StyleSheet.create({
     lineHeight: 18,
   },
   socialWarningAction: {
-    color: colors.primary,
+    color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
     ...typography.meta,
   },
@@ -76,121 +76,105 @@ export const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     flexGrow: 1,
   },
+  chrome: {
+    zIndex: 2,
+    paddingHorizontal: ui.screenPadding,
+    paddingBottom: spacing.sm,
+  },
+  chromeScrolled: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+  },
   headerContent: {
-    paddingTop: spacing.xs,
-    gap: spacing.md,
+    position: "relative",
+    paddingTop: spacing.sm,
+    gap: spacing.lg,
+    overflow: "visible",
+  },
+  ambient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
+  },
+  heroHeader: {
+    gap: spacing.sm,
   },
   topBar: {
-    marginBottom: spacing.xs,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.sm,
   },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
     flexShrink: 0,
+    paddingTop: 2,
   },
-  greetingRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    flexWrap: "nowrap",
-    flexShrink: 1,
+  greetingBlock: {
+    flex: 1,
     minWidth: 0,
-    gap: spacing.xs,
+    gap: 2,
   },
-  greetingPrefix: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.screenTitle,
-    flexShrink: 0,
+  greetingKicker: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+    letterSpacing: 0.4,
   },
   greetingName: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.screenTitle,
-    flex: 1,
-    minWidth: 0,
+    fontSize: 28,
+    lineHeight: 34,
+  },
+  sparkLine: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.body,
+    lineHeight: 22,
+    maxWidth: "92%",
   },
   iconButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
   },
   iconButtonPressed: {
     opacity: motion.pressOpacity,
-    transform: [{ scale: motion.pressScaleStrong }],
   },
   notifBadge: {
     position: "absolute",
     top: 6,
     right: 6,
-    width: 9,
-    height: 9,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: colors.danger,
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  pressedStart: { opacity: 0.92, transform: [{ scale: 0.98 }] },
-  startCircle: {
-    alignSelf: "center",
-    marginTop: spacing.lg,
-    marginBottom: spacing.lg,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.md,
-    ...shadows.button,
-  },
-  tapLabel: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    letterSpacing: 1.2,
-    ...typography.subheadline,
-    textAlign: "center",
-  },
-  tapHint: {
-    marginTop: spacing.xs,
-    color: "rgba(255,255,255,0.85)",
-    ...typography.caption,
-    textAlign: "center",
   },
   sectionTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.sectionTitle,
+    ...typography.body,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: spacing.xs,
-    marginTop: spacing.sm,
   },
-  sectionHeaderRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   viewAllLink: {
-    color: colors.secondary,
-    fontFamily: fontFamily.bodyBold,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
     ...typography.meta,
   },
   linkPressed: {
     opacity: motion.pressOpacityLight,
-  },
-  updatedHint: {
-    color: colors.textSecondary,
-    ...typography.meta,
-    marginBottom: spacing.sm,
-  },
-  trashLink: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
   },
   deleteAction: {
     backgroundColor: colors.danger,

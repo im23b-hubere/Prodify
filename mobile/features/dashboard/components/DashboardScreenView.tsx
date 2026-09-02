@@ -1,10 +1,18 @@
 import * as Haptics from "expo-haptics";
-import { Flame } from "lucide-react-native";
-import { useCallback } from "react";
-import { FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import {
+  FlatList,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Pressable,
+  RefreshControl,
+  Text,
+  View,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Swipeable } from "react-native-gesture-handler";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DashboardRecentSessionRow } from "../../../components/dashboard/DashboardRecentSessionRow";
 import { DashboardStudioHud } from "../../../components/dashboard/DashboardStudioHud";
@@ -15,18 +23,40 @@ import { TutorialOverlay } from "../../../components/TutorialOverlay";
 import { colors } from "../../../constants/theme";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
 import type { SessionDto } from "../../../types/session";
-import { WeeklyRecapTeaser } from "../../weeklyRecap/WeeklyRecapTeaser";
 import { styles } from "../dashboardScreen.styles";
 import type { DashboardScreenController } from "../hooks/useDashboardScreenController";
 import { DashboardFeedbackOverlays } from "./DashboardFeedbackOverlays";
 import { DashboardScreenTopBar } from "./DashboardScreenTopBar";
 import { DashboardSessionSetupModal } from "./DashboardSessionSetupModal";
 
+function useChromeScrolled(threshold = 12) {
+  const [scrolled, setScrolled] = useState(false);
+  const scrolledRef = useRef(false);
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next = event.nativeEvent.contentOffset.y > threshold;
+      if (next === scrolledRef.current) return;
+      scrolledRef.current = next;
+      setScrolled(next);
+    },
+    [threshold],
+  );
+  return { scrolled, onScroll };
+}
+
 export function DashboardScreenView({ controller }: { controller: DashboardScreenController }) {
   const { data, experience, presentation, sessionActions, setup } = controller;
+  const insets = useSafeAreaInsets();
+  const { scrolled, onScroll } = useChromeScrolled();
   const renderItem = useRecentSessionRenderer(controller);
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <View style={styles.safe}>
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(255,61,0,0.18)", "rgba(255,61,0,0.05)", "rgba(10,10,10,0)"]}
+        locations={[0, 0.42, 1]}
+        style={[styles.ambient, { height: insets.top + 188 }]}
+      />
       <TutorialOverlay />
       <DashboardFeedbackOverlays
         milestoneToast={experience.milestoneToast}
@@ -36,6 +66,17 @@ export function DashboardScreenView({ controller }: { controller: DashboardScree
         dismissBreakModal={experience.dismissBreakModal}
         openSessionSetup={sessionActions.openSessionSetup}
       />
+      <View
+        testID="dashboard-chrome"
+        style={[styles.chrome, { paddingTop: insets.top }, scrolled && styles.chromeScrolled]}
+      >
+        <DashboardScreenTopBar
+          username={controller.user?.username}
+          notificationUnreadCount={experience.notificationUnreadCount}
+          onOpenNotifications={() => controller.router.push("/notifications")}
+          t={controller.t}
+        />
+      </View>
       <FlatList
         data={presentation.recentSessions}
         keyExtractor={(item) => `session-${item.id}`}
@@ -43,6 +84,9 @@ export function DashboardScreenView({ controller }: { controller: DashboardScree
         maxToRenderPerBatch={5}
         windowSize={10}
         initialNumToRender={8}
+        contentInsetAdjustmentBehavior="never"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={data.refreshing}
@@ -56,12 +100,7 @@ export function DashboardScreenView({ controller }: { controller: DashboardScree
           data.activeResolved &&
           presentation.visibleSessions.length === 0 &&
           !data.active ? (
-            <EmptyState
-              iconNode={<Flame color={colors.primary} size={48} />}
-              title={controller.t("dashboard.emptyStreakTitle")}
-              actionLabel={controller.t("dashboard.startSession")}
-              onAction={sessionActions.openSessionSetup}
-            />
+            <EmptyState compact title={controller.t("dashboard.emptyStreakTitle")} />
           ) : null
         }
         contentContainerStyle={styles.listContainer}
@@ -76,27 +115,22 @@ export function DashboardScreenView({ controller }: { controller: DashboardScree
         onActiveSessionConflict={experience.resolveActiveSessionConflict}
         onSessionStarted={experience.handleSessionStarted}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 function DashboardHeader({ controller }: { controller: DashboardScreenController }) {
-  const { data, experience, presentation, t, user } = controller;
+  const { data, presentation, t } = controller;
   return (
     <View style={styles.headerContent}>
-      <DashboardScreenTopBar
-        username={user?.username}
-        notificationUnreadCount={experience.notificationUnreadCount}
-        onOpenNotifications={() => controller.router.push("/notifications")}
-        t={t}
-      />
+      {presentation.sparkLine ? (
+        <Text style={styles.sparkLine} numberOfLines={2}>
+          {presentation.sparkLine}
+        </Text>
+      ) : null}
       <StudioSection controller={controller} />
-      <WeeklyRecapTeaser t={t} onPress={() => controller.router.push("/weekly-recap")} />
       <SocialSection controller={controller} />
       <SessionsHeader controller={controller} />
-      {presentation.lastUpdatedLabel ? (
-        <Text style={styles.updatedHint}>{presentation.lastUpdatedLabel}</Text>
-      ) : null}
       {data.error ? (
         <ErrorState
           title={t("common.oops")}
@@ -117,7 +151,6 @@ function StudioSection({ controller }: { controller: DashboardScreenController }
   return (
     <DashboardStudioHud
       t={t}
-      loading={data.loading && !presentation.displayOverview}
       activeResolved={data.activeResolved}
       active={data.active}
       stopBusy={sessionActions.stopBusy}
@@ -127,6 +160,7 @@ function StudioSection({ controller }: { controller: DashboardScreenController }
       hasWeeklyGoal={data.hasWeeklyGoal}
       weekSessionsCount={presentation.weekSessionsForGoal}
       weeklyGoalTarget={presentation.effectiveWeeklyGoalTarget}
+      savedWeeklyGoalTarget={data.weeklyGoalTarget}
       goalSaving={sessionActions.goalSaving}
       onSaveWeeklyGoal={sessionActions.saveWeeklyGoal}
       feedback={presentation.sessionFeedback}
@@ -175,9 +209,7 @@ function SocialSection({ controller }: { controller: DashboardScreenController }
         primaryAction={
           nudge
             ? {
-                message: data.identityState?.line
-                  ? `${nudge.message} ${data.identityState.line}`
-                  : nudge.message,
+                message: nudge.message,
                 ctaLabel: nudge.ctaLabel,
                 busy:
                   (nudge.actionKey === "rescue" && socialActionBusy === "rescue") ||
@@ -186,46 +218,26 @@ function SocialSection({ controller }: { controller: DashboardScreenController }
               }
             : null
         }
-        secondaryHint={social.secondaryNudge ?? data.identityState?.line ?? null}
+        secondaryHint={nudge ? null : social.secondaryNudge}
       />
     </>
   );
 }
 
 function SessionsHeader({ controller }: { controller: DashboardScreenController }) {
-  const { router, sessionActions, t } = controller;
+  const { router, t } = controller;
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{t("dashboard.recentSessions")}</Text>
-      <View style={styles.sectionHeaderRight}>
-        <HeaderLink
-          label={t("dashboard.allSessionsLink")}
-          onPress={() => router.push("/session/history")}
-        />
-        <HeaderLink
-          label={t("dashboard.trashLink")}
-          onPress={() => router.push("/(tabs)/session-trash")}
-          trash
-        />
-        <HeaderLink label={t("dashboard.statsLink")} onPress={sessionActions.openStats} />
-      </View>
+      <Pressable
+        onPress={() => router.push("/session/history")}
+        style={({ pressed }) => pressed && styles.linkPressed}
+        accessibilityRole="button"
+        accessibilityLabel={t("dashboard.allSessionsLink")}
+      >
+        <Text style={styles.viewAllLink}>{t("dashboard.allSessionsLink")}</Text>
+      </Pressable>
     </View>
-  );
-}
-
-function HeaderLink({
-  label,
-  onPress,
-  trash = false,
-}: {
-  label: string;
-  onPress: () => void;
-  trash?: boolean;
-}) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.linkPressed}>
-      <Text style={trash ? styles.trashLink : styles.viewAllLink}>{label}</Text>
-    </Pressable>
   );
 }
 

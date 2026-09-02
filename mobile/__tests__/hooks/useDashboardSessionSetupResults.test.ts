@@ -7,8 +7,7 @@ function createDependencies() {
   return {
     closeSetupModal: jest.fn(),
     openSetupScreen: jest.fn(),
-    loadSessions: jest.fn().mockResolvedValue(undefined),
-    loadStreakOverview: jest.fn().mockResolvedValue(undefined),
+    refreshDashboard: jest.fn().mockResolvedValue(undefined),
     setActive: jest.fn(),
     setSessions: jest.fn(),
     setError: jest.fn(),
@@ -26,7 +25,7 @@ describe("useDashboardSessionSetupResults", () => {
     expect(dependencies.setError).toHaveBeenCalledWith("dashboard.couldNotReadSession");
     const afterClose = dependencies.closeSetupModal.mock.calls[0]?.[0] as (() => void) | undefined;
     afterClose?.();
-    expect(dependencies.loadSessions).toHaveBeenCalledTimes(1);
+    expect(dependencies.refreshDashboard).toHaveBeenCalledWith({ force: true });
     expect(dependencies.setActive).not.toHaveBeenCalled();
   });
 
@@ -49,8 +48,7 @@ describe("useDashboardSessionSetupResults", () => {
     const afterClose = dependencies.closeSetupModal.mock.calls[0]?.[0] as () => void;
     afterClose();
     await Promise.resolve();
-    expect(dependencies.loadSessions).toHaveBeenCalledTimes(1);
-    expect(dependencies.loadStreakOverview).toHaveBeenCalledTimes(1);
+    expect(dependencies.refreshDashboard).toHaveBeenCalledWith({ force: true });
   });
 
   it("keeps crash recovery and active-session conflict paths explicit", () => {
@@ -64,7 +62,6 @@ describe("useDashboardSessionSetupResults", () => {
     act(() => result.current.resolveActiveSessionConflict());
     const afterClose = dependencies.closeSetupModal.mock.calls[0]?.[0] as () => void;
     afterClose();
-    expect(dependencies.loadSessions).toHaveBeenCalledTimes(1);
-    expect(dependencies.loadStreakOverview).toHaveBeenCalledTimes(1);
+    expect(dependencies.refreshDashboard).toHaveBeenCalledWith({ force: true });
   });
 });

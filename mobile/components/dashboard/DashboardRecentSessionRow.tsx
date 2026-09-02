@@ -3,14 +3,14 @@ import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, motion, spacing, typography, ui } from "../../constants/theme";
+import { colors, motion, spacing, typography } from "../../constants/theme";
 import { formatSessionListDate } from "../../lib/sessionTime";
 import type { SessionDto } from "../../types/session";
 
 function formatDurationCompact(totalSeconds: number): string {
   const safe = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? totalSeconds : 0;
   const mins = Math.max(1, Math.round(safe / 60));
-  if (mins < 60) return `${mins}m`;
+  if (mins < 60) return `${mins} min`;
   const hours = Math.floor(mins / 60);
   const remainder = mins % 60;
   return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
@@ -45,14 +45,12 @@ export const DashboardRecentSessionRow = memo(function DashboardRecentSessionRow
         onPress();
       }}
     >
+      <View style={styles.accent} />
       <View style={styles.copy}>
         <Text style={styles.typeLabel}>{typeLabel}</Text>
         <Text style={styles.date}>{dateLabel}</Text>
       </View>
-      <View style={styles.trailing}>
-        <Text style={styles.duration}>{duration}</Text>
-        <Text style={styles.chevron}>›</Text>
-      </View>
+      <Text style={styles.duration}>{duration}</Text>
     </Pressable>
   );
 });
@@ -62,18 +60,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    borderRadius: ui.cardRadius,
-    borderWidth: ui.cardBorderWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   rowPressed: {
     opacity: motion.pressOpacity,
-    transform: [{ scale: motion.pressScale }],
-    borderColor: "rgba(255,255,255,0.16)",
+  },
+  accent: {
+    width: 3,
+    height: 28,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
   },
   copy: {
     flex: 1,
@@ -89,25 +87,12 @@ const styles = StyleSheet.create({
   date: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
-    ...typography.caption,
-  },
-  trailing: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    flexShrink: 0,
+    ...typography.meta,
   },
   duration: {
     color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 20,
-    lineHeight: 24,
-    letterSpacing: -0.3,
-  },
-  chevron: {
-    color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
-    fontSize: 20,
-    lineHeight: 24,
+    ...typography.meta,
+    flexShrink: 0,
   },
 });
