@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from datetime import date, timedelta
 
-from app.models import utcnow
-
 
 def parse_frozen_json(raw: str | None) -> list[str]:
     if not raw or raw.strip() in ("", "[]"):
@@ -25,12 +23,16 @@ def dump_frozen_json(keys: list[str]) -> str:
     return json.dumps(uniq)
 
 
-def compute_current_streak(day_iso_strings: list[str]) -> int:
-    """Consecutive calendar days ending today or yesterday (UTC), same rules as sessions router."""
+def compute_current_streak(day_iso_strings: list[str], today: date) -> int:
+    """
+    Consecutive calendar days ending today or yesterday.
+
+    `today` is required rather than derived here: the caller owns the timezone, and a
+    silent UTC default would quietly shift day boundaries for users east or west of it.
+    """
     if not day_iso_strings:
         return 0
     dates = {date.fromisoformat(s) for s in day_iso_strings}
-    today = utcnow().date()
     yesterday = today - timedelta(days=1)
     if today in dates:
         cursor = today
@@ -92,7 +94,7 @@ def last_7_day_states(
     session_days: list[str],
     frozen_days: list[str],
     *,
-    today: date | None = None,
+    today: date,
 ) -> tuple[list[str], list[str]]:
     """Current Monday–Sunday calendar week (index 0 = Monday)."""
     weeks = build_calendar_weeks(session_days, frozen_days, today=today, week_count=1)
@@ -112,15 +114,14 @@ def build_calendar_weeks(
     session_days: list[str],
     frozen_days: list[str],
     *,
-    today: date | None = None,
+    today: date,
     week_count: int = CALENDAR_WEEK_COUNT,
 ) -> list[dict]:
     """
     Monday–Sunday weeks, oldest first.
     offset 0 is the current week; -1 is last week.
     """
-    today_date = today or utcnow().date()
-    this_monday = monday_of(today_date)
+    this_monday = monday_of(today)
     sess = set(session_days)
     frz = set(frozen_days)
     count = max(1, week_count)
@@ -142,8 +143,8 @@ def build_calendar_weeks(
                     "date": key,
                     "label": _WEEKDAY_LETTERS[day.weekday()],
                     "state": state,
-                    "is_today": day == today_date,
-                    "is_future": day > today_date,
+                    "is_today": day == today,
+                    "is_future": day > today,
                 }
             )
         weeks.append(

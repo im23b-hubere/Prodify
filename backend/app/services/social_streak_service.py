@@ -14,6 +14,7 @@ from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp
 from app.services.push_dispatch import send_ping
 from app.services.social_week_service import current_week_start
+from app.services.streak_calendar import StreakCalendar, load_calendar
 from app.streakutil import dump_frozen_json, parse_frozen_json
 
 
@@ -61,7 +62,8 @@ def rescue_buddy_streak(
     buddy_user_id = _active_buddy_user_id(db, rescuer.id)
     if rescued_user_id != buddy_user_id:
         raise BuddyRescueTargetError
-    today_key = utcnow().date().isoformat()
+    # The rescue lands in the buddy's frozen days, so it must use the buddy's calendar.
+    today_key = load_calendar(db, buddy_user_id).today_key
     if _was_rescued_on_day(db, buddy_user_id, today_key):
         raise BuddyAlreadyRescuedError
     if _weekly_rescue_count(db, rescuer.id) >= _weekly_rescue_limit(db, rescuer):
@@ -131,7 +133,8 @@ def get_buddy_risk(db: Session, user: User) -> BuddyRiskPublic:
     if buddy.status != "active" or buddy.buddy_user_id is None:
         return BuddyRiskPublic()
     buddy_user_id = buddy.buddy_user_id
-    today_key = utcnow().date().isoformat()
+    buddy_calendar = load_calendar(db, buddy_user_id)
+    today_key = buddy_calendar.today_key
     streak = db.scalar(select(Streak).where(Streak.user_id == buddy_user_id))
     is_frozen_today = bool(
         streak and today_key in set(parse_frozen_json(streak.frozen_day_keys))
@@ -139,7 +142,7 @@ def get_buddy_risk(db: Session, user: User) -> BuddyRiskPublic:
     is_at_risk = bool(
         streak
         and int(streak.current_streak or 0) > 0
-        and not _has_completed_session_today(db, buddy_user_id)
+        and not _has_completed_session_today(db, buddy_user_id, buddy_calendar)
         and not is_frozen_today
     )
     rescued_today = _was_rescued_on_day(db, buddy_user_id, today_key)
@@ -195,8 +198,8 @@ def _weekly_rescue_limit(db: Session, user: User) -> int:
     return premium_limit + int(user.bonus_rescues or 0)
 
 
-def _has_completed_session_today(db: Session, user_id: int) -> bool:
-    start_of_today = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+def _has_completed_session_today(db: Session, user_id: int, calendar: StreakCalendar) -> bool:
+    start_of_today = calendar.day_start_utc
     return db.scalar(
         select(ProductionSession).where(
             ProductionSession.user_id == user_id,

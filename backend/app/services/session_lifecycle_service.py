@@ -13,6 +13,7 @@ from app.models import CheckinLog, ProductionSession, Streak, utcnow
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp, xp_for_completed_session
 from app.services.social_challenge_service import sync_challenge_progress_on_session_complete
+from app.services.streak_calendar import StreakCalendar, load_calendar
 from app.services.streak_reconcile_service import reconcile_streak_row_for_user
 from app.timeutil import as_utc_aware
 
@@ -95,9 +96,10 @@ def complete_session(
     user_id: int,
     session: ProductionSession,
 ) -> SessionCompletion:
+    calendar = load_calendar(db, user_id)
     stopped_at = utcnow()
-    _finish_timing(session, stopped_at)
-    _mark_auto_checkin_done(db, user_id)
+    _finish_timing(session, stopped_at, calendar)
+    _mark_auto_checkin_done(db, user_id, calendar)
     db.flush()
     xp_delta = _grant_session_xp(db, user_id, session)
     track_event(
@@ -112,7 +114,8 @@ def complete_session(
     )
     streak = db.scalar(select(Streak).where(Streak.user_id == user_id))
     grant_achievements_after_completed_session(db, user_id, session, streak)
-    _, previous_streak, current_streak, _, _ = reconcile_streak_row_for_user(db, user_id)
+    _, previous_streak, streak_snapshot = reconcile_streak_row_for_user(db, user_id)
+    current_streak = streak_snapshot.current_streak
     sync_challenge_progress_on_session_complete(
         db,
         user_id=user_id,
@@ -139,12 +142,16 @@ def resume_active_session(db: Session, session: ProductionSession) -> Production
     return session
 
 
-def _finish_timing(session: ProductionSession, stopped_at: datetime) -> None:
+def _finish_timing(
+    session: ProductionSession,
+    stopped_at: datetime,
+    calendar: StreakCalendar,
+) -> None:
     _accumulate_pause(session, stopped_at)
     gross_seconds = int((stopped_at - as_utc_aware(session.started_at)).total_seconds())
     session.stopped_at = stopped_at
     session.duration_seconds = max(0, gross_seconds - int(session.paused_duration_seconds or 0))
-    session.focus_score = compute_focus_score_for_session(session)
+    session.focus_score = compute_focus_score_for_session(session, calendar)
 
 
 def _accumulate_pause(session: ProductionSession, ended_at: datetime) -> None:
@@ -170,8 +177,8 @@ def _grant_session_xp(db: Session, user_id: int, session: ProductionSession) -> 
     return xp_delta
 
 
-def _mark_auto_checkin_done(db: Session, user_id: int) -> None:
-    day_key = utcnow().date().isoformat()
+def _mark_auto_checkin_done(db: Session, user_id: int, calendar: StreakCalendar) -> None:
+    day_key = calendar.today_key
     checkin = db.scalar(
         select(CheckinLog).where(CheckinLog.user_id == user_id, CheckinLog.day_key == day_key)
     )

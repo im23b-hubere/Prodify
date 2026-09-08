@@ -5,14 +5,17 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import CheckinLog, CheckinPlan, User, utcnow
+from app.models import CheckinLog, CheckinPlan, User
 from app.contracts.social import CheckinDayStatePublic, CheckinStatusPublic
 from app.services.progression_service import grant_xp
-from app.services.social_week_service import current_week_start
+from app.services.streak_calendar import calendar_for, load_calendar
+
+# Check-ins are a personal daily habit, so their day and week buckets follow the user's
+# own calendar rather than the shared UTC week used for cross-user social rankings.
 
 
 def update_weekly_plan(db: Session, user_id: int, target_checkins: int) -> CheckinStatusPublic:
-    week_start = current_week_start()
+    week_start = load_calendar(db, user_id).week_start_key
     plan = db.scalar(
         select(CheckinPlan).where(CheckinPlan.user_id == user_id, CheckinPlan.week_start == week_start)
     )
@@ -25,7 +28,7 @@ def update_weekly_plan(db: Session, user_id: int, target_checkins: int) -> Check
 
 
 def complete_today(db: Session, user: User, note: str | None) -> CheckinStatusPublic:
-    day_key = utcnow().date().isoformat()
+    day_key = calendar_for(user).today_key
     checkin = db.scalar(select(CheckinLog).where(CheckinLog.user_id == user.id, CheckinLog.day_key == day_key))
     is_first_completion = checkin is None or checkin.state != "done"
     if checkin is None:
@@ -47,12 +50,13 @@ def complete_today(db: Session, user: User, note: str | None) -> CheckinStatusPu
 
 
 def get_status(db: Session, user_id: int) -> CheckinStatusPublic:
-    week_start = current_week_start()
+    calendar = load_calendar(db, user_id)
+    week_start = calendar.week_start_key
     plan = db.scalar(
         select(CheckinPlan).where(CheckinPlan.user_id == user_id, CheckinPlan.week_start == week_start)
     )
     target_checkins = int(plan.target_checkins if plan else 3)
-    today = utcnow().date()
+    today = calendar.today
     week_days = [(today - timedelta(days=today.weekday())) + timedelta(days=offset) for offset in range(7)]
     day_keys = [day.isoformat() for day in week_days]
     logs = db.scalars(select(CheckinLog).where(CheckinLog.user_id == user_id, CheckinLog.day_key.in_(day_keys))).all()

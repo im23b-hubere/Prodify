@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.timeutil import MAX_TIMEZONE_LENGTH, is_supported_timezone
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -55,6 +57,25 @@ class UserAccountPublic(BaseModel):
     profile_picture_url: str | None = None
     is_premium: bool = False
     created_at: datetime
+    timezone: str | None = None
+
+
+class UserTimezoneUpdate(BaseModel):
+    """Device-reported IANA zone; rejected outright if this server's tz database lacks it."""
+
+    timezone: str = Field(min_length=1, max_length=MAX_TIMEZONE_LENGTH)
+
+    @field_validator("timezone")
+    @classmethod
+    def must_be_known_iana_zone(cls, value: str) -> str:
+        normalized = value.strip()
+        if not is_supported_timezone(normalized):
+            raise ValueError("unknown IANA timezone identifier")
+        return normalized
+
+
+class UserTimezonePublic(BaseModel):
+    timezone: str
 
 
 class Token(BaseModel):

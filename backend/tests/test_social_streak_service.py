@@ -9,6 +9,15 @@ class ConflictingRescueSession:
     def __init__(self) -> None:
         self.rolled_back = False
 
+    def get(self, _model, primary_key):
+        return User(
+            id=primary_key,
+            email="buddy@example.com",
+            username="buddy",
+            hashed_password="hash",
+            timezone="Europe/Berlin",
+        )
+
     def scalar(self, _query):
         return Streak(user_id=2, current_streak=3, frozen_day_keys="[]")
 

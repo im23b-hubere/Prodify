@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
@@ -15,19 +15,18 @@ from app.contracts.insights import (
     StatsInsightsPublic,
 )
 from app.contracts.sessions import InsightItemPublic
-from app.models import ProductionSession, Streak, UserGoal, utcnow
+from app.models import ProductionSession, Streak, UserGoal
+from app.services.streak_calendar import StreakCalendar, load_calendar
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
-from app.timeutil import as_utc_aware
 
 
 def build_stats_insights(db: Session, user_id: int) -> StatsInsightsPublic:
+    calendar = load_calendar(db, user_id)
     sessions = _completed_sessions(db, user_id)
-    best_hour, best_weekday = _productive_time_slots(sessions)
-    week_start = _monday(utcnow().date())
+    best_hour, best_weekday = _productive_time_slots(sessions, calendar)
+    week_start = calendar.week_start_key
     target = _weekly_goal_target(db, user_id, week_start)
-    week_sessions = sum(
-        _monday(as_utc_aware(row.started_at).date()) == week_start for row in sessions
-    )
+    week_sessions = sum(calendar.week_start_key_of(row.started_at) == week_start for row in sessions)
     return StatsInsightsPublic(
         productivity=ProductivityInsightsPublic(
             best_hour_start=best_hour,
@@ -43,30 +42,31 @@ def build_stats_insights(db: Session, user_id: int) -> StatsInsightsPublic:
 
 
 def build_personal_records(db: Session, user_id: int) -> PersonalRecordsPublic:
+    calendar = load_calendar(db, user_id)
     sessions = _completed_sessions(db, user_id)
     records: list[PersonalRecordItem] = []
-    longest_session = _longest_session_record(sessions)
-    busiest_day = _busiest_day_record(sessions)
-    productive_week = _productive_week_record(sessions)
+    longest_session = _longest_session_record(sessions, calendar)
+    busiest_day = _busiest_day_record(sessions, calendar)
+    productive_week = _productive_week_record(sessions, calendar)
     records.extend(record for record in (longest_session, busiest_day) if record is not None)
-    records.extend(_streak_records(db, user_id, sessions))
+    records.extend(_streak_records(db, user_id, sessions, calendar))
     if productive_week is not None:
         records.append(productive_week)
     return PersonalRecordsPublic(records=records)
 
 
 def build_heatmap(db: Session, user_id: int) -> HeatmapPublic:
-    today = utcnow().date()
-    start = today - timedelta(days=89)
+    calendar = load_calendar(db, user_id)
+    start = calendar.today - timedelta(days=89)
     sessions = _completed_sessions(
         db,
         user_id,
-        since=datetime.combine(start, time.min, tzinfo=timezone.utc),
+        # One extra UTC day of slack: a local day can start up to 14 hours before its UTC date.
+        since=datetime.combine(start - timedelta(days=1), time.min, tzinfo=timezone.utc),
     )
     seconds_by_day: defaultdict[str, int] = defaultdict(int)
     for session in sessions:
-        day = as_utc_aware(session.started_at).date().isoformat()
-        seconds_by_day[day] += int(session.duration_seconds or 0)
+        seconds_by_day[calendar.day_key_of(session.started_at)] += int(session.duration_seconds or 0)
     days: list[HeatmapDayPublic] = []
     for offset in range(90):
         day = (start + timedelta(days=offset)).isoformat()
@@ -101,11 +101,15 @@ def _completed_sessions(
     )
 
 
-def _productive_time_slots(sessions: list[ProductionSession]) -> tuple[int | None, int | None]:
+def _productive_time_slots(
+    sessions: list[ProductionSession],
+    calendar: StreakCalendar,
+) -> tuple[int | None, int | None]:
+    """"Your best hour" is a wall-clock statement, so it is bucketed in local time."""
     seconds_by_hour: defaultdict[int, int] = defaultdict(int)
     seconds_by_weekday: defaultdict[int, int] = defaultdict(int)
     for session in sessions:
-        started_at = as_utc_aware(session.started_at)
+        started_at = calendar.local_time_of(session.started_at)
         duration = int(session.duration_seconds or 0)
         seconds_by_hour[started_at.hour] += duration
         seconds_by_weekday[started_at.weekday()] += duration
@@ -134,7 +138,10 @@ def _insight_items(best_hour: int | None, best_weekday: int | None) -> list[Insi
     return items
 
 
-def _longest_session_record(sessions: list[ProductionSession]) -> PersonalRecordItem | None:
+def _longest_session_record(
+    sessions: list[ProductionSession],
+    calendar: StreakCalendar,
+) -> PersonalRecordItem | None:
     if not sessions:
         return None
     session = max(sessions, key=lambda row: int(row.duration_seconds or 0))
@@ -145,14 +152,17 @@ def _longest_session_record(sessions: list[ProductionSession]) -> PersonalRecord
         label="Longest session",
         value=value,
         context=session.session_type,
-        occurred_at=as_utc_aware(session.started_at).date().isoformat(),
+        occurred_at=calendar.day_key_of(session.started_at),
     )
 
 
-def _busiest_day_record(sessions: list[ProductionSession]) -> PersonalRecordItem | None:
+def _busiest_day_record(
+    sessions: list[ProductionSession],
+    calendar: StreakCalendar,
+) -> PersonalRecordItem | None:
     sessions_by_day: defaultdict[str, int] = defaultdict(int)
     for session in sessions:
-        sessions_by_day[as_utc_aware(session.started_at).date().isoformat()] += 1
+        sessions_by_day[calendar.day_key_of(session.started_at)] += 1
     if not sessions_by_day:
         return None
     day = max(sessions_by_day, key=sessions_by_day.get)
@@ -169,21 +179,26 @@ def _streak_records(
     db: Session,
     user_id: int,
     sessions: list[ProductionSession],
+    calendar: StreakCalendar,
 ) -> list[PersonalRecordItem]:
-    session_days = {as_utc_aware(row.started_at).date().isoformat() for row in sessions}
+    session_days = {calendar.day_key_of(row.started_at) for row in sessions}
     frozen_json = db.scalar(select(Streak.frozen_day_keys).where(Streak.user_id == user_id))
     frozen_days = set(parse_frozen_json(frozen_json)) if frozen_json else set()
     all_days = list(session_days | frozen_days)
+    current = compute_current_streak(all_days, calendar.today)
     return [
         PersonalRecordItem(key="longest_streak", label="Longest streak", value=f"{best_streak_run(all_days)} days", context="All-time", occurred_at=None),
-        PersonalRecordItem(key="current_streak", label="Current streak", value=f"{compute_current_streak(all_days)} days", context="Now", occurred_at=None),
+        PersonalRecordItem(key="current_streak", label="Current streak", value=f"{current} days", context="Now", occurred_at=None),
     ]
 
 
-def _productive_week_record(sessions: list[ProductionSession]) -> PersonalRecordItem | None:
+def _productive_week_record(
+    sessions: list[ProductionSession],
+    calendar: StreakCalendar,
+) -> PersonalRecordItem | None:
     seconds_by_week: defaultdict[str, int] = defaultdict(int)
     for session in sessions:
-        seconds_by_week[_monday(as_utc_aware(session.started_at).date())] += int(session.duration_seconds or 0)
+        seconds_by_week[calendar.week_start_key_of(session.started_at)] += int(session.duration_seconds or 0)
     if not seconds_by_week:
         return None
     week = max(seconds_by_week, key=seconds_by_week.get)
@@ -209,5 +224,3 @@ def _heatmap_intensity(seconds: int) -> int:
     return 4
 
 
-def _monday(day: date) -> str:
-    return (day - timedelta(days=day.weekday())).isoformat()

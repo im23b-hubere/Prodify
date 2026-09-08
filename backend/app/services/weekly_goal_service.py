@@ -1,12 +1,10 @@
-from datetime import date, timedelta
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import ProductionSession, UserGoal, utcnow
+from app.models import ProductionSession, UserGoal
 from app.schemas import GoalCurrentPublic
 from app.services.kpi_tracker import track_event
-from app.timeutil import as_utc_aware
+from app.services.streak_calendar import load_calendar
 
 
 def set_weekly_goal(
@@ -15,7 +13,7 @@ def set_weekly_goal(
     goal_type: str,
     target_value: int,
 ) -> GoalCurrentPublic:
-    week_start = _week_start(utcnow().date())
+    week_start = load_calendar(db, user_id).week_start_key
     goal = _find_goal(db, user_id, goal_type, week_start)
     if goal is None:
         goal = UserGoal(
@@ -38,7 +36,7 @@ def set_weekly_goal(
 
 
 def current_weekly_goal(db: Session, user_id: int) -> GoalCurrentPublic:
-    week_start = _week_start(utcnow().date())
+    week_start = load_calendar(db, user_id).week_start_key
     goal = _find_goal(db, user_id, "weekly_sessions", week_start)
     if goal is None:
         goal = UserGoal(
@@ -66,6 +64,7 @@ def _find_goal(
 
 
 def _goal_snapshot(db: Session, user_id: int, goal: UserGoal) -> GoalCurrentPublic:
+    calendar = load_calendar(db, user_id)
     sessions = db.scalars(
         select(ProductionSession).where(
             ProductionSession.user_id == user_id,
@@ -74,8 +73,7 @@ def _goal_snapshot(db: Session, user_id: int, goal: UserGoal) -> GoalCurrentPubl
         )
     ).all()
     current_sessions = sum(
-        _week_start(as_utc_aware(session.started_at).date()) == goal.week_start
-        for session in sessions
+        calendar.week_start_key_of(session.started_at) == goal.week_start for session in sessions
     )
     progress = (
         min(100.0, (current_sessions / goal.target_value) * 100)
@@ -89,7 +87,3 @@ def _goal_snapshot(db: Session, user_id: int, goal: UserGoal) -> GoalCurrentPubl
         current_sessions=current_sessions,
         progress_percent=round(progress, 1),
     )
-
-
-def _week_start(value: date) -> str:
-    return (value - timedelta(days=value.weekday())).isoformat()

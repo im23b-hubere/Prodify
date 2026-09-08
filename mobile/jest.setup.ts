@@ -23,6 +23,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 
 jest.mock("expo-localization", () => ({
   getLocales: () => [{ languageCode: "de", regionCode: "DE" }],
+  getCalendars: () => [{ timeZone: "Europe/Berlin" }],
   locale: "de-DE",
 }));
 

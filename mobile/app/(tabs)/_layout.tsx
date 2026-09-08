@@ -1,12 +1,12 @@
 import { useAuth } from "../../context/AuthContext";
 import { AppAccessGate } from "../../features/navigation/AppAccessGate";
 import { MainTabs } from "../../features/navigation/MainTabs";
-import { useStreakReconcileOnForeground } from "../../hooks/useStreakReconcileOnForeground";
+import { useStreakForegroundSync } from "../../hooks/useStreakForegroundSync";
 
 export default function TabsLayout() {
   const { token } = useAuth();
 
-  useStreakReconcileOnForeground(token);
+  useStreakForegroundSync(token);
 
   return (
     <AppAccessGate>

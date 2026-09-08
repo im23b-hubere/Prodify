@@ -17,7 +17,7 @@ from app.contracts.insights import RelatedSessionPublic, SessionDetailInsightsPu
 from app.models import ProductionSession, Streak, UserGoal, utcnow
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.services.stats_period import StatsPeriod
-from app.timeutil import as_utc_aware
+from app.services.streak_calendar import StreakCalendar, load_calendar, session_day_keys
 
 _DURATION_CAP_SECONDS = 48 * 3600
 
@@ -27,7 +27,8 @@ def build_session_stats(db: Session, user_id: int, requested_period: str) -> Ses
     period_start = utcnow() - timedelta(days=period.days) if period.days is not None else None
     sessions = _load_completed_sessions(db, user_id, since=period_start)
     total_seconds = sum(_bounded_duration(row) for row in sessions)
-    streak_days = _streak_days(db, user_id)
+    calendar = load_calendar(db, user_id)
+    streak_days = _streak_days(db, user_id, calendar)
     return SessionStatsPublic(
         period=period.label,
         summary=SessionStatsSummary(
@@ -35,14 +36,14 @@ def build_session_stats(db: Session, user_id: int, requested_period: str) -> Ses
             total_sessions=len(sessions),
             best_streak_days=best_streak_run(streak_days),
             avg_session_seconds=int(total_seconds / len(sessions)) if sessions else 0,
-            current_streak_days=compute_current_streak(streak_days),
+            current_streak_days=compute_current_streak(streak_days, calendar.today),
             hours_delta_vs_prior_period=_hours_delta(db, user_id, period, period_start, total_seconds),
         ),
-        trend=_session_trend(sessions),
+        trend=_session_trend(sessions, calendar),
         breakdown=_type_breakdown(sessions),
         recent_sessions=[SessionPublic.model_validate(row) for row in reversed(sessions[-10:])],
         productivity_hint=None,
-        productivity_hint_item=productivity_hint(sessions),
+        productivity_hint_item=productivity_hint(sessions, calendar),
     )
 
 
@@ -69,18 +70,10 @@ def _bounded_duration(session: ProductionSession) -> int:
     return min(int(session.duration_seconds or 0), _DURATION_CAP_SECONDS)
 
 
-def _streak_days(db: Session, user_id: int) -> list[str]:
-    session_dates = db.scalars(
-        select(ProductionSession.started_at).where(
-            ProductionSession.user_id == user_id,
-            ProductionSession.deleted_at.is_(None),
-            ProductionSession.duration_seconds.is_not(None),
-        )
-    ).all()
+def _streak_days(db: Session, user_id: int, calendar: StreakCalendar) -> list[str]:
     frozen_json = db.scalar(select(Streak.frozen_day_keys).where(Streak.user_id == user_id))
     frozen_days = parse_frozen_json(frozen_json) if frozen_json else []
-    active_days = {as_utc_aware(started_at).date().isoformat() for started_at in session_dates}
-    return list(active_days | set(frozen_days))
+    return list(set(session_day_keys(db, user_id, calendar)) | set(frozen_days))
 
 
 def _hours_delta(
@@ -102,10 +95,13 @@ def _hours_delta(
     return round((current_seconds - previous_seconds) / 3600, 1)
 
 
-def _session_trend(sessions: list[ProductionSession]) -> list[SessionStatsTrendPoint]:
+def _session_trend(
+    sessions: list[ProductionSession],
+    calendar: StreakCalendar,
+) -> list[SessionStatsTrendPoint]:
     totals: dict[str, tuple[int, int]] = {}
     for session in sessions:
-        day = as_utc_aware(session.started_at).date().isoformat()
+        day = calendar.day_key_of(session.started_at)
         count, seconds = totals.get(day, (0, 0))
         totals[day] = count + 1, seconds + _bounded_duration(session)
     return [
@@ -127,13 +123,17 @@ def _type_breakdown(sessions: list[ProductionSession]) -> list[SessionStatsTypeB
     return sorted(items, key=lambda item: item.sessions, reverse=True)
 
 
-def productivity_hint(rows: list[ProductionSession]) -> InsightItemPublic | None:
-    """Describe the most frequent weekday/hour pattern once enough data exists."""
+def productivity_hint(
+    rows: list[ProductionSession],
+    calendar: StreakCalendar,
+) -> InsightItemPublic | None:
+    """Describe the most frequent weekday/hour pattern, in the user's wall-clock time."""
     if len(rows) < 10:
         return None
 
-    weekdays = Counter(as_utc_aware(row.started_at).weekday() for row in rows)
-    hours = Counter(as_utc_aware(row.started_at).hour for row in rows)
+    local_starts = [calendar.local_time_of(row.started_at) for row in rows]
+    weekdays = Counter(moment.weekday() for moment in local_starts)
+    hours = Counter(moment.hour for moment in local_starts)
     return InsightItemPublic(
         key="prod_peak_pattern",
         params={
@@ -148,14 +148,15 @@ def build_session_detail_insights(
     user_id: int,
     session: ProductionSession,
 ) -> SessionDetailInsightsPublic:
+    calendar = load_calendar(db, user_id)
     completed = _load_completed_sessions(db, user_id)
-    focus_score, effective_rate = session_focus_metrics(session)
-    percentile, average = _focus_comparison(completed, session.id, focus_score)
+    focus_score, effective_rate = session_focus_metrics(session, calendar)
+    percentile, average = _focus_comparison(completed, session.id, focus_score, calendar)
     paused_seconds = int(session.paused_duration_seconds or 0)
     duration_seconds = int(session.duration_seconds or 0)
     return SessionDetailInsightsPublic(
         impact_lines=[],
-        impact_items=_impact_items(db, user_id, session, completed),
+        impact_items=_impact_items(db, user_id, session, completed, calendar),
         focus_score=focus_score,
         focus_label="",
         focus_tier=_focus_tier(focus_score),
@@ -166,7 +167,7 @@ def build_session_detail_insights(
         effective_rate_percent=effective_rate,
         timeline=_timeline(duration_seconds, paused_seconds),
         productivity_insights=[],
-        productivity_items=_productivity_items(completed, paused_seconds),
+        productivity_items=_productivity_items(completed, paused_seconds, calendar),
         related_sessions=_related_sessions(db, user_id, session),
     )
 
@@ -175,8 +176,9 @@ def _focus_comparison(
     sessions: list[ProductionSession],
     session_id: int,
     focus_score: int,
+    calendar: StreakCalendar,
 ) -> tuple[int | None, int | None]:
-    peer_scores = [session_focus_metrics(row)[0] for row in sessions if row.id != session_id]
+    peer_scores = [session_focus_metrics(row, calendar)[0] for row in sessions if row.id != session_id]
     if not peer_scores:
         return None, None
     percentile = int(round(100 * sum(score < focus_score for score in peer_scores) / len(peer_scores)))
@@ -189,9 +191,10 @@ def _impact_items(
     user_id: int,
     session: ProductionSession,
     completed: list[ProductionSession],
+    calendar: StreakCalendar,
 ) -> list[InsightItemPublic]:
-    items = _streak_impact(db, user_id, session, completed)
-    goal_item = _weekly_goal_impact(db, user_id, session, completed)
+    items = _streak_impact(db, user_id, session, completed, calendar)
+    goal_item = _weekly_goal_impact(db, user_id, session, completed, calendar)
     if goal_item is not None:
         items.append(goal_item)
     return items or [InsightItemPublic(key="impact_default_momentum", params={})]
@@ -202,12 +205,13 @@ def _streak_impact(
     user_id: int,
     session: ProductionSession,
     completed: list[ProductionSession],
+    calendar: StreakCalendar,
 ) -> list[InsightItemPublic]:
     frozen_json = db.scalar(select(Streak.frozen_day_keys).where(Streak.user_id == user_id))
     frozen_days = parse_frozen_json(frozen_json) if frozen_json else []
-    session_days = {as_utc_aware(row.started_at).date().isoformat() for row in completed}
-    current_streak = compute_current_streak(list(session_days | set(frozen_days)))
-    is_today = as_utc_aware(session.started_at).date() == utcnow().date()
+    session_days = {calendar.day_key_of(row.started_at) for row in completed}
+    current_streak = compute_current_streak(list(session_days | set(frozen_days)), calendar.today)
+    is_today = calendar.day_key_of(session.started_at) == calendar.today_key
     if current_streak > 0 and is_today:
         return [InsightItemPublic(key="impact_streak_fuel", params={"days": current_streak})]
     return []
@@ -218,8 +222,9 @@ def _weekly_goal_impact(
     user_id: int,
     session: ProductionSession,
     completed: list[ProductionSession],
+    calendar: StreakCalendar,
 ) -> InsightItemPublic | None:
-    week_start = _week_start(as_utc_aware(session.started_at).date())
+    week_start = calendar.week_start_key_of(session.started_at)
     target = db.scalar(
         select(UserGoal.target_value).where(
             UserGoal.user_id == user_id,
@@ -229,7 +234,7 @@ def _weekly_goal_impact(
     )
     if not target or target <= 0:
         return None
-    count = sum(_week_start(as_utc_aware(row.started_at).date()) == week_start for row in completed)
+    count = sum(calendar.week_start_key_of(row.started_at) == week_start for row in completed)
     key = "impact_weekly_goal_cleared" if count >= target else "impact_week_progress"
     return InsightItemPublic(key=key, params={"count": count, "target": target})
 
@@ -237,9 +242,10 @@ def _weekly_goal_impact(
 def _productivity_items(
     completed: list[ProductionSession],
     paused_seconds: int,
+    calendar: StreakCalendar,
 ) -> list[InsightItemPublic]:
     items: list[InsightItemPublic] = []
-    hint = productivity_hint(completed)
+    hint = productivity_hint(completed, calendar)
     if hint is not None:
         items.append(hint)
     if paused_seconds <= 60:
@@ -294,7 +300,3 @@ def _focus_tier(score: int) -> str:
     if score >= 60:
         return "solid"
     return "room_to_improve"
-
-
-def _week_start(day: date) -> str:
-    return (day - timedelta(days=day.weekday())).isoformat()

@@ -4,8 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import ProductionSession, UserAchievement, utcnow
+from app.services.streak_calendar import StreakCalendar, load_calendar
 from app.streakutil import compute_current_streak, parse_frozen_json
-from app.timeutil import as_utc_aware
 
 ACHIEVEMENT_DEFINITIONS: list[tuple[str, str, str, str]] = [
     ("first_session", "First session", "You started your Prodify journey.", "🎹"),
@@ -65,12 +65,13 @@ def grant_achievements_after_completed_session(
     if n >= 50 and _grant(db, user_id, "sessions_50"):
         new_ids.append("sessions_50")
 
-    session_days = [as_utc_aware(r.started_at).date().isoformat() for r in all_completed]
+    calendar = load_calendar(db, user_id)
+    session_days = [calendar.day_key_of(r.started_at) for r in all_completed]
     frozen: list[str] = []
     if streak_row is not None:
         frozen = parse_frozen_json(streak_row.frozen_day_keys)
     merged = list(set(session_days) | set(frozen))
-    cur = compute_current_streak(merged)
+    cur = compute_current_streak(merged, calendar.today)
     if cur >= 7 and _grant(db, user_id, "streak_7"):
         new_ids.append("streak_7")
 
@@ -78,7 +79,8 @@ def grant_achievements_after_completed_session(
     if dur >= 7200 and _grant(db, user_id, "marathon_2h"):
         new_ids.append("marathon_2h")
 
-    night_starts = sum(1 for r in all_completed if as_utc_aware(r.started_at).hour >= 22)
+    # "After 10 PM" is a wall-clock claim, so it has to be judged in the user's own timezone.
+    night_starts = sum(1 for r in all_completed if calendar.local_time_of(r.started_at).hour >= 22)
     if night_starts >= 10 and _grant(db, user_id, "night_owl"):
         new_ids.append("night_owl")
 
@@ -143,14 +145,15 @@ def _notes_adjustment(notes_length: int) -> int:
     return -2 if notes_length == 0 else 0
 
 
-def compute_focus_score_for_session(row: ProductionSession) -> int:
+def compute_focus_score_for_session(row: ProductionSession, calendar: StreakCalendar) -> int:
     dur_s = int(row.duration_seconds or 0)
     paused_s = int(row.paused_duration_seconds or 0)
     dur_m = dur_s / 60.0
     paused_m = paused_s / 60.0
     notes_len = len(row.notes or "")
     pause_count = 1 if paused_s > 0 else 0
-    tod = as_utc_aware(row.started_at).hour if row.started_at is not None else None
+    # The 1–5 AM penalty only makes sense against the producer's own clock.
+    tod = calendar.local_time_of(row.started_at).hour if row.started_at is not None else None
     return calculate_focus_score(
         dur_m,
         paused_m,
@@ -162,7 +165,10 @@ def compute_focus_score_for_session(row: ProductionSession) -> int:
     )
 
 
-def session_focus_metrics(session: ProductionSession) -> tuple[int, float]:
+def session_focus_metrics(
+    session: ProductionSession,
+    calendar: StreakCalendar,
+) -> tuple[int, float]:
     """Focus score 0–100 and effective active-time rate percent."""
     dur = int(session.duration_seconds or 0)
     paused = int(session.paused_duration_seconds or 0)
@@ -174,4 +180,4 @@ def session_focus_metrics(session: ProductionSession) -> tuple[int, float]:
     if session.focus_score is not None:
         return int(session.focus_score), rate_pct
 
-    return compute_focus_score_for_session(session), rate_pct
+    return compute_focus_score_for_session(session, calendar), rate_pct

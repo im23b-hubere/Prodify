@@ -35,6 +35,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     profile_picture_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    # IANA identifier (e.g. "Europe/Berlin") reported by the device; NULL means "assume UTC".
+    # Streak day boundaries are resolved in this zone, so travel and DST stay correct.
+    timezone: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     is_premium: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     premium_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     bonus_rescues: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

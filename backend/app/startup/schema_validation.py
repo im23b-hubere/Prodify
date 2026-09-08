@@ -64,6 +64,7 @@ REQUIRED_COLUMNS = {
         "bonus_rescues",
         "bonus_challenge_slots",
         "access_token_version",
+        "timezone",
     },
 }
 

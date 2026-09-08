@@ -35,8 +35,8 @@ jest.mock("../../context/AuthContext", () => ({
   useAuth: () => ({ token: "token", user: { id: 1, is_premium: false }, hydrated: true }),
 }));
 
-jest.mock("../../hooks/useStreakReconcileOnForeground", () => ({
-  useStreakReconcileOnForeground: jest.fn(),
+jest.mock("../../hooks/useStreakForegroundSync", () => ({
+  useStreakForegroundSync: jest.fn(),
 }));
 
 jest.mock("../../lib/billing", () => ({
