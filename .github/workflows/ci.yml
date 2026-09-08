@@ -154,5 +154,10 @@ jobs:
       - name: Unit tests
         run: npm test -- --ci --coverage=false
 
+      # Lint and typecheck cannot see Metro resolver errors (e.g. forbidden
+      # react-navigation imports), so the bundle must actually be built.
+      - name: Bundle check
+        run: npx expo export --platform ios --output-dir .expo-export-check
+
       - name: npm production dependency audit
         run: npm run audit:production

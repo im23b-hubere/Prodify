@@ -14,6 +14,9 @@ jest.mock("expo-linear-gradient", () => {
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn() }),
+  useFocusEffect: (effect: () => void | (() => void)) => {
+    effect();
+  },
 }));
 
 jest.mock("react-native-safe-area-context", () => {
@@ -53,12 +56,6 @@ jest.mock("expo-haptics", () => ({
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn().mockResolvedValue(null),
   deleteItemAsync: jest.fn().mockResolvedValue(undefined),
-}));
-
-jest.mock("@react-navigation/native", () => ({
-  useFocusEffect: (effect: () => void | (() => void)) => {
-    effect();
-  },
 }));
 
 jest.mock("react-i18next", () => ({

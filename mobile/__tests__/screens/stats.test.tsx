@@ -7,10 +7,16 @@ const mockPush = jest.fn();
 
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush, setParams: jest.fn() }),
-  useLocalSearchParams: () => ({}),
-}));
+jest.mock("expo-router", () => {
+  const React = require("react");
+  return {
+    useRouter: () => ({ push: mockPush, setParams: jest.fn() }),
+    useLocalSearchParams: () => ({}),
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      React.useEffect(() => effect(), [effect]);
+    },
+  };
+});
 
 jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
@@ -24,15 +30,6 @@ jest.mock("react-native-reanimated", () => {
   const Reanimated = require("react-native-reanimated/mock");
   Reanimated.useSharedValue = (value: number) => ({ value });
   return Reanimated;
-});
-
-jest.mock("@react-navigation/native", () => {
-  const React = require("react");
-  return {
-    useFocusEffect: (effect: () => void | (() => void)) => {
-      React.useEffect(() => effect(), [effect]);
-    },
-  };
 });
 
 jest.mock("expo-haptics", () => ({

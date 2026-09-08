@@ -6,7 +6,7 @@ import { apiJson } from "../../lib/client";
 import { fetchProgression } from "../../lib/progressionSync";
 import { isScreenDataStale } from "../../lib/screenDataStale";
 
-jest.mock("@react-navigation/native", () => ({
+jest.mock("expo-router", () => ({
   useFocusEffect: jest.fn(),
 }));
 

@@ -7,7 +7,7 @@ import { loadFriendsDashboard } from "../../features/friends/services/friendsDas
 import type { FriendsDashboardSnapshot } from "../../features/friends/services/friendsDashboardApi";
 import { mockTFunction } from "../helpers/mockTFunction";
 
-jest.mock("@react-navigation/native", () => ({
+jest.mock("expo-router", () => ({
   useFocusEffect: (effect: () => void | (() => void)) => {
     const React = require("react");
     React.useEffect(effect, [effect]);

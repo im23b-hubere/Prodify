@@ -7,7 +7,7 @@ import { replaceWithPendingDeepLinkOrDashboard } from "../../../lib/pendingDeepL
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
 
-jest.mock("@react-navigation/native", () => ({
+jest.mock("expo-router/react-navigation", () => ({
   usePreventRemove: jest.fn(),
 }));
 
