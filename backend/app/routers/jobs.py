@@ -51,9 +51,26 @@ def http_seed_screenshot_account(
     body: SeedScreenshotAccountBody | None = None,
     x_internal_job_key: Annotated[str | None, Header(alias="X-Internal-Job-Key")] = None,
 ) -> dict:
-    """Seed realistic streak/sessions/friends for App Store screenshots (idempotent)."""
+    """
+    Seed realistic streak/sessions/friends for App Store screenshots.
+
+    Destructive: resets the target account's password and deletes its sessions and
+    friendships. A request without credentials is refused rather than falling back to a
+    default account.
+    """
     _require_internal_job_key(x_internal_job_key)
-    opts = body or SeedScreenshotAccountBody()
+    if body is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "error": "seed_credentials_required",
+                "message": (
+                    "Provide main_email, main_username, main_password and friend_password. "
+                    "This endpoint has no default account."
+                ),
+            },
+        )
+    opts = body
     result = seed_screenshot_account(
         db,
         main_email=opts.main_email,

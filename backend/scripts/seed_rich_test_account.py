@@ -1,4 +1,9 @@
-"""Seed screenshot-ready data for the main account (streak, friends, sessions, premium)."""
+"""Seed screenshot-ready data for a demo account (streak, friends, sessions, premium).
+
+Destructive: the target account's password is reset and its sessions and friendships are
+deleted. Credentials must be passed explicitly — there are deliberately no defaults, so the
+script cannot take over a real account when run with no arguments.
+"""
 
 from __future__ import annotations
 
@@ -9,15 +14,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.database import SessionLocal
-from app.services.screenshot_seed_service import seed_screenshot_account
+from app.services.screenshot_seed_scenario import seed_screenshot_account
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Seed realistic screenshot data for the main account.")
-    parser.add_argument("--main-email", default="eric.huber.ch@gmail.com")
-    parser.add_argument("--main-username", default="erix")
-    parser.add_argument("--main-password", default="demo123456")
-    parser.add_argument("--friend-password", default="demo123456")
+    parser = argparse.ArgumentParser(description="Seed realistic screenshot data for a demo account.")
+    parser.add_argument("--main-email", required=True)
+    parser.add_argument("--main-username", required=True)
+    parser.add_argument("--main-password", required=True)
+    parser.add_argument("--friend-password", required=True)
     parser.add_argument("--days-back", type=int, default=84)
     parser.add_argument("--current-streak", type=int, default=52)
     parser.add_argument("--longest-streak", type=int, default=71)

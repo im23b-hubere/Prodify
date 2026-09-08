@@ -1,21 +1,29 @@
-# Seed Apple App Review demo account on production (or local DB).
+# Seed the Apple App Review demo account on production (or a local DB).
 #
-# Production API (recommended — uses Render PostgreSQL via backend job):
+# DESTRUCTIVE: resets the target account's password and deletes its sessions and friendships.
+#
+# Credentials are never stored in this file. Supply them via environment variables so they
+# stay out of the repository and out of your shell history:
+#   $env:APPLE_REVIEW_EMAIL    = "apple.review@prodify.app"
+#   $env:APPLE_REVIEW_PASSWORD = "<the password given to App Review>"
+#
+# Production API (recommended — uses Render PostgreSQL via the backend job):
 #   .\scripts\seed-review-account.ps1 -ViaApi
-#   # or: $env:INTERNAL_JOB_KEY = "<Render dashboard>" then -ViaApi
 #
 # Local SQLite (backend/.env DATABASE_URL):
 #   .\scripts\seed-review-account.ps1
 #
-# Loads INTERNAL_JOB_KEY from backend/.env when -ViaApi and env var is unset.
+# INTERNAL_JOB_KEY falls back to backend/.env when -ViaApi is used and the env var is unset.
+# In CI, prefer the "Seed Apple review account" workflow, which reads repository secrets.
 
 param(
     [switch]$ViaApi,
     [string]$ApiUrl = $(if ($env:API_URL) { $env:API_URL } else { "https://prodify-api-46b1.onrender.com" }),
     [string]$InternalJobKey = $env:INTERNAL_JOB_KEY,
-    [string]$MainEmail = "apple.review@prodify.app",
+    [string]$MainEmail = $env:APPLE_REVIEW_EMAIL,
     [string]$MainUsername = "prodifyreview",
-    [string]$MainPassword = "ProdifyReview2026!",
+    [string]$MainPassword = $env:APPLE_REVIEW_PASSWORD,
+    [string]$FriendPassword = $env:APPLE_REVIEW_PASSWORD,
     [int]$DaysBack = 84,
     [int]$CurrentStreak = 64,
     [int]$LongestStreak = 71,
@@ -23,6 +31,16 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not $MainEmail) {
+    throw "Set APPLE_REVIEW_EMAIL (or pass -MainEmail). This script has no default account on purpose."
+}
+if (-not $MainPassword -or $MainPassword.Length -lt 12) {
+    throw "Set APPLE_REVIEW_PASSWORD to at least 12 characters (or pass -MainPassword)."
+}
+if (-not $FriendPassword) {
+    $FriendPassword = $MainPassword
+}
 
 function Read-DotEnvValue {
     param([string]$Key, [string]$EnvFile)
@@ -44,6 +62,7 @@ $seedBody = @{
     main_email       = $MainEmail
     main_username    = $MainUsername
     main_password    = $MainPassword
+    friend_password  = $FriendPassword
     days_back        = $DaysBack
     current_streak   = $CurrentStreak
     longest_streak   = $LongestStreak
@@ -71,6 +90,7 @@ try {
         --main-email $MainEmail `
         --main-username $MainUsername `
         --main-password $MainPassword `
+        --friend-password $FriendPassword `
         --days-back $DaysBack `
         --current-streak $CurrentStreak `
         --longest-streak $LongestStreak `

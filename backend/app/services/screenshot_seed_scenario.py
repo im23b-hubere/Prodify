@@ -43,15 +43,19 @@ class MainSeedConfig:
 def seed_screenshot_account(
     db,
     *,
-    main_email: str = "eric.huber.ch@gmail.com",
-    main_username: str = "erix",
-    main_password: str = "demo123456",
-    friend_password: str = "demo123456",
+    main_email: str,
+    main_username: str,
+    main_password: str,
+    friend_password: str,
     days_back: int = 84,
     current_streak: int = 52,
     longest_streak: int = 71,
     main_level: int = 24,
 ) -> ScreenshotSeedResult:
+    """
+    Destructive: resets the target account's password and wipes its sessions and friendships.
+    Credentials are required arguments so no caller can seed an account by accident.
+    """
     config = MainSeedConfig(
         email=main_email,
         username=main_username,

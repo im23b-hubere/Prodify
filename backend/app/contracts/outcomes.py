@@ -5,10 +5,16 @@ from pydantic import BaseModel, Field
 
 
 class SeedScreenshotAccountBody(BaseModel):
-    main_email: str = Field(default="eric.huber.ch@gmail.com", max_length=255)
-    main_username: str = Field(default="erix", min_length=2, max_length=64)
-    main_password: str = Field(default="demo123456", min_length=8, max_length=128)
-    friend_password: str = Field(default="demo123456", min_length=8, max_length=128)
+    """
+    Seeding resets the target account's password and deletes its sessions and friendships.
+    The identity fields therefore have no defaults on purpose: an empty or partial request
+    must fail rather than silently take over whichever account a default happened to name.
+    """
+
+    main_email: str = Field(max_length=255)
+    main_username: str = Field(min_length=2, max_length=64)
+    main_password: str = Field(min_length=12, max_length=128)
+    friend_password: str = Field(min_length=12, max_length=128)
     days_back: int = Field(default=84, ge=14, le=365)
     current_streak: int = Field(default=52, ge=1, le=999)
     longest_streak: int = Field(default=71, ge=1, le=999)
