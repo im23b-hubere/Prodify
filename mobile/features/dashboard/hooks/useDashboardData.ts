@@ -20,17 +20,22 @@ export function useDashboardData(token: string | null, userId: number | null | u
   const { loadSocial } = social;
   const { loadStreakOverview } = streak;
   const { loadWeeklyGoal } = weeklyGoal;
-  const [loading, setLoading] = useState(true);
+  const [loadInFlight, setLoadInFlight] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const lastDashboardFetch = useRef(0);
   const refreshInFlight = useRef<Promise<void> | null>(null);
+
+  // Signed out there is nothing to fetch, so the dashboard is never loading for a guest.
+  // Deriving that beats having an effect switch the flag off after the first render.
+  const signedIn = Boolean(token && userId != null);
+  const loading = signedIn && loadInFlight;
 
   const resetDashboardShell = useCallback(() => {
     lastDashboardFetch.current = 0;
     refreshInFlight.current = null;
     setRefreshing(false);
-    setLoading(Boolean(token && userId != null));
-  }, [token, userId]);
+    setLoadInFlight(true);
+  }, []);
 
   useDashboardAuthReset(token, userId, resetDashboardShell);
 
@@ -48,7 +53,7 @@ export function useDashboardData(token: string | null, userId: number | null | u
       if (refreshInFlight.current) return refreshInFlight.current;
 
       const run = (async () => {
-        if (withLoading) setLoading(true);
+        if (withLoading) setLoadInFlight(true);
         try {
           await Promise.all([loadSessions(), loadStreakOverview(), loadWeeklyGoal()]);
           await syncWeeklyRecapReminder(true);
@@ -59,7 +64,7 @@ export function useDashboardData(token: string | null, userId: number | null | u
         } catch (error) {
           setError(error instanceof Error ? error.message : t("dashboard.loadFailed"));
         } finally {
-          if (withLoading) setLoading(false);
+          if (withLoading) setLoadInFlight(false);
         }
       })();
 
@@ -74,12 +79,9 @@ export function useDashboardData(token: string | null, userId: number | null | u
   );
 
   useEffect(() => {
-    if (!token || userId == null) {
-      setLoading(false);
-      return;
-    }
+    if (!signedIn) return;
     refreshDashboard({ force: true, withLoading: true }).catch(() => null);
-  }, [refreshDashboard, token, userId]);
+  }, [refreshDashboard, signedIn]);
 
   return {
     ...sessions,
@@ -87,7 +89,6 @@ export function useDashboardData(token: string | null, userId: number | null | u
     ...streak,
     ...weeklyGoal,
     loading,
-    setLoading,
     refreshing,
     setRefreshing,
     refreshDashboard,

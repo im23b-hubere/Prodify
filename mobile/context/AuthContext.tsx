@@ -52,8 +52,12 @@ const AUTH_IDENTITY_TIMEOUT_MS = 30_000;
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<AuthenticatedUser | null>(null);
+  const [profile, setProfile] = useState<AuthenticatedUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
+
+  // A profile only means anything while a token backs it. Deriving the exposed user keeps that
+  // invariant structural instead of relying on every sign-out path to remember to clear it.
+  const user = token ? profile : null;
 
   const persistTokenPair = useCallback(async (pair: TokenPair) => {
     await writeTokenPair(pair.access_token, pair.refresh_token);
@@ -90,23 +94,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await cancelWeeklyRecapScheduled().catch(() => undefined);
       await setNotificationUserContext(null).catch(() => undefined);
       setToken(null);
-      setUser(null);
+      setProfile(null);
     });
     return () => setApiUnauthorizedHandler(null);
   }, []);
 
   const refreshUser = useCallback(async () => {
-    if (!token) {
-      setUser(null);
-      return;
-    }
+    // No token means the derived user is already null, so there is nothing to fetch or clear.
+    if (!token) return;
     try {
       const me = await apiJson<AuthenticatedUser>("/auth/me", { token });
-      setUser(me);
+      setProfile(me);
       await setNotificationUserContext(me.id, me.created_at ?? null).catch(() => undefined);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
-        setUser(null);
+        setProfile(null);
         await clearTokenPair();
         await setNotificationUserContext(null).catch(() => undefined);
         setToken(null);
@@ -116,12 +118,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    if (!token) {
-      setUser(null);
-      return;
-    }
-    refreshUser().catch(() => setUser(null));
+    if (!hydrated || !token) return;
+    void (async () => {
+      try {
+        await refreshUser();
+      } catch {
+        setProfile(null);
+      }
+    })();
   }, [hydrated, token, refreshUser]);
 
   useEffect(() => {
@@ -144,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         unexpectedResponseMessage: i18n.t("errors.unexpectedResponse"),
       });
       await persistTokenPair(pair);
-      setUser(authenticatedUser);
+      setProfile(authenticatedUser);
       void setNotificationUserContext(authenticatedUser.id, authenticatedUser.created_at ?? null).catch(
         () => undefined,
       );
@@ -174,7 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     await clearLocalAuthSession(previousUserId, false);
     setToken(null);
-    setUser(null);
+    setProfile(null);
   }, [token, user?.id]);
 
   const deleteAccount = useCallback(async () => {
@@ -186,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await apiJson("/users/me", { method: "DELETE", token: trimmed });
     await clearLocalAuthSession(previousUserId, true);
     setToken(null);
-    setUser(null);
+    setProfile(null);
   }, [token, user?.id]);
 
   const value = useMemo(

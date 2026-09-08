@@ -38,13 +38,22 @@ export function StreakBreakModal({ visible, brokenStreak, onStartFresh }: Streak
   const [lottieFailed, setLottieFailed] = useState(false);
   const [playbackToken, setPlaybackToken] = useState(0);
 
+  // Opening the modal restarts the animation from scratch. That is pure state, so it belongs in
+  // render; the effect below keeps only the audio and haptics side effects.
+  const [openState, setOpenState] = useState(visible);
+  if (openState !== visible) {
+    setOpenState(visible);
+    if (visible) {
+      setLottieFailed(false);
+      setPlaybackToken((token) => token + 1);
+    }
+  }
+
   useEffect(() => {
     if (!visible) {
       player.pause();
       return;
     }
-    setLottieFailed(false);
-    setPlaybackToken((token) => token + 1);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
     void playBreakCue(player).catch(() => undefined);
     return () => {

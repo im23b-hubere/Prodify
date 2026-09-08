@@ -1,23 +1,11 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useAuth } from "../../../context/AuthContext";
+import { useConnectionHint } from "./useConnectionHint";
 import { registrationErrorMessage } from "../authErrorMessage";
 import { resolveRegistrationCredentials } from "../registerCredentials";
-
-function useConnectionHint(loading: boolean): boolean {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    if (!loading) {
-      setVisible(false);
-      return;
-    }
-    const timer = setTimeout(() => setVisible(true), 4_000);
-    return () => clearTimeout(timer);
-  }, [loading]);
-  return visible;
-}
 
 export function useRegisterForm(t: TFunction) {
   const { signUp } = useAuth();

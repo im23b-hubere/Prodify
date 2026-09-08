@@ -10,7 +10,7 @@ describe("useLatestRef", () => {
   });
 
   it("points at the newest value after a re-render", () => {
-    const { result, rerender } = renderHook(({ value }) => useLatestRef(value), {
+    const { result, rerender } = renderHook(({ value }: { value: string }) => useLatestRef(value), {
       initialProps: { value: "first" },
     });
 
@@ -20,7 +20,7 @@ describe("useLatestRef", () => {
   });
 
   it("keeps one ref object, so a callback that captured it reads the newest value", () => {
-    const { result, rerender } = renderHook(({ token }) => useLatestRef(token), {
+    const { result, rerender } = renderHook(({ token }: { token: string }) => useLatestRef(token), {
       initialProps: { token: "old-token" },
     });
     const capturedByCallback = result.current;

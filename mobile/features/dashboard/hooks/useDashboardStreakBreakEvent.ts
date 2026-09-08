@@ -17,10 +17,13 @@ export function useDashboardStreakBreakEvent({ userId, streakOverview, storageKe
   const handledEvent = useRef<string | null>(null);
   const dismiss = useCallback(() => setIsOpen(false), []);
 
-  useEffect(() => {
+  // A modal about the previous account's streak must never survive an account switch.
+  const [shownForUser, setShownForUser] = useState(userId);
+  if (shownForUser !== userId) {
+    setShownForUser(userId);
     setIsOpen(false);
     setPreviousStreak(0);
-  }, [userId]);
+  }
 
   useEffect(() => {
     if (!streakOverview || typeof userId !== "number") return;

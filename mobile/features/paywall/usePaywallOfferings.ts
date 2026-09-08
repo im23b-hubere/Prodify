@@ -41,44 +41,59 @@ export function usePaywallOfferings({
   onPremiumUnlock,
 }: PaywallOfferingsOptions) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(true);
-  const [offerings, setOfferings] = useState<OfferingSnapshot>(EMPTY_OFFERINGS);
   const [reloadKey, setReloadKey] = useState(0);
   const isExpoGo = Constants.appOwnership === "expo";
 
+  // Everything the request depends on, as one comparable value. Tagging each result with the
+  // key it was fetched under makes "still loading" derivable, so the effect never has to set
+  // state synchronously just to announce that a new request started.
+  const requestKey = JSON.stringify([
+    token ?? null,
+    appUserId,
+    userIsPremium,
+    previewMode,
+    isExpoGo,
+    reloadKey,
+  ]);
+  const [resolved, setResolved] = useState<{ key: string; offerings: OfferingSnapshot } | null>(
+    null,
+  );
+  const loading = resolved?.key !== requestKey;
+  const offerings = resolved?.offerings ?? EMPTY_OFFERINGS;
+
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setOfferings((current) => ({ ...current, error: null }));
     void resolveOfferings({ token, appUserId, userIsPremium, previewMode, isExpoGo, t })
       .then(async (result) => {
         if (cancelled) return;
         if (result.kind === "premium_unlock") {
           await onPremiumUnlock(result.customerInfo);
+          if (!cancelled) setResolved({ key: requestKey, offerings: EMPTY_OFFERINGS });
         } else {
-          setOfferings(result.value);
+          setResolved({ key: requestKey, offerings: result.value });
         }
       })
       .catch((loadError: unknown) => {
-        if (!cancelled) {
-          setOfferings({
+        if (cancelled) return;
+        setResolved({
+          key: requestKey,
+          offerings: {
             ...EMPTY_OFFERINGS,
             error:
               loadError instanceof Error ? loadError.message : t("paywall.errors.loadOfferings"),
-          });
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+          },
+        });
       });
     return () => {
       cancelled = true;
     };
-  }, [appUserId, isExpoGo, onPremiumUnlock, previewMode, reloadKey, t, token, userIsPremium]);
+  }, [appUserId, isExpoGo, onPremiumUnlock, previewMode, requestKey, t, token, userIsPremium]);
 
   return {
     loading,
     ...offerings,
+    // A pending request supersedes whatever the previous one reported.
+    error: loading ? null : offerings.error,
     retry: () => setReloadKey((current) => current + 1),
   };
 }

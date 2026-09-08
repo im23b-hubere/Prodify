@@ -25,11 +25,10 @@ export function usePaywallCopy(source: PaywallSource, rawVariant: string | undef
     body: string;
   } | null>(null);
 
+  const fromOnboarding = source === "onboarding";
+
   useEffect(() => {
-    if (source !== "onboarding") {
-      setPersonalizedCopy(null);
-      return;
-    }
+    if (!fromOnboarding) return;
     let cancelled = false;
     void loadOnboardingQuiz().then((quiz) => {
       if (cancelled || !quiz?.producerGoal) return;
@@ -43,10 +42,12 @@ export function usePaywallCopy(source: PaywallSource, rawVariant: string | undef
     return () => {
       cancelled = true;
     };
-  }, [source, t]);
+  }, [fromOnboarding, t]);
 
   return {
-    copy: personalizedCopy ?? defaultCopy,
+    // Reached from anywhere but onboarding there is no quiz to personalise from, so the
+    // generic copy wins without the personalised state having to be cleared.
+    copy: (fromOnboarding ? personalizedCopy : null) ?? defaultCopy,
     previewWeeklyPrice: t("paywall.expoPreview.weeklyPricePlaceholder"),
     previewSixMonthPrice: t("paywall.expoPreview.sixMonthPricePlaceholder"),
   };

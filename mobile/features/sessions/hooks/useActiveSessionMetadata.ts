@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { SessionDto, SessionType } from "../../../types/session";
@@ -17,13 +17,19 @@ type MetadataOptions = {
 export function useActiveSessionMetadata(options: MetadataOptions) {
   const { t } = useTranslation();
   const { token, session, setSession, setError } = options;
-  const [draftNotes, setDraftNotes] = useState("");
+  const [draftNotes, setDraftNotes] = useState(session?.notes ?? "");
   const [savingNotes, setSavingNotes] = useState(false);
   const [metadataBusy, setMetadataBusy] = useState(false);
 
-  useEffect(() => {
-    setDraftNotes(session?.notes ?? "");
-  }, [session?.id, session?.notes]);
+  // Re-seed the editable draft whenever a different session, or newer saved notes, arrive.
+  // Rendering the reset instead of running it in an effect keeps a stale draft from being
+  // committed for a frame.
+  const savedNotes = { id: session?.id, notes: session?.notes };
+  const [seededFrom, setSeededFrom] = useState(savedNotes);
+  if (seededFrom.id !== savedNotes.id || seededFrom.notes !== savedNotes.notes) {
+    setSeededFrom(savedNotes);
+    setDraftNotes(savedNotes.notes ?? "");
+  }
 
   const saveNotes = useCallback(async () => {
     if (!token || !session) return;

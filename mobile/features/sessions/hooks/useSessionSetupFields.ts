@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { SessionType } from "../../../constants/sessionTypes";
 
@@ -13,9 +13,15 @@ export function useSessionSetupFields(initialSessionType: SessionType | null, t:
   const [tagInput, setTagInput] = useState("");
   const [tagError, setTagError] = useState<string | null>(null);
   const [showOptional, setShowOptional] = useState(false);
-  useEffect(() => {
-    if (initialSessionType) setSelectedType(initialSessionType);
-  }, [initialSessionType]);
+
+  // The session type can arrive after the first render (deep link, resumed draft). Adopting it
+  // while rendering avoids the extra committed frame an effect would show the old selection for.
+  const [adoptedSessionType, setAdoptedSessionType] = useState(initialSessionType);
+  if (initialSessionType && initialSessionType !== adoptedSessionType) {
+    setAdoptedSessionType(initialSessionType);
+    setSelectedType(initialSessionType);
+  }
+
   const addTag = useCallback(
     (rawTag: string) => {
       const tag = rawTag.trim().toLowerCase();

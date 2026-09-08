@@ -21,10 +21,11 @@ module.exports = defineConfig([
   },
   {
     rules: {
-      // React Compiler rules. The three below hold repo-wide; the rest are documented exceptions.
+      // React Compiler rules. All but the two below hold repo-wide.
       "react-hooks/static-components": "error",
       "react-hooks/purity": "error",
       "react-hooks/preserve-manual-memoization": "error",
+      "react-hooks/set-state-in-effect": "error",
 
       // Reanimated shared values and RN `Animated.Value` refs are mutated by design, and the
       // rules cannot tell them apart from real ref misuse — they flag every animation in the app.
@@ -32,10 +33,6 @@ module.exports = defineConfig([
       // prevented by `useLatestRef`.
       "react-hooks/refs": "off",
       "react-hooks/immutability": "off",
-
-      // A warning, not an error: the 13 remaining effects each need a behavioural rewrite
-      // (see https://react.dev/learn/you-might-not-need-an-effect) rather than a mechanical fix.
-      "react-hooks/set-state-in-effect": "warn",
     },
   },
   {

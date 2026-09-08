@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   ONBOARDING_COMPLETE_KEY,
@@ -12,6 +12,7 @@ import { getE2eTestCredentials } from "../../../lib/e2eCredentials";
 import { isE2eModeEnabled } from "../../../lib/e2eMode";
 import { replaceWithPendingDeepLinkOrDashboard } from "../../../lib/pendingDeepLink";
 import { resolvePostAuthRouteFromStorage, toHref } from "../../../lib/postAuthNavigation";
+import { useConnectionHint } from "./useConnectionHint";
 import { loginErrorMessage } from "../authErrorMessage";
 import { resolveLoginCredentials } from "../loginCredentials";
 
@@ -26,20 +27,11 @@ export function useLoginForm(t: TFunction) {
   const [password, setPassword] = useState(() => preset?.password ?? "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showConnectionHint, setShowConnectionHint] = useState(false);
+  const showConnectionHint = useConnectionHint(loading);
   const pendingPaywall = params.next === "paywall";
   const existingAccountLogin = params.source === "existing_account";
   const paywallVariant =
     params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
-
-  useEffect(() => {
-    if (!loading) {
-      setShowConnectionHint(false);
-      return;
-    }
-    const timer = setTimeout(() => setShowConnectionHint(true), 4_000);
-    return () => clearTimeout(timer);
-  }, [loading]);
 
   const submit = useCallback(async () => {
     if (loading) return;

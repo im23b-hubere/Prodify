@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 
 import { apiJson } from "../../../lib/client";
@@ -22,11 +22,15 @@ function useSessionDraft(session: SessionDto | null, currentUserId?: number | nu
   const [selectedType, setSelectedType] = useState<SessionType>(DEFAULT_SESSION_TYPE);
   const [note, setNote] = useState("");
 
-  useEffect(() => {
-    if (!session) return;
+  // The session loads asynchronously and is replaced on every save, so the draft re-seeds
+  // whenever a different session object arrives. Doing it while rendering rather than in an
+  // effect means the form never paints one frame of the previous session's values.
+  const [seededFrom, setSeededFrom] = useState<SessionDto | null>(null);
+  if (session && session !== seededFrom) {
+    setSeededFrom(session);
     setSelectedType((session.session_type as SessionType) || DEFAULT_SESSION_TYPE);
     setNote(session.notes ?? "");
-  }, [session]);
+  }
 
   const isDirty = useMemo(() => {
     if (!session || currentUserId == null || session.user_id !== currentUserId) return false;

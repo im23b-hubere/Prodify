@@ -43,7 +43,12 @@ export function useDashboardMilestoneEvents({
     },
     [],
   );
-  useEffect(() => setToast(null), [userId]);
+  // A milestone toast belongs to the account that earned it, so an account switch drops it.
+  const [toastOwner, setToastOwner] = useState(userId);
+  if (toastOwner !== userId) {
+    setToastOwner(userId);
+    setToast(null);
+  }
 
   useEffect(() => {
     if (!streakOverview || typeof userId !== "number") return;
