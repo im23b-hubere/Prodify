@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 
+import { useLatestRef } from "../../../hooks/useLatestRef";
 import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import { createSessionComment, fetchSessionComments } from "../../../lib/social";
 import type { SocialCommentDto } from "../../../types/friends";
@@ -14,8 +15,7 @@ export function useSessionComments(
   sessionId: string | undefined,
   t: TFunction,
 ) {
-  const tokenRef = useRef(token);
-  tokenRef.current = token;
+  const tokenRef = useLatestRef(token);
   const loadSequence = useRef(0);
   const [comments, setComments] = useState<SocialCommentDto[]>([]);
   const [commentInput, setCommentInput] = useState("");

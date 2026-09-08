@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useLatestRef } from "../../../hooks/useLatestRef";
 import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import { apiJson } from "../../../lib/client";
 import { tryParseSessionDto } from "../../../lib/sessionDto";
@@ -24,8 +25,7 @@ export function useSessionDetailData({
   t,
   refreshSocial,
 }: UseSessionDetailDataOptions) {
-  const tokenRef = useRef(token);
-  tokenRef.current = token;
+  const tokenRef = useLatestRef(token);
   const loadSequence = useRef(0);
   const insightSequence = useRef(0);
   const [session, setSession] = useState<SessionDto | null>(null);

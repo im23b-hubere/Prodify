@@ -42,8 +42,10 @@ export function LevelRankRow({ entry, currentLevel, t }: Props) {
     >
       <View style={[styles.tierBar, { backgroundColor: locked ? colors.border : tier.accent }]} />
 
+      {/* levelIconFor picks from a static module-level map, so Icon's identity is stable. */}
       {locked ? (
         <View style={[styles.emblem, styles.emblemLocked]}>
+          {/* eslint-disable-next-line react-hooks/static-components */}
           <Icon size={18} color={colors.textSecondary} strokeWidth={2} />
         </View>
       ) : (
@@ -53,6 +55,7 @@ export function LevelRankRow({ entry, currentLevel, t }: Props) {
           end={{ x: 1, y: 0 }}
           style={[styles.emblem, current && { shadowColor: tier.glow }]}
         >
+          {/* eslint-disable-next-line react-hooks/static-components */}
           <Icon size={18} color="#fff" strokeWidth={2.2} />
         </LinearGradient>
       )}

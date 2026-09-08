@@ -24,7 +24,7 @@ export function hasRecentHeatmapActivity(
 }
 
 export type HeatmapWeekColumn = {
-  days: Array<HeatmapDay | null>;
+  days: (HeatmapDay | null)[];
 };
 
 function parseDayKey(iso: string): Date | null {
@@ -49,7 +49,7 @@ export function buildHeatmapWeekGrid(days: HeatmapDay[]): HeatmapWeekColumn[] {
   const columns: HeatmapWeekColumn[] = [];
   const cursor = new Date(start);
   while (cursor <= last && columns.length < 16) {
-    const week: Array<HeatmapDay | null> = [];
+    const week: (HeatmapDay | null)[] = [];
     for (let index = 0; index < 7; index += 1) {
       const key = localDateKey(cursor);
       if (cursor < first || cursor > last) {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../context/AuthContext";
+import { useLatestRef } from "../../hooks/useLatestRef";
 import { useAuthScopedReset } from "../../lib/authScopedReset";
 import {
   loadInbox,
@@ -50,8 +51,7 @@ export function useNotificationInbox() {
   const [serverSyncError, setServerSyncError] = useState<string | null>(null);
   const loadSequence = useRef(0);
   const mounted = useRef(true);
-  const tokenRef = useRef(token);
-  tokenRef.current = token;
+  const tokenRef = useLatestRef(token);
 
   useEffect(() => {
     mounted.current = true;

@@ -25,6 +25,8 @@ export function LevelRankHeroEmblem({ level, t }: Props) {
         end={{ x: 1, y: 0 }}
         style={[styles.emblem, { shadowColor: tier.glow }]}
       >
+        {/* levelIconFor picks from a static module-level map, so Icon's identity is stable. */}
+        {/* eslint-disable-next-line react-hooks/static-components */}
         <Icon size={28} color="#fff" strokeWidth={2.2} />
       </LinearGradient>
       <View style={styles.copy}>

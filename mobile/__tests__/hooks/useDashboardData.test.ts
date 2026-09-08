@@ -50,7 +50,7 @@ function mockDashboardApi({
   streak?: number;
   weeklyTarget?: number | null;
   weeklySessions?: number;
-  socialLeaderboard?: { entries: Array<{ user_id: number; username: string; score: number }> } | null;
+  socialLeaderboard?: { entries: { user_id: number; username: string; score: number }[] } | null;
 } = {}) {
   mockFetchCurrentGoal.mockResolvedValue(
     weeklyTarget == null

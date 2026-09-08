@@ -34,7 +34,7 @@ export function useSessionDetailController() {
   });
   const [shareOpen, setShareOpen] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
-  const closeShare = useCallback(() => setShareOpen(false), []);
+  const closeShare = useCallback(() => setShareOpen(false), [setShareOpen]);
   useAuthScopedReset(token, user?.id, closeShare);
   const editor = useSessionEditor({
     token,

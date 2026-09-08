@@ -9,7 +9,7 @@ const LONG_SESSION_WARNING_SECONDS = 8 * 3600;
 
 export function useActiveSessionClock(session: SessionDto | null) {
   const { t } = useTranslation();
-  const [nowMs, setNowMs] = useState(Date.now());
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const warnedForSessionId = useRef<number | null>(null);
 
   useEffect(() => {

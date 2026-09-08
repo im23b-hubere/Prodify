@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 
+import { useLatestRef } from "../../../hooks/useLatestRef";
 import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import type { SessionDto } from "../../../types/session";
 import {
@@ -17,8 +18,7 @@ export function useActiveSessionLoader(
 ) {
   const { t } = useTranslation();
   const router = useRouter();
-  const tokenRef = useRef(token);
-  tokenRef.current = token;
+  const tokenRef = useLatestRef(token);
   const [session, setSession] = useState<SessionDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

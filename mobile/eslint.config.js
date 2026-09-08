@@ -21,12 +21,21 @@ module.exports = defineConfig([
   },
   {
     rules: {
-      "react-hooks/static-components": "off",
+      // React Compiler rules. The three below hold repo-wide; the rest are documented exceptions.
+      "react-hooks/static-components": "error",
+      "react-hooks/purity": "error",
+      "react-hooks/preserve-manual-memoization": "error",
+
+      // Reanimated shared values and RN `Animated.Value` refs are mutated by design, and the
+      // rules cannot tell them apart from real ref misuse — they flag every animation in the app.
+      // Render-phase ref writes, the one violation class these would have caught, are instead
+      // prevented by `useLatestRef`.
       "react-hooks/refs": "off",
-      "react-hooks/set-state-in-effect": "off",
       "react-hooks/immutability": "off",
-      "react-hooks/purity": "off",
-      "react-hooks/preserve-manual-memoization": "off",
+
+      // A warning, not an error: the 13 remaining effects each need a behavioural rewrite
+      // (see https://react.dev/learn/you-might-not-need-an-effect) rather than a mechanical fix.
+      "react-hooks/set-state-in-effect": "warn",
     },
   },
   {

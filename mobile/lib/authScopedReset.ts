@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 
+import { useLatestRef } from "../hooks/useLatestRef";
+
 export type AuthScopeSnapshot = {
   token: string | null;
   userId: number | null | undefined;
@@ -40,8 +42,7 @@ export function useAuthScopedReset(
   onReset: () => void,
 ) {
   const previousRef = useRef<AuthScopeSnapshot | null>(null);
-  const onResetRef = useRef(onReset);
-  onResetRef.current = onReset;
+  const onResetRef = useLatestRef(onReset);
 
   useEffect(() => {
     const current = { token, userId };

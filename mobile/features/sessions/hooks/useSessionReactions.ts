@@ -2,6 +2,7 @@ import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useLatestRef } from "../../../hooks/useLatestRef";
 import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import { fetchSessionReactions, toggleSessionReaction } from "../../../lib/social";
 import type { SocialReactionDto } from "../../../types/friends";
@@ -13,8 +14,7 @@ export function useSessionReactions(
   sessionId: string | undefined,
   t: TFunction,
 ) {
-  const tokenRef = useRef(token);
-  tokenRef.current = token;
+  const tokenRef = useLatestRef(token);
   const loadSequence = useRef(0);
   const [reactions, setReactions] = useState<SocialReactionDto[]>([]);
   const [reactionsLoading, setReactionsLoading] = useState(false);

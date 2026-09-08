@@ -18,7 +18,7 @@ export function ActiveSessionTimerBlock({
   onConfirmStop,
   stopBusy,
 }: Props) {
-  const [nowMs, setNowMs] = useState(Date.now());
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const ringPulse = useSharedValue(1);
 
   const isPaused = !!active.pause_started_at;

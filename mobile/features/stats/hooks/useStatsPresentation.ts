@@ -46,7 +46,7 @@ export function useStatsPresentation(
       return translateInsightItem(stats.productivity_hint_item, t);
     }
     return stats?.productivity_hint ?? null;
-  }, [stats?.productivity_hint_item, stats?.productivity_hint, t]);
+  }, [stats, t]);
 
   return {
     summary,

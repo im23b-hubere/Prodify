@@ -6,6 +6,7 @@ import {
   prefetchLevelCatalog,
   type ProgressionLevelItem,
 } from "../../../lib/progressionLevelCatalog";
+import { useLatestRef } from "../../../hooks/useLatestRef";
 import { PROGRESSION_NAMED_LEVEL_MAX } from "../../../lib/progressionLevels";
 import { isScreenDataStale } from "../../../lib/screenDataStale";
 import { fetchProgression, syncProgression } from "../../../lib/progressionSync";
@@ -40,10 +41,8 @@ export function useProgressionOverview(token: string | null, loadErrorMessage: s
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const lastFetchRef = useRef(0);
-  const progressionRef = useRef(progression);
-  const catalogLengthRef = useRef(levelCatalog.length);
-  progressionRef.current = progression;
-  catalogLengthRef.current = levelCatalog.length;
+  const progressionRef = useLatestRef(progression);
+  const catalogLengthRef = useLatestRef(levelCatalog.length);
 
   const load = useCallback(
     async (options: LoadOptions = {}) => {
