@@ -30,6 +30,11 @@ jest.mock("../../context/AuthContext", () => ({
   useAuth: () => ({ token: "token-123", user: { id: 5, username: "me" } }),
 }));
 
+// Access control is covered by protectedStackRoutes.test.tsx.
+jest.mock("../../features/navigation/AppAccessGate", () => ({
+  AppAccessGate: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     back: mockBack,

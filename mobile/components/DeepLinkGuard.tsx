@@ -21,10 +21,14 @@ import { setPendingDeepLinkPath } from "../lib/pendingDeepLink";
 
 export function DeepLinkGuard() {
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, hydrated } = useAuth();
   const initialUrlHandled = useRef(false);
 
   useEffect(() => {
+    // Before hydration `token` is always null, so acting here would bounce a
+    // signed-in user to login and strand the link in pending storage.
+    if (!hydrated) return;
+
     const handleDeepLink = ({ url }: { url: string }) => {
       if (isExpoDevClientLaunchUrl(url)) return;
       if (isE2eBootstrapDeepLink(url)) {
@@ -79,7 +83,7 @@ export function DeepLinkGuard() {
 
     const sub = Linking.addEventListener("url", handleDeepLink);
     return () => sub.remove();
-  }, [router, token]);
+  }, [hydrated, router, token]);
 
   return null;
 }

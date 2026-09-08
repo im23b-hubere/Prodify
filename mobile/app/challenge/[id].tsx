@@ -14,8 +14,17 @@ import { ChallengeEditModal } from "../../features/challenges/components/Challen
 import { challengeDetailStyles as styles } from "../../features/challenges/challengeDetail.styles";
 import { parseChallengeId } from "../../features/challenges/challengeDetailPresentation";
 import { useChallengeDetail } from "../../features/challenges/hooks/useChallengeDetail";
+import { AppAccessGate } from "../../features/navigation/AppAccessGate";
 
-export default function ChallengeDetailScreen() {
+export default function ChallengeDetailRoute() {
+  return (
+    <AppAccessGate>
+      <ChallengeDetailScreen />
+    </AppAccessGate>
+  );
+}
+
+function ChallengeDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { token, user } = useAuth();

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../context/AuthContext";
+import { AppAccessGate } from "../features/navigation/AppAccessGate";
 import { ProgressionOverviewContent } from "../features/progression/components/ProgressionOverviewContent";
 import { useProgressionOverview } from "../features/progression/hooks/useProgressionOverview";
 import { styles } from "../features/progression/progressionOverview.styles";
@@ -13,7 +14,15 @@ import {
   progressionBackLabel,
 } from "../lib/progressionNavigation";
 
-export default function ProgressionOverviewScreen() {
+export default function ProgressionOverviewRoute() {
+  return (
+    <AppAccessGate>
+      <ProgressionOverviewScreen />
+    </AppAccessGate>
+  );
+}
+
+function ProgressionOverviewScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ from?: string | string[] }>();

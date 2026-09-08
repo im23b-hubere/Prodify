@@ -12,7 +12,7 @@ import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
 const ENTITLEMENT_BOOT_TIMEOUT_MS = 10_000;
 
-type PremiumTabAccessOptions = {
+type PremiumAccessOptions = {
   token?: string | null;
   userId?: number | null;
   userIsPremium: boolean;
@@ -34,7 +34,7 @@ async function loadFastAccess(
   return (await peekStoredHasPremiumAccess(userId).catch(() => false)) ? true : null;
 }
 
-export function usePremiumTabAccess({ token, userId, userIsPremium }: PremiumTabAccessOptions) {
+export function usePremiumAccess({ token, userId, userIsPremium }: PremiumAccessOptions) {
   const cacheRevision = useSyncExternalStore(
     subscribeEntitlementCache,
     getEntitlementCacheRevision,
