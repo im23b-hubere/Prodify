@@ -52,9 +52,15 @@ def get_entitlement_for_user(
     return resolve_effective_entitlement(current, db)
 
 
-def require_premium_or_trial(
+def require_subscriber(
     entitlement: Annotated[EntitlementPublic, Depends(get_entitlement_for_user)],
 ) -> EntitlementPublic:
+    """Prodify is subscription-only.
+
+    Auth, billing, legal, jobs, health, feature flags, and account deletion stay
+    reachable without an entitlement so a signed-in user can subscribe, restore,
+    or leave. Every other authenticated product route depends on this.
+    """
     if entitlement.entitlement == "premium":
         return entitlement
     raise HTTPException(status_code=402, detail="Premium entitlement required")

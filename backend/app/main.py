@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from app.config import is_sqlite_database_url, settings
 from app.database import engine
+from app.dependencies_subscription import require_subscriber
 from app.errors import APIError, api_error_handler, http_exception_handler
 from app.middleware.security import SecurityHeadersMiddleware
 from app.observability import init_observability
@@ -96,24 +97,30 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # Local/dev static serving. For production scale-out, prefer object storage + CDN and keep this mount for dev only.
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
+_subscriber = [Depends(require_subscriber)]
+
+# Reachable without a subscription: sign-in, billing, legal, flags, jobs, health.
 app.include_router(auth.router)
 app.include_router(feature_flags_router.router)
-app.include_router(sessions.router)
-app.include_router(streak.router)
-app.include_router(friends.router)
-app.include_router(users_router.router)
-app.include_router(stats_router.router)
-app.include_router(motivation.router)
-app.include_router(notifications_router.router)
-app.include_router(goals_router.router)
-app.include_router(achievements_router.router)
-app.include_router(jobs_router.router)
-app.include_router(legal_router.router)
 app.include_router(billing_router.router)
-app.include_router(outcomes_router.router)
-app.include_router(progression_router.router)
-app.include_router(challenges_router.router)
-app.include_router(social_router.router)
+app.include_router(legal_router.router)
+app.include_router(jobs_router.router)
+# DELETE /users/me is ungated so an unpaid account can still leave. Other /users
+# routes pick up the subscriber dependency in the users package.
+app.include_router(users_router.router)
+
+app.include_router(sessions.router, dependencies=_subscriber)
+app.include_router(streak.router, dependencies=_subscriber)
+app.include_router(friends.router, dependencies=_subscriber)
+app.include_router(stats_router.router, dependencies=_subscriber)
+app.include_router(motivation.router, dependencies=_subscriber)
+app.include_router(notifications_router.router, dependencies=_subscriber)
+app.include_router(goals_router.router, dependencies=_subscriber)
+app.include_router(achievements_router.router, dependencies=_subscriber)
+app.include_router(outcomes_router.router, dependencies=_subscriber)
+app.include_router(progression_router.router, dependencies=_subscriber)
+app.include_router(challenges_router.router, dependencies=_subscriber)
+app.include_router(social_router.router, dependencies=_subscriber)
 
 
 @app.get("/health")

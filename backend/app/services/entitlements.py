@@ -18,19 +18,7 @@ class EntitlementService:
         return until > datetime.now(timezone.utc)
 
     @staticmethod
-    def can_use_feature(user: User, feature: str) -> bool:
-        if EntitlementService.is_premium(user):
-            return True
-        free_features = {
-            "basic_stats": True,
-            "weekly_goal": True,
-            "goal_forecast": False,
-            "weekly_review": False,
-            "export_data": False,
-            "custom_themes": False,
-        }
-        return bool(free_features.get(feature, False))
-
-    @staticmethod
     def get_streak_freeze_limit(user: User) -> int:
+        # HTTP callers are already subscribers. The free cap only remains for leftover
+        # unpaid rows that a background job might still touch.
         return 999 if EntitlementService.is_premium(user) else 1

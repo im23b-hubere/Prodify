@@ -3,13 +3,7 @@ from app.config import settings
 from app.models import GrowthEvent, PushToken, UserSubscription, utcnow
 
 
-def _auth(client, email: str, username: str) -> dict[str, str]:
-    r = client.post(
-        "/auth/register",
-        json={"email": email, "username": username, "password": "strong-pass-123"},
-    )
-    assert r.status_code == 201
-    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+from tests.auth_helpers import auth_headers as _auth
 
 
 def test_kpi_dashboard_contract(client):

@@ -11,13 +11,7 @@ from app.streakutil import compute_current_streak
 from app.timeutil import DEFAULT_TIMEZONE, is_supported_timezone, resolve_timezone
 
 
-def _auth_headers(client, email: str, username: str) -> dict[str, str]:
-    register = client.post(
-        "/auth/register",
-        json={"email": email, "username": username, "password": "strong-pass-123"},
-    )
-    assert register.status_code == 201, register.text
-    return {"Authorization": f"Bearer {register.json()['access_token']}"}
+from tests.auth_helpers import auth_headers as _auth_headers
 
 
 def _user_id(client, headers: dict[str, str]) -> int:

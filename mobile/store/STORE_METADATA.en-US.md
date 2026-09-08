@@ -15,15 +15,11 @@ Entitlements reference: `docs/premium-entitlements.md`
 - **Category (primary):** Music
 - **Category (secondary):** Productivity
 
-### Premium promise (three pillars)
+### Access (subscription-only)
 
-| Pillar | Free | Premium |
-|--------|------|---------|
-| **Rhythm** | Weekly session goals, streaks, today's plan | Goal forecast + weekly Sunday review |
-| **Accountability** | Buddy, feed, 1 active challenge | More challenges, longer durations, commitments |
-| **Proof** | Stats, heatmap, personal records | Deeper outcome trends (where gated in-app) |
+The app is not freemium. A subscription unlocks the whole product: weekly goals, sessions, streaks, stats, friends, challenges, forecast, and weekly review.
 
-Weekly goal setup is **free**. Premium adds early warnings, weekly review, and expanded social accountability.
+See `docs/premium-entitlements.md`.
 
 ## Apple App Store
 
@@ -35,18 +31,15 @@ Weekly goal setup is **free**. Premium adds early warnings, weekly review, and e
 
 Prodify helps music producers stay consistent in the studio.
 
-Track every session with type, duration, mood, and notes. Set a weekly session target, build streaks, and see your progress in Stats. Premium unlocks forecast warnings when you slip off pace and a Sunday weekly review with insights for next week.
+Track every session with type, duration, mood, and notes. Set a weekly session target, build streaks, and see your progress in Stats. A subscription also includes forecast warnings when you slip off pace and a Sunday weekly review with insights for next week.
 
-**Free includes:**
+**Included with a subscription:**
 - Structured studio sessions and streaks
 - Weekly session goals and progress in Stats
 - Performance trends, heatmap, and personal records
-- Buddy, activity feed, and friend challenges (limits apply)
-
-**Premium adds:**
+- Buddy, activity feed, and friend challenges
 - Goal forecast — know if you're on track before the week slips
 - Weekly review — insights, blockers, and next-week suggestions
-- Expanded accountability — more parallel challenges and commitment options
 
 Prodify is built for real producer workflows: simple enough to use daily, powerful enough to keep you shipping.
 

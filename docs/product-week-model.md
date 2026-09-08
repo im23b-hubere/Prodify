@@ -32,4 +32,4 @@ used by friend insights, buddy weeks, commitments and social challenges.
 
 ## Premium
 
-Goal forecast and weekly review are premium-gated. Weekly goal setup remains free. See [premium-entitlements.md](./premium-entitlements.md).
+The whole week model is subscription-only, including weekly goal setup. See [premium-entitlements.md](./premium-entitlements.md).

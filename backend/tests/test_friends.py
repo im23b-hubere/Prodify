@@ -3,10 +3,11 @@ from datetime import timedelta
 from app.models import Streak, utcnow
 
 
+from tests.auth_helpers import register_token
+
+
 def _register(client, email: str, username: str, password: str = "strong-pass-123"):
-    r = client.post("/auth/register", json={"email": email, "username": username, "password": password})
-    assert r.status_code == 201, r.text
-    return r.json()["access_token"]
+    return register_token(client, email, username, password)
 
 
 def test_friend_request_accept_and_leaderboard(client):

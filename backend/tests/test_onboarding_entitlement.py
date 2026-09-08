@@ -1,11 +1,8 @@
-def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
-    register = client.post(
-        "/auth/register",
-        json={"email": email, "username": username, "password": password},
-    )
-    assert register.status_code == 201
-    token = register.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+from tests.auth_helpers import auth_headers
+
+
+def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123"):
+    return auth_headers(client, email, username, password, subscriber=False)
 
 
 def test_billing_entitlement_has_no_server_trial(client):

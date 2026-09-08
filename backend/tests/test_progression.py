@@ -9,13 +9,11 @@ from app.models import UserProgression, XpLedger, utcnow
 from app.services.progression_service import grant_xp, xp_for_completed_session
 
 
+from tests.auth_helpers import register_token
+
+
 def _register_token(client, email: str, username: str) -> str:
-    res = client.post(
-        "/auth/register",
-        json={"email": email, "username": username, "password": "strong-pass-123"},
-    )
-    assert res.status_code == 201
-    return res.json()["access_token"]
+    return register_token(client, email, username)
 
 
 def test_grant_xp_idempotent_session_complete_source(client):

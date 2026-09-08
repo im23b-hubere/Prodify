@@ -3,14 +3,7 @@ from datetime import timedelta
 from app.security import create_access_token
 
 
-def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
-    register = client.post(
-        "/auth/register",
-        json={"email": email, "username": username, "password": password},
-    )
-    assert register.status_code == 201
-    token = register.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+from tests.auth_helpers import auth_headers as _auth_headers
 
 
 def test_session_start_while_active(client):

@@ -6,14 +6,7 @@ from app.database import SessionLocal
 from app.models import BuddyRelationship, BuddyStatus, CheckinLog, GrowthEvent, ProductionSession, SocialChallenge, Streak, User, utcnow
 
 
-def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
-    register = client.post(
-        "/auth/register",
-        json={"email": email, "username": username, "password": password},
-    )
-    assert register.status_code == 201
-    token = register.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+from tests.auth_helpers import auth_headers as _auth_headers
 
 
 def _make_friends(client, h1: dict[str, str], h2: dict[str, str], u2_name: str):
@@ -230,36 +223,49 @@ def test_social_challenge_join_requires_owner_friendship(client):
     assert blocked.status_code == 403
 
 
-def test_free_challenge_limit_and_premium_unlock(client):
+def test_unpaid_user_cannot_create_a_challenge(client):
+    unpaid = _auth_headers(client, "social-free@example.com", "social-free", subscriber=False)
+    blocked = client.post(
+        "/social/challenges",
+        headers=unpaid,
+        json={
+            "challenge_kind": "duel",
+            "title": "One",
+            "target_sessions": 3,
+            "duration_days": 7,
+            "member_user_ids": [1],
+        },
+    )
+    assert blocked.status_code == 402
+
+
+def test_subscriber_challenge_capacity(client):
     a = _auth_headers(client, "social-i@example.com", "social-i")
     b = _auth_headers(client, "social-j@example.com", "social-j")
     _make_friends(client, a, b, "social-j")
 
-    first = client.post(
-        "/social/challenges",
-        headers=a,
-        json={"challenge_kind": "duel", "title": "One", "target_sessions": 3, "duration_days": 7, "member_user_ids": [2]},
-    )
-    assert first.status_code == 200
-    second = client.post(
-        "/social/challenges",
-        headers=a,
-        json={"challenge_kind": "duel", "title": "Two", "target_sessions": 3, "duration_days": 7, "member_user_ids": [2]},
-    )
-    assert second.status_code in {402, 200}
+    last_status = None
+    created = 0
+    for index in range(8):
+        response = client.post(
+            "/social/challenges",
+            headers=a,
+            json={
+                "challenge_kind": "duel",
+                "title": f"Challenge {index}",
+                "target_sessions": 3,
+                "duration_days": 14,
+                "member_user_ids": [2],
+            },
+        )
+        last_status = response.status_code
+        if response.status_code == 200:
+            created += 1
+            continue
+        break
 
-    with SessionLocal() as db:
-        u = db.get(User, 1)
-        assert u is not None
-        u.is_premium = 1
-        db.commit()
-
-    third = client.post(
-        "/social/challenges",
-        headers=a,
-        json={"challenge_kind": "duel", "title": "Three", "target_sessions": 3, "duration_days": 14, "member_user_ids": [2]},
-    )
-    assert third.status_code == 200
+    assert created >= 3
+    assert last_status == 409
 
 
 def test_friend_accept_grants_growth_perks(client):

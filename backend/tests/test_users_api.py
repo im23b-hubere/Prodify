@@ -136,7 +136,7 @@ def test_delete_me_purges_related_rows_and_profile_picture_file(client):
         assert db.query(PushToken).filter(PushToken.user_id == user_id).first() is None
         assert db.query(GrowthEvent).filter(GrowthEvent.user_id == user_id).first() is None
 
-    from app.routers.users import PROFILE_UPLOAD_DIR
+    from app.services.profile_picture_service import PROFILE_UPLOAD_DIR
 
     assert not (PROFILE_UPLOAD_DIR / file_name).exists()
 
@@ -147,7 +147,7 @@ def test_delete_me_does_not_delete_files_outside_profile_picture_dir(client):
     assert me.status_code == 200
     user_id = me.json()["id"]
 
-    from app.routers.users import PROFILE_UPLOAD_DIR
+    from app.services.profile_picture_service import PROFILE_UPLOAD_DIR
 
     sentinel = PROFILE_UPLOAD_DIR.parent / "sentinel-guard.txt"
     sentinel.write_text("keep-me", encoding="utf-8")

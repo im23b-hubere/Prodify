@@ -1,15 +1,19 @@
 # Prodify — Premium entitlements
 
-Single source of truth for what Free vs Premium includes. Paywall copy, mobile UI gates, and backend `402` responses must match this matrix.
+Single source of truth for access. The shipped app is **subscription-only**: there is no
+free product surface. Paywall copy, mobile `AppAccessGate`, and backend `402` responses
+must match this document.
 
 ## Access rules
 
 | Check | Meaning |
 |-------|---------|
-| **Premium** | `users.is_premium` or active RevenueCat subscription |
-| **Gated API** | Requires premium (`require_premium_or_trial`) |
+| **Subscriber** | `users.is_premium` or an active RevenueCat `premium` entitlement |
+| **Gated API** | Requires a subscriber (`require_subscriber`) |
 
-Weekly goal setup (`/goals/*`) is always free.
+A signed-in user without an entitlement can authenticate, restore or buy a plan, read
+legal documents, and delete their account. Every other authenticated product route returns
+`402 Premium entitlement required`.
 
 ## Subscriptions (App Store / RevenueCat)
 
@@ -22,46 +26,40 @@ Disable **Introductory Offers / Free Trial** on both products in App Store Conne
 
 ## Feature matrix
 
-| Feature | Free | Premium | Product pillar |
-|---------|------|---------|----------------|
-| Weekly session goal (`/goals/set`, `/goals/current`) | Yes | Yes | Rhythm |
-| Week progress, studio-day strip (Stats) | Yes | Yes | Rhythm |
-| Goal forecast (`/outcomes/goal-forecast/current`) | No | Yes | Rhythm |
-| Weekly review (`/outcomes/weekly-review/*`) | No | Yes | Rhythm |
-| Today's Plan, streak, session tracking | Yes | Yes | Rhythm |
-| Basic stats, heatmap, personal records | Yes | Yes | Proof |
-| 1 active friend challenge | Yes | Yes | Accountability |
-| 3+ challenges, duration > 7 days | No | Yes | Accountability |
-| Commitment period > 7 days, multiple commitment types | No | Yes | Accountability |
-| Buddy, feed, leaderboard (core) | Yes | Yes | Accountability |
+The entire product is behind the subscription. That includes weekly goals, sessions,
+streaks, stats, heatmap, records, friends, challenges, commitments, buddy, feed,
+leaderboard, progression, notifications, and outcomes (forecast, weekly review, output
+metrics).
+
+Service-layer challenge/rescue caps still exist as a second check if a request ever
+skipped the router gate. They are not a Free tier.
 
 ## API gates (backend)
 
-| Endpoint | Gate |
-|----------|------|
-| `GET /outcomes/goal-forecast/current` | `require_premium_or_trial` |
-| `GET /outcomes/weekly-review/current` | `require_premium_or_trial` |
-| `POST /outcomes/weekly-review/generate` | `require_premium_or_trial` |
-| `GET /outcomes/output-metrics/current` | Free |
-| `POST /goals/set`, `GET /goals/current` | Free |
+| Surface | Gate |
+|---------|------|
+| `/sessions/*`, `/streak/*`, `/goals/*`, `/stats/*`, `/friends/*`, `/social/*`, `/challenges/*`, `/outcomes/*`, `/progression/*`, `/achievements/*`, `/notifications/*`, `/motivational-messages` | `require_subscriber` |
+| `PUT /users/me/timezone`, profile picture, public profiles | `require_subscriber` |
+| `/auth/*`, `/billing/*`, `/legal/*`, `/feature-flags`, `/jobs/*`, `/health*` | Ungated (auth still required where the route says so) |
+| `DELETE /users/me` | Authenticated, no subscription |
 
-Free users receive `402` with `Premium entitlement required` on gated outcomes routes.
+Unpaid callers receive `402` with `Premium entitlement required`.
 
 ## Mobile UX
 
-- **Free:** Your Week shows progress + studio days; forecast area shows Premium teaser (no silent empty state).
-- **Free:** Weekly Recap loads week stats only; review generate + insights show Premium teaser → paywall.
-- **Premium:** Full forecast + weekly review; gated APIs fetched only when `hasPremiumAccess()` is true.
+- Signed-out users see auth and onboarding.
+- Signed-in users without an entitlement are redirected to `/paywall`.
+- Subscribers enter the tabs. Gated APIs are fetched only when `hasPremiumAccess()` is true.
 
 ## Paywall variants (`en.json`)
 
 | Variant | Promise |
 |---------|---------|
-| `value` | Early warnings + Sunday review (weekly goal is free) |
+| `value` | Early warnings + Sunday review |
 | `outcome` | Measurable progress over time |
 | `social_proof` | Buddy, challenges, shared accountability |
 
-Do not mention removed features (e.g. AI coach) in paywall or store copy.
+Do not mention a free weekly-goal tier, or removed features (e.g. AI coach), in paywall or store copy.
 
 ## Related docs
 

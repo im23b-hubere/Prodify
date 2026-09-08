@@ -137,7 +137,10 @@ def _translate_challenge_errors(operation, *args):
 
 def _challenge_rule_http_error(error: SocialChallengeRuleError) -> HTTPException:
     if isinstance(error, ChallengeLimitError):
-        return HTTPException(status_code=402, detail="Upgrade to create multiple challenges and run parallel accountability loops.")
+        return HTTPException(
+            status_code=409,
+            detail="You already have the maximum number of active challenges.",
+        )
     if isinstance(error, ChallengeDurationPremiumError):
         return HTTPException(status_code=402, detail="Upgrade to run longer challenges.")
     if isinstance(error, InactiveChallengeError):

@@ -6,14 +6,11 @@ from app.database import SessionLocal
 from app.models import ProductionSession, User, utcnow
 
 
+from tests.auth_helpers import auth_headers
+
+
 def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
-    register = client.post(
-        "/auth/register",
-        json={"email": email, "username": username, "password": password},
-    )
-    assert register.status_code == 201
-    token = register.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    return auth_headers(client, email, username, password, subscriber=False)
 
 
 def _premium_auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
@@ -115,7 +112,7 @@ def test_weekly_review_available_with_premium_sync_without_trial(client):
 
 
 def test_output_metrics_current_returns_shape(client):
-    headers = _auth_headers(client, "metrics@example.com", "metrics-user")
+    headers = _premium_auth_headers(client, "metrics@example.com", "metrics-user")
     me = client.get("/auth/me", headers=headers)
     assert me.status_code == 200
     started = client.post("/sessions/start", headers=headers, json={"session_type": "beat_making"})
@@ -141,7 +138,7 @@ def test_output_metrics_current_returns_shape(client):
 
 
 def test_output_metrics_consistency_uses_full_ninety_day_window(client):
-    headers = _auth_headers(client, "metrics-window@example.com", "metrics-window-user")
+    headers = _premium_auth_headers(client, "metrics-window@example.com", "metrics-window-user")
     with SessionLocal() as db:
         user_id = db.scalar(select(User.id).where(User.email == "metrics-window@example.com"))
         assert user_id is not None

@@ -6,13 +6,11 @@ from app.database import SessionLocal
 from app.models import Streak, User
 
 
+from tests.auth_helpers import register_token
+
+
 def _token(client, email: str, user: str) -> str:
-    r = client.post(
-        "/auth/register",
-        json={"email": email, "username": user, "password": "strong-pass-123"},
-    )
-    assert r.status_code == 201
-    return r.json()["access_token"]
+    return register_token(client, email, user)
 
 
 def test_premium_user_gets_high_freeze_allowance_on_month_reset(client):
