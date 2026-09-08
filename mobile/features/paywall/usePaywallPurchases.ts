@@ -165,10 +165,23 @@ export function usePaywallPurchases(options: PaywallPurchasesOptions) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const context = { ...options, setBusy, t };
+  const purchaseStorePackage = usePurchaseAction(context);
+  const skipSubscriptionForDev = useDevBypassAction(context);
+  const restore = useRestoreAction(context);
+  const purchasePackage = useCallback(
+    async (pkg: PurchasesPackage | null) => {
+      if (options.previewMode) {
+        await skipSubscriptionForDev();
+        return;
+      }
+      await purchaseStorePackage(pkg);
+    },
+    [options.previewMode, purchaseStorePackage, skipSubscriptionForDev],
+  );
   return {
     busy,
-    purchasePackage: usePurchaseAction(context),
-    restore: useRestoreAction(context),
-    skipSubscriptionForDev: useDevBypassAction(context),
+    purchasePackage,
+    restore,
+    skipSubscriptionForDev,
   };
 }

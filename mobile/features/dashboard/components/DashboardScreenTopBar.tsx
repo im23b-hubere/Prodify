@@ -33,6 +33,11 @@ export function DashboardScreenTopBar({
           <Text style={styles.greetingName} numberOfLines={1}>
             {username ?? t("dashboard.defaultUserName")}
           </Text>
+          {__DEV__ ? (
+            <Text testID="dashboard-local-metro" style={styles.devBundleHint}>
+              local metro
+            </Text>
+          ) : null}
         </View>
         <View style={styles.headerActions}>
           <Pressable

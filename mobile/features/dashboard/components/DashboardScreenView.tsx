@@ -20,7 +20,7 @@ import { FriendsActivityWidget } from "../../../components/dashboard/FriendsActi
 import { EmptyState } from "../../../components/states/EmptyState";
 import { ErrorState } from "../../../components/states/ErrorState";
 import { TutorialOverlay } from "../../../components/TutorialOverlay";
-import { colors } from "../../../constants/theme";
+import { colors, spacing } from "../../../constants/theme";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
 import type { SessionDto } from "../../../types/session";
 import { styles } from "../dashboardScreen.styles";
@@ -68,7 +68,11 @@ export function DashboardScreenView({ controller }: { controller: DashboardScree
       />
       <View
         testID="dashboard-chrome"
-        style={[styles.chrome, { paddingTop: insets.top }, scrolled && styles.chromeScrolled]}
+        style={[
+          styles.chrome,
+          { paddingTop: insets.top + spacing.md },
+          scrolled && styles.chromeScrolled,
+        ]}
       >
         <DashboardScreenTopBar
           username={controller.user?.username}

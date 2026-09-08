@@ -52,8 +52,6 @@ function ExperienceStep({ workflow }: Props) {
       title={t("onboarding.quiz.experience.title")}
       subtitle={t("onboarding.quiz.experience.subtitle")}
       onBack={goBack}
-      onSkip={workflow.skipPersonalization}
-      skipLabel={t("onboarding.skip")}
     >
       {EXPERIENCE_OPTIONS.map((option, index) => (
         <QuizOptionCard
@@ -80,8 +78,6 @@ function GenreStep({ workflow }: Props) {
       title={t("onboarding.quiz.genre.title")}
       subtitle={t("onboarding.quiz.genre.subtitle")}
       onBack={() => workflow.setStep("experience")}
-      onSkip={workflow.skipPersonalization}
-      skipLabel={t("onboarding.skip")}
     >
       {GENRE_OPTIONS.map((option, index) => (
         <QuizOptionCard
@@ -107,8 +103,6 @@ function ProducerGoalStep({ workflow }: Props) {
       title={t("onboarding.quiz.producerGoal.title")}
       subtitle={t("onboarding.quiz.producerGoal.subtitle")}
       onBack={() => workflow.setStep("genre")}
-      onSkip={workflow.skipPersonalization}
-      skipLabel={t("onboarding.skip")}
     >
       {PRODUCER_GOAL_OPTIONS.map((option, index) => (
         <QuizOptionCard
@@ -137,9 +131,7 @@ function WeeklyGoalStep({ workflow, presentation }: Props) {
       totalSteps={QUIZ_STEP_COUNT}
       title={t("onboarding.quiz.weeklyGoal.title")}
       subtitle={t("onboarding.quiz.weeklyGoal.subtitle")}
-      onBack={() => workflow.setStep(workflow.answers.producerGoal ? "producerGoal" : "experience")}
-      onSkip={() => workflow.setStep("plan")}
-      skipLabel={t("onboarding.skip")}
+      onBack={() => workflow.setStep("producerGoal")}
       footer={
         <PrimaryButton label={t("onboarding.quiz.weeklyGoal.cta")} onPress={continueToPlan} />
       }

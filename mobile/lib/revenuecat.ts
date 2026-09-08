@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 import Purchases, {
   type CustomerInfo,
@@ -57,15 +58,17 @@ function normalizeAppUserId(appUserId?: string): string | null {
   return trimmed ? trimmed : null;
 }
 
+function isRevenueCatRuntimeAvailable(): boolean {
+  if (isE2eModeEnabled()) return false;
+  if (Platform.OS === "web") return false;
+  // Expo Go has no StoreKit/Play Billing; the SDK logs Browser Mode but cannot purchase.
+  if (Constants.appOwnership === "expo") return false;
+  return Boolean(getRevenueCatApiKey());
+}
+
 /** Configure RevenueCat once, then logIn/logOut when the app user changes. */
 export async function configureRevenueCat(appUserId?: string): Promise<void> {
-  if (isE2eModeEnabled()) {
-    return;
-  }
-
-  if (Platform.OS === "web") {
-    return;
-  }
+  if (!isRevenueCatRuntimeAvailable()) return;
   const apiKey = getRevenueCatApiKey();
   if (!apiKey) return;
 
@@ -147,9 +150,7 @@ async function fetchOfferingsWithRetry(appUserId?: string) {
 }
 
 export async function getDefaultOffering(appUserId?: string): Promise<PurchasesOffering | null> {
-  if (isE2eModeEnabled()) return null;
-  if (Platform.OS === "web") return null;
-  if (!getRevenueCatApiKey()) return null;
+  if (!isRevenueCatRuntimeAvailable()) return null;
   const offerings = await fetchOfferingsWithRetry(appUserId);
   if (offerings.current) return offerings.current;
   const allOfferings = Object.values(offerings.all ?? {});
@@ -227,7 +228,7 @@ export type PaywallBillingSnapshot = {
 export async function getPaywallBillingSnapshot(
   appUserId?: string,
 ): Promise<PaywallBillingSnapshot> {
-  if (isE2eModeEnabled() || Platform.OS === "web" || !getRevenueCatApiKey()) {
+  if (!isRevenueCatRuntimeAvailable()) {
     return { customerInfo: null, offering: null };
   }
 

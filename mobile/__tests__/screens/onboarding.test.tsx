@@ -12,6 +12,8 @@ import { resolvePremiumAccess } from "../../lib/premiumAccess";
 const mockReplace = jest.fn();
 const mockUseAuth = jest.fn();
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
 jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
   const { View } = require("react-native");
@@ -108,13 +110,36 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe("Onboarding navigation and quiz", () => {
-  it("skips quiz to weekly goal and routes anonymous users to account creation before paywall", async () => {
-    const { getByText } = render(<OnboardingScreen />);
+function skipIntroAndCompleteQuiz(
+  getByText: ReturnType<typeof render>["getByText"],
+  options?: { weeklyGoal?: string },
+) {
+  fireEvent.press(getByText("onboarding.skip"));
+  fireEvent.press(getByText("onboarding.quiz.experience.options.under_1y"));
+  act(() => jest.advanceTimersByTime(200));
+  fireEvent.press(getByText("onboarding.quiz.genre.options.hip_hop"));
+  act(() => jest.advanceTimersByTime(200));
+  fireEvent.press(getByText("onboarding.quiz.producerGoal.options.finish_tracks"));
+  act(() => jest.advanceTimersByTime(200));
+  if (options?.weeklyGoal) fireEvent.press(getByText(options.weeklyGoal));
+  fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
+  fireEvent.press(getByText("onboarding.quiz.plan.cta"));
+}
 
-    // Skip the marketing carousel, then skip the optional personalization questions.
+describe("Onboarding navigation and quiz", () => {
+  it("requires quiz answers before sending anonymous users to account creation", async () => {
+    const { getByText, queryByText } = render(<OnboardingScreen />);
+
     fireEvent.press(getByText("onboarding.skip"));
-    fireEvent.press(getByText("onboarding.skip"));
+    expect(getByText("onboarding.quiz.experience.title")).toBeTruthy();
+    expect(queryByText("onboarding.skip")).toBeNull();
+
+    fireEvent.press(getByText("onboarding.quiz.experience.options.under_1y"));
+    act(() => jest.advanceTimersByTime(200));
+    fireEvent.press(getByText("onboarding.quiz.genre.options.hip_hop"));
+    act(() => jest.advanceTimersByTime(200));
+    fireEvent.press(getByText("onboarding.quiz.producerGoal.options.finish_tracks"));
+    act(() => jest.advanceTimersByTime(200));
     fireEvent.press(getByText("10"));
     fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
     fireEvent.press(getByText("onboarding.quiz.plan.cta"));
@@ -123,7 +148,14 @@ describe("Onboarding navigation and quiz", () => {
       expect(savePendingWeeklyGoal).toHaveBeenCalledWith(10);
     });
     await waitFor(() => {
-      expect(saveOnboardingQuiz).toHaveBeenCalledWith(expect.objectContaining({ weeklyGoal: 10 }));
+      expect(saveOnboardingQuiz).toHaveBeenCalledWith(
+        expect.objectContaining({
+          experience: "under_1y",
+          genre: "hip_hop",
+          producerGoal: "finish_tracks",
+          weeklyGoal: 10,
+        }),
+      );
     });
     await waitFor(() => {
       expect(AsyncStorage.setItem).toHaveBeenCalledWith(ONBOARDING_COMPLETE_KEY, "1");
@@ -183,10 +215,7 @@ describe("Onboarding completion routing", () => {
     (apiJson as jest.Mock).mockResolvedValue(undefined);
 
     const { getByText } = render(<OnboardingScreen />);
-    fireEvent.press(getByText("onboarding.skip"));
-    fireEvent.press(getByText("onboarding.skip"));
-    fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
-    fireEvent.press(getByText("onboarding.quiz.plan.cta"));
+    skipIntroAndCompleteQuiz(getByText);
 
     await waitFor(() => {
       expect(resolvePremiumAccess).toHaveBeenCalledWith("access-token", "42");
@@ -203,10 +232,7 @@ describe("Onboarding completion routing", () => {
     (apiJson as jest.Mock).mockRejectedValue(new Error("offline"));
 
     const { getByText } = render(<OnboardingScreen />);
-    fireEvent.press(getByText("onboarding.skip"));
-    fireEvent.press(getByText("onboarding.skip"));
-    fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
-    fireEvent.press(getByText("onboarding.quiz.plan.cta"));
+    skipIntroAndCompleteQuiz(getByText);
 
     await waitFor(() => {
       expect(savePendingWeeklyGoal).toHaveBeenCalled();

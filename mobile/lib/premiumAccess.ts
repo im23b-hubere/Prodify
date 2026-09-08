@@ -21,12 +21,65 @@ const SERVER_CHECK_TIMEOUT_MS = 4_000;
 const REVENUECAT_PROBE_TIMEOUT_MS = 5_000;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-  return Promise.race([
-    promise,
-    new Promise<null>((resolve) => {
-      setTimeout(() => resolve(null), timeoutMs);
-    }),
-  ]);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: T | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        finish(value);
+      },
+      () => {
+        clearTimeout(timer);
+        finish(null);
+      },
+    );
+  });
+}
+
+async function probeRevenueCatPremium(
+  token: string,
+  userId: string,
+  numericUserId: number,
+): Promise<boolean> {
+  try {
+    await configureRevenueCat(userId);
+    const info = await getRevenueCatCustomerInfo(userId);
+    if (!isPremiumActive(info)) return false;
+    seedEntitlementCache(
+      token,
+      {
+        provider: "revenuecat",
+        entitlement: "premium",
+        trial_active: false,
+        expires_at: activeEntitlementExpiration(info),
+      },
+      Number.isFinite(numericUserId) ? numericUserId : null,
+    );
+    await syncEntitlement(token, {
+      app_user_id: userId,
+      entitlement: "premium",
+      trial_active: false,
+      expires_at: activeEntitlementExpiration(info),
+    }).catch(() => undefined);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readRevenueCatCustomerInfo(userId: string) {
+  try {
+    await configureRevenueCat(userId);
+    return await getRevenueCatCustomerInfo(userId);
+  } catch {
+    return null;
+  }
 }
 
 /** Resolve whether the user may access subscription-gated tabs (RevenueCat + server). */
@@ -86,28 +139,7 @@ async function refreshPremiumAccess(token: string, appUserId?: string | null): P
   // 2) Short RC probe only when server is free/unavailable (covers recent sandbox purchases).
   if (userId) {
     const rcPremium = await withTimeout(
-      (async () => {
-        await configureRevenueCat(userId);
-        const info = await getRevenueCatCustomerInfo(userId);
-        if (!isPremiumActive(info)) return false;
-        seedEntitlementCache(
-          token,
-          {
-            provider: "revenuecat",
-            entitlement: "premium",
-            trial_active: false,
-            expires_at: activeEntitlementExpiration(info),
-          },
-          Number.isFinite(numericUserId) ? numericUserId : null,
-        );
-        await syncEntitlement(token, {
-          app_user_id: userId,
-          entitlement: "premium",
-          trial_active: false,
-          expires_at: activeEntitlementExpiration(info),
-        }).catch(() => undefined);
-        return true;
-      })(),
+      probeRevenueCatPremium(token, userId, numericUserId),
       REVENUECAT_PROBE_TIMEOUT_MS,
     );
     if (rcPremium) return true;
@@ -203,13 +235,7 @@ export async function resolvePremiumGrant(
   }
 
   if (userId && options.includeRevenueCat !== false) {
-    const info = await withTimeout(
-      (async () => {
-        await configureRevenueCat(userId);
-        return getRevenueCatCustomerInfo(userId);
-      })(),
-      REVENUECAT_PROBE_TIMEOUT_MS,
-    );
+    const info = await withTimeout(readRevenueCatCustomerInfo(userId), REVENUECAT_PROBE_TIMEOUT_MS);
     if (info && isPremiumActive(info)) {
       return { source: "revenuecat", customerInfo: info };
     }

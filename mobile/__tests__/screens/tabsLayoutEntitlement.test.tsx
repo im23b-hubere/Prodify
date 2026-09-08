@@ -50,6 +50,7 @@ jest.mock("../../lib/billing", () => ({
 }));
 
 jest.mock("../../lib/devBillingBypass", () => ({
+  isExpoGoDevRuntime: () => false,
   isDevBillingBypassActive: jest.fn().mockResolvedValue(false),
 }));
 

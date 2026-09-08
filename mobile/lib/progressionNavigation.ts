@@ -1,5 +1,11 @@
-import type { Href, Router } from "expo-router";
+import type { Href } from "expo-router";
 import type { TFunction } from "i18next";
+
+type AppRouter = {
+  back: () => void;
+  canGoBack: () => boolean;
+  replace: (href: Href) => void;
+};
 
 export type ProgressionOverviewFrom = "dashboard" | "stats" | "friends" | "profile";
 
@@ -37,7 +43,7 @@ export function progressionBackLabel(t: TFunction, from: ProgressionOverviewFrom
   }
 }
 
-export function leaveProgressionOverview(router: Router, from: ProgressionOverviewFrom): void {
+export function leaveProgressionOverview(router: AppRouter, from: ProgressionOverviewFrom): void {
   if (router.canGoBack()) {
     router.back();
     return;

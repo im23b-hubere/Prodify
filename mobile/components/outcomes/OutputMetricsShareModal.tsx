@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
-import { type RefObject, useCallback, useRef, useState } from "react";
+import { type ComponentRef, type RefObject, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import ViewShot from "react-native-view-shot";
@@ -35,7 +35,7 @@ const TEMPLATE_LABEL_KEYS: Record<OutputShareTemplateId, string> = {
   gradient: "stats.shareProofTemplateGradient",
 };
 
-function useOutputShareExport(shotRef: RefObject<ViewShot | null>) {
+function useOutputShareExport(shotRef: RefObject<ComponentRef<typeof ViewShot> | null>) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const captureAndShare = useCallback(async () => {
@@ -138,7 +138,7 @@ export function OutputMetricsShareModal({
   closeLabel,
   busyLabel,
 }: Props) {
-  const shotRef = useRef<ViewShot | null>(null);
+  const shotRef = useRef<ComponentRef<typeof ViewShot> | null>(null);
   const [template, setTemplate] = useState<OutputShareTemplateId>("gradient");
   const { busy, captureAndShare } = useOutputShareExport(shotRef);
 

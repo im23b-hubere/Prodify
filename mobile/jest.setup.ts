@@ -1,5 +1,22 @@
 import "./lib/i18n";
 
+jest.mock("react-native-worklets", () => ({}));
+jest.mock("react-native-reanimated", () => require("./test/reanimatedStub"));
+jest.mock("react-native-reanimated/mock", () => require("./test/reanimatedStub"));
+jest.mock("expo-audio", () => {
+  const player = {
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(() => Promise.resolve()),
+    volume: 1,
+    loop: false,
+  };
+  return {
+    useAudioPlayer: () => player,
+    setAudioModeAsync: jest.fn(() => Promise.resolve()),
+  };
+});
+
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );

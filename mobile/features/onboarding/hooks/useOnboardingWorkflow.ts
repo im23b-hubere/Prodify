@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
-import type { Router } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 
 import {
@@ -28,6 +27,7 @@ const QUIZ_ADVANCE_DELAY_MS = 200;
 
 type OnboardingUser = { id?: number | null; is_premium?: boolean | null } | null;
 type OnboardingDestination = "dashboard" | "register" | "paywall";
+type AppRouter = { replace: (href: Href) => void };
 
 async function syncWeeklyGoal(token: string | null, weeklyGoal: number): Promise<void> {
   await savePendingWeeklyGoal(weeklyGoal).catch(() => undefined);
@@ -69,7 +69,7 @@ export async function completeOnboarding(input: {
   return token ? "paywall" : "register";
 }
 
-function navigateAfterOnboarding(router: Router, destination: OnboardingDestination): void {
+function navigateAfterOnboarding(router: AppRouter, destination: OnboardingDestination): void {
   if (destination === "dashboard") {
     router.replace("/(tabs)/dashboard");
     return;
@@ -140,7 +140,6 @@ export function useOnboardingWorkflow() {
     weeklyGoal,
     busy,
     skipIntro: () => setStep("experience"),
-    skipPersonalization: () => setStep("weeklyGoal"),
     openLogin: () =>
       router.replace({
         pathname: "/(auth)/login",

@@ -2,6 +2,7 @@ import {
   deepLinkRequiresAuth,
   extractDeepLinkPath,
   isAllowedDeepLinkPath,
+  isExpoDevClientLaunchUrl,
   normalizeIncomingPath,
   toRoutableHref,
 } from "../lib/deepLinkGuard";
@@ -37,6 +38,13 @@ describe("deepLinkGuard", () => {
     expect(toRoutableHref("session/active")).toBe("/session-active");
     expect(toRoutableHref("dashboard")).toBe("/(tabs)/dashboard");
     expect(toRoutableHref("")).toBe("/");
+  });
+
+  it("does not treat Metro launcher URLs as in-app routes", () => {
+    const metroUrl = "prodify://expo-development-client/?url=http%3A%2F%2F192.168.1.105%3A8081";
+    expect(isExpoDevClientLaunchUrl(metroUrl)).toBe(true);
+    expect(extractDeepLinkPath(metroUrl)).toBe("");
+    expect(isExpoDevClientLaunchUrl("prodify://dashboard")).toBe(false);
   });
 
   it("allows challenge deep links", () => {

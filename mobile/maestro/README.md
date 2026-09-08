@@ -26,7 +26,7 @@ Automated iOS smoke tests for release candidates.
 
    Override defaults with `E2E_API_URL`, `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, `E2E_TEST_USERNAME`.
 
-   The script also stops any leftover **active session** on the E2E account so the dashboard shows `START SESSION`.
+   The script also stops any leftover **active session** on the E2E account so the dashboard shows `Start session`.
 
 2. **iOS simulator build** with E2E env (CI sets these automatically):
 

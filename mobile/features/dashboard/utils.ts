@@ -83,8 +83,3 @@ export function getCurrentWeekProgress(sessions: SessionDto[], now = new Date())
   );
   return keys.map((key) => set.has(key));
 }
-
-/** @deprecated Use getCurrentWeekProgress — kept for existing imports. */
-export function getLast7DaysProgress(sessions: SessionDto[], now = new Date()) {
-  return getCurrentWeekProgress(sessions, now);
-}

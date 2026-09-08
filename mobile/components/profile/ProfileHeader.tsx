@@ -122,7 +122,7 @@ export const ProfileHeader = memo(function ProfileHeader({
 
 const styles = StyleSheet.create({
   wrap: { borderRadius: radii.xl, overflow: "hidden", marginBottom: spacing.md },
-  gradient: { ...StyleSheet.absoluteFillObject },
+  gradient: { ...StyleSheet.absoluteFill },
   content: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.sm },
   avatar: {
     width: 88,

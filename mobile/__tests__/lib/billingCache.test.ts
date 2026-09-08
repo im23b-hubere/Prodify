@@ -10,6 +10,7 @@ import { apiJson } from "../../lib/client";
 
 jest.mock("../../lib/client", () => ({ apiJson: jest.fn() }));
 jest.mock("../../lib/devBillingBypass", () => ({
+  isExpoGoDevRuntime: () => false,
   isDevBillingBypassActive: jest.fn().mockResolvedValue(false),
 }));
 jest.mock("../../lib/entitlementStorage", () => ({

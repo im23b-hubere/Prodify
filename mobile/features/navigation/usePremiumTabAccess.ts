@@ -6,7 +6,7 @@ import {
   peekStoredHasPremiumAccess,
   subscribeEntitlementCache,
 } from "../../lib/billing";
-import { isDevBillingBypassActive } from "../../lib/devBillingBypass";
+import { isDevBillingBypassActive, isExpoGoDevRuntime } from "../../lib/devBillingBypass";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
@@ -52,7 +52,11 @@ export function usePremiumTabAccess({ token, userId, userIsPremium }: PremiumTab
         setLoading(false);
         return;
       }
-      if (isE2eModeEnabled() || (await isDevBillingBypassActive().catch(() => false))) {
+      if (
+        isE2eModeEnabled() ||
+        isExpoGoDevRuntime() ||
+        (await isDevBillingBypassActive().catch(() => false))
+      ) {
         if (!cancelled) {
           setResolvedAccess(true);
           setLoading(false);
@@ -75,7 +79,9 @@ export function usePremiumTabAccess({ token, userId, userIsPremium }: PremiumTab
       }
     }
 
-    void resolveAccess();
+    void resolveAccess().catch(() => {
+      if (!cancelled) setLoading(false);
+    });
     return () => {
       cancelled = true;
     };

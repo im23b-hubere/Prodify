@@ -10,12 +10,22 @@ appId: com.prodify.app
     point: "90%,10%"
 - assertVisible:
     id: "onboarding-experience"
-- tapOn:
-    point: "90%,10%"
-- assertVisible:
-    id: "onboarding-weekly-goal"
-- tapOn:
-    point: "90%,10%"
+- tapOn: "Less than 1 year"
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-genre"
+    timeout: 8000
+- tapOn: "Hip-Hop / Trap"
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-producer-goal"
+    timeout: 8000
+- tapOn: "Finish more tracks"
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-weekly-goal"
+    timeout: 8000
+- tapOn: "See my plan"
 - assertVisible:
     id: "onboarding-plan"
 - tapOn: "Continue"

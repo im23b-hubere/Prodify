@@ -1,0 +1,47 @@
+---
+description: Clean Code after Robert C. Martin — apply to all implementation
+alwaysApply: true
+---
+
+# Clean Code
+
+Write code as if the next reader is a human. Prefer clarity over cleverness. Do not add comments that explain messy code — rewrite the code instead.
+
+## Functions and modules
+
+- One function, one reason to change (SRP). Extract when a name would be clearer than a block.
+- Keep functions small. Prefer early returns over nested `if`/`else`.
+- Side effects belong at the edges (I/O, navigation, storage). Pure logic stays pure and testable.
+- Depend on abstractions the caller owns, not on concrete frameworks buried inside domain logic.
+
+## Names
+
+- Names reveal intent: `elapsedFocusMinutes`, not `t` or `data2`.
+- No encodings (`strName`, `IUserMgr`). No abbreviations unless they are domain-standard.
+- Functions are verbs; booleans read as predicates (`isExpired`, `hasActiveSession`).
+
+```ts
+// BAD
+function handle(s: Session) {
+  if (s.st === 1) {
+    if (s.t > 0) doStuff(s);
+  }
+}
+
+// GOOD
+function resumeIfTimedSession(session: Session) {
+  if (!session.isTimed || session.remainingSeconds <= 0) return;
+  resumeSession(session);
+}
+```
+
+## Structure
+
+- DRY only when duplication shares one reason to change. Do not invent a shared helper for two similar-looking but different rules.
+- Boy Scout Rule: leave the touched file cleaner than you found it — but do not refactor unrelated code.
+- Delete dead code. Do not comment it out.
+
+## Tests
+
+- Tests specify behavior, not implementation. Name them for the scenario and expected outcome.
+- One assertion theme per test. If setup is painful, the design is wrong — fix the API, not the test with mocks on mocks.

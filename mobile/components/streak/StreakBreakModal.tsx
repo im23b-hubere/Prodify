@@ -1,8 +1,8 @@
-import { Audio } from "expo-av";
+import { setAudioModeAsync, useAudioPlayer, type AudioPlayer } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import LottieView from "lottie-react-native";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal, StyleSheet, Text, View } from "react-native";
 import { Flame } from "lucide-react-native";
@@ -21,47 +21,39 @@ type StreakBreakModalProps = {
   onStartFresh: () => void;
 };
 
+async function playBreakCue(player: AudioPlayer): Promise<void> {
+  await setAudioModeAsync({
+    playsInSilentMode: true,
+    shouldPlayInBackground: false,
+  });
+  player.volume = 0.88;
+  player.loop = false;
+  await player.seekTo(0);
+  player.play();
+}
+
 export function StreakBreakModal({ visible, brokenStreak, onStartFresh }: StreakBreakModalProps) {
   const { t } = useTranslation();
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const player = useAudioPlayer(SFX_SOURCE);
   const [lottieFailed, setLottieFailed] = useState(false);
   const [playbackToken, setPlaybackToken] = useState(0);
 
-  const playBreakSound = useCallback(async () => {
-    try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      });
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-      const { sound } = await Audio.Sound.createAsync(SFX_SOURCE, {
-        shouldPlay: true,
-        volume: 0.88,
-        isLooping: false,
-      });
-      soundRef.current = sound;
-    } catch {
-      /* ignore — still show modal */
-    }
-  }, []);
-
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      player.pause();
+      return;
+    }
     setLottieFailed(false);
     setPlaybackToken((token) => token + 1);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-    playBreakSound();
+    void playBreakCue(player).catch(() => undefined);
     return () => {
-      soundRef.current?.unloadAsync().catch(() => undefined);
-      soundRef.current = null;
+      player.pause();
     };
-  }, [visible, playBreakSound]);
+  }, [visible, player]);
 
   const handleClose = () => {
-    soundRef.current?.stopAsync().catch(() => undefined);
+    player.pause();
     onStartFresh();
   };
 

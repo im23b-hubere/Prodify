@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import type { TFunction } from "i18next";
-import { type RefObject, useCallback, useRef, useState } from "react";
+import { type ComponentRef, type RefObject, useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import ViewShot from "react-native-view-shot";
@@ -59,7 +59,7 @@ function storyPresentation(props: Props, t: TFunction): StoryPresentation {
   };
 }
 
-function useSessionShareExport(shotRef: RefObject<ViewShot | null>, t: TFunction) {
+function useSessionShareExport(shotRef: RefObject<ComponentRef<typeof ViewShot> | null>, t: TFunction) {
   const [busy, setBusy] = useState(false);
   const captureAndShare = useCallback(async () => {
     setBusy(true);
@@ -163,7 +163,7 @@ function SessionSharePreview({
 
 export function SessionShareImageModal(props: Props) {
   const { t } = useTranslation();
-  const shotRef = useRef<ViewShot | null>(null);
+  const shotRef = useRef<ComponentRef<typeof ViewShot> | null>(null);
   const [template, setTemplate] = useState<ShareTemplateId>("gradient");
   const { busy, captureAndShare } = useSessionShareExport(shotRef, t);
   const presentation = storyPresentation(props, t);

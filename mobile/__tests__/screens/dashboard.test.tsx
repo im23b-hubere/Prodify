@@ -143,19 +143,6 @@ jest.mock("../../components/streak/StreakBreakModal", () => ({
     return React.createElement(View);
   },
 }));
-jest.mock("../../components/ui/ScreenHeader", () => ({
-  ScreenHeader: ({
-    titleNode,
-    actionNode,
-  }: {
-    titleNode?: React.ReactNode;
-    actionNode?: React.ReactNode;
-  }) => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View, null, titleNode, actionNode);
-  },
-}));
 jest.mock("../../components/ui/PrimaryButton", () => ({
   PrimaryButton: ({ label }: { label: string }) => {
     const React = require("react");
@@ -170,13 +157,6 @@ jest.mock("../../components/TutorialOverlay", () => ({
     return React.createElement(View);
   },
 }));
-jest.mock("../../features/dashboard/components/ActiveSessionBlock", () => ({
-  ActiveSessionBlock: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View);
-  },
-}));
 jest.mock("../../features/dashboard/components/DashboardSessionSetupModal", () => ({
   DashboardSessionSetupModal: () => {
     const React = require("react");
@@ -186,16 +166,6 @@ jest.mock("../../features/dashboard/components/DashboardSessionSetupModal", () =
 }));
 jest.mock("../../lib/sessionI18n", () => ({
   sessionTypeLabel: (value: string) => value,
-}));
-
-jest.mock("../../lib/motivationEngine", () => ({
-  generateMotivationMessage: () => "motivation",
-  getTimeBasedGreeting: () => "Hi",
-  getTimeOfDay: () => "morning",
-}));
-
-jest.mock("../../lib/motivationApi", () => ({
-  translateMotivationalMessage: () => "server-motivation",
 }));
 
 jest.mock("../../lib/todayPlanEngine", () => ({

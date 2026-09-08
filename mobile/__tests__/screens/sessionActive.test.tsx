@@ -75,7 +75,7 @@ jest.mock("react-i18next", () => ({
 }));
 
 jest.mock("../../context/AuthContext", () => ({
-  useAuth: () => ({ token: "token-123" }),
+  useAuth: () => ({ token: "token-123", user: { id: 1 } }),
 }));
 
 jest.mock("expo-router", () => ({

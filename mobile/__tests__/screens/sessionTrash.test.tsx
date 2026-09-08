@@ -4,11 +4,19 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import SessionTrashScreen from "../../app/(tabs)/session-trash";
 
 const mockReplace = jest.fn();
+const mockBack = jest.fn();
+const mockCanGoBack = jest.fn(() => true);
 const mockApiJson = jest.fn();
 let mockToken: string | null = "token-123";
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
+jest.mock("expo-haptics", () => ({
+  selectionAsync: jest.fn(() => Promise.resolve()),
+}));
+
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace, back: mockBack, canGoBack: mockCanGoBack }),
   useFocusEffect: () => undefined,
 }));
 
@@ -45,9 +53,10 @@ jest.mock("../../components/ui/ScreenHeader", () => {
   const React = require("react");
   const { Text, View } = require("react-native");
   return {
-    ScreenHeader: ({ title }: { title: string }) => (
+    ScreenHeader: ({ title, actionNode }: { title: string; actionNode?: React.ReactNode }) => (
       <View>
         <Text>{title}</Text>
+        {actionNode}
       </View>
     ),
   };
@@ -57,6 +66,7 @@ describe("SessionTrashScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockToken = "token-123";
+    mockCanGoBack.mockReturnValue(true);
     mockApiJson.mockImplementation((path: string, opts?: { method?: string }) => {
       if (path === "/sessions/trash?limit=50&offset=0") {
         return Promise.resolve([
@@ -155,5 +165,21 @@ describe("SessionTrashScreen", () => {
         token: "token-123",
       }),
     );
+  });
+
+  it("goes back from the header arrow when history exists", async () => {
+    mockCanGoBack.mockReturnValue(true);
+    const { findByLabelText } = render(<SessionTrashScreen />);
+    fireEvent.press(await findByLabelText("sessionTrash.backA11y"));
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it("replaces to dashboard from the header arrow when there is no history", async () => {
+    mockCanGoBack.mockReturnValue(false);
+    const { findByLabelText } = render(<SessionTrashScreen />);
+    fireEvent.press(await findByLabelText("sessionTrash.backA11y"));
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
+    expect(mockBack).not.toHaveBeenCalled();
   });
 });

@@ -9,7 +9,7 @@ appId: com.prodify.app
 - tapOn:
     id: "sign-in-button"
 - extendedWaitUntil:
-    visible: "App access|Skip for now \\(dev\\)|START SESSION"
+    visible: "App access|Skip for now \\(dev\\)|Start session|START SESSION"
     timeout: 180000
 - runFlow:
     when:
@@ -28,4 +28,4 @@ appId: com.prodify.app
     visible:
       id: "dashboard-start-session"
     timeout: 90000
-- assertVisible: "START SESSION"
+- assertVisible: "Start session"

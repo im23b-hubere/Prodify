@@ -41,9 +41,24 @@ module.exports = ({ config }) => {
     throw new Error("EXPO_PUBLIC_SENTRY_DSN must be a real DSN for production EAS builds.");
   }
 
+  const updatesEnabled = appEnv === "production" || appEnv === "staging";
+  const isEasBuild = process.env.EAS_BUILD === "true";
+  const plugins = [...(appJson.expo.plugins ?? [])];
+  if (isEasBuild && !plugins.includes("expo-dev-client")) {
+    plugins.push("expo-dev-client");
+  }
+
   return {
     ...appJson.expo,
     ...config,
+    // Expo Go matches `exposdk:57.0.0`. `appVersion` (`1.0.1`) is only for EAS OTA.
+    runtimeVersion:
+      updatesEnabled || isEasBuild ? { policy: "appVersion" } : { policy: "sdkVersion" },
+    updates: {
+      ...appJson.expo.updates,
+      enabled: updatesEnabled,
+    },
+    plugins,
     extra: {
       ...appJson.expo.extra,
       ...config.extra,

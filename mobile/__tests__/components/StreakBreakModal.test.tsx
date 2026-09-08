@@ -16,22 +16,6 @@ jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Error: "Error" },
 }));
 
-jest.mock("expo-av", () => ({
-  Audio: {
-    setAudioModeAsync: jest.fn(() => Promise.resolve()),
-    Sound: {
-      createAsync: jest.fn(() =>
-        Promise.resolve({
-          sound: {
-            unloadAsync: jest.fn(() => Promise.resolve()),
-            stopAsync: jest.fn(() => Promise.resolve()),
-          },
-        }),
-      ),
-    },
-  },
-}));
-
 jest.mock("lottie-react-native", () => {
   const React = require("react");
   const { View } = require("react-native");

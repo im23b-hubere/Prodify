@@ -1,6 +1,6 @@
 import * as Sharing from "expo-sharing";
 import type { TFunction } from "i18next";
-import { useCallback, useRef, useState } from "react";
+import { type ComponentRef, useCallback, useRef, useState } from "react";
 import { Share } from "react-native";
 import ViewShot from "react-native-view-shot";
 
@@ -24,7 +24,7 @@ export function useWeeklyRecapSharing({
 }) {
   const [shareBusy, setShareBusy] = useState(false);
   const [shareTemplate, setShareTemplate] = useState<WeeklyShareTemplateId>("gradient");
-  const shotRef = useRef<ViewShot | null>(null);
+  const shotRef = useRef<ComponentRef<typeof ViewShot> | null>(null);
   const shareText = useCallback(() => {
     const payload = buildWeeklySharePayload(t, review, stats, displaySessions, displayHours);
     Share.share(payload.url ? payload : { message: payload.message }).catch(() => undefined);

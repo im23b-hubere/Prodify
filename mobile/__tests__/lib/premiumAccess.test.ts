@@ -7,6 +7,7 @@ jest.mock("../../lib/e2eMode", () => ({
 }));
 
 jest.mock("../../lib/devBillingBypass", () => ({
+  isExpoGoDevRuntime: () => false,
   isDevBillingBypassActive: jest.fn(async () => false),
 }));
 

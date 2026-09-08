@@ -1,4 +1,3 @@
-import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import { Tabs } from "expo-router";
 import { BarChart3, LayoutGrid, UserRound, Users } from "lucide-react-native";
 import type { ComponentPropsWithoutRef } from "react";
@@ -16,8 +15,8 @@ const MAIN_TABS = [
 
 type PressableProps = ComponentPropsWithoutRef<typeof Pressable>;
 
-function TabBarButton({ testID, ...props }: BottomTabBarButtonProps & { testID: string }) {
-  return <Pressable {...(props as PressableProps)} testID={testID} accessibilityRole="button" />;
+function TabBarButton({ testID, ...props }: PressableProps & { testID: string }) {
+  return <Pressable {...props} testID={testID} accessibilityRole="button" />;
 }
 
 export function MainTabs() {
@@ -49,7 +48,9 @@ export function MainTabs() {
           name={name}
           options={{
             title: t(titleKey),
-            tabBarButton: (props) => <TabBarButton {...props} testID={testID} />,
+            tabBarButton: (props) => (
+              <TabBarButton {...(props as PressableProps)} testID={testID} />
+            ),
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.tabIconWrap}>
                 <View style={focused ? styles.activeDot : styles.dotSpacer} />

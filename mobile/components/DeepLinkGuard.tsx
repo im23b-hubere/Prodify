@@ -7,6 +7,7 @@ import {
   deepLinkRequiresAuth,
   extractDeepLinkPath,
   isAllowedDeepLinkPath,
+  isExpoDevClientLaunchUrl,
   toRoutableHref,
 } from "../lib/deepLinkGuard";
 import { isE2eBootstrapDeepLink, parseE2eBootstrapDeepLink } from "../lib/e2eBootstrapDeepLink";
@@ -25,6 +26,7 @@ export function DeepLinkGuard() {
 
   useEffect(() => {
     const handleDeepLink = ({ url }: { url: string }) => {
+      if (isExpoDevClientLaunchUrl(url)) return;
       if (isE2eBootstrapDeepLink(url)) {
         const creds = parseE2eBootstrapDeepLink(url);
         if (creds) {

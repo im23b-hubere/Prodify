@@ -94,7 +94,7 @@ export const sessionSetupStyles = StyleSheet.create({
     justifyContent: "center",
   },
   typePatternLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.95,
   },
   typeRow: {
@@ -123,7 +123,7 @@ export const sessionSetupStyles = StyleSheet.create({
     borderWidth: 1,
   },
   patternRoot: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "center",
   },
   patternBeatRow: {

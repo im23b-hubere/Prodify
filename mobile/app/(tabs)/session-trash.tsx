@@ -1,5 +1,6 @@
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { Trash2 } from "lucide-react-native";
+import { ArrowLeft, RotateCcw, Trash2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
@@ -14,6 +15,7 @@ import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { pressFeedbackStyle } from "../../components/ui/pressFeedback";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -22,7 +24,36 @@ function formatDate(iso: string) {
   });
 }
 
+function formatDurationCompact(totalSeconds: number): string {
+  const safe = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? totalSeconds : 0;
+  const mins = Math.max(1, Math.round(safe / 60));
+  if (mins < 60) return `${mins} min`;
+  const hours = Math.floor(mins / 60);
+  const remainder = mins % 60;
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}
+
 type TrashController = ReturnType<typeof useSessionTrash>;
+
+function SessionTrashBackButton({
+  accessibilityLabel,
+  onPress,
+}: {
+  accessibilityLabel: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={8}
+      style={({ pressed }) => [styles.backBtn, pressFeedbackStyle(pressed, "light")]}
+      onPress={onPress}
+    >
+      <ArrowLeft color={colors.textPrimary} size={20} />
+    </Pressable>
+  );
+}
 
 function SessionTrashRow({
   session,
@@ -34,23 +65,32 @@ function SessionTrashRow({
   t: TFunction;
 }) {
   const restoring = controller.busyId === session.id;
+  const duration = formatDurationCompact(session.duration_seconds ?? 0);
   return (
     <View style={styles.row}>
+      <View style={styles.accent} />
       <View style={styles.rowCopy}>
         <Text style={styles.rowTitle}>{sessionTypeLabel(String(session.session_type), t)}</Text>
-        <Text style={styles.rowMeta}>{formatDate(session.started_at)}</Text>
+        <Text style={styles.rowMeta}>
+          {formatDate(session.started_at)} · {duration}
+        </Text>
       </View>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t("sessionTrash.restore")}
+        accessibilityState={{ disabled: restoring, busy: restoring }}
         style={({ pressed }) => [
           styles.restoreBtn,
           pressed && styles.pressed,
           restoring && styles.disabled,
         ]}
-        onPress={() => void controller.restore(session.id)}
+        onPress={() => {
+          Haptics.selectionAsync().catch(() => undefined);
+          void controller.restore(session.id);
+        }}
         disabled={restoring}
       >
+        <RotateCcw color={colors.primary} size={14} />
         <Text style={styles.restoreLabel}>
           {t(restoring ? "sessionTrash.restoring" : "sessionTrash.restore")}
         </Text>
@@ -81,20 +121,14 @@ function SessionTrashList({ controller, t }: { controller: TrashController; t: T
             {t(controller.loadingMore ? "sessionTrash.loadingMore" : "sessionTrash.loadMore")}
           </Text>
         </Pressable>
-      ) : null}
+      ) : (
+        <View style={styles.footerSpacer} />
+      )}
     </>
   );
 }
 
-function SessionTrashContent({
-  controller,
-  t,
-  goBack,
-}: {
-  controller: TrashController;
-  t: TFunction;
-  goBack: () => void;
-}) {
+function SessionTrashContent({ controller, t }: { controller: TrashController; t: TFunction }) {
   const stableEmpty = !controller.loading && !controller.error && controller.sessions.length === 0;
   return (
     <>
@@ -114,8 +148,6 @@ function SessionTrashContent({
           iconNode={<Trash2 color={colors.primary} size={40} />}
           title={t("sessionTrash.emptyTitle")}
           message={t("sessionTrash.emptyBody")}
-          secondaryActionLabel={t("sessionFeedback.backToDashboard")}
-          onSecondaryAction={goBack}
         />
       ) : (
         <SessionTrashList controller={controller} t={t} />
@@ -135,7 +167,14 @@ export default function SessionTrashScreen() {
     loadMoreFailed: t("sessionTrash.loadMoreFailed"),
     restoreFailed: t("sessionTrash.restoreFailed"),
   });
-  const goBack = () => router.replace("/(tabs)/dashboard");
+  const goBack = () => {
+    Haptics.selectionAsync().catch(() => undefined);
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/(tabs)/dashboard");
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -152,10 +191,14 @@ export default function SessionTrashScreen() {
         <ScreenHeader
           title={t("sessionTrash.title")}
           subtitle={t("sessionTrash.subtitle")}
-          actionLabel={t("sessionFeedback.backToDashboard")}
-          onActionPress={goBack}
+          actionNode={
+            <SessionTrashBackButton
+              accessibilityLabel={t("sessionTrash.backA11y")}
+              onPress={goBack}
+            />
+          }
         />
-        <SessionTrashContent controller={controller} t={t} goBack={goBack} />
+        <SessionTrashContent controller={controller} t={t} />
       </ScrollView>
     </SafeAreaView>
   );

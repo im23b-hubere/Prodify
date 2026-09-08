@@ -3,7 +3,6 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "../../../context/AuthContext";
-import { readOnboardingComplete } from "../../../lib/postAuthNavigation";
 import { registrationErrorMessage } from "../authErrorMessage";
 import { resolveRegistrationCredentials } from "../registerCredentials";
 
@@ -46,8 +45,7 @@ export function useRegisterForm(t: TFunction) {
     try {
       const { credentials } = result;
       await signUp(credentials.email, credentials.username, credentials.password);
-      const onboarded = await readOnboardingComplete();
-      if (pendingPaywall || onboarded) {
+      if (pendingPaywall) {
         router.replace({
           pathname: "/paywall",
           params: { source: "post_auth", variant: paywallVariant },

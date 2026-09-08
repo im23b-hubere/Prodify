@@ -11,6 +11,10 @@ jest.mock("../../lib/e2eMode", () => ({
   isE2eModeEnabled: () => false,
 }));
 
+jest.mock("expo-constants", () => ({
+  appOwnership: null,
+}));
+
 jest.mock("react-native-purchases", () => ({
   __esModule: true,
   default: {

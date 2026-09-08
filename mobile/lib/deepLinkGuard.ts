@@ -53,9 +53,25 @@ export function normalizeIncomingPath(path: string | null | undefined): string {
  * - `prodify:///dashboard` (path-only) is supported.
  * - HTTPS / universal links: pathname segments only (web host ignored).
  */
+const APP_SCHEMES = new Set(["prodify", "prodify-dev"]);
+
+/** Metro launcher URL from `npx expo start` — must not be treated as an in-app route. */
+export function isExpoDevClientLaunchUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (/expo-development-client/i.test(trimmed)) return true;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.hostname.toLowerCase() === "expo-development-client";
+  } catch {
+    return false;
+  }
+}
+
 export function extractDeepLinkPath(url: string): string {
   const trimmed = url.trim();
   if (!trimmed) return "";
+  if (isExpoDevClientLaunchUrl(trimmed)) return "";
 
   try {
     const u = new URL(trimmed);
@@ -63,7 +79,7 @@ export function extractDeepLinkPath(url: string): string {
     const host = (u.hostname || "").trim();
     const pathPart = (u.pathname || "").replace(/^\/+|\/+$/g, "");
 
-    if (scheme === "prodify") {
+    if (APP_SCHEMES.has(scheme)) {
       if (host && pathPart) return normalizeIncomingPath(`${host}/${pathPart}`);
       if (host) return normalizeIncomingPath(host);
       if (pathPart) return normalizeIncomingPath(pathPart);

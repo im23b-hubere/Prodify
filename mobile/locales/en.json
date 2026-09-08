@@ -877,7 +877,8 @@
     "emptyBody": "Deleted sessions show up here. Restore any session you removed by mistake.",
     "empty": "Trash is empty.",
     "restore": "Restore",
-    "restoring": "…",
+    "restoring": "Restoring…",
+    "backA11y": "Go back",
     "loadMore": "Load more",
     "loadingMore": "Loading…",
     "loadFailed": "Failed to load trash",
@@ -957,8 +958,6 @@
     "weekStripThisWeek": "This week",
     "weekStripLastWeek": "Last week",
     "weekStripPagerA11y": "Weekly activity. Swipe to see previous weeks.",
-    "heyUser": "Hey, {{name}}",
-    "heyPrefix": "Hey,",
     "liveLabel": "Live",
     "spark": {
       "morning": "Morning clarity. One session sets the week.",
@@ -1338,22 +1337,7 @@
     "todayUnstoppable": "{{count}} sessions today — unstoppable.",
     "fallback": "Let's create something amazing."
   },
-  "todayProgress": {
-    "title": "Today",
-    "sessions": "Sessions",
-    "minutes": "Minutes",
-    "compactSummary": "Today · {{sessions}} sessions · {{minutes}} min",
-    "weekGoal": "{{current}} / {{goal}} sessions this week",
-    "weekOnly": "{{count}} sessions this week"
-  },
   "todayPlan": {
-    "title": "Today's Plan",
-    "cta": "Start suggested session",
-    "status": {
-      "on_track": "On track",
-      "off_track": "Off track",
-      "ahead": "Ahead"
-    },
     "recommendation": {
       "offTrackOne": "Do 1 x {{minutes}} min focused session today to get back on track.",
       "offTrackMany": "Do {{sessions}} short sessions today to close the gap.",
@@ -1361,14 +1345,6 @@
       "onTrack": "Stay on target: finish 1 x {{minutes}} min focused session today.",
       "ahead": "You're ahead - lock in 1 focused {{minutes}} min session to keep momentum.",
       "fallback": "Do one focused {{minutes}} min session today."
-    },
-    "preview": "After completing today's plan: {{pct}}% of weekly goal secured · {{state}}",
-    "shortSessionsHint_one": "{{count}} short session this week (<{{min}} min) does not count toward goal progress.",
-    "shortSessionsHint_other": "{{count}} short sessions this week (<{{min}} min) do not count toward goal progress.",
-    "adjustedTargetHint": "First week adjustment active: {{adjusted}} sessions this week (from {{original}}).",
-    "previewState": {
-      "backOnTrack": "back on track",
-      "progress": "strong progress"
     }
   },
   "forecast": {
@@ -1386,12 +1362,7 @@
     "hitByDay": "If you keep this pace, you'll hit your goal by {{day}}."
   },
   "sessionStarter": {
-    "title": "Start session",
-    "customize": "Customize session"
-  },
-  "motivationCard": {
-    "sessionsToday_one": "{{count}} session today — keep going",
-    "sessionsToday_other": "{{count}} sessions today — keep going"
+    "title": "Start session"
   },
   "streakHistory": {
     "title": "Streak history",

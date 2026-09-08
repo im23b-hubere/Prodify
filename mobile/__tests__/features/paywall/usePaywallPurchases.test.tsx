@@ -1,7 +1,8 @@
 import { act, renderHook } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
-import { syncEntitlement } from "../../../lib/billing";
+import { seedEntitlementCache, syncEntitlement } from "../../../lib/billing";
+import { setDevBillingBypass } from "../../../lib/devBillingBypass";
 import {
   getRevenueCatCustomerInfo,
   purchaseRevenueCatPackage,
@@ -19,6 +20,7 @@ jest.mock("../../../lib/billing", () => ({
 }));
 
 jest.mock("../../../lib/devBillingBypass", () => ({
+  isExpoGoDevRuntime: () => false,
   setDevBillingBypass: jest.fn(),
 }));
 
@@ -136,4 +138,31 @@ it("reports a completed restore when no subscription is active", async () => {
     "paywall.alerts.restoreCompleteTitle",
     "paywall.alerts.restoreCompleteNone",
   );
+});
+
+it("unlocks locally in Expo Go preview instead of calling the store", async () => {
+  const finalizeUnlock = jest.fn().mockResolvedValue(undefined);
+  const refreshUser = jest.fn().mockResolvedValue(undefined);
+  const requestExit = jest.fn();
+  const { result } = renderHook(() =>
+    usePaywallPurchases({
+      token: "token",
+      appUserId: "42",
+      previewMode: true,
+      finalizeUnlock,
+      refreshUser,
+      requestExit,
+      resolveExitAfterUnlock: () => "dashboard",
+    }),
+  );
+
+  await act(async () => {
+    await result.current.purchasePackage(null);
+  });
+
+  expect(setDevBillingBypass).toHaveBeenCalledWith(true);
+  expect(seedEntitlementCache).toHaveBeenCalled();
+  expect(requestExit).toHaveBeenCalledWith("dashboard");
+  expect(purchaseRevenueCatPackage).not.toHaveBeenCalled();
+  expect(Alert.alert).not.toHaveBeenCalled();
 });

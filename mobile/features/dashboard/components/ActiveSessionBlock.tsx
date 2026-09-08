@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   pulse: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(255,61,0,0.12)",
   },
   liveRow: {
