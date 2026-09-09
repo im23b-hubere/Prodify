@@ -23,7 +23,6 @@ export type StatsFilter = {
 export type StatsSummaryView = {
   hours: string;
   sessions: string;
-  avgSession: string;
   streak: number;
   bestStreak: number;
   delta: number | null;

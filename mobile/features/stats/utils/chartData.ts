@@ -1,7 +1,7 @@
 import { formatIsoDateShortLocal, weekdayLetterFromIsoDay } from "../../../lib/sessionTime";
 import type { SessionStatsDto } from "../../../types/session";
 import type { BarPoint, StatsPeriod, StatsSummaryView } from "../types";
-import { formatStatsDuration, localStatsDateKey } from "./format";
+import { localStatsDateKey } from "./format";
 
 export function buildStatsSummary(stats: SessionStatsDto | null): StatsSummaryView {
   const s = stats?.summary;
@@ -9,7 +9,6 @@ export function buildStatsSummary(stats: SessionStatsDto | null): StatsSummaryVi
     return {
       hours: "0h",
       sessions: "0",
-      avgSession: "0m",
       streak: 0,
       bestStreak: 0,
       delta: null,
@@ -20,7 +19,6 @@ export function buildStatsSummary(stats: SessionStatsDto | null): StatsSummaryVi
   return {
     hours: `${hours}h`,
     sessions: String(s.total_sessions),
-    avgSession: formatStatsDuration(s.avg_session_seconds),
     streak: s.current_streak_days,
     bestStreak: s.best_streak_days,
     delta: s.hours_delta_vs_prior_period,

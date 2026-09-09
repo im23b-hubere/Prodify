@@ -60,7 +60,6 @@ describe("stats summary utils", () => {
     ).toEqual({
       hours: "1.0h",
       sessions: "2",
-      avgSession: "30m",
       streak: 3,
       bestStreak: 5,
       delta: 1.1,
