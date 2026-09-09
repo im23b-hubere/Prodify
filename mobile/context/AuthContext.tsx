@@ -1,4 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   ApiError,
@@ -8,17 +16,12 @@ import {
   warmApi,
 } from "../lib/client";
 import i18n from "../lib/i18n";
-import {
-  clearTokenPair,
-  readAccessToken,
-  readRefreshToken,
-  writeTokenPair,
-} from "../lib/authTokenStorage";
+import { readAccessToken, readRefreshToken, writeTokenPair } from "../lib/authTokenStorage";
 import { isE2eModeEnabled } from "../lib/e2eMode";
 import { setNotificationUserContext } from "../lib/notificationInbox";
-import { cancelWeeklyRecapScheduled } from "../lib/weeklyRecapNotifications";
 import { syncPendingWeeklyGoal } from "../lib/onboardingGoalSync";
 import { configureRevenueCat } from "../lib/revenuecat";
+import { useLatestRef } from "../hooks/useLatestRef";
 import {
   authenticate,
   clearLocalAuthSession,
@@ -54,15 +57,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<AuthenticatedUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const dropLocalSessionRef = useRef<Promise<void> | null>(null);
 
   // A profile only means anything while a token backs it. Deriving the exposed user keeps that
   // invariant structural instead of relying on every sign-out path to remember to clear it.
   const user = token ? profile : null;
+  const sessionUserIdRef = useLatestRef(profile?.id);
 
   const persistTokenPair = useCallback(async (pair: TokenPair) => {
     await writeTokenPair(pair.access_token, pair.refresh_token);
     setToken(pair.access_token);
   }, []);
+
+  const dropLocalSession = useCallback(async () => {
+    if (dropLocalSessionRef.current) return dropLocalSessionRef.current;
+    const previousUserId = sessionUserIdRef.current;
+    const run = (async () => {
+      await clearLocalAuthSession(previousUserId, false);
+      setToken(null);
+      setProfile(null);
+    })();
+    dropLocalSessionRef.current = run.finally(() => {
+      dropLocalSessionRef.current = null;
+    });
+    return dropLocalSessionRef.current;
+  }, [sessionUserIdRef]);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,15 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [persistTokenPair]);
 
   useEffect(() => {
-    setApiUnauthorizedHandler(async () => {
-      await clearTokenPair();
-      await cancelWeeklyRecapScheduled().catch(() => undefined);
-      await setNotificationUserContext(null).catch(() => undefined);
-      setToken(null);
-      setProfile(null);
-    });
+    setApiUnauthorizedHandler(() => dropLocalSession());
     return () => setApiUnauthorizedHandler(null);
-  }, []);
+  }, [dropLocalSession]);
 
   const refreshUser = useCallback(async () => {
     // No token means the derived user is already null, so there is nothing to fetch or clear.
@@ -108,14 +121,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await setNotificationUserContext(me.id, me.created_at ?? null).catch(() => undefined);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
-        setProfile(null);
-        await clearTokenPair();
-        await setNotificationUserContext(null).catch(() => undefined);
-        setToken(null);
+        await dropLocalSession();
       }
       /* Transient errors: keep existing user snapshot to avoid blanking the profile UI. */
     }
-  }, [token]);
+  }, [dropLocalSession, token]);
 
   useEffect(() => {
     if (!hydrated || !token) return;
@@ -171,15 +181,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    const previousUserId = user?.id;
     const t = (token?.trim() || (await readAccessToken())) ?? "";
     if (t) {
       await apiJson("/auth/logout", { method: "POST", token: t }).catch(() => undefined);
     }
-    await clearLocalAuthSession(previousUserId, false);
-    setToken(null);
-    setProfile(null);
-  }, [token, user?.id]);
+    await dropLocalSession();
+  }, [dropLocalSession, token]);
 
   const deleteAccount = useCallback(async () => {
     const previousUserId = user?.id;

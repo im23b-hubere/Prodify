@@ -2,7 +2,8 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import React from "react";
 
 import { AuthProvider, useAuth } from "../../context/AuthContext";
-import { apiJson } from "../../lib/client";
+import { ApiError, apiJson, setApiUnauthorizedHandler } from "../../lib/client";
+import { clearLocalAuthSession } from "../../lib/authSessionService";
 import { readAccessToken } from "../../lib/authTokenStorage";
 
 jest.mock("../../lib/client", () => ({
@@ -34,10 +35,6 @@ jest.mock("../../lib/authSessionService", () => ({
 
 jest.mock("../../lib/notificationInbox", () => ({
   setNotificationUserContext: jest.fn().mockResolvedValue(undefined),
-}));
-
-jest.mock("../../lib/weeklyRecapNotifications", () => ({
-  cancelWeeklyRecapScheduled: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("../../lib/onboardingGoalSync", () => ({
@@ -92,6 +89,7 @@ describe("AuthProvider user exposure", () => {
       await result.current.signOut();
     });
 
+    expect(clearLocalAuthSession).toHaveBeenCalledWith(ACCOUNT.id, false);
     expect(result.current.token).toBeNull();
     expect(result.current.user).toBeNull();
   });
@@ -104,5 +102,38 @@ describe("AuthProvider user exposure", () => {
     await waitFor(() => expect(result.current.hydrated).toBe(true));
     expect(result.current.user).toBeNull();
     expect(mockApiJson).not.toHaveBeenCalled();
+  });
+
+  it("clears the full local session when the API reports unauthorized", async () => {
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.user).toEqual(ACCOUNT));
+
+    const handler = (setApiUnauthorizedHandler as jest.Mock).mock.calls
+      .map((call) => call[0])
+      .filter(Boolean)
+      .at(-1) as () => Promise<void>;
+
+    await act(async () => {
+      await handler();
+    });
+
+    expect(clearLocalAuthSession).toHaveBeenCalledWith(ACCOUNT.id, false);
+    expect(result.current.token).toBeNull();
+    expect(result.current.user).toBeNull();
+  });
+
+  it("clears the full local session when /auth/me returns 401", async () => {
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.user).toEqual(ACCOUNT));
+
+    mockApiJson.mockRejectedValueOnce(new ApiError(401));
+
+    await act(async () => {
+      await result.current.refreshUser();
+    });
+
+    expect(clearLocalAuthSession).toHaveBeenCalledWith(ACCOUNT.id, false);
+    expect(result.current.token).toBeNull();
+    expect(result.current.user).toBeNull();
   });
 });

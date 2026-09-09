@@ -13,7 +13,7 @@ export { apiMultipart } from "./apiMultipart";
 export type { ApiMultipartOptions } from "./apiMultipart";
 export type { ApiOptions } from "./apiRequestTypes";
 
-/** Set from AuthProvider: clear stored token when an authenticated request returns 401. */
+/** Set from AuthProvider: drop the local session after an authenticated request returns 401. */
 let unauthorizedHandler: (() => void | Promise<void>) | null = null;
 let apiWarmup: Promise<void> | null = null;
 
