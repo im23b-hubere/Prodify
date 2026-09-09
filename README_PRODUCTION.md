@@ -39,7 +39,6 @@ This document is the production-focused companion to `README.md`.
 
 ## Quality and Security References
 
-- Test results: `TEST_RESULTS.md`
 - Security policy and checks: `SECURITY.md`
 - CI/CD overview: `CI_CD_GUIDE.md`
 - Monitoring runbook: `MONITORING_GUIDE.md`
@@ -47,6 +46,6 @@ This document is the production-focused companion to `README.md`.
 ## Release Operations
 
 - Deployment steps: `DEPLOYMENT_CHECKLIST.md`
-- Final decision template: `FINAL_CHECKLIST.md`
+- Entitlements: `docs/premium-entitlements.md`
 - Rollback process: `ROLLBACK_PLAN.md`
 - Store submission checklist: `STORE_SUBMISSION_CHECKLIST.md`

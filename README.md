@@ -151,7 +151,7 @@ Vor PR:
 ## Deployment
 
 - Production deployment runbook: `DEPLOYMENT_CHECKLIST.md`
-- Final release gate status: `FINAL_CHECKLIST.md`
+- Entitlements (subscription-only): `docs/premium-entitlements.md`
 
 ## Sentry Setup (Production)
 

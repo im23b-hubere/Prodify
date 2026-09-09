@@ -88,7 +88,7 @@ function useSessionShareExport(shotRef: RefObject<ComponentRef<typeof ViewShot> 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } catch (caught) {
       const message =
-        caught instanceof Error ? caught.message : t("stats.shareProofUnexpectedBody");
+        caught instanceof Error ? caught.message : t("sessionInsights.shareUnexpectedBody");
       Alert.alert(t("sessionInsights.shareFailedTitle"), message);
     } finally {
       setBusy(false);

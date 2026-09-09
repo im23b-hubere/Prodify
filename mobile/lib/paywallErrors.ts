@@ -19,10 +19,6 @@ export function resolveOfferingsLoadError(error: unknown, fallback: string): str
   return message.trim() || fallback;
 }
 
-export function isOfferingsErrorKey(value: string): boolean {
-  return value === "appleProductsUnavailable";
-}
-
 /** True when the user dismissed the App Store purchase sheet (not a real failure). */
 export function isPurchaseCancelledError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;

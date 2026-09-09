@@ -29,13 +29,6 @@ export type StreakOverviewDto = {
   tagline: string;
 };
 
-export type StreakFreezeResultDto = {
-  success: boolean;
-  message: string;
-  current_streak: number;
-  freezes_remaining: number;
-};
-
 export type StreakRunDto = {
   start_date: string;
   end_date: string;

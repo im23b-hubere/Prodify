@@ -1,10 +1,7 @@
-import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import type { ReliabilityScoreDto } from "../../../types/friends";
 import type { ProgressionDto } from "../../../types/outcomes";
 import type { SessionStatsDto } from "../../../types/session";
 import type { StreakMilestonesDto } from "../../../types/streak";
-
-export { useAuthScopedReset as useProfileAuthReset };
 
 type HeatmapDay = { date: string; seconds: number; intensity: number };
 

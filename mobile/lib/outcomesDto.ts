@@ -1,7 +1,6 @@
 import type {
   EntitlementDto,
   GoalForecastDto,
-  OutputMetricsDto,
   ProgressionDto,
   WeeklyReviewDto,
 } from "../types/outcomes";
@@ -86,22 +85,4 @@ export function tryParseProgressionDto(raw: unknown): ProgressionDto | null {
 function finiteMetric(value: unknown): number | null {
   const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-export function tryParseOutputMetricsDto(raw: unknown): OutputMetricsDto | null {
-  if (!isObj(raw)) return null;
-  const trend = raw.productivity_trend;
-  if (trend !== "up" && trend !== "down" && trend !== "stable") return null;
-  return {
-    tracks_finished_30d: Number(raw.tracks_finished_30d ?? 0),
-    avg_completion_time_days: Number(raw.avg_completion_time_days ?? 0),
-    release_consistency: Number(raw.release_consistency ?? 0),
-    productivity_trend: trend,
-    vs_previous_month: Number(raw.vs_previous_month ?? 0),
-    days_using: Number(raw.days_using ?? 0),
-    completed_tracks: Number(raw.completed_tracks ?? 0),
-    consistency_improvement: Number(raw.consistency_improvement ?? 0),
-    output_increase: Number(raw.output_increase ?? 0),
-    baseline_tracks_30d: Number(raw.baseline_tracks_30d ?? 0),
-  };
 }

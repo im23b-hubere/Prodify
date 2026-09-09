@@ -30,10 +30,6 @@ jest.mock("../../../features/stats/components/StatsRecordsSection", () => ({
 jest.mock("../../../features/stats/components/StatsHeatmapSection", () => ({
   StatsHeatmapSection: () => null,
 }));
-jest.mock("../../../features/weeklyRecap/WeeklyRecapTeaser", () => ({
-  WeeklyRecapTeaser: () => null,
-  isWeeklyRecapTeaserVisible: () => false,
-}));
 
 function createController(
   overrides: Partial<StatsScreenController> = {},

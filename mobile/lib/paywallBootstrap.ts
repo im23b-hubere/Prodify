@@ -92,11 +92,3 @@ export async function bootstrapPaywall(input: BootstrapInput): Promise<PaywallBo
     message: input.t(`paywall.errors.${errorKey}`),
   };
 }
-
-export function resolveBootstrapErrorMessage(error: unknown, t: TFunction): string {
-  const resolved = resolveOfferingsLoadError(error, t("paywall.errors.loadOfferings"));
-  if (resolved === "appleProductsUnavailable") {
-    return t("paywall.errors.appleProductsUnavailable");
-  }
-  return resolved;
-}

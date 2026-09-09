@@ -142,10 +142,6 @@ export async function leaveChallenge(token: string, challengeId: number): Promis
   });
 }
 
-export async function fetchCommitments(token: string): Promise<CommitmentDto[]> {
-  return apiJson<CommitmentDto[]>("/social/commitments", { token });
-}
-
 export async function fetchBuddyRisk(token: string): Promise<BuddyRiskDto> {
   return apiJson<BuddyRiskDto>("/social/buddy/risk", { token });
 }

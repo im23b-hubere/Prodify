@@ -100,10 +100,3 @@ export function toHref(route: ResolvedRoute): Href {
   }
   return route.pathname as Href;
 }
-
-// Backward-compatible helper used by legacy auth flow tests.
-export async function getPostLoginHref(): Promise<HrefPath> {
-  if (isE2eModeEnabled()) return "/(tabs)/dashboard";
-  const onboardingComplete = await readOnboardingComplete();
-  return onboardingComplete ? "/(tabs)/dashboard" : "/onboarding";
-}

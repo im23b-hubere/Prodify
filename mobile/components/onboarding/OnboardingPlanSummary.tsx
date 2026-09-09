@@ -1,4 +1,4 @@
-import { Calendar, Music2, Sparkles, Target } from "lucide-react-native";
+import { Music2, Sparkles } from "lucide-react-native";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
@@ -56,8 +56,6 @@ export function OnboardingPlanSummary({ rows, insight, accessLine }: Props) {
     </View>
   );
 }
-
-export const planRowIcons = { Music2, Target, Calendar };
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.md },

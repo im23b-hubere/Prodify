@@ -178,12 +178,6 @@ export function isPremiumActive(info: CustomerInfo): boolean {
   return Boolean(getActiveEntitlement(info));
 }
 
-export function isTrialActive(info: CustomerInfo): boolean {
-  const ent = getActiveEntitlement(info);
-  if (!ent) return false;
-  return ent.periodType === "trial";
-}
-
 export function activeEntitlementExpiration(info: CustomerInfo): string | null {
   const ent = getActiveEntitlement(info);
   return ent?.expirationDate ?? null;

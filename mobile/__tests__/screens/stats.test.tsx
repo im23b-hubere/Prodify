@@ -145,15 +145,6 @@ jest.mock("../../components/progression/ProgressionBarCard", () => ({
   },
 }));
 
-jest.mock("../../features/weeklyRecap/WeeklyRecapTeaser", () => ({
-  WeeklyRecapTeaser: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View, { testID: "weekly-recap-teaser" });
-  },
-  isWeeklyRecapTeaserVisible: () => false,
-}));
-
 const { apiJson } = jest.requireMock("../../lib/client") as {
   apiJson: jest.Mock;
 };
