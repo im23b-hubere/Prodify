@@ -1,6 +1,6 @@
 # Prodify Store Metadata (en-US)
 
-Last updated: 2026-06-10  
+Last updated: 2026-09-09  
 App version: 1.0.1  
 Bundle/package: `com.prodify.app`
 
@@ -24,16 +24,16 @@ See `docs/premium-entitlements.md`.
 ## Apple App Store
 
 - **Subtitle (max 30):** Studio sessions & streaks
-- **Promotional text (max 170):** Track studio sessions, protect your streak, and stay on pace with weekly goals. Premium adds early warnings and a Sunday review so your time in the studio compounds.
+- **Promotional text (max 170):** Track studio sessions, protect your streak, and stay on pace with weekly goals. Forecast and a Sunday review help your studio time compound.
 - **Keywords (comma-separated):** music production,beat maker,streak tracker,focus timer,studio sessions,producer workflow,creative habit,weekly goals,accountability
 
 ### Description
 
 Prodify helps music producers stay consistent in the studio.
 
-Track every session with type, duration, mood, and notes. Set a weekly session target, build streaks, and see your progress in Stats. A subscription also includes forecast warnings when you slip off pace and a Sunday weekly review with insights for next week.
+Track every session with type, duration, mood, and notes. Set a weekly session target, build streaks, and see your progress in Stats. Forecast warnings and a Sunday weekly review are part of the same subscription.
 
-**Included with a subscription:**
+**The subscription includes:**
 - Structured studio sessions and streaks
 - Weekly session goals and progress in Stats
 - Performance trends, heatmap, and personal records
@@ -53,7 +53,7 @@ Prodify is your focused companion for consistent music production.
 
 Log every studio session, build streaks, and set weekly targets in Stats. See trends, heatmap activity, and personal records as you improve.
 
-**Premium** unlocks early warnings on your weekly pace and a Sunday review that turns sessions into a clear plan for next week. Buddy check-ins, challenges, and shared goals help you stay accountable with your crew.
+A subscription is required. It includes forecast warnings on your weekly pace, a Sunday review that turns sessions into a plan for next week, plus buddy check-ins, challenges, and shared goals with your crew.
 
 Whether you are beat making, mixing, recording, or learning, Prodify keeps your workflow structured and your momentum alive.
 
@@ -66,18 +66,9 @@ Whether you are beat making, mixing, recording, or learning, Prodify keeps your 
 
 ## Release Notes (1.0.1)
 
-- Stats **Your Week** — set weekly targets, studio-day strip, optional share with friends
-- Dashboard focused on today's action; week overview lives in Stats
-- Premium gates aligned: forecast + weekly review for subscribers
-- Friend challenges with real session sync and challenge management
-- Together tab: buddy + challenges social view
+Welcome to Prodify 1.0. A subscription unlocks the full app.
 
-## Release Notes (1.0.1)
-
-Welcome to Prodify 1.0.
-
-- Track sessions with clear structure and focus
-- Build streaks and weekly consistency
-- View progress insights and KPI summaries
-- Use reminders and accountability features
-- Improved stability, security hardening, and production readiness
+- Track studio sessions with type, duration, and notes
+- Weekly targets, streaks, Stats, forecast, and Sunday review
+- Friends, buddy check-ins, and challenges
+- Improved stability and subscription-only access throughout

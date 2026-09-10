@@ -1,6 +1,6 @@
 # Store Submission Checklist
 
-Date: 2026-07-07
+Date: 2026-09-09
 
 ## Identity and Versioning
 
@@ -24,16 +24,16 @@ Reference files:
 
 ## Listing Content
 
-- [x] App description (EN) drafted
+- [x] App description (EN) drafted (subscription-only, 2026-09-09)
 - [x] App description (DE) drafted/reviewed (`mobile/store/STORE_METADATA.de-DE.md`)
 - [x] Keywords drafted
-- [x] Promo text drafted
+- [x] Promo text drafted (no freemium “Premium adds…” wording)
 
 ## Legal and Support
 
-- [x] Privacy Policy URL present (`https://prodify.app/privacy`)
-- [x] Terms URL present (`https://prodify.app/terms`)
-- [x] Support URL/email present
+- [x] Privacy Policy URL present (`https://prodify-api-46b1.onrender.com/legal/privacy`)
+- [x] Terms URL present (`https://prodify-api-46b1.onrender.com/legal/terms`)
+- [x] Support URL/email present (`https://prodify-api-46b1.onrender.com/legal/support`, fallback `support@prodify.app`)
 - [ ] Age rating questionnaire completed in App Store Connect
 
 ## Compliance
