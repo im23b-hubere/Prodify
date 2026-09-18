@@ -146,11 +146,6 @@ Vor PR:
 ## App Store Preparation
 
 - Store metadata source of truth: `mobile/store/STORE_METADATA.en-US.md`
-- Screenshot production plan: `mobile/store/SCREENSHOT_PLAN.en-US.md`
-
-## Deployment
-
-- Production deployment runbook: `DEPLOYMENT_CHECKLIST.md`
 - Entitlements (subscription-only): `docs/premium-entitlements.md`
 
 ## Sentry Setup (Production)

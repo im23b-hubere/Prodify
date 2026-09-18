@@ -4,7 +4,6 @@ Zuletzt aktualisiert: 2026-09-09
 App-Version: 1.0.1  
 Bundle/Package: `com.prodify.app`
 
-Screenshot-Spezifikation: `mobile/store/SCREENSHOT_PLAN.en-US.md` (Screenshots weiterhin en-US empfohlen)  
 Entitlements: `docs/premium-entitlements.md`
 
 ## Positionierung
