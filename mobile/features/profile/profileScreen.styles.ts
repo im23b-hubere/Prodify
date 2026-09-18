@@ -101,6 +101,9 @@ export const profileScreenStyles = StyleSheet.create({
     ...typography.subheadline,
   },
   sectionLinkBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.xs,
   },

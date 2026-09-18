@@ -6,6 +6,7 @@ import type { ProfileScreenController } from "../../../features/profile/hooks/us
 
 jest.mock("lucide-react-native", () => ({
   AlertCircle: () => null,
+  ChevronRight: () => null,
 }));
 
 jest.mock("react-native-safe-area-context", () => {

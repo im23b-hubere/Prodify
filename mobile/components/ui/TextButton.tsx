@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
+import { ChevronRight } from "lucide-react-native";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, spacing, typography, ui } from "../../constants/theme";
@@ -11,6 +12,10 @@ type TextButtonProps = {
   accessibilityLabel?: string;
   subdued?: boolean;
   disabled?: boolean;
+  /** Trailing chevron for links that open another screen. */
+  chevron?: boolean;
+  /** Brand-colored label, for links that should stand out. */
+  accent?: boolean;
 };
 
 export function TextButton({
@@ -19,7 +24,10 @@ export function TextButton({
   accessibilityLabel,
   subdued,
   disabled,
+  chevron,
+  accent,
 }: TextButtonProps) {
+  const tint = accent ? colors.primary : colors.textSecondary;
   return (
     <Pressable
       disabled={disabled}
@@ -36,8 +44,9 @@ export function TextButton({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: Boolean(disabled) }}
     >
-      <View style={[styles.inner, subdued && styles.innerSubdued]}>
-        <Text style={[styles.label, subdued && styles.labelSubdued]}>{label}</Text>
+      <View style={[styles.inner, subdued && styles.innerSubdued, chevron && styles.innerRow]}>
+        <Text style={[styles.label, subdued && styles.labelSubdued, { color: tint }]}>{label}</Text>
+        {chevron ? <ChevronRight color={tint} size={14} strokeWidth={2.4} /> : null}
       </View>
     </Pressable>
   );
@@ -54,6 +63,7 @@ const styles = StyleSheet.create({
   innerSubdued: {
     minHeight: 44,
   },
+  innerRow: { flexDirection: "row", gap: 2 },
   label: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,

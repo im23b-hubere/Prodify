@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react-native";
 import { Image, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -89,6 +90,8 @@ function ProfileIdentity({ controller }: Props) {
           label={t("profile.viewPublicProfile")}
           onPress={navigation.openPublicProfile}
           subdued
+          chevron
+          accent
         />
       ) : null}
     </View>
@@ -141,6 +144,7 @@ function ProducerSnapshot({ controller }: Props) {
           onPress={navigation.openStats}
         >
           <Text style={styles.sectionLink}>{t("profile.fullStatsLink")}</Text>
+          <ChevronRight color={colors.primary} size={13} strokeWidth={2.4} />
         </Pressable>
       </View>
       <View style={styles.statsGrid}>
