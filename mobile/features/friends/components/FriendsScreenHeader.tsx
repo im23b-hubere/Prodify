@@ -3,6 +3,7 @@ import { UserPlus } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { RankHudChip } from "../../../components/progression/RankHudChip";
+import { SegmentedControl } from "../../../components/ui/SegmentedControl";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
 
@@ -49,45 +50,15 @@ export function FriendsScreenHeader({
           </Pressable>
         </View>
       </View>
-      <View style={styles.screenSegmentedRow}>
-        <Pressable
-          style={[
-            styles.screenSegmentChip,
-            sectionTab === "overview" && styles.screenSegmentChipActive,
+      <View style={styles.segmentWrap}>
+        <SegmentedControl
+          options={[
+            { value: "overview", label: tabOverviewLabel },
+            { value: "tools", label: tabToolsLabel },
           ]}
-          accessibilityRole="button"
-          accessibilityState={{ selected: sectionTab === "overview" }}
-          accessibilityLabel={tabOverviewLabel}
-          onPress={() => onChangeTab("overview")}
-        >
-          <Text
-            style={[
-              styles.screenSegmentText,
-              sectionTab === "overview" && styles.screenSegmentTextActive,
-            ]}
-          >
-            {tabOverviewLabel}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[
-            styles.screenSegmentChip,
-            sectionTab === "tools" && styles.screenSegmentChipActive,
-          ]}
-          accessibilityRole="button"
-          accessibilityState={{ selected: sectionTab === "tools" }}
-          accessibilityLabel={tabToolsLabel}
-          onPress={() => onChangeTab("tools")}
-        >
-          <Text
-            style={[
-              styles.screenSegmentText,
-              sectionTab === "tools" && styles.screenSegmentTextActive,
-            ]}
-          >
-            {tabToolsLabel}
-          </Text>
-        </Pressable>
+          value={sectionTab}
+          onChange={onChangeTab}
+        />
       </View>
     </>
   );
@@ -126,30 +97,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  screenSegmentedRow: {
-    flexDirection: "row",
-    gap: spacing.xs,
-    marginBottom: spacing.lg,
-  },
-  screenSegmentChip: {
-    flex: 1,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-  },
-  screenSegmentChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: "rgba(255,61,0,0.16)",
-  },
-  screenSegmentText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  screenSegmentTextActive: {
-    color: colors.textPrimary,
-  },
+  segmentWrap: { marginBottom: spacing.lg },
 });

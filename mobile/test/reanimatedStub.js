@@ -42,5 +42,6 @@ module.exports = {
     bezier: () => identity,
   },
   interpolate: () => 0,
+  interpolateColor: (_value, _input, output) => output[0],
   Extrapolation: { CLAMP: "clamp" },
 };
