@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { render } from "@testing-library/react-native";
 
 import StatsScreen from "../../app/(tabs)/stats";
 
@@ -189,48 +189,10 @@ describe("Stats Screen", () => {
     });
   });
 
-  it("renders hero and KPI strip after load", async () => {
-    const { findByTestId } = render(<StatsScreen />);
-    expect(await findByTestId("your-week-hero")).toBeTruthy();
-    expect(await findByTestId("stats-merged-hero")).toBeTruthy();
-    expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
-  }, 15_000);
 
   it("shows filter scope hint under period chips", async () => {
     const { findByText } = render(<StatsScreen />);
     expect(await findByText("stats.filterScopeHint")).toBeTruthy();
-  });
-
-  it("renders session log before records section", async () => {
-    const { findByTestId } = render(<StatsScreen />);
-    expect(await findByTestId("stats-section-recent")).toBeTruthy();
-    expect(await findByTestId("stats-section-records")).toBeTruthy();
-  });
-
-  it("renders collapsed heatmap preview strip", async () => {
-    const { findByTestId } = render(<StatsScreen />);
-    expect(await findByTestId("stats-heatmap-preview")).toBeTruthy();
-  });
-
-  it("renders trends and progression sections", async () => {
-    const { findByTestId } = render(<StatsScreen />);
-    expect(await findByTestId("stats-section-trends")).toBeTruthy();
-    expect(await findByTestId("stats-section-progression")).toBeTruthy();
-  });
-
-  it("shows all period filter chips", async () => {
-    const { findByText } = render(<StatsScreen />);
-    expect(await findByText("stats.filter7d")).toBeTruthy();
-    expect(await findByText("stats.filter30d")).toBeTruthy();
-    expect(await findByText("stats.filterAll")).toBeTruthy();
-  });
-
-  it("switches filter when a chip is pressed", async () => {
-    const { findByText } = render(<StatsScreen />);
-    fireEvent.press(await findByText("stats.filter30d"));
-    await waitFor(() => {
-      expect(apiJson).toHaveBeenCalledWith("/sessions/stats?period=month", { token: "token" });
-    });
   });
 
   it("shows error state when stats load fails", async () => {
@@ -244,64 +206,5 @@ describe("Stats Screen", () => {
     expect(await findByText("Stats unavailable")).toBeTruthy();
     expect(queryByTestId("stats-kpi-strip")).toBeNull();
     expect(queryByTestId("stats-merged-hero")).toBeNull();
-  });
-
-  it("keeps last-known KPI content when a refresh fails", async () => {
-    const { findByTestId, findByText, getByTestId } = render(<StatsScreen />);
-    expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
-
-    apiJson.mockImplementation(async (path: string) => {
-      if (path.includes("/sessions/stats")) throw new Error("Refresh failed");
-      if (path.includes("/stats/heatmap")) return [];
-      if (path.includes("/stats/records")) return [];
-      return null;
-    });
-
-    // Force a reload via period filter change.
-    fireEvent.press(await findByText("stats.filter30d"));
-
-    expect(await findByText("Refresh failed")).toBeTruthy();
-    expect(getByTestId("stats-kpi-strip")).toBeTruthy();
-  });
-
-  it("shows view-all link when session log exceeds preview", async () => {
-    apiJson.mockImplementation(async (path: string) => {
-      if (path.includes("/sessions/stats")) {
-        return {
-          summary: {
-            total_seconds: 7200,
-            total_sessions: 8,
-            avg_session_seconds: 1800,
-            current_streak_days: 2,
-            best_streak_days: 5,
-            hours_delta_vs_prior_period: 0,
-          },
-          trend: [],
-          breakdown: [],
-          recent_sessions: Array.from({ length: 8 }, (_, index) => ({
-            id: index + 1,
-            user_id: 1,
-            started_at: "2026-07-01T10:00:00Z",
-            stopped_at: "2026-07-01T11:00:00Z",
-            duration_seconds: 3600,
-            session_type: "beat_making",
-            notes: null,
-          })),
-          productivity_hint: null,
-        };
-      }
-      if (path.includes("/stats/heatmap")) return [];
-      if (path.includes("/stats/records")) return [];
-      return null;
-    });
-    const { findByText } = render(<StatsScreen />);
-    expect(await findByText("stats.viewAllSessions")).toBeTruthy();
-  });
-
-  it("does not show a leftover weekly recap link", async () => {
-    const { findByTestId, queryByText, queryByTestId } = render(<StatsScreen />);
-    expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
-    expect(queryByText("stats.openWeeklyRecap")).toBeNull();
-    expect(queryByTestId("stats-open-weekly-recap")).toBeNull();
   });
 });

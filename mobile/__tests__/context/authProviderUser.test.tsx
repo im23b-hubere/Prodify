@@ -126,7 +126,7 @@ describe("AuthProvider user exposure", () => {
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.user).toEqual(ACCOUNT));
 
-    mockApiJson.mockRejectedValueOnce(new ApiError(401));
+    mockApiJson.mockRejectedValueOnce(new ApiError(401, "Unauthorized"));
 
     await act(async () => {
       await result.current.refreshUser();
