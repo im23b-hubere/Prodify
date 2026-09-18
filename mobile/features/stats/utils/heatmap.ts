@@ -38,9 +38,15 @@ export function buildHeatmapWeekGrid(days: HeatmapDay[]): HeatmapWeekColumn[] {
   if (days.length === 0) return [];
   const byDate = new Map(days.map((day) => [day.date, day]));
   const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
-  const first = parseDayKey(sorted[0].date);
+  const oldest = parseDayKey(sorted[0].date);
   const last = parseDayKey(sorted[sorted.length - 1].date);
-  if (!first || !last) return [];
+  if (!oldest || !last) return [];
+
+  // Start at the first Monday so the oldest column isn't a lone partial week (e.g. only a Sunday).
+  // Data that fits inside a single partial week is still shown as-is.
+  const firstMonday = new Date(oldest);
+  firstMonday.setDate(firstMonday.getDate() + ((8 - firstMonday.getDay()) % 7));
+  const first = firstMonday <= last ? firstMonday : oldest;
 
   const start = new Date(first);
   const mondayOffset = start.getDay() === 0 ? -6 : 1 - start.getDay();

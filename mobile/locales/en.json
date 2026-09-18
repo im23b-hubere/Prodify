@@ -1527,7 +1527,6 @@
     "aheadYou_other": "You're {{count}} days ahead — don't slow down."
   },
   "profileHeatmap": {
-    "title": "Activity (90 days)",
     "empty": "No studio time logged in this window yet.",
     "a11y": "{{date}}: {{seconds}} seconds"
   },

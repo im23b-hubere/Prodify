@@ -37,6 +37,37 @@ describe("stats heatmap utils", () => {
     expect(grid[0]?.days).toHaveLength(7);
     expect(grid.flatMap((week) => week.days).some((day) => day?.date === "2026-07-02")).toBe(true);
   });
+
+  it("starts the grid at the first full week instead of a lone leading day", () => {
+    // 90 days ending Friday 2026-09-18 start on Sunday 2026-06-21.
+    const ninetyDays = Array.from({ length: 90 }, (_, index) => {
+      const date = new Date(2026, 5, 21 + index);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      return { date: key, seconds: 0, intensity: 0 };
+    });
+
+    const grid = buildHeatmapWeekGrid(ninetyDays);
+
+    expect(grid[0]?.days.map((day) => day?.date)).toEqual([
+      "2026-06-22",
+      "2026-06-23",
+      "2026-06-24",
+      "2026-06-25",
+      "2026-06-26",
+      "2026-06-27",
+      "2026-06-28",
+    ]);
+    expect(grid).toHaveLength(13);
+    expect(grid[12]?.days.map((day) => day?.date ?? null)).toEqual([
+      "2026-09-14",
+      "2026-09-15",
+      "2026-09-16",
+      "2026-09-17",
+      "2026-09-18",
+      null,
+      null,
+    ]);
+  });
 });
 
 describe("stats summary utils", () => {
