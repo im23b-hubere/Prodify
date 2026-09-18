@@ -1,8 +1,9 @@
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ErrorState } from "../../../components/states/ErrorState";
 import { LoadingState } from "../../../components/states/LoadingState";
+import { BackButton } from "../../../components/ui/BackButton";
 import type { SessionDetailController } from "../hooks/useSessionDetailController";
 import { sessionDetailStyles as styles } from "../sessionDetail.styles";
 
@@ -10,6 +11,7 @@ export function SessionDetailLoading({ controller }: { controller: SessionDetail
   const { t } = controller;
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      <BackButton onPress={controller.goBack} style={styles.loadingBack} />
       <View style={styles.loadingWrap}>
         {controller.error ? (
           <ErrorState
@@ -21,22 +23,7 @@ export function SessionDetailLoading({ controller }: { controller: SessionDetail
         ) : (
           <LoadingState message={t("sessionDetail.loading")} />
         )}
-        <BackButton controller={controller} />
       </View>
     </SafeAreaView>
-  );
-}
-
-export function BackButton({ controller }: { controller: SessionDetailController }) {
-  return (
-    <Pressable
-      style={styles.backRow}
-      accessibilityRole="button"
-      accessibilityLabel={controller.t("sessionDetail.back")}
-      onPress={controller.goBack}
-    >
-      <Text style={styles.backChevron}>‹</Text>
-      <Text style={styles.backText}>{controller.t("sessionDetail.back")}</Text>
-    </Pressable>
   );
 }

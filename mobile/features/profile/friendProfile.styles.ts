@@ -6,7 +6,7 @@ import { colors, radii, spacing, typography } from "../../constants/theme";
 export const friendProfileStyles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   topRow: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
-  back: { color: colors.secondary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  back: { alignSelf: "flex-start" },
   scroll: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
   bootWrap: {
     flex: 1,

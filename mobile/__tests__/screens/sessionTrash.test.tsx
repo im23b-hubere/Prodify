@@ -170,7 +170,7 @@ describe("SessionTrashScreen", () => {
   it("goes back from the header arrow when history exists", async () => {
     mockCanGoBack.mockReturnValue(true);
     const { findByLabelText } = render(<SessionTrashScreen />);
-    fireEvent.press(await findByLabelText("sessionTrash.backA11y"));
+    fireEvent.press(await findByLabelText("common.goBack"));
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalled();
   });
@@ -178,7 +178,7 @@ describe("SessionTrashScreen", () => {
   it("replaces to dashboard from the header arrow when there is no history", async () => {
     mockCanGoBack.mockReturnValue(false);
     const { findByLabelText } = render(<SessionTrashScreen />);
-    fireEvent.press(await findByLabelText("sessionTrash.backA11y"));
+    fireEvent.press(await findByLabelText("common.goBack"));
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
     expect(mockBack).not.toHaveBeenCalled();
   });

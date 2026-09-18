@@ -1,13 +1,12 @@
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ScreenTopBar } from "../../components/ui/ScreenTopBar";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
-import { colors } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { ChallengeDetailContent } from "../../features/challenges/components/ChallengeDetailContent";
 import { ChallengeEditModal } from "../../features/challenges/components/ChallengeEditModal";
@@ -37,19 +36,7 @@ function ChallengeDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.topBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("challengeDetail.backA11y")}
-          hitSlop={12}
-          style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
-          onPress={goBack}
-        >
-          <ChevronLeft color={colors.textPrimary} size={26} />
-        </Pressable>
-        <Text style={styles.topTitle}>{t("challengeDetail.title")}</Text>
-        <View style={styles.backSpacer} />
-      </View>
+      <ScreenTopBar title={t("challengeDetail.title")} onBack={goBack} style={styles.topBar} />
 
       {detail.loading && !detail.refreshing ? (
         <View style={styles.centerState}>

@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
-import { ScreenHeader } from "../ui/ScreenHeader";
+import { ScreenTopBar } from "../ui/ScreenTopBar";
 
 type LegalDoc = "privacy" | "terms";
 
@@ -40,14 +40,12 @@ export function LegalDocumentScreen({ doc }: { doc: LegalDoc }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.headerWrap}>
-        <ScreenHeader
-          title={t(`${prefix}.screenTitle`)}
-          subtitle={t(`${prefix}.updated`)}
-          actionLabel={t("common.back")}
-          onActionPress={goBack}
-        />
-      </View>
+      <ScreenTopBar
+        title={t(`${prefix}.screenTitle`)}
+        subtitle={t(`${prefix}.updated`)}
+        onBack={goBack}
+        style={styles.header}
+      />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.intro}>{t(`${prefix}.intro`)}</Text>
         {blocks.length > 0 ? (
@@ -69,10 +67,7 @@ export function LegalDocumentScreen({ doc }: { doc: LegalDoc }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  headerWrap: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-  },
+  header: { paddingHorizontal: spacing.md, paddingTop: spacing.xs, paddingBottom: spacing.sm },
   scroll: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,

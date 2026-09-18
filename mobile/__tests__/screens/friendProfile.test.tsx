@@ -62,7 +62,7 @@ describe("FriendProfileScreen loading UX", () => {
   it("shows loading state with back navigation while profile loads", async () => {
     const { getByText } = render(<FriendProfileScreen />);
 
-    expect(getByText("friendProfile.backArrow")).toBeTruthy();
+    expect(getByText("common.backArrow")).toBeTruthy();
     await waitFor(() => {
       expect(getByText("friendProfile.loadingProfile")).toBeTruthy();
     });

@@ -10,16 +10,7 @@ export const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     flexGrow: 1,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.round,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  topBar: { paddingTop: spacing.xs, marginBottom: ui.stackGap },
   row: {
     flexDirection: "row",
     alignItems: "center",

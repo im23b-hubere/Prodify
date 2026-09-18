@@ -7,6 +7,7 @@ import { ProfileHeader } from "../../../components/profile/ProfileHeader";
 import { StreakComparison } from "../../../components/profile/StreakComparison";
 import { ErrorState } from "../../../components/states/ErrorState";
 import { LoadingState } from "../../../components/states/LoadingState";
+import { BackButton } from "../../../components/ui/BackButton";
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { colors } from "../../../constants/theme";
 import { profilePictureUrl, translatedWeekday } from "../friendProfilePresentation";
@@ -70,25 +71,11 @@ export function FriendProfileView({ state, onBack, onOpenFriends, onOpenSession 
   );
 }
 
-function ProfileBackButton({ onPress }: { onPress: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t("friendProfile.backA11y")}
-      onPress={onPress}
-      hitSlop={12}
-    >
-      <Text style={styles.back}>{t("friendProfile.backArrow")}</Text>
-    </Pressable>
-  );
-}
-
 function ProfileShell({ children, onBack }: { children: React.ReactNode; onBack: () => void }) {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.topRow}>
-        <ProfileBackButton onPress={onBack} />
+        <BackButton onPress={onBack} style={styles.back} />
       </View>
       <View style={styles.bootWrap}>{children}</View>
     </SafeAreaView>
@@ -100,7 +87,7 @@ function ReadyProfile({ state, onBack, onOpenFriends, onOpenSession }: Props) {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.topRow}>
-        <ProfileBackButton onPress={onBack} />
+        <BackButton onPress={onBack} style={styles.back} />
       </View>
       <ScrollView
         contentContainerStyle={styles.scroll}

@@ -6,7 +6,7 @@ import { ProgressionOverviewSkeleton } from "../../../components/progression/Pro
 import { ErrorState } from "../../../components/states/ErrorState";
 import { AppCard } from "../../../components/ui/AppCard";
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
-import { ScreenHeader } from "../../../components/ui/ScreenHeader";
+import { ScreenTopBar } from "../../../components/ui/ScreenTopBar";
 import { colors } from "../../../constants/theme";
 import type { ProgressionLevelItem } from "../../../lib/progressionLevelCatalog";
 import { groupLevelsByTier } from "../../../lib/progressionLevelTheme";
@@ -34,11 +34,10 @@ export function ProgressionOverviewContent(props: Props) {
       contentContainerStyle={styles.content}
       refreshControl={progressionRefreshControl(props)}
     >
-      <ScreenHeader
+      <ScreenTopBar
         title={t("progression.overviewTitle")}
         subtitle={t("progression.overviewSubtitle")}
-        actionLabel={props.backLabel}
-        onActionPress={props.onBack}
+        onBack={props.onBack}
       />
       <ProgressionFeedback {...props} />
       <ProgressionHero

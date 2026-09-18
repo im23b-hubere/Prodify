@@ -5,32 +5,7 @@ import { colors, radii, spacing, typography, ui } from "../../constants/theme";
 
 export const challengeDetailStyles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.round,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  backSpacer: { width: 40 },
-  topTitle: {
-    flex: 1,
-    textAlign: "center",
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.sectionTitle,
-  },
-  pressed: { opacity: 0.88 },
+  topBar: { paddingHorizontal: spacing.md, paddingTop: spacing.xs, paddingBottom: spacing.sm },
   centerState: {
     flex: 1,
     paddingHorizontal: spacing.md,

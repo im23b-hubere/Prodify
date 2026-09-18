@@ -5,24 +5,7 @@ import { colors, radii, spacing, typography } from "../../constants/theme";
 
 export const notificationStyles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-  },
-  back: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.body },
-  title: {
-    flex: 1,
-    marginHorizontal: spacing.sm,
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.headline,
-    textAlign: "center",
-  },
-  headerSpacer: { width: 56 },
+  header: { paddingHorizontal: spacing.md, paddingTop: spacing.xs, paddingBottom: spacing.sm },
   filterRow: {
     flexDirection: "row",
     flexWrap: "wrap",

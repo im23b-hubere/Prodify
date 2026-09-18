@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmptyState } from "../../components/states/EmptyState";
 import { LoadingState } from "../../components/states/LoadingState";
+import { ScreenTopBar } from "../../components/ui/ScreenTopBar";
 import { colors } from "../../constants/theme";
 import type { InboxItem } from "../../lib/notificationInbox";
 import { NotificationFilterBar } from "./NotificationFilterBar";
@@ -31,15 +32,7 @@ export function NotificationInboxView({ inbox, onBack, onOpenAction }: Props) {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.header}>
-        <Pressable onPress={onBack} hitSlop={12}>
-          <Text style={styles.back}>{t("notificationsUi.back")}</Text>
-        </Pressable>
-        <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-          {t("notificationsUi.title")}
-        </Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenTopBar title={t("notificationsUi.title")} onBack={onBack} style={styles.header} />
       <NotificationFilterBar selected={inbox.filter} onSelect={inbox.setFilter} />
       <ServerSyncError error={inbox.token ? inbox.serverSyncError : null} onRetry={inbox.load} />
       {inbox.initialLoading && !inbox.refreshing ? (

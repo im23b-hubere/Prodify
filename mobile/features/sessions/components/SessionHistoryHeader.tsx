@@ -1,9 +1,8 @@
-import { ChevronLeft } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 
 import { ErrorState } from "../../../components/states/ErrorState";
 import { LoadingState } from "../../../components/states/LoadingState";
-import { colors } from "../../../constants/theme";
+import { ScreenTopBar } from "../../../components/ui/ScreenTopBar";
 import type { SessionHistoryController } from "../hooks/useSessionHistoryController";
 import { styles } from "../sessionHistory.styles";
 
@@ -11,20 +10,11 @@ export function SessionHistoryHeader({ controller }: { controller: SessionHistor
   const { t } = controller;
   return (
     <View style={styles.headerBlock}>
-      <View style={styles.topBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("sessionHistory.backA11y")}
-          onPress={controller.goBack}
-          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.88 }]}
-        >
-          <ChevronLeft color={colors.textPrimary} size={26} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>{t("sessionHistory.title")}</Text>
-          <Text style={styles.subtitle}>{controller.subtitle}</Text>
-        </View>
-      </View>
+      <ScreenTopBar
+        title={t("sessionHistory.title")}
+        subtitle={controller.subtitle}
+        onBack={controller.goBack}
+      />
       <View style={styles.headerLinks}>
         <Pressable
           onPress={controller.openTrash}

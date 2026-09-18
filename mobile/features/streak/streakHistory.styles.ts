@@ -5,30 +5,7 @@ import { colors, radii, shadows, spacing, typography } from "../../constants/the
 
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radii.md,
-  },
-  pressed: { opacity: 0.85 },
-  title: {
-    flex: 1,
-    textAlign: "center",
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.headline,
-  },
-  backSpacer: { width: 40 },
+  topBar: { paddingHorizontal: spacing.md, paddingTop: spacing.xs, paddingBottom: spacing.sm },
   scroll: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
   cardTitle: {
     color: colors.textPrimary,

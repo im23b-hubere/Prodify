@@ -179,6 +179,8 @@
   },
   "common": {
     "back": "Back",
+    "backArrow": "‹ Back",
+    "goBack": "Go back",
     "cancel": "Cancel",
     "continue": "Continue",
     "ok": "OK",
@@ -829,7 +831,6 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "inProgress": "In progress",
-    "back": "Back",
     "start": "Start",
     "end": "End",
     "mood": "Mood",
@@ -878,7 +879,6 @@
     "empty": "Trash is empty.",
     "restore": "Restore",
     "restoring": "Restoring…",
-    "backA11y": "Go back",
     "loadMore": "Load more",
     "loadingMore": "Loading…",
     "loadFailed": "Failed to load trash",
@@ -900,11 +900,9 @@
     "deleteFailed": "Failed to delete session",
     "emptyTitle": "No sessions yet",
     "emptyBody": "Complete a session and it will show up here.",
-    "viewTrash": "Trash",
-    "backA11y": "Go back"
+    "viewTrash": "Trash"
   },
   "notificationsUi": {
-    "back": "‹ Back",
     "title": "Notifications",
     "filterAll": "All",
     "catStreak": "Streak",
@@ -1280,7 +1278,6 @@
   },
   "streakHistory": {
     "title": "Streak history",
-    "backA11y": "Back",
     "loading": "Loading runs…",
     "loadError": "Could not load streak history.",
     "retry": "Try again",
@@ -1304,7 +1301,6 @@
     "loadingOwnProfile": "Loading your public profile…",
     "couldNotLoadTitle": "Couldn't load profile",
     "back": "Back",
-    "backArrow": "← Back",
     "backA11y": "Go back",
     "retry": "Try again",
     "lockedTitle": "Friend profile",
@@ -1558,7 +1554,6 @@
   },
   "challengeDetail": {
     "title": "Challenge",
-    "backA11y": "Back to Together",
     "loading": "Loading challenge…",
     "loadError": "Could not load this challenge.",
     "loadErrorTitle": "Challenge unavailable",

@@ -2,13 +2,14 @@ import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView } from "reac
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionShareImageModal } from "../../../components/session/SessionShareImageModal";
+import { BackButton } from "../../../components/ui/BackButton";
 import { colors } from "../../../constants/theme";
 import type { SessionDetailController } from "../hooks/useSessionDetailController";
 import { sessionDetailStyles as styles } from "../sessionDetail.styles";
 import { SessionDetailContent } from "./SessionDetailContent";
 import { SessionEditFooter } from "./SessionEditActions";
 import { SessionDetailHero } from "./SessionDetailHero";
-import { BackButton, SessionDetailLoading } from "./SessionDetailStates";
+import { SessionDetailLoading } from "./SessionDetailStates";
 
 export function SessionDetailView({ controller }: { controller: SessionDetailController }) {
   if (!controller.session) return <SessionDetailLoading controller={controller} />;
@@ -41,7 +42,7 @@ export function SessionDetailView({ controller }: { controller: SessionDetailCon
             />
           }
         >
-          <BackButton controller={controller} />
+          <BackButton onPress={controller.goBack} style={styles.backRow} />
           <SessionDetailHero
             t={controller.t}
             session={session}

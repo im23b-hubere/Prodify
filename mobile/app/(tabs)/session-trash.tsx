@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { ArrowLeft, RotateCcw, Trash2 } from "lucide-react-native";
+import { RotateCcw, Trash2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
@@ -14,8 +14,7 @@ import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { EmptyState } from "../../components/states/EmptyState";
 import { ErrorState } from "../../components/states/ErrorState";
 import { LoadingState } from "../../components/states/LoadingState";
-import { ScreenHeader } from "../../components/ui/ScreenHeader";
-import { pressFeedbackStyle } from "../../components/ui/pressFeedback";
+import { ScreenTopBar } from "../../components/ui/ScreenTopBar";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -34,26 +33,6 @@ function formatDurationCompact(totalSeconds: number): string {
 }
 
 type TrashController = ReturnType<typeof useSessionTrash>;
-
-function SessionTrashBackButton({
-  accessibilityLabel,
-  onPress,
-}: {
-  accessibilityLabel: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      hitSlop={8}
-      style={({ pressed }) => [styles.backBtn, pressFeedbackStyle(pressed, "light")]}
-      onPress={onPress}
-    >
-      <ArrowLeft color={colors.textPrimary} size={20} />
-    </Pressable>
-  );
-}
 
 function SessionTrashRow({
   session,
@@ -188,15 +167,11 @@ export default function SessionTrashScreen() {
           />
         }
       >
-        <ScreenHeader
+        <ScreenTopBar
           title={t("sessionTrash.title")}
           subtitle={t("sessionTrash.subtitle")}
-          actionNode={
-            <SessionTrashBackButton
-              accessibilityLabel={t("sessionTrash.backA11y")}
-              onPress={goBack}
-            />
-          }
+          onBack={goBack}
+          style={styles.topBar}
         />
         <SessionTrashContent controller={controller} t={t} />
       </ScrollView>

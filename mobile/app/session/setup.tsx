@@ -5,7 +5,7 @@ import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionSetupForm } from "../../components/session/SessionSetupForm";
-import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { ScreenTopBar } from "../../components/ui/ScreenTopBar";
 import { SESSION_TYPE_IDS, type SessionType } from "../../constants/sessionTypes";
 import { CrashBoundary } from "../../components/ui/CrashBoundary";
 import { colors, spacing, ui } from "../../constants/theme";
@@ -43,11 +43,11 @@ export default function SessionSetupScreen() {
         onRecover={closeSetup}
       >
         <>
-          <ScreenHeader
+          <ScreenTopBar
             title={t("dashboard.newSessionTitle")}
             subtitle={planningMode ? t("sessionSetup.planSubtitle") : null}
-            actionLabel={t("common.cancel")}
-            onActionPress={closeSetup}
+            onBack={closeSetup}
+            style={styles.topBar}
           />
           <SessionSetupForm
             hideTitleRow
@@ -71,4 +71,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: ui.screenPadding / 2,
     paddingTop: spacing.sm,
   },
+  topBar: { paddingHorizontal: spacing.sm, marginBottom: ui.stackGap },
 });

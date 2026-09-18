@@ -28,9 +28,8 @@ export const sessionDetailStyles = StyleSheet.create({
     ...typography.meta,
   },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.lg },
-  backRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: spacing.sm },
-  backChevron: { color: colors.primary, fontSize: 28, lineHeight: 32 },
-  backText: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  backRow: { alignSelf: "flex-start", marginBottom: spacing.sm },
+  loadingBack: { alignSelf: "flex-start", marginLeft: spacing.md, marginTop: spacing.sm },
   mutedNote: { color: colors.textSecondary, ...typography.caption },
   section: {
     borderRadius: radii.md,
