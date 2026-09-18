@@ -27,7 +27,7 @@ export function useRankProgression(enabled = true) {
 
   useEffect(() => {
     if (token && enabled) {
-      prefetchLevelCatalog();
+      prefetchLevelCatalog(token);
     }
   }, [enabled, token]);
 

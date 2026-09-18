@@ -37,8 +37,14 @@ export function parseLevelCatalog(raw: unknown): ProgressionLevelItem[] {
     .sort((a, b) => a.level - b.level);
 }
 
-/** Level XP table is static — cache in memory for the session. */
+/**
+ * Level XP table is static — cache in memory for the session.
+ *
+ * `/progression/levels` sits behind the subscriber gate, so the access token is required
+ * even though the response is identical for every user.
+ */
 export async function fetchLevelCatalog(
+  token: string,
   maxLevel: number = PROGRESSION_NAMED_LEVEL_MAX,
 ): Promise<ProgressionLevelItem[]> {
   const depth = Math.max(1, Math.min(200, Math.floor(maxLevel)));
@@ -51,7 +57,7 @@ export async function fetchLevelCatalog(
     return rows.slice(0, depth);
   }
 
-  catalogInFlight = apiJson<unknown>(`/progression/levels?max_level=${depth}`)
+  catalogInFlight = apiJson<unknown>(`/progression/levels?max_level=${depth}`, { token })
     .then((raw) => {
       const parsed = parseLevelCatalog(raw);
       if (parsed.length > 0) {
@@ -67,8 +73,8 @@ export async function fetchLevelCatalog(
   return catalogInFlight;
 }
 
-export function prefetchLevelCatalog(): void {
-  void fetchLevelCatalog().catch(() => undefined);
+export function prefetchLevelCatalog(token: string): void {
+  void fetchLevelCatalog(token).catch(() => undefined);
 }
 
 export function clearLevelCatalogCache(): void {

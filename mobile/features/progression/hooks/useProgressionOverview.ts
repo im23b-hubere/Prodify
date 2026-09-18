@@ -1,11 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 
-import {
-  fetchLevelCatalog,
-  prefetchLevelCatalog,
-  type ProgressionLevelItem,
-} from "../../../lib/progressionLevelCatalog";
+import { fetchLevelCatalog, type ProgressionLevelItem } from "../../../lib/progressionLevelCatalog";
 import { useLatestRef } from "../../../hooks/useLatestRef";
 import { PROGRESSION_NAMED_LEVEL_MAX } from "../../../lib/progressionLevels";
 import { isScreenDataStale } from "../../../lib/screenDataStale";
@@ -27,7 +23,6 @@ type LoadingControls = {
 function useLoadProgressionOnFocus(load: () => Promise<void>) {
   useFocusEffect(
     useCallback(() => {
-      prefetchLevelCatalog();
       void load();
     }, [load]),
   );
@@ -66,15 +61,17 @@ export function useProgressionOverview(token: string | null, loadErrorMessage: s
         });
         return;
       }
-      prefetchLevelCatalog();
       startLoading(silent, snapshot, { setRefreshing, setLoadingProgression, setLoadingCatalog });
       try {
         const progressionRequest = shouldSync
           ? syncProgression(token, { force: true })
           : fetchProgression(token, { force });
+        // The rank table is supporting detail: losing it must not hide the user's own rank.
         const [nextProgression, catalog] = await Promise.all([
           progressionRequest,
-          fetchLevelCatalog(PROGRESSION_NAMED_LEVEL_MAX),
+          fetchLevelCatalog(token, PROGRESSION_NAMED_LEVEL_MAX).catch(
+            () => [] as ProgressionLevelItem[],
+          ),
         ]);
         setProgression(nextProgression);
         setLevelCatalog(catalog);
