@@ -10,10 +10,7 @@ Automated iOS smoke tests for release candidates.
 | `flows/smoke_test.yaml` | Full smoke: login → session → tabs |
 | `flows/common/smoke_session.yaml` | Session start/stop subflow (testIDs) |
 | `flows/common/smoke_tabs.yaml` | Tab navigation subflow (testIDs) |
-| `flows/full_app_test.yaml` | Extended coverage: smoke + secondary screens + legal |
-| `suites/regression.txt` | Stabilization suite: login smoke → paywall preview → full app (one simulator build) |
 | `flows/common/e2e_login_dashboard.yaml` | Sign in with `TEST_EMAIL` / `TEST_PASSWORD` and wait for dashboard |
-| `flows/login_with_credentials.yaml` | Alias for `common/e2e_login_dashboard.yaml` |
 | `flows/common/dismiss_overlays.yaml` | Dismiss first-run tutorial overlay |
 
 ## Prerequisites
@@ -49,20 +46,6 @@ maestro test \
   -e TEST_EMAIL=test@prodify.app \
   -e TEST_PASSWORD='Test1234!' \
   maestro/flows/smoke_test.yaml
-
-# Full app (macOS + simulator only)
-maestro test \
-  -e TEST_EMAIL=test@prodify.app \
-  -e TEST_PASSWORD='Test1234!' \
-  maestro/flows/full_app_test.yaml
-```
-
-## Windows (no Mac)
-
-Use GitHub Actions instead of local Maestro:
-
-```powershell
-.\scripts\run-agent-device-qa.ps1 -FullApp -Watch
 ```
 
 ## GitHub Actions

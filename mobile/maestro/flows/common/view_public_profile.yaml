@@ -1,7 +1,0 @@
-appId: com.prodify.app
----
-- tapOn: "View public profile"
-- extendedWaitUntil:
-    visible: "e2euser"
-    timeout: 20000
-- tapOn: "Go back"

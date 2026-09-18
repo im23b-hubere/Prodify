@@ -1,5 +1,0 @@
-appId: com.prodify.app
----
-- openLink: ${BOOTSTRAP_LINK}
-- runFlow:
-    file: confirm_deep_link.yaml
