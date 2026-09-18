@@ -22,8 +22,10 @@ jest.mock("expo-router", () => {
   }
   MockTabs.Screen = MockTabScreen;
   return {
+    DarkTheme: { dark: true, colors: {} },
     Redirect: MockRedirect,
     Tabs: MockTabs,
+    ThemeProvider: ({ children }: { children?: React.ReactNode }) => children,
   };
 });
 
