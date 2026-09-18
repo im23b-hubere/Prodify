@@ -124,7 +124,6 @@ export const profileScreenStyles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
-    justifyContent: "space-between",
   },
   reliabilityCard: {
     marginTop: spacing.md,

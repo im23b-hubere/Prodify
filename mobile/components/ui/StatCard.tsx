@@ -34,7 +34,9 @@ export const StatCard = memo(function StatCard({
 
 const styles = StyleSheet.create({
   card: {
-    width: 160,
+    // Two cards per row that share the full width (the basis leaves room for the gap).
+    flexGrow: 1,
+    flexBasis: "40%",
     backgroundColor: colors.surface,
     borderRadius: ui.cardRadius,
     borderWidth: ui.cardBorderWidth,
