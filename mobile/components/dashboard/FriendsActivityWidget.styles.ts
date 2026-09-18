@@ -111,23 +111,21 @@ export const styles = StyleSheet.create({
     ...typography.meta,
     fontFamily: fontFamily.bodyBold,
   },
+  emptyCard: {
+    alignItems: "center",
+    paddingVertical: spacing.lg,
+    gap: spacing.xs,
+  },
+  emptyIcon: { marginBottom: spacing.xs },
   emptyTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
     ...typography.body,
+    textAlign: "center",
   },
   emptySub: {
     color: colors.textSecondary,
     ...typography.meta,
-  },
-  emptyBtn: {
-    alignSelf: "flex-start",
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  emptyBtnTxt: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
+    textAlign: "center",
   },
 });

@@ -10,7 +10,8 @@ const mockOnRefresh = jest.fn().mockResolvedValue(undefined);
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, setParams: jest.fn() }),
+  useLocalSearchParams: () => ({}),
 }));
 
 jest.mock("react-native-safe-area-context", () => {

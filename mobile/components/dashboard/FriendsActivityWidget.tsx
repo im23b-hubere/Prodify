@@ -1,12 +1,14 @@
 import * as Haptics from "expo-haptics";
 import { type Href, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
+import { ChevronDown, ChevronUp, Users } from "lucide-react-native";
 import { memo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { colors } from "../../constants/theme";
+import { AppCard } from "../ui/AppCard";
+import { TextButton } from "../ui/TextButton";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { formatTimeAgo } from "../../lib/timeAgo";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../types/friends";
@@ -49,15 +51,17 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
     setExpanded((current) => !current);
   }, []);
   const leaders = leaderboard.filter((entry) => entry.user_id !== currentUserId).slice(0, 3);
-  const feed = activity.slice(0, 3);
+  // The activity feed also contains your own sessions; those already show under "Recent sessions".
+  const feed = activity.filter((entry) => entry.user_id !== currentUserId).slice(0, 3);
   if (loading) return <LoadingWidget t={t} />;
   if (leaders.length === 0 && feed.length === 0) {
     return (
       <EmptyWidget
         t={t}
+        collapsible={collapsible}
         collapsed={collapsible && !expanded}
-        onExpand={toggleExpanded}
-        onFindFriends={() => navigate(router, "/(tabs)/friends")}
+        onToggle={toggleExpanded}
+        onAddFriends={() => navigate(router, "/(tabs)/friends?addFriend=1" as Href)}
       />
     );
   }
@@ -99,33 +103,45 @@ function LoadingWidget({ t }: { t: TFunction }) {
 
 function EmptyWidget({
   t,
+  collapsible,
   collapsed,
-  onExpand,
-  onFindFriends,
+  onToggle,
+  onAddFriends,
 }: {
   t: TFunction;
+  collapsible: boolean;
   collapsed: boolean;
-  onExpand: () => void;
-  onFindFriends: () => void;
+  onToggle: () => void;
+  onAddFriends: () => void;
 }) {
-  if (collapsed) {
-    return (
-      <View style={styles.wrap} testID="friends-widget-collapsed">
-        <WidgetHeader t={t} collapsible collapsed hasPrimaryAction={false} onToggle={onExpand} />
-      </View>
-    );
-  }
   return (
-    <View style={styles.wrap} testID="friends-widget-empty">
-      <Text style={styles.emptyTitle}>{t("friendsWidget.emptyTitle")}</Text>
-      <Text style={styles.emptySub}>{t("friendsWidget.emptySub")}</Text>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onFindFriends}
-        style={({ pressed }) => [styles.emptyBtn, pressed && { opacity: 0.85 }]}
-      >
-        <Text style={styles.emptyBtnTxt}>{t("friendsWidget.findFriends")}</Text>
-      </Pressable>
+    <View
+      style={styles.wrap}
+      testID={collapsed ? "friends-widget-collapsed" : "friends-widget-empty"}
+    >
+      <WidgetHeader
+        t={t}
+        collapsible={collapsible}
+        collapsed={collapsed}
+        hasPrimaryAction={false}
+        onToggle={onToggle}
+      />
+      {collapsed ? null : (
+        <AppCard style={styles.emptyCard}>
+          <View style={styles.emptyIcon}>
+            <Users color={colors.textSecondary} size={22} strokeWidth={2} />
+          </View>
+          <Text style={styles.emptyTitle}>{t("friendsWidget.emptyTitle")}</Text>
+          <Text style={styles.emptySub}>{t("friendsWidget.emptySub")}</Text>
+          <TextButton
+            label={t("friendsWidget.addFriends")}
+            onPress={onAddFriends}
+            subdued
+            chevron
+            accent
+          />
+        </AppCard>
+      )}
     </View>
   );
 }

@@ -1,5 +1,5 @@
-import { type Href, useRouter } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
@@ -14,6 +14,13 @@ export function useFriendsScreenController() {
   const { token, user } = useAuth();
   const router = useRouter();
   const state = useFriendsScreenState();
+  const { addFriend } = useLocalSearchParams<{ addFriend?: string }>();
+  const { setAddOpen } = state;
+  useEffect(() => {
+    if (addFriend !== "1") return;
+    setAddOpen(true);
+    router.setParams({ addFriend: undefined });
+  }, [addFriend, router, setAddOpen]);
   const periodParam = state.mode === "week" ? "week" : "all";
   const { load, onRefresh } = useFriendsDashboardData({
     token,
