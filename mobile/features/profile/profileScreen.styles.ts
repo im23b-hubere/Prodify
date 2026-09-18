@@ -7,21 +7,17 @@ export const profileScreenStyles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: spacing.xxl },
   skeletonWrap: { gap: spacing.md, marginBottom: spacing.md },
-  skeletonHero: { alignItems: "center", gap: spacing.xs, marginBottom: spacing.sm },
-  skeletonAvatar: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
+  skeletonSectionTitle: { width: 170, height: 20, marginTop: spacing.sm },
   skeletonGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   skeletonStat: {
-    width: "48%",
+    // Same sizing as StatCard so the layout does not jump when data arrives.
+    flexGrow: 1,
+    flexBasis: "40%",
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: spacing.sm,
+    padding: spacing.md,
     gap: spacing.sm,
   },
   skeletonCard: {

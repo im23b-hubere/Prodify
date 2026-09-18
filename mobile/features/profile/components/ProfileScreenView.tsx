@@ -42,19 +42,16 @@ function identityPresentation(controller: ProfileScreenController) {
   };
 }
 
+// Placeholder for the data sections only; the identity header above is real from the start.
 function ProfileSkeleton() {
   return (
     <View style={styles.skeletonWrap}>
-      <View style={styles.skeletonHero}>
-        <View style={styles.skeletonAvatar} />
-        <View style={[styles.skeletonLine, { width: 140, height: 18 }]} />
-        <View style={[styles.skeletonLine, { width: 180, height: 12 }]} />
-      </View>
+      <View style={[styles.skeletonLine, styles.skeletonSectionTitle]} />
       <View style={styles.skeletonGrid}>
         {[0, 1, 2, 3].map((index) => (
           <View key={`profile-sk-${index}`} style={styles.skeletonStat}>
-            <View style={[styles.skeletonLine, { width: "55%", height: 12 }]} />
-            <View style={[styles.skeletonLine, { width: "70%", height: 22 }]} />
+            <View style={[styles.skeletonLine, { width: "40%", height: 22 }]} />
+            <View style={[styles.skeletonLine, { width: "70%", height: 12 }]} />
           </View>
         ))}
       </View>
