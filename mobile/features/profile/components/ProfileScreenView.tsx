@@ -1,4 +1,4 @@
-import { BarChart3, Camera, ChevronRight, Trophy } from "lucide-react-native";
+import { BarChart3, Camera, Trophy } from "lucide-react-native";
 import {
   ActivityIndicator,
   Image,
@@ -11,8 +11,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppFlame, glyphRowStyle } from "../../../components/icons/ProdifyGlyphs";
-import { ActivityHeatmapCard } from "../../../components/profile/ActivityHeatmapCard";
-import { ProgressionBarCard } from "../../../components/progression/ProgressionBarCard";
 import { RankHudChip } from "../../../components/progression/RankHudChip";
 import { ErrorState } from "../../../components/states/ErrorState";
 import { AppCard } from "../../../components/ui/AppCard";
@@ -23,6 +21,7 @@ import { StatCard } from "../../../components/ui/StatCard";
 import { TextButton } from "../../../components/ui/TextButton";
 import { API_BASE_URL } from "../../../constants/api";
 import { colors } from "../../../constants/theme";
+import { StatsHeatmapSection } from "../../stats/components/StatsHeatmapSection";
 import { profileScreenStyles as styles } from "../profileScreen.styles";
 import type { ProfileScreenController } from "../hooks/useProfileScreenController";
 import { ProfileSettingsSection } from "./ProfileSettingsSection";
@@ -137,55 +136,13 @@ function ProfileQuickActions({ controller }: Props) {
   );
 }
 
-function ReliabilityCard({ controller }: Props) {
-  const { t } = controller;
-  const reliability = controller.data.reliability;
-  if (!reliability) return null;
-  const trendKey = {
-    up: "profile.reliabilityTrendUp",
-    down: "profile.reliabilityTrendDown",
-    stable: "profile.reliabilityTrendStable",
-  }[reliability.trend];
-  const rank =
-    typeof reliability.rank_percent === "number"
-      ? t("profile.reliabilityRank", { rank: reliability.rank_percent })
-      : t("profile.reliabilityRankUnavailable");
-  return (
-    <View style={styles.reliabilityCard}>
-      <View style={styles.reliabilityHead}>
-        <Text style={styles.reliabilityLabel}>{t("profile.reliabilityTitle")}</Text>
-        <Text style={styles.reliabilityTrend}>{t(trendKey)}</Text>
-      </View>
-      <Text style={styles.reliabilityScore}>{reliability.score.toFixed(1)}/10</Text>
-      <Text style={styles.reliabilityMeta}>{rank}</Text>
-      <Text style={styles.reliabilityHint}>
-        {t("profile.reliabilityHint", {
-          consistency: Math.round(Number(reliability.consistency_90d) || 0),
-          completion: Math.round(Number(reliability.completion_rate_90d) || 0),
-        })}
-      </Text>
-    </View>
-  );
-}
-
 function ProducerSnapshot({ controller }: Props) {
-  const { t, data, navigation } = controller;
+  const { t, data } = controller;
   const summary = data.stats?.summary;
   if (!summary) return null;
   return (
     <>
-      <View style={styles.sectionHead}>
-        <Text style={styles.sectionTitleInline}>{t("profile.producerSnapshotTitle")}</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("profile.fullStatsLink")}
-          style={({ pressed }) => [styles.sectionLinkBtn, pressed && styles.pressed]}
-          onPress={navigation.openStats}
-        >
-          <Text style={styles.sectionLink}>{t("profile.fullStatsLink")}</Text>
-          <ChevronRight color={colors.primary} size={13} strokeWidth={2.4} />
-        </Pressable>
-      </View>
+      <Text style={styles.sectionTitle}>{t("profile.producerSnapshotTitle")}</Text>
       <View style={styles.statsGrid}>
         <StatCard label={t("profile.totalSessions")} value={summary.total_sessions} />
         <StatCard
@@ -203,10 +160,8 @@ function ProducerSnapshot({ controller }: Props) {
         />
         <StatCard label={t("profile.totalHours")} value={formatHours(summary.total_seconds)} />
       </View>
-      <ReliabilityCard controller={controller} />
-      <ProgressionBarCard progression={data.progression} onPress={navigation.openProgression} />
       <View style={styles.heatmapBlock}>
-        <ActivityHeatmapCard days={data.heatmapDays} />
+        <StatsHeatmapSection t={t} days={data.heatmapDays} />
       </View>
     </>
   );

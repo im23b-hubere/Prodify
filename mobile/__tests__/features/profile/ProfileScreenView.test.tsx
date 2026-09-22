@@ -45,27 +45,15 @@ jest.mock("../../../components/progression/RankHudChip", () => ({
   RankHudChip: () => null,
 }));
 
-jest.mock("../../../components/progression/ProgressionBarCard", () => {
+jest.mock("../../../features/stats/components/StatsHeatmapSection", () => {
   const React = require("react");
   const { View, Text } = require("react-native");
   return {
-    ProgressionBarCard: ({
-      progression,
-      loading,
-    }: {
-      progression: unknown;
-      loading?: boolean;
-    }) =>
+    StatsHeatmapSection: () =>
       React.createElement(
         View,
-        {
-          testID: loading
-            ? "progression-bar-loading"
-            : progression
-              ? "progression-bar-ready"
-              : "progression-bar-unavailable",
-        },
-        React.createElement(Text, null, loading ? "loading" : progression ? "ready" : "unavailable"),
+        { testID: "stats-section-heatmap" },
+        React.createElement(Text, null, "heatmap"),
       ),
   };
 });
@@ -133,7 +121,7 @@ describe("ProfileScreenView", () => {
     expect(screen.getByLabelText("legal.deleteAccount.button")).toBeTruthy();
   });
 
-  it("shows unavailable progression instead of fake Level 1 when progression is missing", () => {
+  it("shows activity heatmap in the producer snapshot", () => {
     const controller = createController({
       loading: false,
       error: null,
@@ -152,11 +140,10 @@ describe("ProfileScreenView", () => {
         recent_sessions: [],
         productivity_hint: null,
       },
-      progression: null,
     });
     const screen = render(<ProfileScreenView controller={controller} />);
 
-    expect(screen.getByTestId("progression-bar-unavailable")).toBeTruthy();
-    expect(screen.queryByTestId("progression-bar-ready")).toBeNull();
+    expect(screen.getByTestId("stats-section-heatmap")).toBeTruthy();
+    expect(screen.getByText("profile.producerSnapshotTitle")).toBeTruthy();
   });
 });

@@ -310,14 +310,7 @@
     "errorLoadMilestones": "Could not load milestones.",
     "signOutConfirmTitle": "Sign out?",
     "signOutConfirmMessage": "You will need to sign in again to use your account.",
-    "signOutConfirmButton": "Sign out",
-    "reliabilityTitle": "Consistency score",
-    "reliabilityTrendUp": "Trending up",
-    "reliabilityTrendDown": "Needs recovery",
-    "reliabilityTrendStable": "Stable",
-    "reliabilityRank": "Top {{rank}}% of producers",
-    "reliabilityRankUnavailable": "Ranking unlocks once more producers are active.",
-    "reliabilityHint": "90d consistency: {{consistency}}% · completion quality: {{completion}}%"
+    "signOutConfirmButton": "Sign out"
   },
   "sessionTypes": {
     "beatMaking": "Beat Making",

@@ -116,35 +116,6 @@ export const profileScreenStyles = StyleSheet.create({
     ...typography.caption,
     lineHeight: 18,
   },
-  sectionHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
-  },
-  sectionTitleInline: {
-    flex: 1,
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.subheadline,
-  },
-  sectionLinkBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.xs,
-  },
-  sectionLink: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  heatmapBlock: {
-    marginTop: spacing.md,
-  },
   streakStatValue: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
@@ -155,43 +126,8 @@ export const profileScreenStyles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.sm,
   },
-  reliabilityCard: {
+  heatmapBlock: {
     marginTop: spacing.md,
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: spacing.xs,
-  },
-  reliabilityHead: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  reliabilityLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  reliabilityTrend: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  reliabilityScore: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    ...typography.headline,
-  },
-  reliabilityMeta: {
-    color: colors.textPrimary,
-    ...typography.body,
-  },
-  reliabilityHint: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    lineHeight: 18,
   },
   sectionTitle: {
     marginTop: spacing.lg,
