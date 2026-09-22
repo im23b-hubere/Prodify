@@ -37,16 +37,19 @@ export function StatsHero({ controller }: { controller: StatsScreenController })
     ],
     [summary, t],
   );
-  if (!controller.token)
+
+  if (!controller.token) {
     return <StatsKpiStrip items={items} variant="hero" testID="stats-kpi-strip" />;
+  }
+
   return (
     <View style={styles.heroWrap} onLayout={controller.handleYourWeekLayout}>
       <LinearGradient
         colors={["#3d1510", "#1a1010", "#0f0f0f"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.mergedHeroShell}
-        testID="stats-merged-hero"
+        style={styles.heroShell}
+        testID="stats-week-hero"
       >
         <YourWeekCard
           t={t}
@@ -61,9 +64,8 @@ export function StatsHero({ controller }: { controller: StatsScreenController })
           onSaveGoal={controller.saveWeeklyGoal}
           onStartSession={controller.startSession}
         />
-        <View style={styles.mergedHeroDivider} />
-        <StatsKpiStrip items={items} variant="inset" testID="stats-kpi-strip" />
       </LinearGradient>
+      <StatsKpiStrip items={items} testID="stats-kpi-strip" />
     </View>
   );
 }

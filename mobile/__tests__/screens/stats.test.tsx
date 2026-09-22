@@ -205,6 +205,6 @@ describe("Stats Screen", () => {
     const { findByText, queryByTestId } = render(<StatsScreen />);
     expect(await findByText("Stats unavailable")).toBeTruthy();
     expect(queryByTestId("stats-kpi-strip")).toBeNull();
-    expect(queryByTestId("stats-merged-hero")).toBeNull();
+    expect(queryByTestId("stats-week-hero")).toBeNull();
   });
 });

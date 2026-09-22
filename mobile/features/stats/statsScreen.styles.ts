@@ -42,23 +42,19 @@ export const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   heroWrap: {
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
-  mergedHeroShell: {
+  heroShell: {
     borderRadius: radii.xl,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
     padding: spacing.md,
-    gap: spacing.md,
     shadowColor: "#000",
     shadowOpacity: 0.35,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
-  },
-  mergedHeroDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(255,255,255,0.1)",
   },
   hintCard: {
     gap: 4,
