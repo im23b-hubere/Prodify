@@ -13,6 +13,7 @@ from app.services.profile_picture_service import (
     ALLOWED_IMAGE_MIME_TYPES,
     MAX_PROFILE_IMAGE_BYTES,
     detect_image_mime,
+    public_profile_picture_url,
     replace_profile_picture,
 )
 
@@ -42,8 +43,10 @@ async def upload_profile_picture(
 
     current = replace_profile_picture(db, current, content, detected_mime)
 
-    base_url = str(request.base_url).rstrip("/")
-    absolute_url = f"{base_url}{current.profile_picture_url}" if current.profile_picture_url else None
+    absolute_url = public_profile_picture_url(
+        current.profile_picture_url,
+        str(request.base_url).rstrip("/"),
+    )
     return UserAccountPublic(
         id=current.id,
         email=current.email,

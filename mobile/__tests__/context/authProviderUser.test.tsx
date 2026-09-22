@@ -136,4 +136,20 @@ describe("AuthProvider user exposure", () => {
     expect(result.current.token).toBeNull();
     expect(result.current.user).toBeNull();
   });
+
+  it("applies an authenticated user snapshot without refetching", async () => {
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.user).toEqual(ACCOUNT));
+
+    const withPhoto = {
+      ...ACCOUNT,
+      profile_picture_url: "https://media.example.com/profile_pictures/7-abc.jpg",
+    };
+
+    act(() => {
+      result.current.applyAuthenticatedUser(withPhoto);
+    });
+
+    expect(result.current.user).toEqual(withPhoto);
+  });
 });

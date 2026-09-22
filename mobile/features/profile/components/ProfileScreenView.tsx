@@ -1,5 +1,13 @@
-import { ChevronRight } from "lucide-react-native";
-import { Image, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Camera, ChevronRight } from "lucide-react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppFlame, glyphRowStyle } from "../../../components/icons/ProdifyGlyphs";
@@ -65,17 +73,42 @@ function ProfileSkeleton() {
 }
 
 function ProfileIdentity({ controller }: Props) {
-  const { t, navigation } = controller;
+  const { t, navigation, profilePicture } = controller;
   const identity = identityPresentation(controller);
   return (
     <View style={styles.profileHero}>
-      <View style={styles.avatar}>
-        {identity.imageUri ? (
-          <Image source={{ uri: identity.imageUri }} style={styles.avatarImage} />
-        ) : (
-          <Text style={styles.avatarText}>{identity.initials}</Text>
-        )}
-      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={
+          identity.imageUri ? t("profile.changePhotoA11y") : t("profile.addPhotoA11y")
+        }
+        disabled={profilePicture.busy}
+        onPress={() => void profilePicture.pickAndUpload()}
+        style={({ pressed }) => [
+          styles.avatarPressable,
+          pressed && !profilePicture.busy && styles.pressed,
+        ]}
+      >
+        <View style={styles.avatar}>
+          {identity.imageUri ? (
+            <Image source={{ uri: identity.imageUri }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>{identity.initials}</Text>
+          )}
+          {profilePicture.busy ? (
+            <View style={styles.avatarBusyOverlay}>
+              <ActivityIndicator color="#fff" />
+            </View>
+          ) : (
+            <View style={styles.avatarEditBadge}>
+              <Camera color="#fff" size={14} strokeWidth={2.4} />
+            </View>
+          )}
+        </View>
+      </Pressable>
+      <Text style={styles.photoHint}>
+        {identity.imageUri ? t("profile.changePhotoHint") : t("profile.addPhotoHint")}
+      </Text>
       <Text style={styles.username}>{identity.username}</Text>
       {identity.email ? (
         <Text style={styles.email}>{identity.email}</Text>

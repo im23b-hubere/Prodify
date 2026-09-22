@@ -14,7 +14,8 @@
       "bundleIdentifier": "com.prodify.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSUserNotificationsUsageDescription": "Prodify sends reminders to help you keep your studio streak."
+        "NSUserNotificationsUsageDescription": "Prodify sends reminders to help you keep your studio streak.",
+        "NSPhotoLibraryUsageDescription": "Prodify needs access to your photos so you can set a profile picture."
       }
     },
     "android": {
@@ -38,6 +39,12 @@
       "@sentry/react-native",
       "expo-localization",
       "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Prodify needs access to your photos so you can set a profile picture."
+        }
+      ],
       [
         "expo-splash-screen",
         {

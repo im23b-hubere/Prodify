@@ -76,6 +76,14 @@ class Settings(BaseSettings):
     # - strict (default): fail-fast on schema drift / alembic head mismatch.
     # - non-strict: warn for column/head mismatches to support rolling deploy windows.
     startup_schema_strict: bool = True
+    # S3-compatible object storage (Cloudflare R2). Required in production so
+    # profile pictures survive deploys. Leave unset in development to use local disk.
+    object_storage_endpoint_url: str | None = None
+    object_storage_access_key_id: str | None = None
+    object_storage_secret_access_key: str | None = None
+    object_storage_bucket: str | None = None
+    object_storage_public_base_url: str | None = None
+    object_storage_region: str = "auto"
 
     @field_validator("secret_key")
     @classmethod
@@ -149,6 +157,32 @@ class Settings(BaseSettings):
             raise ValueError(
                 "INTERNAL_JOB_KEY must be set to a strong secret (24+ characters) when ENVIRONMENT=production."
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_object_storage_in_production(self):
+        if self.environment != "production":
+            return self
+        required = {
+            "OBJECT_STORAGE_ENDPOINT_URL": self.object_storage_endpoint_url,
+            "OBJECT_STORAGE_ACCESS_KEY_ID": self.object_storage_access_key_id,
+            "OBJECT_STORAGE_SECRET_ACCESS_KEY": self.object_storage_secret_access_key,
+            "OBJECT_STORAGE_BUCKET": self.object_storage_bucket,
+            "OBJECT_STORAGE_PUBLIC_BASE_URL": self.object_storage_public_base_url,
+        }
+        missing = [name for name, value in required.items() if not str(value or "").strip()]
+        if missing:
+            raise ValueError(
+                "Object storage is required when ENVIRONMENT=production so profile pictures "
+                f"survive deploys. Missing: {', '.join(missing)}."
+            )
+        public = str(self.object_storage_public_base_url or "").strip().rstrip("/")
+        if not public.startswith("https://"):
+            raise ValueError(
+                "OBJECT_STORAGE_PUBLIC_BASE_URL must be an https:// URL "
+                "(example: https://media.prodify.app)."
+            )
+        self.object_storage_public_base_url = public
         return self
 
 

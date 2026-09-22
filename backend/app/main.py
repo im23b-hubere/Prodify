@@ -94,7 +94,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 UPLOADS_DIR = Path(__file__).resolve().parents[1] / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-# Local/dev static serving. For production scale-out, prefer object storage + CDN and keep this mount for dev only.
+# Local/dev static serving only. Production stores profile pictures in object storage (R2).
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 _subscriber = [Depends(require_subscriber)]

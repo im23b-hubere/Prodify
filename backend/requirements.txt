@@ -23,3 +23,5 @@ sentry-sdk[fastapi]==2.20.0
 google-auth==2.36.0
 requests==2.33.1
 Pillow==12.3.0
+# S3-compatible client for Cloudflare R2 (profile picture storage in production).
+boto3==1.40.36

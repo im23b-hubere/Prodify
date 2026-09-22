@@ -1,3 +1,5 @@
+import { fetch as expoFetch } from "expo/fetch";
+
 import { API_BASE_URL } from "../constants/api";
 import { apiErrorFromResponse, readResponsePayload } from "./apiResponse";
 import { addNetworkBreadcrumb, parseApiHost } from "./apiNetworkTelemetry";
@@ -11,6 +13,11 @@ export type ApiMultipartOptions = {
   signal?: AbortSignal;
 };
 
+/**
+ * Multipart uploads must use `expo/fetch` with Expo `File` parts.
+ * Global/RN FormData `{ uri, name, type }` objects raise
+ * "Unsupported FormDataPart implementation" on modern Expo.
+ */
 export async function apiMultipart<T = unknown>(
   path: string,
   { token, method = "POST", formData, timeoutMs = 30_000, signal }: ApiMultipartOptions,
@@ -24,7 +31,7 @@ export async function apiMultipart<T = unknown>(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const host = parseApiHost(API_BASE_URL);
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await expoFetch(`${API_BASE_URL}${path}`, {
       method,
       headers: token?.trim() ? { Authorization: `Bearer ${token.trim()}` } : undefined,
       body: formData,

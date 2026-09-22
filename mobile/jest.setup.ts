@@ -27,6 +27,25 @@ jest.mock("expo-localization", () => ({
   locale: "de-DE",
 }));
 
+jest.mock("expo-image-picker", () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: [] })),
+}));
+
+jest.mock("expo-file-system", () => ({
+  File: class MockExpoFile extends Blob {
+    uri: string;
+    constructor(uri: string) {
+      super();
+      this.uri = uri;
+    }
+  },
+}));
+
+jest.mock("expo/fetch", () => ({
+  fetch: (...args: unknown[]) => (global.fetch as typeof fetch)(...(args as Parameters<typeof fetch>)),
+}));
+
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
   captureException: jest.fn(),

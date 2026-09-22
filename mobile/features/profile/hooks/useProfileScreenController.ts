@@ -6,16 +6,18 @@ import { useAuth } from "../../../context/AuthContext";
 import { progressionOverviewHref } from "../../../lib/progressionNavigation";
 import { useProfileAccountActions } from "./useProfileAccountActions";
 import { useProfileData } from "./useProfileData";
+import { useProfilePictureUpload } from "./useProfilePictureUpload";
 import { useProfilePushTest } from "./useProfilePushTest";
 
 export function useProfileScreenController() {
   const { t } = useTranslation();
-  const { user, signOut, deleteAccount, token } = useAuth();
+  const { user, signOut, deleteAccount, token, applyAuthenticatedUser } = useAuth();
   const router = useRouter();
   const userId = user?.id;
   const data = useProfileData(token, userId);
   const accountActions = useProfileAccountActions({ signOut, deleteAccount });
   const pushTest = useProfilePushTest(token);
+  const profilePicture = useProfilePictureUpload({ token, applyAuthenticatedUser });
   const openPublicProfile = useCallback(() => {
     if (userId) router.push(`/profile/${userId}`);
   }, [router, userId]);
@@ -26,6 +28,7 @@ export function useProfileScreenController() {
     data,
     accountActions,
     pushTest,
+    profilePicture,
     navigation: {
       openPublicProfile,
       openStats: () => router.push("/(tabs)/stats"),

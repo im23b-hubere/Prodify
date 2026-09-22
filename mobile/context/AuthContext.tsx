@@ -40,6 +40,8 @@ type AuthContextValue = {
   /** Permanently deletes the account on the server and clears local session data. */
   deleteAccount: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  /** Replace the in-memory profile snapshot (e.g. after profile picture upload). */
+  applyAuthenticatedUser: (user: AuthenticatedUser) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -200,6 +202,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   }, [token, user?.id]);
 
+  const applyAuthenticatedUser = useCallback((next: AuthenticatedUser) => {
+    setProfile(next);
+  }, []);
+
   const value = useMemo(
     () => ({
       token,
@@ -210,8 +216,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       deleteAccount,
       refreshUser,
+      applyAuthenticatedUser,
     }),
-    [token, user, hydrated, signIn, signUp, signOut, deleteAccount, refreshUser],
+    [
+      token,
+      user,
+      hydrated,
+      signIn,
+      signUp,
+      signOut,
+      deleteAccount,
+      refreshUser,
+      applyAuthenticatedUser,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
