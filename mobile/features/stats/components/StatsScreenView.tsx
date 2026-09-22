@@ -36,7 +36,7 @@ export function StatsScreenView({ controller }: { controller: StatsScreenControl
             title={t("common.oops")}
             message={controller.error}
             retryLabel={t("common.tryAgain")}
-            onRetry={() => void controller.loadStats({ force: true, forceProgressionSync: true })}
+            onRetry={() => void controller.loadStats({ force: true })}
           />
         ) : null}
         {showStatsContent ? <StatsScreenContent controller={controller} /> : null}

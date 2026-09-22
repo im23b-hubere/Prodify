@@ -137,14 +137,6 @@ jest.mock("../../lib/screenDataStale", () => ({
   isScreenDataStale: () => false,
 }));
 
-jest.mock("../../components/progression/ProgressionBarCard", () => ({
-  ProgressionBarCard: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-    return React.createElement(View);
-  },
-}));
-
 const { apiJson } = jest.requireMock("../../lib/client") as {
   apiJson: jest.Mock;
 };
