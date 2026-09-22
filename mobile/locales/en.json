@@ -270,10 +270,8 @@
     }
   },
   "profile": {
-    "identitySubtitle": "Your producer identity",
+    "roleProducer": "Producer",
     "viewPublicProfile": "View public profile",
-    "addPhotoHint": "Tap to add a photo",
-    "changePhotoHint": "Tap to change photo",
     "addPhotoA11y": "Add profile photo",
     "changePhotoA11y": "Change profile photo",
     "photoPermissionTitle": "Photo access needed",

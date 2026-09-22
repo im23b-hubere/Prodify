@@ -32,7 +32,11 @@ export const profileScreenStyles = StyleSheet.create({
     borderRadius: radii.round,
     backgroundColor: "rgba(255,255,255,0.08)",
   },
-  profileHero: { alignItems: "center", marginBottom: spacing.lg },
+  identityCard: {
+    alignItems: "center",
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
   avatarPressable: { marginBottom: spacing.xs },
   avatar: {
     width: 92,
@@ -74,26 +78,15 @@ export const profileScreenStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  photoHint: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.caption,
-    marginBottom: spacing.sm,
-  },
   username: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     ...typography.subheadline,
   },
-  email: {
+  roleLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
     ...typography.caption,
-  },
-  emailSkeleton: {
-    width: 180,
-    height: 12,
-    marginTop: spacing.xs,
   },
   partialError: {
     marginBottom: spacing.md,

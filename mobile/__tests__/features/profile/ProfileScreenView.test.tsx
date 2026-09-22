@@ -6,8 +6,18 @@ import type { ProfileScreenController } from "../../../features/profile/hooks/us
 
 jest.mock("lucide-react-native", () => ({
   AlertCircle: () => null,
+  Camera: () => null,
   ChevronRight: () => null,
 }));
+
+jest.mock("../../../components/ui/AppCard", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    AppCard: ({ children, ...props }: { children: React.ReactNode }) =>
+      React.createElement(View, props, children),
+  };
+});
 
 jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
@@ -83,6 +93,10 @@ function createController(
       selectTemplate: action,
       send: action,
     },
+    profilePicture: {
+      busy: false,
+      pickAndUpload: action,
+    },
     navigation: {
       openPublicProfile: action,
       openStats: action,
@@ -98,6 +112,7 @@ describe("ProfileScreenView", () => {
   it("keeps account settings available while profile data initially loads", () => {
     const screen = render(<ProfileScreenView controller={createController()} />);
 
+    expect(screen.getByTestId("profile-identity-card")).toBeTruthy();
     expect(screen.getByLabelText("profile.manageNotifications")).toBeTruthy();
     expect(screen.getByLabelText("profile.signOut")).toBeTruthy();
   });

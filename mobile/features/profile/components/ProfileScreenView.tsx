@@ -15,6 +15,7 @@ import { ActivityHeatmapCard } from "../../../components/profile/ActivityHeatmap
 import { ProgressionBarCard } from "../../../components/progression/ProgressionBarCard";
 import { RankHudChip } from "../../../components/progression/RankHudChip";
 import { ErrorState } from "../../../components/states/ErrorState";
+import { AppCard } from "../../../components/ui/AppCard";
 import { BadgeIcon } from "../../../components/ui/BadgeIcon";
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { ScreenHeader } from "../../../components/ui/ScreenHeader";
@@ -45,7 +46,6 @@ function identityPresentation(controller: ProfileScreenController) {
     imageUri: avatarUri(user?.profile_picture_url),
     initials: user?.username?.slice(0, 2).toUpperCase() ?? t("profile.defaultInitials"),
     username: user?.username ?? t("profile.defaultDisplayName"),
-    email: user?.email ?? null,
     hasPublicProfile: Boolean(user?.id),
   };
 }
@@ -76,7 +76,7 @@ function ProfileIdentity({ controller }: Props) {
   const { t, navigation, profilePicture } = controller;
   const identity = identityPresentation(controller);
   return (
-    <View style={styles.profileHero}>
+    <AppCard style={styles.identityCard} testID="profile-identity-card">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={
@@ -106,15 +106,8 @@ function ProfileIdentity({ controller }: Props) {
           )}
         </View>
       </Pressable>
-      <Text style={styles.photoHint}>
-        {identity.imageUri ? t("profile.changePhotoHint") : t("profile.addPhotoHint")}
-      </Text>
       <Text style={styles.username}>{identity.username}</Text>
-      {identity.email ? (
-        <Text style={styles.email}>{identity.email}</Text>
-      ) : (
-        <View style={[styles.skeletonLine, styles.emailSkeleton]} />
-      )}
+      <Text style={styles.roleLabel}>{t("profile.roleProducer")}</Text>
       {identity.hasPublicProfile ? (
         <TextButton
           label={t("profile.viewPublicProfile")}
@@ -124,7 +117,7 @@ function ProfileIdentity({ controller }: Props) {
           accent
         />
       ) : null}
-    </View>
+    </AppCard>
   );
 }
 
@@ -316,11 +309,7 @@ export function ProfileScreenView({ controller }: Props) {
           />
         }
       >
-        <ScreenHeader
-          title={t("tabs.profile")}
-          subtitle={t("profile.identitySubtitle")}
-          actionNode={<RankHudChip from="profile" />}
-        />
+        <ScreenHeader title={t("tabs.profile")} actionNode={<RankHudChip from="profile" />} />
         <ProfileIdentity controller={controller} />
         <ProfileDataContent controller={controller} />
         <PushTestSection controller={controller} />
