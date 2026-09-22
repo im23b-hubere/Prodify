@@ -25,7 +25,5 @@ export function createClearedStatsScreenState({
     commitment: null,
     goalConfigured: false,
     weekBusy: false,
-    progression: null,
-    progressionSettled: false,
   };
 }

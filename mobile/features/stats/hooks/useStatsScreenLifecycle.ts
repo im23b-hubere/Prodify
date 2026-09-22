@@ -4,7 +4,7 @@ import { Animated, Easing, type LayoutChangeEvent, type ScrollView } from "react
 
 import { spacing } from "../../../constants/theme";
 
-type LoadStats = (options?: { force?: boolean; forceProgressionSync?: boolean }) => Promise<void>;
+type LoadStats = (options?: { force?: boolean }) => Promise<void>;
 
 type Params = {
   token: string | null;

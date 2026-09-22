@@ -32,7 +32,7 @@ export function useStatsScreenData(
   const onRefresh = useCallback(
     async (setExternalError?: (message: string) => void) => {
       setState((current) => ({ ...current, refreshing: true }));
-      await loadStats({ force: true, forceProgressionSync: true }).catch((cause) => {
+      await loadStats({ force: true }).catch((cause) => {
         const message = cause instanceof Error ? cause.message : t("stats.loadFailed");
         if (setExternalError) setExternalError(message);
         else setState((current) => ({ ...current, error: message }));

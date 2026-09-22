@@ -4,7 +4,6 @@ import { WEEKLY_GOAL_CONFIGURED_KEY } from "../../constants/storageKeys";
 import { apiJson } from "../../lib/client";
 import { fetchCurrentGoal } from "../../lib/goals";
 import { tryParseGoalForecastDto } from "../../lib/outcomesDto";
-import { fetchProgression, syncProgression } from "../../lib/progressionSync";
 import { fetchCommitment } from "../../lib/social";
 import {
   tryParseHeatmapDays,
@@ -48,9 +47,8 @@ export async function fetchPrimaryStats(token: string, period: string): Promise<
   };
 }
 
-export async function fetchSupplementalStats(token: string, forceProgressionSync: boolean) {
-  const [progression, goal, commitment, configured, forecast] = await Promise.allSettled([
-    forceProgressionSync ? syncProgression(token, { force: true }) : fetchProgression(token),
+export async function fetchSupplementalStats(token: string) {
+  const [goal, commitment, configured, forecast] = await Promise.allSettled([
     fetchCurrentGoal(token),
     fetchCommitment(token),
     AsyncStorage.getItem(WEEKLY_GOAL_CONFIGURED_KEY),
@@ -63,7 +61,6 @@ export async function fetchSupplementalStats(token: string, forceProgressionSync
     void AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1");
   }
   return {
-    progression: progression.status === "fulfilled" ? progression.value : null,
     weeklyGoal,
     commitment: commitment.status === "fulfilled" ? commitment.value : null,
     goalConfigured,

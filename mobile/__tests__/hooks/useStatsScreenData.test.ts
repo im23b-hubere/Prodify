@@ -56,12 +56,6 @@ const userAPrimary = {
 };
 
 const userASupplemental = {
-  progression: {
-    xp_total: 100,
-    current_level: 2,
-    xp_to_next_level: 50,
-    progress_percent: 40,
-  },
   weeklyGoal: {
     goal_type: "weekly_sessions" as const,
     target_value: 5,
@@ -118,12 +112,6 @@ const userBPrimary = {
 };
 
 const userBSupplemental = {
-  progression: {
-    xp_total: 50,
-    current_level: 1,
-    xp_to_next_level: 100,
-    progress_percent: 10,
-  },
   weeklyGoal: null,
   commitment: null,
   goalConfigured: false,
@@ -166,16 +154,11 @@ describe("createClearedStatsScreenState", () => {
       commitment: null,
       goalConfigured: false,
       weekBusy: false,
-      progression: null,
-      progressionSettled: false,
     });
   });
 
   it("sets loading true when switching to a signed-in account", () => {
     expect(createClearedStatsScreenState({ token: "token-b", userId: 2 }).loading).toBe(true);
-    expect(createClearedStatsScreenState({ token: "token-b", userId: 2 }).progressionSettled).toBe(
-      false,
-    );
   });
 });
 
@@ -194,7 +177,6 @@ describe("useStatsScreenData auth scope", () => {
 
     expect(result.current.heatmapDays).toEqual(userAPrimary.heatmapDays);
     expect(result.current.records).toEqual(userAPrimary.records);
-    expect(result.current.progression).toEqual(userASupplemental.progression);
     expect(result.current.weeklyGoal).toEqual(userASupplemental.weeklyGoal);
     expect(result.current.commitment).toEqual(userASupplemental.commitment);
     expect(result.current.forecast).toEqual(userASupplemental.forecast);
@@ -211,7 +193,6 @@ describe("useStatsScreenData auth scope", () => {
     expect(result.current.stats).toBeNull();
     expect(result.current.heatmapDays).toEqual([]);
     expect(result.current.records).toEqual([]);
-    expect(result.current.progression).toBeNull();
     expect(result.current.weeklyGoal).toBeNull();
     expect(result.current.commitment).toBeNull();
     expect(result.current.forecast).toBeNull();
@@ -230,7 +211,6 @@ describe("useStatsScreenData auth scope", () => {
     rerender({ token: "token-b", userId: 2 });
 
     expect(result.current.stats).toBeNull();
-    expect(result.current.progression).toBeNull();
     expect(result.current.weeklyGoal).toBeNull();
     expect(result.current.records).toEqual([]);
 
@@ -242,7 +222,6 @@ describe("useStatsScreenData auth scope", () => {
       expect(result.current.stats).toEqual(userBPrimary.stats);
     });
 
-    expect(result.current.progression).toEqual(userBSupplemental.progression);
   });
 
   it("does not skip user B load because of user A cache timestamp", async () => {
@@ -290,7 +269,6 @@ describe("useStatsScreenData auth scope", () => {
     await Promise.resolve();
 
     expect(result.current.stats).toBeNull();
-    expect(result.current.progression).toBeNull();
 
     await act(async () => {
       await result.current.loadStats();
@@ -315,7 +293,6 @@ describe("useStatsScreenData auth scope", () => {
     rerender({ token: "token-refreshed", userId: 1 });
 
     expect(result.current.stats).toEqual(userAPrimary.stats);
-    expect(result.current.progression).toEqual(userASupplemental.progression);
     expect(result.current.weeklyGoal).toEqual(userASupplemental.weeklyGoal);
 
     await act(async () => {
@@ -341,7 +318,6 @@ describe("useStatsScreenData auth scope", () => {
       expect(result.current.stats).toEqual(userBPrimary.stats);
     });
 
-    expect(result.current.progression).toEqual(userBSupplemental.progression);
     expect(result.current.error).toBeNull();
   });
 
@@ -419,7 +395,6 @@ describe("useStatsScreenData auth scope", () => {
     expect(result.current.stats).toBeNull();
     expect(result.current.heatmapDays).toEqual([]);
     expect(result.current.records).toEqual([]);
-    expect(result.current.progression).toBeNull();
   });
 
   it("clears error and replaces values after a successful refresh following failure", async () => {
@@ -445,7 +420,6 @@ describe("useStatsScreenData auth scope", () => {
     });
 
     expect(result.current.error).toBeNull();
-    expect(result.current.progression).toEqual(userBSupplemental.progression);
   });
 
   it("treats a successful zero-KPI response as valid data", async () => {
@@ -470,7 +444,6 @@ describe("useStatsScreenData auth scope", () => {
     };
     mockFetchPrimaryStats.mockResolvedValue(zeroPrimary as never);
     mockFetchSupplementalStats.mockResolvedValue({
-      progression: null,
       weeklyGoal: null,
       commitment: null,
       goalConfigured: false,
@@ -524,7 +497,6 @@ describe("useStatsScreenData auth scope", () => {
 
   it("keeps primary Stats usable when supplemental domains are unavailable", async () => {
     mockFetchSupplementalStats.mockResolvedValue({
-      progression: null,
       weeklyGoal: null,
       commitment: null,
       goalConfigured: false,
@@ -542,27 +514,10 @@ describe("useStatsScreenData auth scope", () => {
     });
 
     expect(result.current.error).toBeNull();
-    expect(result.current.progression).toBeNull();
-    expect(result.current.progressionSettled).toBe(true);
     expect(result.current.weeklyGoal).toBeNull();
     expect(result.current.forecast).toBeNull();
   });
 
-  it("sets progression unavailable when supplemental returns null progression", async () => {
-    mockFetchSupplementalStats.mockResolvedValue({
-      ...userASupplemental,
-      progression: null,
-    } as never);
-
-    const { result } = renderStatsDataHook("token-a", 1);
-
-    await loadUserAStats(result);
-
-    expect(result.current.progression).toBeNull();
-    expect(result.current.progressionSettled).toBe(true);
-    expect(result.current.stats).toEqual(userAPrimary.stats);
-    expect(result.current.error).toBeNull();
-  });
 
   it("preserves heatmap and records when those requests fail but stats succeed", async () => {
     const { result } = renderStatsDataHook("token-a", 1);

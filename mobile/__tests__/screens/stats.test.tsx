@@ -115,16 +115,6 @@ jest.mock("../../lib/social", () => ({
   fetchCommitment: jest.fn().mockResolvedValue(null),
 }));
 
-jest.mock("../../lib/progressionSync", () => ({
-  fetchProgression: jest.fn().mockResolvedValue({
-    xp_total: 100,
-    current_level: 2,
-    xp_to_next_level: 50,
-    progress_percent: 40,
-  }),
-  syncProgression: jest.fn(),
-}));
-
 jest.mock("../../components/stats/YourWeekCard", () => ({
   YourWeekCard: () => {
     const React = require("react");

@@ -6,7 +6,7 @@ import { isScreenDataStale } from "../../../lib/screenDataStale";
 import { fetchPrimaryStats, fetchSupplementalStats } from "../statsScreenDataService";
 import type { StatsScreenDataState } from "../statsScreenDataState";
 
-export type StatsLoadOptions = { force?: boolean; forceProgressionSync?: boolean };
+export type StatsLoadOptions = { force?: boolean };
 
 export function useStatsLoader(
   token: string | null | undefined,
@@ -31,11 +31,9 @@ export function useStatsLoader(
 
   const loadStats = useCallback(
     async (options: StatsLoadOptions = {}) => {
-      const forceProgression = Boolean(options.forceProgressionSync);
       if (!token) return;
       if (
         !options.force &&
-        !forceProgression &&
         lastFetch.current?.period === period &&
         !isScreenDataStale(lastFetch.current.at)
       )
@@ -53,7 +51,6 @@ export function useStatsLoader(
               return {
                 ...current,
                 error: t("stats.invalidResponse"),
-                progressionSettled: true,
               };
             }
             return {
@@ -61,8 +58,6 @@ export function useStatsLoader(
               stats: null,
               heatmapDays: [],
               records: [],
-              progression: null,
-              progressionSettled: true,
               error: t("stats.invalidResponse"),
             };
           });
@@ -76,9 +71,9 @@ export function useStatsLoader(
           records: primary.records !== undefined ? primary.records : current.records,
           loading: false,
         }));
-        const supplemental = await fetchSupplementalStats(token, forceProgression);
+        const supplemental = await fetchSupplementalStats(token);
         if (!mounted.current || request !== sequence.current) return;
-        setState((current) => ({ ...current, ...supplemental, progressionSettled: true }));
+        setState((current) => ({ ...current, ...supplemental }));
         lastFetch.current = { at: Date.now(), period };
       } catch (cause) {
         if (!mounted.current || request !== sequence.current) return;
@@ -89,7 +84,7 @@ export function useStatsLoader(
         setState((current) => ({ ...current, error: message }));
       } finally {
         if (mounted.current && request === sequence.current) {
-          setState((current) => ({ ...current, loading: false, progressionSettled: true }));
+          setState((current) => ({ ...current, loading: false }));
         }
       }
     },
