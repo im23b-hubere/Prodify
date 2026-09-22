@@ -7,8 +7,13 @@ import type { ProfileScreenController } from "../../../features/profile/hooks/us
 jest.mock("lucide-react-native", () => ({
   AlertCircle: () => null,
   BarChart3: () => null,
+  Bell: () => null,
   Camera: () => null,
   ChevronRight: () => null,
+  FileText: () => null,
+  LogOut: () => null,
+  Shield: () => null,
+  Trash2: () => null,
   Trophy: () => null,
 }));
 

@@ -197,8 +197,6 @@
     "sectionTitle": "Legal",
     "documentBodyMissing": "Sections for this document are not available in the current language. Try English or update the app.",
     "deleteAccount": {
-      "sectionTitle": "Account and data",
-      "description": "You can permanently delete your account. We will remove associated data from our servers unless we are legally required to retain it.",
       "button": "Delete account",
       "confirmTitle": "Delete account?",
       "confirmMessage": "This cannot be undone. Your sessions, streaks, and friendships will be removed.",
@@ -302,7 +300,7 @@
     "pingSend": "Send push",
     "pingResultTitle": "Push",
     "pingDelivered": "Delivered: {{ok}} / {{attempted}}",
-    "settingsTitle": "Settings & legal",
+    "settingsTitle": "Settings",
     "manageNotifications": "Notifications",
     "signOut": "Sign out",
     "defaultDisplayName": "Prodify user",

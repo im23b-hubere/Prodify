@@ -245,65 +245,24 @@ export const profileScreenStyles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  legalRowLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
   legalRowText: {
+    flexShrink: 1,
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyMedium,
     ...typography.body,
-  },
-  legalRowChevron: {
-    color: colors.textSecondary,
-    fontSize: 22,
-    fontWeight: "300",
   },
   legalDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
     marginLeft: spacing.md,
   },
-  deleteSection: {
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
-  },
-  deleteSectionTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.subheadline,
-  },
-  deleteDesc: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    lineHeight: 20,
-  },
-  deleteBtn: {
-    marginTop: spacing.xs,
-    borderRadius: radii.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,80,80,0.45)",
-    backgroundColor: "rgba(255,80,80,0.08)",
-  },
-  deleteBtnText: {
-    color: "#ff9a9a",
-    fontFamily: fontFamily.bodyBold,
-    ...typography.body,
-  },
-  signoutWrap: {
-    marginTop: spacing.sm,
-  },
-  outlineBtn: {
-    borderRadius: radii.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
   pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
-  outlineBtnText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.body,
-  },
 });
