@@ -6,8 +6,10 @@ import type { ProfileScreenController } from "../../../features/profile/hooks/us
 
 jest.mock("lucide-react-native", () => ({
   AlertCircle: () => null,
+  BarChart3: () => null,
   Camera: () => null,
   ChevronRight: () => null,
+  Trophy: () => null,
 }));
 
 jest.mock("../../../components/ui/AppCard", () => {
@@ -113,6 +115,7 @@ describe("ProfileScreenView", () => {
     const screen = render(<ProfileScreenView controller={createController()} />);
 
     expect(screen.getByTestId("profile-identity-card")).toBeTruthy();
+    expect(screen.getByTestId("profile-quick-actions")).toBeTruthy();
     expect(screen.getByLabelText("profile.manageNotifications")).toBeTruthy();
     expect(screen.getByLabelText("profile.signOut")).toBeTruthy();
   });

@@ -1,4 +1,4 @@
-import { Camera, ChevronRight } from "lucide-react-native";
+import { BarChart3, Camera, ChevronRight, Trophy } from "lucide-react-native";
 import {
   ActivityIndicator,
   Image,
@@ -118,6 +118,22 @@ function ProfileIdentity({ controller }: Props) {
         />
       ) : null}
     </AppCard>
+  );
+}
+
+function ProfileQuickActions({ controller }: Props) {
+  const { t, navigation } = controller;
+  return (
+    <View style={styles.quickRow} testID="profile-quick-actions">
+      <AppCard style={styles.quickTile} onPress={navigation.openStats}>
+        <BarChart3 color={colors.primary} size={20} strokeWidth={2.2} />
+        <Text style={styles.quickTileLabel}>{t("profile.fullStatsLink")}</Text>
+      </AppCard>
+      <AppCard style={styles.quickTile} onPress={navigation.openProgression}>
+        <Trophy color={colors.primary} size={20} strokeWidth={2.2} />
+        <Text style={styles.quickTileLabel}>{t("progression.overviewTitle")}</Text>
+      </AppCard>
+    </View>
   );
 }
 
@@ -311,6 +327,7 @@ export function ProfileScreenView({ controller }: Props) {
       >
         <ScreenHeader title={t("tabs.profile")} actionNode={<RankHudChip from="profile" />} />
         <ProfileIdentity controller={controller} />
+        <ProfileQuickActions controller={controller} />
         <ProfileDataContent controller={controller} />
         <PushTestSection controller={controller} />
         <ProfileSettingsSection controller={controller} />

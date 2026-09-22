@@ -37,6 +37,21 @@ export const profileScreenStyles = StyleSheet.create({
     marginBottom: spacing.lg,
     gap: spacing.sm,
   },
+  quickRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  quickTile: {
+    flex: 1,
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  quickTileLabel: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
   avatarPressable: { marginBottom: spacing.xs },
   avatar: {
     width: 92,
