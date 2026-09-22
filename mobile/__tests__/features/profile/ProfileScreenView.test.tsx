@@ -68,9 +68,7 @@ function createController(
     data: {
       stats: null,
       milestones: null,
-      reliability: null,
       heatmapDays: [],
-      progression: null,
       loading: true,
       refreshing: false,
       error: null,

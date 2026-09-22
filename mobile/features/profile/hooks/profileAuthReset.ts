@@ -1,18 +1,13 @@
-import type { ReliabilityScoreDto } from "../../../types/friends";
-import type { ProgressionDto } from "../../../types/outcomes";
 import type { SessionStatsDto } from "../../../types/session";
 import type { StreakMilestonesDto } from "../../../types/streak";
-
-type HeatmapDay = { date: string; seconds: number; intensity: number };
+import type { HeatmapDay } from "../../stats/types";
 
 export type ProfileDataState = {
   refreshing: boolean;
   loading: boolean;
   stats: SessionStatsDto | null;
   milestones: StreakMilestonesDto | null;
-  reliability: ReliabilityScoreDto | null;
   heatmapDays: HeatmapDay[];
-  progression: ProgressionDto | null;
   error: string | null;
 };
 
@@ -31,9 +26,7 @@ export function createClearedProfileState({
     loading: Boolean(token && userId != null),
     stats: null,
     milestones: null,
-    reliability: null,
     heatmapDays: [],
-    progression: null,
     error: null,
   };
 }

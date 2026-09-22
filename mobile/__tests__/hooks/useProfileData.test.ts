@@ -3,7 +3,6 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { createClearedProfileState } from "../../features/profile/hooks/profileAuthReset";
 import { useProfileData } from "../../features/profile/hooks/useProfileData";
 import { apiJson } from "../../lib/client";
-import { fetchProgression } from "../../lib/progressionSync";
 import { isScreenDataStale } from "../../lib/screenDataStale";
 
 jest.mock("expo-router", () => ({
@@ -20,17 +19,12 @@ jest.mock("../../lib/client", () => ({
   apiJson: jest.fn(),
 }));
 
-jest.mock("../../lib/progressionSync", () => ({
-  fetchProgression: jest.fn(),
-}));
-
 jest.mock("../../lib/screenDataStale", () => ({
   isScreenDataStale: jest.fn((lastFetchMs: number) => lastFetchMs <= 0),
   SCREEN_DATA_STALE_MS: 45_000,
 }));
 
 const mockApiJson = apiJson as jest.MockedFunction<typeof apiJson>;
-const mockFetchProgression = fetchProgression as jest.MockedFunction<typeof fetchProgression>;
 const mockIsScreenDataStale = isScreenDataStale as jest.MockedFunction<typeof isScreenDataStale>;
 
 const userAStats = {
@@ -55,22 +49,7 @@ const userAMilestones = {
   longest_streak_days: 10,
 };
 
-const userAReliability = {
-  score: 82,
-  trend: "up" as const,
-  rank_percent: 75,
-  consistency_90d: 0.9,
-  completion_rate_90d: 0.85,
-};
-
 const userAHeatmap = [{ date: "2026-01-01", seconds: 3600, intensity: 2 }];
-
-const userAProgression = {
-  xp_total: 250,
-  current_level: 3,
-  xp_to_next_level: 75,
-  progress_percent: 55,
-};
 
 const userBStats = {
   period: "all",
@@ -94,19 +73,10 @@ const userBMilestones = {
   longest_streak_days: 3,
 };
 
-const userBProgression = {
-  xp_total: 40,
-  current_level: 1,
-  xp_to_next_level: 100,
-  progress_percent: 15,
-};
-
 function mockProfileResponses(options: {
   stats?: unknown;
   milestones?: unknown;
-  reliability?: unknown;
   heatmap?: unknown;
-  progression?: unknown;
 }) {
   mockApiJson.mockImplementation((path: string) => {
     if (path.includes("/sessions/stats")) {
@@ -117,19 +87,11 @@ function mockProfileResponses(options: {
       if (options.milestones instanceof Error) return Promise.reject(options.milestones);
       return Promise.resolve(options.milestones ?? userAMilestones);
     }
-    if (path === "/users/me/reliability") {
-      if (options.reliability instanceof Error) return Promise.reject(options.reliability);
-      return Promise.resolve(options.reliability ?? userAReliability);
-    }
     if (path.includes("/stats/heatmap")) {
       if (options.heatmap instanceof Error) return Promise.reject(options.heatmap);
       return Promise.resolve({ days: options.heatmap ?? userAHeatmap });
     }
     return Promise.resolve(null);
-  });
-  mockFetchProgression.mockImplementation(() => {
-    if (options.progression instanceof Error) return Promise.reject(options.progression);
-    return Promise.resolve((options.progression ?? userAProgression) as never);
   });
 }
 
@@ -162,9 +124,7 @@ describe("createClearedProfileState", () => {
       loading: false,
       stats: null,
       milestones: null,
-      reliability: null,
       heatmapDays: [],
-      progression: null,
       error: null,
     });
   });
@@ -187,9 +147,7 @@ describe("useProfileData auth scope", () => {
     await loadUserAProfile(result);
 
     expect(result.current.milestones).toEqual(userAMilestones);
-    expect(result.current.reliability).toEqual(userAReliability);
     expect(result.current.heatmapDays).toEqual(userAHeatmap);
-    expect(result.current.progression).toEqual(userAProgression);
     expect(result.current.error).toBeNull();
   });
 
@@ -202,9 +160,7 @@ describe("useProfileData auth scope", () => {
 
     expect(result.current.stats).toBeNull();
     expect(result.current.milestones).toBeNull();
-    expect(result.current.reliability).toBeNull();
     expect(result.current.heatmapDays).toEqual([]);
-    expect(result.current.progression).toBeNull();
     expect(result.current.error).toBeNull();
     expect(result.current.loading).toBe(false);
     expect(result.current.refreshing).toBe(false);
@@ -218,16 +174,13 @@ describe("useProfileData auth scope", () => {
     mockProfileResponses({
       stats: userBStats,
       milestones: userBMilestones,
-      reliability: null,
       heatmap: [],
-      progression: userBProgression,
     });
     rerender({ token: "token-b", userId: 2 });
 
     expect(result.current.stats).toBeNull();
     expect(result.current.milestones).toBeNull();
-    expect(result.current.reliability).toBeNull();
-    expect(result.current.progression).toBeNull();
+    expect(result.current.heatmapDays).toEqual([]);
 
     await act(async () => {
       await result.current.load();
@@ -238,7 +191,6 @@ describe("useProfileData auth scope", () => {
     });
 
     expect(result.current.milestones).toEqual(userBMilestones);
-    expect(result.current.progression).toEqual(userBProgression);
   });
 
   it("does not skip user B load because of user A cache timestamp", async () => {
@@ -253,9 +205,7 @@ describe("useProfileData auth scope", () => {
     mockProfileResponses({
       stats: userBStats,
       milestones: userBMilestones,
-      reliability: null,
       heatmap: [],
-      progression: userBProgression,
     });
     rerender({ token: "token-b", userId: 2 });
 
@@ -282,7 +232,6 @@ describe("useProfileData auth scope", () => {
         });
       }
       if (path === "/streak/milestones") return Promise.resolve(userAMilestones);
-      if (path === "/users/me/reliability") return Promise.resolve(userAReliability);
       if (path.includes("/stats/heatmap")) return Promise.resolve({ days: userAHeatmap });
       return Promise.resolve(null);
     });
@@ -292,9 +241,7 @@ describe("useProfileData auth scope", () => {
     mockProfileResponses({
       stats: userBStats,
       milestones: userBMilestones,
-      reliability: null,
       heatmap: [],
-      progression: userBProgression,
     });
     rerender({ token: "token-b", userId: 2 });
 
@@ -327,20 +274,17 @@ describe("useProfileData auth scope", () => {
     });
 
     mockApiJson.mockClear();
-    mockFetchProgression.mockClear();
 
     rerender({ token: "token-refreshed", userId: 1 });
 
     expect(result.current.stats).toEqual(userAStats);
     expect(result.current.milestones).toEqual(userAMilestones);
-    expect(result.current.progression).toEqual(userAProgression);
 
     await act(async () => {
       await result.current.load();
     });
 
     expect(mockApiJson).not.toHaveBeenCalled();
-    expect(mockFetchProgression).not.toHaveBeenCalled();
     nowSpy.mockRestore();
   });
 
@@ -348,9 +292,7 @@ describe("useProfileData auth scope", () => {
     mockProfileResponses({
       stats: userBStats,
       milestones: userBMilestones,
-      reliability: null,
       heatmap: [],
-      progression: userBProgression,
     });
 
     const { result } = renderProfileDataHook("token-b", 2);
@@ -381,14 +323,12 @@ describe("useProfileData auth scope", () => {
     });
 
     mockApiJson.mockClear();
-    mockFetchProgression.mockClear();
 
     await act(async () => {
       await result.current.load();
     });
 
     expect(mockApiJson).not.toHaveBeenCalled();
-    expect(mockFetchProgression).not.toHaveBeenCalled();
     expect(result.current.stats).toEqual(userAStats);
     nowSpy.mockRestore();
   });
