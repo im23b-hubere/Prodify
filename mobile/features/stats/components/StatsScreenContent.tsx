@@ -2,7 +2,6 @@ import { Animated, Text, View } from "react-native";
 
 import type { StatsScreenController } from "../hooks/useStatsScreenController";
 import { styles } from "../statsScreen.styles";
-import { StatsHeatmapSection } from "./StatsHeatmapSection";
 import { StatsHero } from "./StatsHero";
 import { StatsRecordsSection } from "./StatsRecordsSection";
 import { StatsSessionLogSection } from "./StatsSessionLogSection";
@@ -30,7 +29,6 @@ export function StatsScreenContent({ controller }: { controller: StatsScreenCont
         statsPeriod={controller.filter.period}
       />
       <StatsRecordsSection t={t} records={controller.decoratedRecords} />
-      <StatsHeatmapSection t={t} days={controller.heatmapDays} />
     </Animated.View>
   );
 }

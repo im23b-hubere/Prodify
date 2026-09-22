@@ -172,9 +172,11 @@ describe("Stats Screen", () => {
   });
 
 
-  it("shows filter scope hint under period chips", async () => {
-    const { findByText } = render(<StatsScreen />);
-    expect(await findByText("stats.filterScopeHint")).toBeTruthy();
+  it("shows period filters and week hero after stats load", async () => {
+    const { findByText, findByTestId } = render(<StatsScreen />);
+    expect(await findByText("stats.filter7d")).toBeTruthy();
+    expect(await findByTestId("stats-week-hero")).toBeTruthy();
+    expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
   });
 
   it("shows error state when stats load fails", async () => {

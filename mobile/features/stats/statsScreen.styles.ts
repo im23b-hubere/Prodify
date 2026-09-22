@@ -7,13 +7,6 @@ export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: ui.screenPadding, paddingBottom: spacing.xxl },
   headerRow: { marginBottom: spacing.md, gap: spacing.sm },
-  filterHint: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    fontFamily: fontFamily.body,
-    lineHeight: 18,
-    marginTop: spacing.xs,
-  },
   filterRow: { flexDirection: "row", gap: spacing.sm },
   filterChip: {
     borderRadius: radii.round,

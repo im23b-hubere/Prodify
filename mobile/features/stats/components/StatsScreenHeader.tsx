@@ -26,7 +26,6 @@ export function StatsScreenHeader({ controller }: { controller: StatsScreenContr
           </Pressable>
         ))}
       </View>
-      <Text style={styles.filterHint}>{t("stats.filterScopeHint")}</Text>
     </View>
   );
 }
