@@ -8,7 +8,7 @@ import { styles } from "../statsScreen.styles";
 export function StatsHero({ controller }: { controller: StatsScreenController }) {
   if (!controller.token) return null;
   return (
-    <View style={styles.heroWrap} onLayout={controller.handleYourWeekLayout}>
+    <View onLayout={controller.handleYourWeekLayout}>
       <LinearGradient
         colors={["#3d1510", "#1a1010", "#0f0f0f"]}
         start={{ x: 0, y: 0 }}

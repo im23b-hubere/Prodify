@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ActivityHeatmapCard } from "../../../components/profile/ActivityHeatmapCard";
 import { ProfileHeader } from "../../../components/profile/ProfileHeader";
 import { StreakComparison } from "../../../components/profile/StreakComparison";
 import { ErrorState } from "../../../components/states/ErrorState";
@@ -10,6 +9,7 @@ import { LoadingState } from "../../../components/states/LoadingState";
 import { BackButton } from "../../../components/ui/BackButton";
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { colors } from "../../../constants/theme";
+import { StatsHeatmapSection } from "../../stats/components/StatsHeatmapSection";
 import { profilePictureUrl, translatedWeekday } from "../friendProfilePresentation";
 import { friendProfileStyles as styles } from "../friendProfile.styles";
 import type { FriendProfileState } from "../hooks/useFriendProfile";
@@ -182,7 +182,7 @@ function VisibleProfile({
         t={t}
       />
       <View style={styles.block}>
-        <ActivityHeatmapCard days={stats.heatmap_days} />
+        <StatsHeatmapSection t={t} days={stats.heatmap_days} />
       </View>
       <AchievementsCard stats={stats} t={t} />
       <RecentSessionsCard

@@ -33,9 +33,6 @@ export const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 24,
   },
-  heroWrap: {
-    marginBottom: 0,
-  },
   heroShell: {
     borderRadius: radii.xl,
     borderWidth: 1,
