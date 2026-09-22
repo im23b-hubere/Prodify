@@ -27,16 +27,14 @@ export const styles = StyleSheet.create({
   contentFadeWrap: {
     gap: spacing.lg,
   },
-  heroStatValue: {
+  kpiStreakValue: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    fontSize: 30,
-    lineHeight: 34,
-    letterSpacing: -0.5,
+    fontSize: 20,
+    lineHeight: 24,
   },
   heroWrap: {
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
+    marginBottom: 0,
   },
   heroShell: {
     borderRadius: radii.xl,

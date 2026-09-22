@@ -1,47 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useMemo } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
-import { AppFlame, glyphRowStyle } from "../../../components/icons/ProdifyGlyphs";
-import { StatsKpiStrip, type KpiItem } from "../../../components/stats/StatsKpiStrip";
 import { YourWeekCard } from "../../../components/stats/YourWeekCard";
 import type { StatsScreenController } from "../hooks/useStatsScreenController";
 import { styles } from "../statsScreen.styles";
 
 export function StatsHero({ controller }: { controller: StatsScreenController }) {
-  const { t, summary } = controller;
-  const items = useMemo<KpiItem[]>(
-    () => [
-      {
-        key: "hours",
-        label: t("stats.totalHours"),
-        value: summary.hours,
-        sublabel:
-          summary.delta == null
-            ? undefined
-            : t("stats.vsPrior", { sign: summary.delta >= 0 ? "+" : "", hours: summary.delta }),
-        subPositive: summary.delta == null ? undefined : summary.delta >= 0,
-      },
-      { key: "sessions", label: t("stats.sessions"), value: summary.sessions },
-      {
-        key: "streak",
-        label: t("stats.currentStreak"),
-        value: (
-          <View style={glyphRowStyle}>
-            <AppFlame size={18} />
-            <Text style={styles.heroStatValue}>{summary.streak}</Text>
-          </View>
-        ),
-        sublabel: t("stats.bestStreakSub", { days: summary.bestStreak }),
-      },
-    ],
-    [summary, t],
-  );
-
-  if (!controller.token) {
-    return <StatsKpiStrip items={items} variant="hero" testID="stats-kpi-strip" />;
-  }
-
+  if (!controller.token) return null;
   return (
     <View style={styles.heroWrap} onLayout={controller.handleYourWeekLayout}>
       <LinearGradient
@@ -52,7 +17,7 @@ export function StatsHero({ controller }: { controller: StatsScreenController })
         testID="stats-week-hero"
       >
         <YourWeekCard
-          t={t}
+          t={controller.t}
           goal={controller.weeklyGoal}
           forecast={controller.forecast}
           commitment={controller.commitment}
@@ -65,7 +30,6 @@ export function StatsHero({ controller }: { controller: StatsScreenController })
           onStartSession={controller.startSession}
         />
       </LinearGradient>
-      <StatsKpiStrip items={items} testID="stats-kpi-strip" />
     </View>
   );
 }
