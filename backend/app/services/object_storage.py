@@ -17,6 +17,10 @@ PROFILE_PICTURE_KEY_PREFIX = "profile_pictures/"
 LOCAL_URL_PREFIX = "/uploads/profile_pictures/"
 
 
+class ObjectStorageError(RuntimeError):
+    """Raised when a remote object storage operation fails."""
+
+
 def object_storage_is_configured() -> bool:
     return bool(
         (settings.object_storage_endpoint_url or "").strip()
@@ -29,6 +33,15 @@ def object_storage_is_configured() -> bool:
 
 def public_base_url() -> str:
     return (settings.object_storage_public_base_url or "").rstrip("/")
+
+
+def normalize_endpoint_url(endpoint_url: str, bucket: str) -> str:
+    """Strip accidental `/<bucket>` suffixes copied from the Cloudflare dashboard."""
+    normalized = endpoint_url.strip().rstrip("/")
+    bucket_name = bucket.strip().strip("/")
+    if bucket_name and normalized.endswith(f"/{bucket_name}"):
+        return normalized[: -(len(bucket_name) + 1)]
+    return normalized
 
 
 def is_remote_public_url(url: str) -> bool:
@@ -91,11 +104,15 @@ def _s3_client():
     import boto3
     from botocore.config import Config
 
+    endpoint = normalize_endpoint_url(
+        settings.object_storage_endpoint_url or "",
+        settings.object_storage_bucket or "",
+    )
     return boto3.client(
         "s3",
-        endpoint_url=settings.object_storage_endpoint_url.strip(),
-        aws_access_key_id=settings.object_storage_access_key_id.strip(),
-        aws_secret_access_key=settings.object_storage_secret_access_key.strip(),
+        endpoint_url=endpoint,
+        aws_access_key_id=(settings.object_storage_access_key_id or "").strip(),
+        aws_secret_access_key=(settings.object_storage_secret_access_key or "").strip(),
         region_name=(settings.object_storage_region or "auto").strip(),
         config=Config(signature_version="s3v4"),
     )
@@ -104,14 +121,21 @@ def _s3_client():
 def _put_remote(key: str, content: bytes, content_type: str) -> str:
     if ".." in key or key.startswith("/"):
         raise ValueError("Invalid object key")
-    client = _s3_client()
-    client.put_object(
-        Bucket=settings.object_storage_bucket.strip(),
-        Key=key,
-        Body=content,
-        ContentType=content_type,
-        CacheControl="public, max-age=31536000, immutable",
-    )
+    bucket = (settings.object_storage_bucket or "").strip()
+    try:
+        _s3_client().put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=content,
+            ContentType=content_type,
+            CacheControl="public, max-age=31536000, immutable",
+        )
+    except Exception as exc:
+        logger.exception("Object storage put failed key=%s bucket=%s", key, bucket)
+        raise ObjectStorageError(
+            "Could not store the image in object storage. Check Render OBJECT_STORAGE_* env vars "
+            "(endpoint must be https://<accountid>.r2.cloudflarestorage.com without /bucket)."
+        ) from exc
     return f"{public_base_url()}/{key}"
 
 
@@ -120,7 +144,7 @@ def _delete_remote(key: str) -> None:
         return
     try:
         _s3_client().delete_object(
-            Bucket=settings.object_storage_bucket.strip(),
+            Bucket=(settings.object_storage_bucket or "").strip(),
             Key=key,
         )
     except Exception:

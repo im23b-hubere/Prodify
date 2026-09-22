@@ -109,3 +109,19 @@ def test_delete_profile_picture_ignores_path_traversal() -> None:
         assert sentinel.exists()
     finally:
         sentinel.unlink(missing_ok=True)
+
+
+def test_normalize_endpoint_url_strips_bucket_suffix() -> None:
+    from app.services.object_storage import normalize_endpoint_url
+
+    assert (
+        normalize_endpoint_url(
+            "https://abc.r2.cloudflarestorage.com/prodify-media",
+            "prodify-media",
+        )
+        == "https://abc.r2.cloudflarestorage.com"
+    )
+    assert (
+        normalize_endpoint_url("https://abc.r2.cloudflarestorage.com", "prodify-media")
+        == "https://abc.r2.cloudflarestorage.com"
+    )
