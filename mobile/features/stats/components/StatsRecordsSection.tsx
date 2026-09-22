@@ -5,6 +5,7 @@ import { RecordGlyph } from "../../../components/icons/ProdifyGlyphs";
 import { EmptyState } from "../../../components/states/EmptyState";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, spacing, typography } from "../../../constants/theme";
+import { STATS_RECORDS_PREVIEW } from "../constants";
 import type { DecoratedRecord } from "../types";
 import { formatRecordContext, formatRecordDate, recordTitle } from "../utils/records";
 import { StatsSection } from "./StatsSection";
@@ -14,31 +15,31 @@ type Props = {
   records: DecoratedRecord[];
 };
 
+function recordMeta(record: DecoratedRecord, t: TFunction): string | null {
+  return formatRecordDate(record.occurred_at, t) ?? formatRecordContext(record, t);
+}
+
 export function StatsRecordsSection({ t, records }: Props) {
+  const preview = records.slice(0, STATS_RECORDS_PREVIEW);
   return (
-    <StatsSection
-      title={t("stats.recordsTitle")}
-      subtitle={records.length > 0 ? t("stats.recordsSubtitle") : undefined}
-      testID="stats-section-records"
-    >
+    <StatsSection title={t("stats.recordsTitle")} testID="stats-section-records">
       {records.length === 0 ? (
         <EmptyState compact title={t("stats.recordsEmptyTitle")} message={t("stats.recordsEmpty")} />
       ) : (
         <View style={styles.wrap}>
-          {records.slice(0, 3).map((record) => {
-            const meta = formatRecordDate(record.occurred_at, t);
-            const displayContext = formatRecordContext(record, t);
+          {preview.map((record) => {
+            const meta = recordMeta(record, t);
             return (
               <View key={`top-${record.key}${record.occurred_at ?? ""}`} style={styles.row}>
-                <View style={styles.accent} />
+                <RecordGlyph recordKey={record.key} size={16} />
                 <View style={styles.copy}>
                   <View style={styles.titleRow}>
-                    <RecordGlyph recordKey={record.key} size={16} />
                     <Text style={styles.label}>{recordTitle(record.key, record.label, t)}</Text>
-                    {record.isFresh ? <Text style={styles.fresh}>{t("stats.recordFresh")}</Text> : null}
+                    {record.isFresh ? (
+                      <Text style={styles.fresh}>{t("stats.recordFresh")}</Text>
+                    ) : null}
                   </View>
                   <Text style={styles.value}>{record.value}</Text>
-                  {displayContext ? <Text style={styles.meta}>{displayContext}</Text> : null}
                   {meta ? <Text style={styles.meta}>{meta}</Text> : null}
                 </View>
               </View>
@@ -57,17 +58,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  accent: {
-    width: 3,
-    height: 28,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginTop: 4,
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   copy: {
     flex: 1,
@@ -93,8 +85,8 @@ const styles = StyleSheet.create({
   value: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 18,
+    lineHeight: 22,
   },
   meta: {
     color: colors.textSecondary,

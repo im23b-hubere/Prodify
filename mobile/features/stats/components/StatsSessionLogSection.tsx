@@ -22,18 +22,10 @@ type Props = {
 export function StatsSessionLogSection({ t, sessions, statsPeriod }: Props) {
   const router = useRouter();
   const preview = sessions.slice(0, STATS_SESSION_LOG_PREVIEW);
-  const subtitle =
-    sessions.length > 0
-      ? sessions.length > STATS_SESSION_LOG_PREVIEW
-        ? t("stats.recentCountSubtitle", {
-            shown: preview.length,
-            total: sessions.length,
-          })
-        : t("stats.recentSubtitle")
-      : undefined;
+  const hasMore = sessions.length > STATS_SESSION_LOG_PREVIEW;
 
   return (
-    <StatsSection title={t("stats.recentTitle")} subtitle={subtitle} testID="stats-section-recent">
+    <StatsSection title={t("stats.recentTitle")} testID="stats-section-recent">
       {sessions.length === 0 ? (
         <EmptyState compact title={t("stats.recentEmptyTitle")} message={t("stats.recentEmpty")} />
       ) : (
@@ -60,7 +52,7 @@ export function StatsSessionLogSection({ t, sessions, statsPeriod }: Props) {
               );
             })}
           </View>
-          {sessions.length > STATS_SESSION_LOG_PREVIEW ? (
+          {hasMore ? (
             <Pressable
               accessibilityRole="button"
               onPress={() =>
@@ -89,8 +81,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   viewAllText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
+    color: colors.primary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
   },
 });
