@@ -23,7 +23,9 @@ export type StatsFilter = {
 export type StatsSummaryView = {
   hours: string;
   sessions: string;
-  streak: number;
-  bestStreak: number;
+  avgLength: string;
+  consistencyPercent: number;
+  consistencyActiveDays: number;
+  consistencyTotalDays: number;
   delta: number | null;
 };

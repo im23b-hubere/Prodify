@@ -1,26 +1,51 @@
 import { formatIsoDateShortLocal, weekdayLetterFromIsoDay } from "../../../lib/sessionTime";
 import type { SessionStatsDto } from "../../../types/session";
 import type { BarPoint, StatsPeriod, StatsSummaryView } from "../types";
-import { localStatsDateKey } from "./format";
+import { formatAvgSessionLength, localStatsDateKey } from "./format";
 
-export function buildStatsSummary(stats: SessionStatsDto | null): StatsSummaryView {
-  const s = stats?.summary;
-  if (!s) {
-    return {
-      hours: "0h",
-      sessions: "0",
-      streak: 0,
-      bestStreak: 0,
-      delta: null,
-    };
+function consistencyFromChart(chart: BarPoint[], period: StatsPeriod) {
+  const totalDays = period === "week" ? 7 : chart.length;
+  if (totalDays <= 0) {
+    return { consistencyPercent: 0, consistencyActiveDays: 0, consistencyTotalDays: 0 };
   }
+  const activeDays = chart.filter((point) => point.y > 0).length;
+  return {
+    consistencyPercent: Math.round((activeDays / totalDays) * 100),
+    consistencyActiveDays: activeDays,
+    consistencyTotalDays: totalDays,
+  };
+}
+
+export function buildStatsSummary(
+  stats: SessionStatsDto | null,
+  period: StatsPeriod = "week",
+): StatsSummaryView {
+  const empty: StatsSummaryView = {
+    hours: "0h",
+    sessions: "0",
+    avgLength: "0m",
+    consistencyPercent: 0,
+    consistencyActiveDays: 0,
+    consistencyTotalDays: period === "week" ? 7 : 0,
+    delta: null,
+  };
+  const s = stats?.summary;
+  if (!s) return empty;
+
   const sec = Number.isFinite(s.total_seconds) && s.total_seconds >= 0 ? s.total_seconds : 0;
   const hours = (sec / 3600).toFixed(1);
+  const avgSeconds =
+    Number.isFinite(s.avg_session_seconds) && s.avg_session_seconds >= 0
+      ? s.avg_session_seconds
+      : 0;
+  const chart = buildChartData(stats, period);
+  const consistency = consistencyFromChart(chart, period);
+
   return {
     hours: `${hours}h`,
     sessions: String(s.total_sessions),
-    streak: s.current_streak_days,
-    bestStreak: s.best_streak_days,
+    avgLength: formatAvgSessionLength(avgSeconds),
+    ...consistency,
     delta: s.hours_delta_vs_prior_period,
   };
 }

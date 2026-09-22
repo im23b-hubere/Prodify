@@ -28,7 +28,7 @@ export function useStatsPresentation(
   period: StatsPeriod,
   t: TFunction,
 ) {
-  const summary = useMemo(() => buildStatsSummary(stats), [stats]);
+  const summary = useMemo(() => buildStatsSummary(stats, period), [period, stats]);
   const chartData = useMemo(() => buildChartData(stats, period), [period, stats]);
   const breakdownData = useMemo(
     () =>

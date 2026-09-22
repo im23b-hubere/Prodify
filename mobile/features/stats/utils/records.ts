@@ -50,7 +50,6 @@ export function recordTitle(key: string, fallback: string, t: TFunction) {
 }
 
 function recordPriorityScore(key: string) {
-  if (key === "current_streak") return 100;
   if (key === "longest_streak") return 90;
   if (key === "productive_week") return 80;
   if (key === "most_sessions_day") return 70;
@@ -58,8 +57,12 @@ function recordPriorityScore(key: string) {
   return 20;
 }
 
+/** Current streak lives on HUD/profile — Highlights keep personal bests only. */
+const HIGHLIGHT_EXCLUDED_KEYS = new Set(["current_streak"]);
+
 export function decorateRecords(records: PersonalRecord[], now = Date.now()): DecoratedRecord[] {
   return records
+    .filter((record) => !HIGHLIGHT_EXCLUDED_KEYS.has(record.key))
     .map((record) => {
       const occurredDate = parseIsoDate(record.occurred_at);
       const isFresh = occurredDate ? now - occurredDate.getTime() <= STATS_RECORD_FRESH_MS : false;

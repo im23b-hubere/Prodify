@@ -71,30 +71,68 @@ describe("stats heatmap utils", () => {
 });
 
 describe("stats summary utils", () => {
-  it("builds summary from stats payload", () => {
+  it("builds summary with avg length and consistency", () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const iso = (offset: number) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() + offset);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+    expect(
+      buildStatsSummary(
+        {
+          period: "week",
+          summary: {
+            total_seconds: 3600,
+            total_sessions: 2,
+            avg_session_seconds: 1800,
+            current_streak_days: 3,
+            best_streak_days: 5,
+            hours_delta_vs_prior_period: 1.1,
+          },
+          trend: [
+            { label: iso(-1), sessions: 1, seconds: 1800 },
+            { label: iso(0), sessions: 1, seconds: 1800 },
+          ],
+          breakdown: [],
+          recent_sessions: [],
+          productivity_hint: null,
+        },
+        "week",
+      ),
+    ).toEqual({
+      hours: "1.0h",
+      sessions: "2",
+      avgLength: "30m",
+      consistencyPercent: 29,
+      consistencyActiveDays: 2,
+      consistencyTotalDays: 7,
+      delta: 1.1,
+    });
+  });
+
+  it("formats longer average sessions in hours", () => {
     expect(
       buildStatsSummary({
         period: "week",
         summary: {
-          total_seconds: 3600,
-          total_sessions: 2,
-          avg_session_seconds: 1800,
-          current_streak_days: 3,
-          best_streak_days: 5,
-          hours_delta_vs_prior_period: 1.1,
+          total_seconds: 7200,
+          total_sessions: 1,
+          avg_session_seconds: 5400,
+          current_streak_days: 0,
+          best_streak_days: 0,
+          hours_delta_vs_prior_period: null,
         },
         trend: [],
         breakdown: [],
         recent_sessions: [],
         productivity_hint: null,
-      }),
-    ).toEqual({
-      hours: "1.0h",
-      sessions: "2",
-      streak: 3,
-      bestStreak: 5,
-      delta: 1.1,
-    });
+      }).avgLength,
+    ).toBe("1h 30m");
   });
 
   it("builds week chart data with seven points", () => {
@@ -121,7 +159,7 @@ describe("stats summary utils", () => {
 });
 
 describe("stats records utils", () => {
-  it("prioritizes fresh current streak records", () => {
+  it("keeps personal bests and drops current streak", () => {
     const now = Date.now();
     const decorated = decorateRecords(
       [
@@ -139,10 +177,17 @@ describe("stats records utils", () => {
           context: null,
           occurred_at: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
         },
+        {
+          key: "longest_streak",
+          label: "Best streak",
+          value: "12d",
+          context: null,
+          occurred_at: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        },
       ],
       now,
     );
-    expect(decorated[0]?.key).toBe("current_streak");
+    expect(decorated.map((record) => record.key)).toEqual(["longest_streak", "longest_session"]);
     expect(decorated[0]?.isFresh).toBe(true);
   });
 });

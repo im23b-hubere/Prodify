@@ -27,12 +27,6 @@ export const styles = StyleSheet.create({
   contentFadeWrap: {
     gap: spacing.lg,
   },
-  kpiStreakValue: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 20,
-    lineHeight: 24,
-  },
   heroShell: {
     borderRadius: radii.xl,
     borderWidth: 1,
