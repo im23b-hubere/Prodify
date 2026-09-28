@@ -9,11 +9,12 @@ import { LoadingState } from "../../../components/states/LoadingState";
 import { colors } from "../../../constants/theme";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 import type { FriendsScreenController } from "../hooks/useFriendsScreenController";
+import { FriendsActivitySection } from "./FriendsActivitySection";
 import { FriendsIncomingSection } from "./FriendsIncomingSection";
+import { FriendsLeaderboardSection } from "./FriendsLeaderboardSection";
 import { FriendsModals } from "./FriendsModals";
-import { FriendsOverviewSection } from "./FriendsOverviewSection";
+import type { FriendsOverviewProps } from "./FriendsOverviewSection";
 import { FriendsScreenHeader } from "./FriendsScreenHeader";
-import { FriendsSocialSummaryStrip } from "./FriendsSocialSummaryStrip";
 import { FriendsTogetherSection } from "./FriendsTogetherSection";
 
 type Props = { controller: FriendsScreenController };
@@ -48,16 +49,21 @@ function FriendsStatusMessages({ controller }: Props) {
 
 function FriendsLoadedSections({ controller }: Props) {
   const { t, userId, state, actions, visibleActivity, renderActivity } = controller;
+  const sectionProps: FriendsOverviewProps = {
+    t,
+    mode: state.mode,
+    setMode: state.setMode,
+    loading: state.loading,
+    entries: actions.entries,
+    currentUserId: userId,
+    activity: visibleActivity,
+    renderActivity,
+    activeTriggerCard: actions.activeTriggerCard,
+    onCompleteTriggerAction: actions.completeTriggerAction,
+    onAddFriendFromEmptyFeed: () => state.setAddOpen(true),
+  };
   return (
     <>
-      {state.sectionTab === "overview" && actions.hasOtherFriends ? (
-        <FriendsSocialSummaryStrip
-          t={t}
-          mode={state.mode}
-          entries={actions.entries}
-          currentUserId={userId}
-        />
-      ) : null}
       <FriendsIncomingSection
         t={t}
         incoming={state.incoming}
@@ -66,21 +72,12 @@ function FriendsLoadedSections({ controller }: Props) {
         onDecline={actions.declineRequest}
       />
       {state.sectionTab === "overview" && actions.hasOtherFriends ? (
-        <FriendsOverviewSection
-          t={t}
-          mode={state.mode}
-          setMode={state.setMode}
-          loading={state.loading}
-          entries={actions.entries}
-          currentUserId={userId}
-          activity={visibleActivity}
-          renderActivity={renderActivity}
-          activeTriggerCard={actions.activeTriggerCard}
-          onCompleteTriggerAction={actions.completeTriggerAction}
-          onAddFriendFromEmptyFeed={() => state.setAddOpen(true)}
-        />
+        <FriendsLeaderboardSection props={sectionProps} />
       ) : null}
-      {state.sectionTab === "tools" ? (
+      {state.sectionTab === "overview" && actions.hasOtherFriends ? (
+        <FriendsActivitySection props={sectionProps} />
+      ) : null}
+      {state.sectionTab === "challenges" ? (
         <FriendsTogetherSection
           t={t}
           busyActionKey={state.busyActionKey}
@@ -88,7 +85,6 @@ function FriendsLoadedSections({ controller }: Props) {
           onOpenChallengeCreate={controller.openChallengeCreate}
           onOpenSessionSetup={controller.openSessionSetup}
           buddy={state.buddy}
-          commitment={state.commitment}
           hasOtherFriends={actions.hasOtherFriends}
           onOpenBuddyPicker={() => state.setBuddyPickerOpen(true)}
           onOpenAddFriend={() => state.setAddOpen(true)}
@@ -138,9 +134,8 @@ export function FriendsScreenView({ controller }: Props) {
       >
         <FriendsScreenHeader
           title={t("friendsScreen.title")}
-          subtitle={t("friendsScreen.subtitle")}
           tabOverviewLabel={t("friendsScreen.tabOverview")}
-          tabToolsLabel={t("friendsScreen.tabSocialTools")}
+          tabChallengesLabel={t("friendsScreen.tabChallenges")}
           sectionTab={state.sectionTab}
           onOpenAddFriend={() => state.setAddOpen(true)}
           onChangeTab={state.setSectionTab}

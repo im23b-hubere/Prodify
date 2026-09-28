@@ -1,34 +1,40 @@
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { Trophy } from "lucide-react-native";
 import { useMemo } from "react";
 import { Image, Pressable, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 import { EmptyState } from "../../../components/states/EmptyState";
 import { API_BASE_URL } from "../../../constants/api";
-import { colors } from "../../../constants/theme";
 import type { FriendsOverviewProps } from "./FriendsOverviewSection";
-import { FriendsLeaderboardPodium } from "./FriendsLeaderboardPodium";
 import { FriendsSectionHeader } from "./FriendsSectionHeader";
 import { friendsOverviewStyles as styles } from "../styles/friendsOverview.styles";
 
+function sessionsBehind(
+  entry: FriendsOverviewProps["entries"][number],
+  entries: FriendsOverviewProps["entries"],
+) {
+  const ahead = entries.find((item) => item.rank === entry.rank - 1);
+  if (!ahead) return null;
+  const count = ahead.sessions_in_period - entry.sessions_in_period;
+  if (count <= 0) return null;
+  return { count, name: ahead.username };
+}
+
 export function FriendsLeaderboardSection({ props }: { props: FriendsOverviewProps }) {
   const router = useRouter();
-  const visible = useMemo(() => props.entries.slice(0, 8), [props.entries]);
+  const visible = useMemo(() => {
+    const top = props.entries.slice(0, 8);
+    const you = props.entries.find((entry) => entry.user_id === props.currentUserId);
+    if (!you || top.some((entry) => entry.user_id === you.user_id)) return top;
+    return [...top, you];
+  }, [props.currentUserId, props.entries]);
   const solo =
     !props.loading && visible.length === 1 && props.currentUserId === visible[0]?.user_id;
-  const podium = !solo && visible.length >= 2;
-  const list = useMemo(
-    () => (podium ? visible.filter((entry) => entry.rank > 3) : visible),
-    [podium, visible],
-  );
   return (
-    <View style={styles.sectionWrap}>
+    <View style={styles.sectionWrap} testID="friends-ranking">
       <FriendsSectionHeader
-        icon={<Trophy color={colors.primary} size={20} />}
         title={props.t("friendsScreen.sectionLeaderboardTitle")}
-        subtitle={props.t("friendsScreen.sectionLeaderboardSub")}
         right={<PeriodToggle props={props} />}
       />
       <Animated.View
@@ -48,19 +54,12 @@ export function FriendsLeaderboardSection({ props }: { props: FriendsOverviewPro
             onAction={props.onAddFriendFromEmptyFeed}
           />
         ) : null}
-        {podium ? (
-          <FriendsLeaderboardPodium
-            t={props.t}
-            mode={props.mode}
-            entries={visible}
-            currentUserId={props.currentUserId}
-          />
-        ) : null}
-        {list.map((entry, index) => (
+        {visible.map((entry, index) => (
           <LeaderRow
             key={`${entry.user_id}-${entry.rank}`}
             entry={entry}
             index={index}
+            gap={sessionsBehind(entry, props.entries)}
             props={props}
             onOpen={() => {
               Haptics.selectionAsync().catch(() => undefined);
@@ -105,11 +104,13 @@ function PeriodToggle({ props }: { props: FriendsOverviewProps }) {
 function LeaderRow({
   entry,
   index,
+  gap,
   props,
   onOpen,
 }: {
   entry: FriendsOverviewProps["entries"][number];
   index: number;
+  gap: { count: number; name: string } | null;
   props: FriendsOverviewProps;
   onOpen: () => void;
 }) {
@@ -118,67 +119,48 @@ function LeaderRow({
       ? entry.profile_picture_url
       : `${API_BASE_URL}${entry.profile_picture_url}`
     : null;
+  const isYou = props.currentUserId === entry.user_id;
   return (
-    <Animated.View entering={FadeInDown.delay(index * 35).duration(320)}>
-      <Pressable
+    <Pressable
+      style={[styles.leaderItem, index > 0 && styles.leaderDivider, isYou && styles.leaderItemYou]}
+      onPress={onOpen}
+    >
+      <Text
         style={[
-          styles.leaderItem,
-          index > 0 && styles.leaderDivider,
-          entry.rank <= 3 && styles.leaderTopRow,
+          styles.rankNumber,
+          styles.rankNumberRegular,
+          entry.rank === 1 && styles.rankNumberGold,
+          entry.rank === 2 && styles.rankNumberSilver,
+          entry.rank === 3 && styles.rankNumberBronze,
         ]}
-        onPress={onOpen}
       >
-        <Text
-          style={[
-            styles.rankNumber,
-            entry.rank <= 3 ? styles.rankNumberTop : styles.rankNumberRegular,
-            entry.rank === 1 && styles.rankNumberGold,
-            entry.rank === 2 && styles.rankNumberSilver,
-            entry.rank === 3 && styles.rankNumberBronze,
-          ]}
-        >
-          {entry.rank}
-        </Text>
-        {uri ? (
-          <Image source={{ uri }} style={styles.avatarImage} />
-        ) : (
-          <View style={styles.avatar}>
-            <Text style={styles.avatarLabel}>{entry.username.slice(0, 2).toUpperCase()}</Text>
-          </View>
-        )}
-        <View style={styles.userCopy}>
-          <View style={styles.nameRow}>
-            <Text style={styles.userName}>{entry.username}</Text>
-            {props.currentUserId === entry.user_id ? (
-              <View style={styles.youPill}>
-                <Text style={styles.youPillText}>{props.t("friendsScreen.youPill")}</Text>
-              </View>
-            ) : null}
-          </View>
-          <View style={styles.leaderMetricsRow}>
-            <View style={styles.leaderMetricPill}>
-              <Text style={styles.leaderMetricLabel}>
-                {props.t(
-                  props.mode === "week"
-                    ? "friendsScreen.leaderMetricSessionsWeek"
-                    : "friendsScreen.leaderMetricSessionsAll",
-                )}
-              </Text>
-              <Text style={styles.leaderMetricValue}>{entry.sessions_in_period}</Text>
-            </View>
-            <View style={styles.leaderMetricPill}>
-              <Text style={styles.leaderMetricLabel}>
-                {props.t("friendsScreen.statStreakLabel")}
-              </Text>
-              <Text style={styles.leaderMetricValue}>
-                {props.t("friendsScreen.leaderMetricStreakDays", {
-                  days: entry.current_streak_days,
-                })}
-              </Text>
-            </View>
-          </View>
+        {entry.rank}
+      </Text>
+      {uri ? (
+        <Image source={{ uri }} style={styles.avatarImage} />
+      ) : (
+        <View style={styles.avatar}>
+          <Text style={styles.avatarLabel}>{entry.username.slice(0, 2).toUpperCase()}</Text>
         </View>
-      </Pressable>
-    </Animated.View>
+      )}
+      <View style={styles.userCopy}>
+        <View style={styles.nameRow}>
+          <Text style={[styles.userName, styles.leaderName]} numberOfLines={1}>
+            {entry.username}
+          </Text>
+          {isYou ? (
+            <View style={styles.youPill}>
+              <Text style={styles.youPillText}>{props.t("friendsScreen.youPill")}</Text>
+            </View>
+          ) : null}
+        </View>
+        {gap ? (
+          <Text style={styles.leaderGap} numberOfLines={1}>
+            {props.t("friendsScreen.leaderGapBehind", { count: gap.count, name: gap.name })}
+          </Text>
+        ) : null}
+      </View>
+      <Text style={styles.leaderScore}>{entry.sessions_in_period}</Text>
+    </Pressable>
   );
 }

@@ -99,7 +99,9 @@ function Segment({
       accessibilityState={{ selected }}
       accessibilityLabel={label}
     >
-      <Animated.Text style={[styles.label, labelStyle]}>{label}</Animated.Text>
+      <Animated.Text style={[styles.label, labelStyle]} numberOfLines={1}>
+        {label}
+      </Animated.Text>
     </Pressable>
   );
 }

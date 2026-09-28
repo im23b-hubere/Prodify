@@ -26,11 +26,3 @@ export type FriendsOverviewProps = {
   onAddFriendFromEmptyFeed: () => void;
 };
 
-export function FriendsOverviewSection(props: FriendsOverviewProps) {
-  return (
-    <>
-      <FriendsLeaderboardSection props={props} />
-      <FriendsActivitySection props={props} />
-    </>
-  );
-}

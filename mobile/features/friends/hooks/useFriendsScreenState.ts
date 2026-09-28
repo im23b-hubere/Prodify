@@ -13,6 +13,8 @@ import type {
 } from "../../../types/friends";
 import type { EntitlementDto } from "../../../types/outcomes";
 
+export type FriendsSectionTab = "overview" | "challenges";
+
 type FeedMetrics = Record<
   number,
   { reactionsCount: number; commentsCount: number; viewerReaction: string | null }
@@ -90,7 +92,7 @@ function useFriendsModalState() {
   const [challengeDuration, setChallengeDuration] = useState("7");
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [buddyPickerOpen, setBuddyPickerOpen] = useState(false);
-  const [sectionTab, setSectionTab] = useState<"overview" | "tools">("overview");
+  const [sectionTab, setSectionTab] = useState<FriendsSectionTab>("overview");
 
   return {
     addOpen,

@@ -1,8 +1,6 @@
-import { type Href, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 
-import type { BuddyStatusDto, CommitmentDto, SocialChallengeDto } from "../../../types/friends";
-import { FriendsTogetherHud } from "./FriendsTogetherHud";
+import type { BuddyStatusDto, SocialChallengeDto } from "../../../types/friends";
 import {
   TogetherBuddySection,
   TogetherChallengesSection,
@@ -16,7 +14,6 @@ export type FriendsTogetherProps = {
   onJoinSocialChallenge: (challengeId: number) => void;
   onOpenSessionSetup: () => void;
   buddy: BuddyStatusDto | null;
-  commitment: CommitmentDto | null;
   hasOtherFriends: boolean;
   onOpenBuddyPicker: () => void;
   onOpenAddFriend: () => void;
@@ -27,7 +24,6 @@ export type FriendsTogetherProps = {
 };
 
 export function FriendsTogetherSection(props: FriendsTogetherProps) {
-  const router = useRouter();
   const activeCount = props.challengeCards.filter(
     (challenge) => challenge.status === "active",
   ).length;
@@ -36,17 +32,8 @@ export function FriendsTogetherSection(props: FriendsTogetherProps) {
     props.buddy?.status !== "active" &&
     props.buddy?.status !== "pending_incoming" &&
     props.buddy?.status !== "pending_outgoing";
-  const openStats = () =>
-    router.push({ pathname: "/(tabs)/stats", params: { focus: "yourWeek" } } as Href);
   return (
     <>
-      <FriendsTogetherHud
-        t={props.t}
-        buddy={props.buddy}
-        commitment={props.commitment}
-        activeChallengeCount={activeCount}
-        onViewCommitment={props.commitment ? openStats : undefined}
-      />
       {showGetStarted ? (
         <TogetherGetStarted props={props} />
       ) : (

@@ -156,7 +156,7 @@ describe("Friends Screen", () => {
     expect(getByText("friendsScreen.loading")).toBeTruthy();
   });
 
-  it("shows empty state when user has no friends on overview tab", () => {
+  it("shows empty state when user has no friends on the activity tab", () => {
     const { getByText } = render(<FriendsScreen />);
     expect(getByText("friendsScreen.feedEmptyTitle")).toBeTruthy();
     expect(getByText("friendsScreen.feedEmptyCta")).toBeTruthy();
@@ -213,15 +213,32 @@ describe("Friends Screen", () => {
         ],
       }),
     );
-    const { getByText, getByTestId, queryByText } = render(<FriendsScreen />);
+    const { getAllByText, getByText, queryByText } = render(<FriendsScreen />);
     expect(getByText("Network down")).toBeTruthy();
     expect(getByText("carol")).toBeTruthy();
-    expect(getByTestId("friends-leaderboard-podium")).toBeTruthy();
+    expect(getAllByText("bob").length).toBeGreaterThan(0);
     expect(queryByText("friendsScreen.feedEmptyTitle")).toBeNull();
   });
 
-  it("renders social summary and podium when friends exist", () => {
-    mockUseFriendsScreenState.mockReturnValue(createFriendsState({ loading: false }));
+  it("shows a slim ranking and activity on the same page", () => {
+    mockUseFriendsScreenState.mockReturnValue(
+      createFriendsState({
+        loading: false,
+        activity: [
+          {
+            session_id: 101,
+            user_id: 2,
+            username: "bob",
+            session_type: "beat_making",
+            activity_at: "2026-01-01T10:00:00Z",
+            duration_seconds: 1800,
+            reactions_count: 1,
+            comments_count: 0,
+            status: "completed",
+          },
+        ],
+      }),
+    );
     mockUseFriendsScreenActions.mockReturnValue(
       createFriendsActions({
         hasOtherFriends: true,
@@ -231,16 +248,21 @@ describe("Friends Screen", () => {
         ],
       }),
     );
-    const { getByTestId } = render(<FriendsScreen />);
-    expect(getByTestId("friends-social-summary")).toBeTruthy();
-    expect(getByTestId("friends-leaderboard-podium")).toBeTruthy();
+    const { getByTestId, getByText, queryByTestId, queryByText } = render(<FriendsScreen />);
+    expect(queryByTestId("friends-social-summary")).toBeNull();
+    expect(queryByTestId("friends-leaderboard-podium")).toBeNull();
+    expect(queryByText("friendsScreen.subtitle")).toBeNull();
+    expect(queryByText("friendsScreen.feedOpenSessionCta")).toBeNull();
+    expect(getByTestId("friends-ranking")).toBeTruthy();
+    expect(getByText("friendsScreen.sectionActivityTitle")).toBeTruthy();
+    expect(getByText("friendsScreen.leaderGapBehind")).toBeTruthy();
   });
 
-  it("renders crew HUD and buddy duel on tools tab", () => {
+  it("renders the buddy duel on the challenges page without the crew HUD", () => {
     mockUseFriendsScreenState.mockReturnValue(
       createFriendsState({
         loading: false,
-        sectionTab: "tools",
+        sectionTab: "challenges",
         buddy: {
           status: "active",
           buddy_username: "bob",
@@ -273,12 +295,14 @@ describe("Friends Screen", () => {
         ],
       }),
     );
-    const { getByTestId } = render(<FriendsScreen />);
-    expect(getByTestId("friends-together-hud")).toBeTruthy();
+    const { getByTestId, queryByTestId, queryByText } = render(<FriendsScreen />);
+    expect(queryByTestId("friends-together-hud")).toBeNull();
+    expect(queryByTestId("friends-ranking")).toBeNull();
     expect(getByTestId("friends-buddy-duel")).toBeTruthy();
+    expect(queryByText("friendsScreen.sectionActivityTitle")).toBeNull();
   });
 
-  it("shows incoming friend requests", () => {
+  it("shows incoming friend requests above ranking and activity", () => {
     mockUseFriendsScreenState.mockReturnValue(
       createFriendsState({
         loading: false,
@@ -286,8 +310,14 @@ describe("Friends Screen", () => {
       }),
     );
     mockUseFriendsScreenActions.mockReturnValue(createFriendsActions({ hasOtherFriends: true }));
-    const { getByText } = render(<FriendsScreen />);
+    const { getByText, queryByText } = render(<FriendsScreen />);
     expect(getByText("carol")).toBeTruthy();
+    expect(queryByText("friendsScreen.subtitle")).toBeNull();
+    expect(queryByText("friendsScreen.incomingSectionSub")).toBeNull();
+    expect(getByText("friendsScreen.sectionLeaderboardTitle")).toBeTruthy();
+    expect(getByText("friendsScreen.sectionActivityTitle")).toBeTruthy();
+    expect(getByText("friendsScreen.tabOverview")).toBeTruthy();
+    expect(getByText("friendsScreen.tabChallenges")).toBeTruthy();
   });
 
   it("shows toast message when set", () => {

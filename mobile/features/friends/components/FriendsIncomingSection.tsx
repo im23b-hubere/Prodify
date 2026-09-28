@@ -24,7 +24,6 @@ export function FriendsIncomingSection({ t, incoming, actionBusy, onAccept, onDe
             ? t("friendsScreen.incomingTitleCount", { count: incoming.length })
             : t("friendsScreen.incomingTitle")
         }
-        subtitle={t("friendsScreen.incomingSectionSub")}
       />
       <View style={styles.incomingList}>
         {incoming.map((req) => (

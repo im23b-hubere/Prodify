@@ -6,23 +6,22 @@ import { RankHudChip } from "../../../components/progression/RankHudChip";
 import { SegmentedControl } from "../../../components/ui/SegmentedControl";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
+import type { FriendsSectionTab } from "../hooks/useFriendsScreenState";
 
 type Props = {
   title: string;
-  subtitle: string;
   tabOverviewLabel: string;
-  tabToolsLabel: string;
-  sectionTab: "overview" | "tools";
+  tabChallengesLabel: string;
+  sectionTab: FriendsSectionTab;
   onOpenAddFriend: () => void;
-  onChangeTab: (tab: "overview" | "tools") => void;
+  onChangeTab: (tab: FriendsSectionTab) => void;
   addFriendA11y: string;
 };
 
 export function FriendsScreenHeader({
   title,
-  subtitle,
   tabOverviewLabel,
-  tabToolsLabel,
+  tabChallengesLabel,
   sectionTab,
   onOpenAddFriend,
   onChangeTab,
@@ -33,7 +32,6 @@ export function FriendsScreenHeader({
       <View style={styles.topBar}>
         <View style={styles.titleBlock}>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.screenSubtitle}>{subtitle}</Text>
         </View>
         <View style={styles.topActions}>
           <RankHudChip from="friends" />
@@ -54,7 +52,7 @@ export function FriendsScreenHeader({
         <SegmentedControl
           options={[
             { value: "overview", label: tabOverviewLabel },
-            { value: "tools", label: tabToolsLabel },
+            { value: "challenges", label: tabChallengesLabel },
           ]}
           value={sectionTab}
           onChange={onChangeTab}
@@ -80,13 +78,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
-  screenSubtitle: {
-    marginTop: spacing.xs,
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.caption,
-    lineHeight: 20,
-  },
   iconButton: {
     width: 38,
     height: 38,
