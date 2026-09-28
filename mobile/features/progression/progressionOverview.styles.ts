@@ -1,38 +1,36 @@
 import { StyleSheet } from "react-native";
 
-import { fontFamily } from "../../constants/fonts";
-import { colors, radii, spacing, typography, ui } from "../../constants/theme";
+import { colors, spacing, typography, ui } from "../../constants/theme";
 
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { padding: ui.screenPadding, paddingBottom: spacing.xxl, gap: spacing.md },
-  heroCard: { borderWidth: 1 },
-  levelTitle: { color: colors.textPrimary, ...typography.cardTitle },
-  tierSections: { marginTop: spacing.sm, gap: spacing.lg },
-  tierSection: { gap: spacing.sm },
-  tierHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  tierDot: { width: 8, height: 8, borderRadius: 4 },
-  tierHeaderText: {
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
+  pathScreen: { flex: 1 },
+  pathCap: { position: "absolute", left: 0, right: 0, height: "50%" },
+  pathCapTop: { top: 0 },
+  pathCapBottom: { bottom: 0 },
+  pathTopBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: ui.screenPadding,
+    paddingBottom: spacing.sm + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.08)",
   },
-  tierLine: { flex: 1, height: 1 },
-  metaLine: { color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs },
-  track: {
-    marginTop: spacing.sm,
-    width: "100%",
-    height: 10,
-    borderRadius: radii.round,
+  pathScroll: { flex: 1 },
+  infoButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    overflow: "hidden",
+    borderColor: "rgba(255,255,255,0.12)",
   },
-  fill: { height: "100%", backgroundColor: colors.primary },
-  hint: { marginTop: spacing.sm, color: colors.textSecondary, ...typography.caption },
-  decayHint: { marginTop: spacing.xs, color: colors.textSecondary, ...typography.caption },
-  levelRows: { gap: spacing.xs },
+  infoButtonPressed: { opacity: 0.7 },
+  levelTitle: { color: colors.textPrimary, ...typography.cardTitle },
+  metaLine: { color: colors.textSecondary, ...typography.meta, marginTop: spacing.xs },
 });

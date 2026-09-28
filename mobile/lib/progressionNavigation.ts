@@ -1,5 +1,4 @@
 import type { Href } from "expo-router";
-import type { TFunction } from "i18next";
 
 type AppRouter = {
   back: () => void;
@@ -28,19 +27,6 @@ export function parseProgressionOverviewFrom(
 
 export function progressionOverviewHref(from: ProgressionOverviewFrom): Href {
   return { pathname: "/progression-overview", params: { from } };
-}
-
-export function progressionBackLabel(t: TFunction, from: ProgressionOverviewFrom): string {
-  switch (from) {
-    case "stats":
-      return t("progression.backToStats");
-    case "friends":
-      return t("progression.backToFriends");
-    case "profile":
-      return t("progression.backToProfile");
-    default:
-      return t("progression.backToDashboard");
-  }
 }
 
 export function leaveProgressionOverview(router: AppRouter, from: ProgressionOverviewFrom): void {

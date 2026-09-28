@@ -1,4 +1,4 @@
-import { BarChart3, Camera, Trophy } from "lucide-react-native";
+import { BarChart3, Camera, ChevronRight } from "lucide-react-native";
 import {
   ActivityIndicator,
   Image,
@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppFlame, glyphRowStyle } from "../../../components/icons/ProdifyGlyphs";
-import { RankHudChip } from "../../../components/progression/RankHudChip";
+import { RankCard } from "../../../components/progression/RankCard";
 import { ErrorState } from "../../../components/states/ErrorState";
 import { AppCard } from "../../../components/ui/AppCard";
 import { BadgeIcon } from "../../../components/ui/BadgeIcon";
@@ -135,14 +135,12 @@ function ProfileIdentity({ controller }: Props) {
 function ProfileQuickActions({ controller }: Props) {
   const { t, navigation } = controller;
   return (
-    <View style={styles.quickRow} testID="profile-quick-actions">
+    <View style={styles.quickActions} testID="profile-quick-actions">
+      <RankCard onPress={navigation.openProgression} testID="profile-rank-card" />
       <AppCard style={styles.quickTile} onPress={navigation.openStats}>
         <BarChart3 color={colors.primary} size={20} strokeWidth={2.2} />
         <Text style={styles.quickTileLabel}>{t("profile.fullStatsLink")}</Text>
-      </AppCard>
-      <AppCard style={styles.quickTile} onPress={navigation.openProgression}>
-        <Trophy color={colors.primary} size={20} strokeWidth={2.2} />
-        <Text style={styles.quickTileLabel}>{t("progression.overviewTitle")}</Text>
+        <ChevronRight color={colors.textSecondary} size={20} />
       </AppCard>
     </View>
   );
@@ -292,7 +290,7 @@ export function ProfileScreenView({ controller }: Props) {
           />
         }
       >
-        <ScreenHeader title={t("tabs.profile")} actionNode={<RankHudChip from="profile" />} />
+        <ScreenHeader title={t("tabs.profile")} />
         <ProfileIdentity controller={controller} />
         <ProfileQuickActions controller={controller} />
         <ProfileDataContent controller={controller} />

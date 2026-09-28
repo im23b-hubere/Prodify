@@ -5,19 +5,39 @@ import type { ProgressionOverviewState } from "../../../features/progression/hoo
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, params?: Record<string, unknown>) => {
-      if (key === "progression.xpTotal") return `${params?.xp} XP total`;
-      if (key === "progression.toNext") {
-        return `${params?.xp} XP to next (${params?.percent}%)`;
-      }
-      return key;
-    },
+    t: (key: string) => key,
   }),
 }));
 
-jest.mock("lucide-react-native", () => ({
-  AlertCircle: () => null,
-}));
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
+jest.mock("expo-linear-gradient", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    LinearGradient: ({ children }: { children?: React.ReactNode }) =>
+      React.createElement(View, null, children),
+  };
+});
+
+jest.mock("expo-blur", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    BlurView: ({ children }: { children?: React.ReactNode }) =>
+      React.createElement(View, null, children),
+  };
+});
+
+jest.mock("react-native-safe-area-context", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    SafeAreaView: ({ children }: { children?: React.ReactNode }) =>
+      React.createElement(View, null, children),
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  };
+});
 
 jest.mock("../../../components/progression/ProgressionOverviewSkeleton", () => ({
   ProgressionOverviewSkeleton: () => {
@@ -27,25 +47,16 @@ jest.mock("../../../components/progression/ProgressionOverviewSkeleton", () => (
   },
 }));
 
-jest.mock("../../../components/progression/LevelRankHero", () => ({
-  LevelRankHeroEmblem: ({ level }: { level: number }) => {
+jest.mock("../../../features/progression/components/RankPath", () => ({
+  RankPath: ({ currentLevel, xpTotal }: { currentLevel: number; xpTotal: number }) => {
     const React = require("react");
     const { Text } = require("react-native");
-    return React.createElement(Text, null, `level-${level}`);
-  },
-}));
-
-jest.mock("../../../components/progression/LevelRankRow", () => ({
-  LevelRankRow: ({
-    entry,
-    currentLevel,
-  }: {
-    entry: { level: number };
-    currentLevel: number;
-  }) => {
-    const React = require("react");
-    const { Text } = require("react-native");
-    return React.createElement(Text, null, `rank-${entry.level}-current-${currentLevel}`);
+    return React.createElement(
+      React.Fragment,
+      null,
+      React.createElement(Text, null, `rank-path-current-${currentLevel}`),
+      React.createElement(Text, null, `path-xp-${xpTotal}`),
+    );
   },
 }));
 
@@ -74,7 +85,6 @@ function renderContent(state: ProgressionOverviewState, signedIn: boolean) {
     <ProgressionOverviewContent
       overview={state}
       signedIn={signedIn}
-      backLabel="Back"
       onBack={onBack}
       onSignIn={onSignIn}
     />,
@@ -94,9 +104,9 @@ describe("ProgressionOverviewContent", () => {
     renderContent(state, true);
     fireEvent.press(screen.getByText("common.tryAgain"));
     expect(state.load).toHaveBeenCalledWith({ force: true });
-    expect(screen.queryByText(/level-1/)).toBeNull();
-    expect(screen.queryByText(/0 XP total/)).toBeNull();
-    expect(screen.queryByTestId("progression-hero-ready")).toBeNull();
+    expect(screen.queryByText(/rank-path/)).toBeNull();
+    expect(screen.queryByText(/path-xp-/)).toBeNull();
+    expect(screen.queryByText(/rank-path-current/)).toBeNull();
   });
 
   it("shows loading skeleton without fabricated progression values", () => {
@@ -107,19 +117,18 @@ describe("ProgressionOverviewContent", () => {
 
     expect(screen.getByTestId("progression-overview-loading")).toBeTruthy();
     expect(screen.getAllByText("progression-skeleton").length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByTestId("progression-hero-ready")).toBeNull();
-    expect(screen.queryByText(/0 XP total/)).toBeNull();
-    expect(screen.queryByText(/level-1/)).toBeNull();
+    expect(screen.queryByText(/rank-path-current/)).toBeNull();
+    expect(screen.queryByText(/path-xp-/)).toBeNull();
+    expect(screen.queryByText(/rank-path/)).toBeNull();
   });
 
   it("shows unavailable state for null progression without fabricating values", () => {
     renderContent(overview({ progression: null, levelCatalog: sampleCatalog }), true);
 
     expect(screen.getByText("progression.loadError")).toBeTruthy();
-    expect(screen.queryByTestId("progression-hero-ready")).toBeNull();
-    expect(screen.queryByText(/0 XP total/)).toBeNull();
-    expect(screen.queryByText(/level-1/)).toBeNull();
-    expect(screen.queryByText(/rank-1-current-1/)).toBeNull();
+    expect(screen.queryByText(/rank-path-current/)).toBeNull();
+    expect(screen.queryByText(/path-xp-/)).toBeNull();
+    expect(screen.queryByText(/rank-path/)).toBeNull();
   });
 
   it("shows unavailable state for malformed/missing progression payload semantics", () => {
@@ -134,7 +143,7 @@ describe("ProgressionOverviewContent", () => {
       true,
     );
 
-    expect(screen.queryByTestId("progression-hero-ready")).toBeNull();
+    expect(screen.queryByText(/rank-path-current/)).toBeNull();
     expect(screen.queryByText(/50 XP/)).toBeNull();
     expect(screen.getByText("common.tryAgain")).toBeTruthy();
   });
@@ -153,10 +162,8 @@ describe("ProgressionOverviewContent", () => {
       true,
     );
 
-    expect(screen.getByTestId("progression-hero-ready")).toBeTruthy();
-    expect(screen.getByText("level-1")).toBeTruthy();
-    expect(screen.getByText("0 XP total")).toBeTruthy();
-    expect(screen.getByText("rank-1-current-1")).toBeTruthy();
+    expect(screen.getByText("path-xp-0")).toBeTruthy();
+    expect(screen.getByText("rank-path-current-1")).toBeTruthy();
   });
 
   it("renders higher-level progression without inventing Level 1", () => {
@@ -176,28 +183,81 @@ describe("ProgressionOverviewContent", () => {
       true,
     );
 
-    expect(screen.getByText("level-3")).toBeTruthy();
-    expect(screen.getByText("250 XP total")).toBeTruthy();
-    expect(screen.getByText("rank-3-current-3")).toBeTruthy();
-    expect(screen.queryByText("rank-1-current-1")).toBeNull();
+    expect(screen.getByText("path-xp-250")).toBeTruthy();
+    expect(screen.getByText("rank-path-current-3")).toBeTruthy();
+    expect(screen.queryByText("rank-path-current-1")).toBeNull();
   });
 
-  it("renders hero, catalog and back action for loaded progression", () => {
-    const state = overview({
-      progression: {
-        current_level: 1,
-        xp_total: 25,
-        xp_to_next_level: 25,
-        progress_percent: 50,
-      },
-      levelCatalog: sampleCatalog,
-    });
-    const actions = renderContent(state, true);
+  it("renders the path even while the rank catalog is still loading", () => {
+    renderContent(
+      overview({
+        progression: {
+          current_level: 2,
+          xp_total: 80,
+          xp_to_next_level: 70,
+          progress_percent: 20,
+        },
+        loadingCatalog: true,
+        levelCatalog: [],
+      }),
+      true,
+    );
 
-    expect(screen.getByText("level-1")).toBeTruthy();
-    expect(screen.getByText("rank-1-current-1")).toBeTruthy();
-    expect(screen.getByText("rank-2-current-1")).toBeTruthy();
-    fireEvent.press(screen.getAllByText("Back").at(-1)!);
+    expect(screen.getByText("rank-path-current-2")).toBeTruthy();
+    expect(screen.queryByText("progression-skeleton")).toBeNull();
+  });
+
+  it("keeps levels past the named catalog on the summit node", () => {
+    renderContent(
+      overview({
+        progression: {
+          current_level: 23,
+          xp_total: 25000,
+          xp_to_next_level: 1000,
+          progress_percent: 10,
+        },
+      }),
+      true,
+    );
+
+    expect(screen.getByText("rank-path-current-20")).toBeTruthy();
+  });
+
+  it("goes back from the top bar on the path screen", () => {
+    const actions = renderContent(
+      overview({
+        progression: {
+          current_level: 1,
+          xp_total: 25,
+          xp_to_next_level: 25,
+          progress_percent: 50,
+        },
+        levelCatalog: sampleCatalog,
+      }),
+      true,
+    );
+
+    fireEvent.press(screen.getByLabelText("common.goBack"));
     expect(actions.onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the rank rules from the info button", () => {
+    renderContent(
+      overview({
+        progression: {
+          current_level: 1,
+          xp_total: 25,
+          xp_to_next_level: 25,
+          progress_percent: 50,
+        },
+      }),
+      true,
+    );
+
+    expect(screen.queryByText("progression.info.earnTitle")).toBeNull();
+    fireEvent.press(screen.getByLabelText("progression.info.open"));
+    expect(screen.getByText("progression.info.earnTitle")).toBeTruthy();
+    fireEvent.press(screen.getByText("progression.info.close"));
+    expect(screen.queryByText("progression.info.earnTitle")).toBeNull();
   });
 });

@@ -41,8 +41,8 @@ jest.mock("../../../components/icons/ProdifyGlyphs", () => ({
   glyphRowStyle: {},
 }));
 
-jest.mock("../../../components/progression/RankHudChip", () => ({
-  RankHudChip: () => null,
+jest.mock("../../../components/progression/RankCard", () => ({
+  RankCard: () => null,
 }));
 
 jest.mock("../../../features/stats/components/StatsHeatmapSection", () => {

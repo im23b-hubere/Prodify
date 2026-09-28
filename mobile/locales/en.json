@@ -1175,32 +1175,51 @@
     "xpHudLevelShort": "Lv {{level}}",
     "xpHudToNext": "{{xp}} XP to {{nextName}}",
     "xpHudPercent": "{{percent}}% to next rank",
+    "maxRank": "Max rank reached",
+    "info": {
+      "open": "How ranks work",
+      "title": "How ranks work",
+      "earnTitle": "Sessions earn XP",
+      "earnBody": "Every finished session adds XP. Longer sessions earn more.",
+      "climbTitle": "Climb 20 ranks",
+      "climbBody": "Five tiers from Bedroom Producer to Hall of Sound. Each rank needs more XP than the last.",
+      "drainTitle": "Breaks drain XP",
+      "drainBody": "Go too long without a session and your XP slowly drops. Finish a session to stop it.",
+      "close": "Got it"
+    },
+    "path": {
+      "finalRank": "Final rank",
+      "start": "Start",
+      "youAreHere": "You are here",
+      "tierRange": "{{tier}} · Lv {{from}}–{{to}}",
+      "clearedLine": "Lv {{level}} · Cleared",
+      "currentLine": "{{xp}} / {{target}} XP · {{toGo}} to go",
+      "maxLine": "Max rank · {{xp}} XP",
+      "nextLine": "Lv {{level}} · Next up",
+      "lockedLine": "Lv {{level}} · Unlocks at {{xp}} XP",
+      "nodeA11y": "Level {{level}}, {{name}}, {{status}}. {{detail}}",
+      "status": {
+        "cleared": "cleared",
+        "current": "your current rank",
+        "next": "next rank, locked",
+        "locked": "locked"
+      }
+    },
     "openOverview": "Level overview",
     "overviewTitle": "Your rank",
     "overviewSubtitle": "Grind sessions, climb from Bedroom Producer to Hall of Sound.",
-    "overviewHint": "Every finished session adds XP. Rank up to flex your consistency.",
-    "decayRule": "XP drops if you pause too long. Finish a session to recover.",
     "loadError": "Could not load progression.",
     "needSignInTitle": "Sign in to see your rank",
     "needSignInBody": "XP and levels unlock after you log in.",
     "signInCta": "Go to sign in",
-    "progressBarA11y": "{{name}}, {{percent}} percent. {{xp}} XP until {{nextName}}.",
-    "backToDashboard": "Back to dashboard",
-    "backToStats": "Back to stats",
-    "backToFriends": "Back to friends",
-    "backToProfile": "Back to profile",
     "loading": "Loading progression...",
-    "allLevelsTitle": "All ranks",
     "levelTiers": {
       "starter": "Starter",
       "builder": "Builder",
       "engineer": "Engineer",
       "pro": "Pro",
       "legend": "Legend"
-    },
-    "levelRowLabel": "Lv {{level}} · {{name}}",
-    "levelRowRange": "{{start}}–{{end}} XP",
-    "currentBadge": "You are here"
+    }
   },
   "friendsWidget": {
     "title": "Friends",

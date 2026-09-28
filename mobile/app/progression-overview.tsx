@@ -1,7 +1,7 @@
 import type { Href } from "expo-router";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View } from "react-native";
 
 import { useAuth } from "../context/AuthContext";
 import { AppAccessGate } from "../features/navigation/AppAccessGate";
@@ -11,7 +11,6 @@ import { styles } from "../features/progression/progressionOverview.styles";
 import {
   leaveProgressionOverview,
   parseProgressionOverviewFrom,
-  progressionBackLabel,
 } from "../lib/progressionNavigation";
 
 export default function ProgressionOverviewRoute() {
@@ -31,14 +30,13 @@ function ProgressionOverviewScreen() {
   const overview = useProgressionOverview(token, t("progression.loadError"));
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <View style={styles.safe}>
       <ProgressionOverviewContent
         overview={overview}
         signedIn={Boolean(token)}
-        backLabel={progressionBackLabel(t, from)}
         onBack={() => leaveProgressionOverview(router, from)}
         onSignIn={() => router.replace("/(auth)/login" as Href)}
       />
-    </SafeAreaView>
+    </View>
   );
 }

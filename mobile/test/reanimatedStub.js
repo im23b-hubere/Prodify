@@ -23,6 +23,7 @@ module.exports = {
   useSharedValue: (value) => ({ value }),
   useAnimatedStyle: (fn) => fn(),
   useAnimatedProps: (fn) => fn(),
+  useReducedMotion: () => false,
   withRepeat: identity,
   withTiming: identity,
   withSpring: identity,

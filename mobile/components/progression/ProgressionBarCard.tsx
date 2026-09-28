@@ -21,10 +21,7 @@ export const ProgressionBarCard = memo(function ProgressionBarCard({
   const { t } = useTranslation();
   const level = progression?.current_level;
   const nextLevel = level != null ? level + 1 : null;
-  const rankName = useMemo(
-    () => (level != null ? progressionLevelName(t, level) : ""),
-    [level, t],
-  );
+  const rankName = useMemo(() => (level != null ? progressionLevelName(t, level) : ""), [level, t]);
   const nextRankName = useMemo(
     () => (nextLevel != null ? progressionLevelName(t, nextLevel) : ""),
     [nextLevel, t],
