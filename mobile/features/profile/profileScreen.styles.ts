@@ -98,6 +98,13 @@ export const profileScreenStyles = StyleSheet.create({
     fontFamily: fontFamily.heading,
     ...typography.subheadline,
   },
+  email: {
+    alignSelf: "stretch",
+    textAlign: "center",
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    ...typography.caption,
+  },
   roleLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,

@@ -45,6 +45,7 @@ function identityPresentation(controller: ProfileScreenController) {
     imageUri: avatarUri(user?.profile_picture_url),
     initials: user?.username?.slice(0, 2).toUpperCase() ?? t("profile.defaultInitials"),
     username: user?.username ?? t("profile.defaultDisplayName"),
+    email: user?.email?.trim() || null,
     hasPublicProfile: Boolean(user?.id),
   };
 }
@@ -106,6 +107,17 @@ function ProfileIdentity({ controller }: Props) {
         </View>
       </Pressable>
       <Text style={styles.username}>{identity.username}</Text>
+      {identity.email ? (
+        <Text
+          style={styles.email}
+          numberOfLines={1}
+          ellipsizeMode="middle"
+          selectable
+          accessibilityLabel={t("profile.signedInEmail", { email: identity.email })}
+        >
+          {identity.email}
+        </Text>
+      ) : null}
       <Text style={styles.roleLabel}>{t("profile.roleProducer")}</Text>
       {identity.hasPublicProfile ? (
         <TextButton

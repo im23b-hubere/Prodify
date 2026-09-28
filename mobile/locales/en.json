@@ -269,6 +269,7 @@
   },
   "profile": {
     "roleProducer": "Producer",
+    "signedInEmail": "Signed in as {{email}}",
     "viewPublicProfile": "View public profile",
     "addPhotoA11y": "Add profile photo",
     "changePhotoA11y": "Change profile photo",

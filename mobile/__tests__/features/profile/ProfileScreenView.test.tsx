@@ -144,4 +144,17 @@ describe("ProfileScreenView", () => {
     expect(screen.getByTestId("stats-section-heatmap")).toBeTruthy();
     expect(screen.getByText("profile.producerSnapshotTitle")).toBeTruthy();
   });
+
+  it("shows the signed-in email under the username", () => {
+    const controller = createController({ loading: false });
+    controller.user = {
+      id: 7,
+      email: "producer@example.com",
+      username: "producer",
+    };
+    const screen = render(<ProfileScreenView controller={controller} />);
+
+    expect(screen.getByText("producer@example.com")).toBeTruthy();
+    expect(screen.getByLabelText("profile.signedInEmail")).toBeTruthy();
+  });
 });
