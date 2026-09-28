@@ -81,14 +81,32 @@ def visible_challenges(
     return [
         challenge
         for challenge in challenges
-        if challenge.owner_id == current_user_id
-        or challenge.owner_id in accepted_friend_ids
-        or challenge.id in member_challenge_ids
+        if _viewer_can_see_challenge(
+            challenge,
+            current_user_id=current_user_id,
+            accepted_friend_ids=accepted_friend_ids,
+            member_challenge_ids=member_challenge_ids,
+        )
     ]
 
 
+def _viewer_can_see_challenge(
+    challenge: SocialChallenge,
+    *,
+    current_user_id: int,
+    accepted_friend_ids: set[int],
+    member_challenge_ids: set[int],
+) -> bool:
+    if challenge.owner_id == current_user_id or challenge.id in member_challenge_ids:
+        return True
+    if challenge.status == "pending":
+        invitee_id = load_challenge_meta(challenge).get("invitee_user_id")
+        return invitee_id == current_user_id
+    return challenge.owner_id in accepted_friend_ids
+
+
 def should_list_challenge(challenge: SocialChallenge) -> bool:
-    return challenge.status == "active" or (
+    return challenge.status in {"active", "pending"} or (
         challenge.status == "completed" and challenge_completed_recently(load_challenge_meta(challenge))
     )
 
@@ -101,13 +119,17 @@ def challenge_response(
 ) -> SocialChallengePublic:
     challenge = get_challenge(db, challenge_id)
     members = challenge_members(db, challenge_id)
-    usernames = {
-        user.id: user.username
-        for user in db.scalars(select(User).where(User.id.in_([member.user_id for member in members]))).all()
-    }
+    users = (
+        db.scalars(select(User).where(User.id.in_([member.user_id for member in members]))).all()
+        if members
+        else []
+    )
+    users_by_id = {user.id: user for user in users}
     metadata = load_challenge_meta(challenge)
     owner = db.get(User, challenge.owner_id)
     premium = bool(owner and user_has_premium_access(db, owner))
+    extras = challenge_public_extras(challenge, members, current_user_id=current_user_id)
+    invitee = db.get(User, extras["invitee_user_id"]) if extras["invitee_user_id"] else None
     return SocialChallengePublic(
         id=challenge.id,
         owner_id=challenge.owner_id,
@@ -122,11 +144,17 @@ def challenge_response(
         members=[
             SocialChallengeMemberPublic(
                 user_id=member.user_id,
-                username=usernames.get(member.user_id, "?"),
+                username=users_by_id[member.user_id].username if member.user_id in users_by_id else "?",
                 progress_sessions=member.progress_sessions,
                 team_label=member.team_label,
+                profile_picture_url=(
+                    users_by_id[member.user_id].profile_picture_url
+                    if member.user_id in users_by_id
+                    else None
+                ),
             )
             for member in sorted(members, key=lambda item: item.progress_sessions, reverse=True)
         ],
-        **challenge_public_extras(challenge, members, current_user_id=current_user_id),
+        invitee_username=invitee.username if invitee else None,
+        **extras,
     )

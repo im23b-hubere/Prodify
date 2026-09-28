@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/AuthContext";
 import { useFriendsActivityRenderer } from "./useFriendsActivityRenderer";
 import { useFriendsDashboardData } from "./useFriendsDashboardData";
-import { useFriendsNotifications } from "./useFriendsNotifications";
+import { useDuelInviteNotifications, useFriendsNotifications } from "./useFriendsNotifications";
 import { useFriendsScreenActions } from "./useFriendsScreenActions";
 import { useFriendsScreenState } from "./useFriendsScreenState";
 
@@ -57,6 +57,7 @@ export function useFriendsScreenController() {
     [state.activity, user?.id],
   );
   useFriendsNotifications(state.incoming, state.activity, user?.id, t);
+  useDuelInviteNotifications(state.challenges, user?.id, t);
 
   const renderActivity = useFriendsActivityRenderer({
     actions,

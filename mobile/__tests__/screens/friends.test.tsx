@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 
 import FriendsScreen from "../../app/(tabs)/friends";
 
@@ -76,6 +76,8 @@ const createFriendsActions = (overrides: Record<string, unknown> = {}) => ({
   inviteBuddy: jest.fn(),
   joinSocialChallengeById: jest.fn(),
   acceptBuddyInvite: jest.fn(),
+  acceptChallengeInvite: jest.fn(),
+  declineChallengeInvite: jest.fn(),
   toggleThumbReaction: jest.fn(),
   openReactionUsers: jest.fn(),
   supportStreakBreak: jest.fn(),
@@ -97,6 +99,7 @@ const createFriendsState = (overrides: Record<string, unknown> = {}) => ({
   addBusy: false,
   actionBusy: null,
   buddy: null,
+  challenges: [],
   commitment: null,
   reactionUsersOpen: false,
   setReactionUsersOpen: jest.fn(),
@@ -303,6 +306,37 @@ describe("Friends Screen", () => {
     expect(queryByText("friendsScreen.togetherOr")).toBeNull();
     expect(queryByText("friendsScreen.challengeTapHint")).toBeNull();
     expect(queryByText("friendsScreen.challengeKindDuel")).toBeNull();
+  });
+
+  it("shows an incoming duel invite on the overview tab so the invited friend can accept it", () => {
+    const acceptChallengeInvite = jest.fn();
+    mockUseFriendsScreenState.mockReturnValue(
+      createFriendsState({
+        loading: false,
+        sectionTab: "overview",
+        challenges: [
+          {
+            id: 12,
+            owner_id: 2,
+            title: "You vs bob",
+            challenge_kind: "duel",
+            week_start: "2026-06-30",
+            target_sessions: 5,
+            status: "pending",
+            invitee_user_id: 1,
+            members: [{ user_id: 2, username: "bob", progress_sessions: 0 }],
+          },
+        ],
+      }),
+    );
+    mockUseFriendsScreenActions.mockReturnValue(
+      createFriendsActions({ hasOtherFriends: true, acceptChallengeInvite }),
+    );
+    const { getByTestId, getByText } = render(<FriendsScreen />);
+    expect(getByTestId("duel-invite-12")).toBeTruthy();
+    expect(getByText("bob")).toBeTruthy();
+    fireEvent.press(getByText("friendsScreen.accept"));
+    expect(acceptChallengeInvite).toHaveBeenCalledWith(12);
   });
 
   it("shows incoming friend requests above ranking and activity", () => {

@@ -3,7 +3,15 @@ import { useCallback, useMemo } from "react";
 import { Alert } from "react-native";
 
 import { recordMomentumAction } from "../../../lib/momentum";
-import { createChallenge, joinSocialChallenge } from "../../../lib/social";
+import {
+  acceptSocialChallenge,
+  createChallenge,
+  declineSocialChallenge,
+  joinSocialChallenge,
+} from "../../../lib/social";
+import { duelClashPayload } from "../../duelClash/duelClashPayload";
+import { markDuelClashSeen } from "../../duelClash/duelClashSeen";
+import { showDuelClash } from "../../duelClash/duelClashStore";
 import type { FriendsScreenState } from "./useFriendsScreenState";
 
 type ActionContext = {
@@ -35,6 +43,44 @@ export function useFriendChallengeActions({ token, userId, t, load, state }: Act
       }
     },
     [load, state, t, token, userId],
+  );
+
+  const acceptChallengeInvite = useCallback(
+    async (challengeId: number) => {
+      if (!token || !userId) return;
+      state.setBusyActionKey(`accept_challenge_${challengeId}`);
+      try {
+        const challenge = await acceptSocialChallenge(token, challengeId);
+        await markDuelClashSeen(userId, challengeId);
+        const payload = duelClashPayload(challenge, userId, t("friendsScreen.buddyDuelYouLabel"));
+        if (payload) showDuelClash(payload);
+        await load({ force: true });
+        await recordMomentumAction(userId, "challenge");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : t("common.tryAgain");
+        Alert.alert(t("friendsScreen.errorGeneric"), msg);
+      } finally {
+        state.setBusyActionKey(null);
+      }
+    },
+    [load, state, t, token, userId],
+  );
+
+  const declineChallengeInvite = useCallback(
+    async (challengeId: number) => {
+      if (!token) return;
+      state.setBusyActionKey(`decline_challenge_${challengeId}`);
+      try {
+        await declineSocialChallenge(token, challengeId);
+        await load({ force: true });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : t("common.tryAgain");
+        Alert.alert(t("friendsScreen.errorGeneric"), msg);
+      } finally {
+        state.setBusyActionKey(null);
+      }
+    },
+    [load, state, t, token],
   );
 
   const resetChallengeModal = useCallback(() => {
@@ -76,7 +122,7 @@ export function useFriendChallengeActions({ token, userId, t, load, state }: Act
 
     state.setChallengeCreateBusy(true);
     try {
-      await createChallenge(token, {
+      const created = await createChallenge(token, {
         challenge_kind: state.challengeKind,
         title,
         target_sessions: target,
@@ -88,7 +134,9 @@ export function useFriendChallengeActions({ token, userId, t, load, state }: Act
       if (userId) {
         await recordMomentumAction(userId, "challenge");
       }
-      state.showToast(t("friendsScreen.toastChallengeLive"));
+      state.showToast(
+        t(created.status === "pending" ? "friendsScreen.toastChallengeInvited" : "friendsScreen.toastChallengeLive"),
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("common.tryAgain");
       Alert.alert(t("friendsScreen.couldNotCreateChallenge"), msg);
@@ -97,5 +145,12 @@ export function useFriendChallengeActions({ token, userId, t, load, state }: Act
     }
   }, [load, resetChallengeModal, state, t, token, userId]);
 
-  return { challengeCards, joinSocialChallengeById, submitCreateChallenge, resetChallengeModal };
+  return {
+    challengeCards,
+    joinSocialChallengeById,
+    acceptChallengeInvite,
+    declineChallengeInvite,
+    submitCreateChallenge,
+    resetChallengeModal,
+  };
 }

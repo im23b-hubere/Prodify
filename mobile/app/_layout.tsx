@@ -24,6 +24,7 @@ import { OfflineBanner } from "../components/OfflineBanner";
 import { CrashBoundary } from "../components/ui/CrashBoundary";
 import { AuthProvider } from "../context/AuthContext";
 import { colors, spacing } from "../constants/theme";
+import { DuelClashHost } from "../features/duelClash/components/DuelClashHost";
 import { initSentry } from "../lib/sentry";
 import { configureNotificationHandler } from "../lib/streakNotifications";
 
@@ -94,6 +95,7 @@ export default function RootLayout() {
                 }}
               />
             </Stack>
+            <DuelClashHost />
           </CrashBoundary>
         </AuthProvider>
       </SafeAreaProvider>

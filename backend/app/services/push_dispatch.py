@@ -242,6 +242,34 @@ def schedule_notify_session_complete(
         except Exception:
             logger.exception("deferred push session-complete failed")
 
+    _submit_deferred(settings, run_notification, "session-complete")
+
+
+def schedule_push_to_user(
+    settings: Settings,
+    user_id: int,
+    title: str,
+    body: str,
+    data: dict[str, str],
+    *,
+    label: str,
+) -> None:
+    """Fire-and-forget push to one user outside the HTTP request."""
+
+    def run_notification() -> None:
+        from app.database import SessionLocal
+
+        try:
+            with SessionLocal() as background_db:
+                dispatch_to_user(settings, background_db, user_id, title, body, data=data)
+                background_db.commit()
+        except Exception:
+            logger.exception("deferred push %s failed", label)
+
+    _submit_deferred(settings, run_notification, label)
+
+
+def _submit_deferred(settings: Settings, run_notification, label: str) -> None:
     backend = (settings.push_async_backend or "threadpool").strip().lower()
     if backend == "inline":
         run_notification()
@@ -251,7 +279,7 @@ def schedule_notify_session_complete(
     try:
         _get_push_executor(settings).submit(run_notification)
     except RuntimeError:
-        logger.warning("push dispatch executor unavailable; dropping deferred session-complete push")
+        logger.warning("push dispatch executor unavailable; dropping deferred %s push", label)
 
 
 def send_ping(

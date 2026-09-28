@@ -19,6 +19,12 @@ const localStyles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 22,
   },
+  declineText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    fontSize: 17,
+    lineHeight: 22,
+  },
   challengeRow: {
     position: "relative",
     flexDirection: "row",

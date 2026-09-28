@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 
 from sqlalchemy import select
@@ -176,8 +177,7 @@ def test_social_challenge_comment_recap_and_leaderboard_context(client):
     challenge_id = ch.json()["id"]
     assert len(ch.json()["members"]) >= 1
 
-    joined = client.post("/social/challenges/join", headers=b, json={"challenge_id": challenge_id})
-    assert joined.status_code == 200
+    _accept_challenge(client, b, challenge_id)
 
     start = client.post("/sessions/quick-start", headers=a, json={"session_type": "beat_making"})
     assert start.status_code == 201
@@ -221,6 +221,8 @@ def test_social_challenge_join_requires_owner_friendship(client):
 
     blocked = client.post("/social/challenges/join", headers=stranger, json={"challenge_id": challenge_id})
     assert blocked.status_code == 403
+    friend_join = client.post("/social/challenges/join", headers=friend, json={"challenge_id": challenge_id})
+    assert friend_join.status_code == 403
 
 
 def test_unpaid_user_cannot_create_a_challenge(client):
@@ -261,6 +263,11 @@ def test_subscriber_challenge_capacity(client):
         last_status = response.status_code
         if response.status_code == 200:
             created += 1
+            accepted = client.post(
+                f"/social/challenges/{response.json()['id']}/accept",
+                headers=b,
+            )
+            assert accepted.status_code == 200
             continue
         break
 
@@ -412,6 +419,12 @@ def _complete_long_session(client, headers: dict[str, str], *, minutes: int = 10
     return sid
 
 
+def _accept_challenge(client, headers: dict[str, str], challenge_id: int) -> dict:
+    accepted = client.post(f"/social/challenges/{challenge_id}/accept", headers=headers)
+    assert accepted.status_code == 200
+    return accepted.json()
+
+
 def _challenge_for_user(client, headers: dict[str, str], challenge_id: int) -> dict:
     listed = client.get("/social/challenges", headers=headers)
     assert listed.status_code == 200
@@ -439,6 +452,7 @@ def test_social_challenge_progress_syncs_from_completed_session(client):
     )
     assert created.status_code == 200
     challenge_id = created.json()["id"]
+    _accept_challenge(client, b, challenge_id)
 
     _complete_long_session(client, a, minutes=12)
     detail = _challenge_for_user(client, a, challenge_id)
@@ -466,6 +480,7 @@ def test_social_challenge_completes_when_target_reached(client):
     )
     assert created.status_code == 200
     challenge_id = created.json()["id"]
+    _accept_challenge(client, b, challenge_id)
 
     _complete_long_session(client, a, minutes=12)
     detail = _challenge_for_user(client, a, challenge_id)
@@ -492,6 +507,7 @@ def test_social_challenge_expires_with_leader_on_time_up(client):
     )
     assert created.status_code == 200
     challenge_id = created.json()["id"]
+    _accept_challenge(client, b, challenge_id)
 
     _complete_long_session(client, a, minutes=12)
     with SessionLocal() as db:
@@ -500,6 +516,9 @@ def test_social_challenge_expires_with_leader_on_time_up(client):
         expired_start = utcnow() - timedelta(days=10)
         row.week_start = expired_start.date().isoformat()
         row.created_at = expired_start
+        meta = json.loads(row.meta_json or "{}")
+        meta["started_at"] = expired_start.isoformat()
+        row.meta_json = json.dumps(meta)
         db.commit()
 
     listed = client.get("/social/challenges", headers=a)
@@ -558,6 +577,7 @@ def test_social_challenge_owner_can_update_and_cancel(client):
     assert created.status_code == 200
     challenge_id = created.json()["id"]
     assert created.json()["owner_id"] == 1
+    _accept_challenge(client, b, challenge_id)
 
     updated = client.patch(
         f"/social/challenges/{challenge_id}",
@@ -601,6 +621,7 @@ def test_social_challenge_target_cannot_drop_below_progress(client):
     )
     assert created.status_code == 200
     challenge_id = created.json()["id"]
+    _accept_challenge(client, b, challenge_id)
     _complete_long_session(client, a, minutes=12)
     _complete_long_session(client, a, minutes=12)
 
@@ -630,6 +651,7 @@ def test_social_challenge_member_can_leave_and_owner_cannot(client):
     )
     assert created.status_code == 200
     challenge_id = created.json()["id"]
+    _accept_challenge(client, b, challenge_id)
 
     owner_leave = client.post(f"/social/challenges/{challenge_id}/leave", headers=a)
     assert owner_leave.status_code == 400
@@ -640,3 +662,182 @@ def test_social_challenge_member_can_leave_and_owner_cannot(client):
     listed = client.get("/social/challenges", headers=a)
     assert listed.status_code == 200
     assert all(item["id"] != challenge_id for item in listed.json())
+
+
+def _duel(client, headers: dict[str, str], *, title: str, friend_id: int = 2) -> dict:
+    created = client.post(
+        "/social/challenges",
+        headers=headers,
+        json={
+            "challenge_kind": "duel",
+            "title": title,
+            "target_sessions": 3,
+            "duration_days": 7,
+            "member_user_ids": [friend_id],
+        },
+    )
+    assert created.status_code == 200
+    return created.json()
+
+
+def test_duel_stays_pending_until_the_invitee_accepts(client):
+    a = _auth_headers(client, "social-inv-a@example.com", "social-inv-a")
+    b = _auth_headers(client, "social-inv-b@example.com", "social-inv-b")
+    outsider = _auth_headers(client, "social-inv-c@example.com", "social-inv-c")
+    _make_friends(client, a, b, "social-inv-b")
+    _make_friends(client, a, outsider, "social-inv-c")
+
+    created = _duel(client, a, title="Invite First")
+    assert created["status"] == "pending"
+    assert created["invitee_user_id"] == 2
+    assert [member["user_id"] for member in created["members"]] == [1]
+    assert created["days_remaining"] == 0
+
+    _complete_long_session(client, a, minutes=12)
+    still_pending = _challenge_for_user(client, a, created["id"])
+    assert still_pending["members"][0]["progress_sessions"] == 0
+
+    owner_accept = client.post(f"/social/challenges/{created['id']}/accept", headers=a)
+    assert owner_accept.status_code == 403
+    outsider_list = client.get("/social/challenges", headers=outsider)
+    assert all(item["id"] != created["id"] for item in outsider_list.json())
+    invitee_list = client.get("/social/challenges", headers=b)
+    assert any(item["id"] == created["id"] for item in invitee_list.json())
+
+    accepted = _accept_challenge(client, b, created["id"])
+    assert accepted["status"] == "active"
+    assert {member["user_id"] for member in accepted["members"]} == {1, 2}
+    again = _accept_challenge(client, b, created["id"])
+    assert again["status"] == "active"
+
+    _complete_long_session(client, a, minutes=12)
+    started = _challenge_for_user(client, a, created["id"])
+    me = next(member for member in started["members"] if member["user_id"] == 1)
+    assert me["progress_sessions"] == 1
+
+
+def test_invitee_sees_the_invite_even_when_many_unrelated_challenges_exist(client):
+    a = _auth_headers(client, "social-many-a@example.com", "social-many-a")
+    b = _auth_headers(client, "social-many-b@example.com", "social-many-b")
+    _auth_headers(client, "social-many-stranger@example.com", "social-many-stranger")
+    _make_friends(client, a, b, "social-many-b")
+    invite = _duel(client, a, title="Needle")
+
+    with SessionLocal() as db:
+        for index in range(45):
+            db.add(
+                SocialChallenge(
+                    owner_id=3,
+                    challenge_kind="team",
+                    title=f"Noise {index}",
+                    week_start="2026-09-28",
+                    target_sessions=3,
+                    status="active",
+                    meta_json="{}",
+                    created_at=utcnow() + timedelta(seconds=index + 1),
+                )
+            )
+        db.commit()
+
+    listed = client.get("/social/challenges", headers=b)
+    assert listed.status_code == 200
+    assert any(item["id"] == invite["id"] for item in listed.json())
+
+
+def test_invitee_can_still_decline_after_unfriending_but_cannot_accept(client):
+    a = _auth_headers(client, "social-unfriend-a@example.com", "social-unfriend-a")
+    b = _auth_headers(client, "social-unfriend-b@example.com", "social-unfriend-b")
+    request = client.post("/friends/request", headers=a, json={"username": "social-unfriend-b"})
+    friendship_id = request.json()["id"]
+    assert client.post(f"/friends/{friendship_id}/accept", headers=b).status_code == 200
+    invite = _duel(client, a, title="Gone")
+    assert client.delete(f"/friends/{friendship_id}", headers=b).status_code == 204
+
+    assert client.post(f"/social/challenges/{invite['id']}/accept", headers=b).status_code == 403
+    assert client.post(f"/social/challenges/{invite['id']}/decline", headers=b).status_code == 204
+
+
+def test_duel_invite_reaches_the_invitee_inbox(client):
+    a = _auth_headers(client, "social-ping-a@example.com", "social-ping-a")
+    b = _auth_headers(client, "social-ping-b@example.com", "social-ping-b")
+    _make_friends(client, a, b, "social-ping-b")
+    invite = _duel(client, a, title="Ping Duel")
+
+    inbox = client.get("/notifications/inbox?limit=40", headers=b)
+    item = next(row for row in inbox.json() if row["id"] == f"duel-invite-{invite['id']}")
+    assert item["body_params"] == {"username": "social-ping-a"}
+    owner_inbox = client.get("/notifications/inbox?limit=40", headers=a)
+    assert all(not row["id"].startswith("duel-invite-") for row in owner_inbox.json())
+
+    _accept_challenge(client, b, invite["id"])
+    after = client.get("/notifications/inbox?limit=40", headers=b)
+    assert all(not row["id"].startswith("duel-invite-") for row in after.json())
+
+
+def test_accepted_duel_reaches_the_owner_inbox(client):
+    a = _auth_headers(client, "social-news-a@example.com", "social-news-a")
+    b = _auth_headers(client, "social-news-b@example.com", "social-news-b")
+    _make_friends(client, a, b, "social-news-b")
+
+    created = _duel(client, a, title="Inbox Duel")
+    assert created["invitee_username"] == "social-news-b"
+    accepted = _accept_challenge(client, b, created["id"])
+    assert {member["user_id"] for member in accepted["members"]} == {1, 2}
+    assert all("profile_picture_url" in member for member in accepted["members"])
+
+    inbox = client.get("/notifications/inbox?limit=40", headers=a)
+    assert inbox.status_code == 200
+    item = next(row for row in inbox.json() if row["id"] == f"duel-accepted-{created['id']}")
+    assert item["body_params"] == {"username": "social-news-b"}
+    invitee_inbox = client.get("/notifications/inbox?limit=40", headers=b)
+    assert all(not row["id"].startswith("duel-accepted-") for row in invitee_inbox.json())
+
+
+def test_duel_invite_can_be_declined_or_withdrawn_and_not_duplicated(client):
+    a = _auth_headers(client, "social-dec-a@example.com", "social-dec-a")
+    b = _auth_headers(client, "social-dec-b@example.com", "social-dec-b")
+    _make_friends(client, a, b, "social-dec-b")
+
+    first = _duel(client, a, title="Waiting")
+    duplicate = client.post(
+        "/social/challenges",
+        headers=a,
+        json={
+            "challenge_kind": "duel",
+            "title": "Again",
+            "target_sessions": 3,
+            "member_user_ids": [2],
+        },
+    )
+    assert duplicate.status_code == 409
+
+    declined = client.post(f"/social/challenges/{first['id']}/decline", headers=b)
+    assert declined.status_code == 204
+    listed = client.get("/social/challenges", headers=a)
+    assert all(item["id"] != first["id"] for item in listed.json())
+
+    second = _duel(client, a, title="Withdraw Me")
+    withdrawn = client.delete(f"/social/challenges/{second['id']}", headers=a)
+    assert withdrawn.status_code == 204
+    owner_decline = client.post(f"/social/challenges/{second['id']}/decline", headers=a)
+    assert owner_decline.status_code == 400
+
+
+def test_duel_invite_expires_after_48_hours(client):
+    a = _auth_headers(client, "social-exp-a@example.com", "social-exp-a")
+    b = _auth_headers(client, "social-exp-b@example.com", "social-exp-b")
+    _make_friends(client, a, b, "social-exp-b")
+
+    created = _duel(client, a, title="Stale Invite")
+    with SessionLocal() as db:
+        row = db.get(SocialChallenge, created["id"])
+        assert row is not None
+        meta = json.loads(row.meta_json or "{}")
+        meta["invited_at"] = (utcnow() - timedelta(hours=49)).isoformat()
+        row.meta_json = json.dumps(meta)
+        db.commit()
+
+    listed = client.get("/social/challenges", headers=b)
+    assert all(item["id"] != created["id"] for item in listed.json())
+    expired = client.post(f"/social/challenges/{created['id']}/accept", headers=b)
+    assert expired.status_code == 400

@@ -74,6 +74,7 @@ export type SocialChallengeMemberDto = {
   username: string;
   progress_sessions: number;
   team_label?: string | null;
+  profile_picture_url?: string | null;
 };
 
 export type SocialChallengeDto = {
@@ -91,6 +92,8 @@ export type SocialChallengeDto = {
   is_tie?: boolean;
   completion_reason?: string | null;
   your_rank?: number | null;
+  invitee_user_id?: number | null;
+  invitee_username?: string | null;
   premium_detail_locked?: boolean;
   members: SocialChallengeMemberDto[];
 };

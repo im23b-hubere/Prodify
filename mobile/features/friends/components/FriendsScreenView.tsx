@@ -10,6 +10,7 @@ import { colors } from "../../../constants/theme";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 import type { FriendsScreenController } from "../hooks/useFriendsScreenController";
 import { FriendsActivitySection } from "./FriendsActivitySection";
+import { FriendsDuelInvitesSection } from "./FriendsDuelInvitesSection";
 import { FriendsIncomingSection } from "./FriendsIncomingSection";
 import { FriendsLeaderboardSection } from "./FriendsLeaderboardSection";
 import { FriendsModals } from "./FriendsModals";
@@ -71,6 +72,16 @@ function FriendsLoadedSections({ controller }: Props) {
         onAccept={actions.acceptRequest}
         onDecline={actions.declineRequest}
       />
+      <FriendsDuelInvitesSection
+        challenges={state.challenges}
+        actions={{
+          t,
+          currentUserId: userId,
+          busyActionKey: state.busyActionKey,
+          onAcceptChallengeInvite: actions.acceptChallengeInvite,
+          onDeclineChallengeInvite: actions.declineChallengeInvite,
+        }}
+      />
       {state.sectionTab === "overview" && actions.hasOtherFriends ? (
         <FriendsLeaderboardSection props={sectionProps} />
       ) : null}
@@ -89,6 +100,8 @@ function FriendsLoadedSections({ controller }: Props) {
           onOpenBuddyPicker={() => state.setBuddyPickerOpen(true)}
           onOpenAddFriend={() => state.setAddOpen(true)}
           onAcceptBuddyInvite={actions.acceptBuddyInvite}
+          onAcceptChallengeInvite={actions.acceptChallengeInvite}
+          onDeclineChallengeInvite={actions.declineChallengeInvite}
           pendingBuddyInviteId={actions.pendingBuddyInviteId}
           challengeCards={actions.challengeCards}
           currentUserId={userId}

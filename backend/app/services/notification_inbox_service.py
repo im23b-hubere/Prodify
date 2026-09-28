@@ -6,8 +6,21 @@ from typing import Iterable
 from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import Session
 
-from app.models import Friendship, FriendshipStatus, NotificationReadState, ProductionSession, SocialComment, Streak, User, UserAchievement, utcnow
+from app.models import (
+    Friendship,
+    FriendshipStatus,
+    NotificationReadState,
+    ProductionSession,
+    SocialChallenge,
+    SocialComment,
+    Streak,
+    User,
+    UserAchievement,
+    utcnow,
+)
 from app.contracts.notifications import NotificationInboxItemPublic
+from app.services.friend_graph import friend_user_ids
+from app.services.social_challenge_service import invite_expires_at, invite_is_expired, load_challenge_meta
 
 
 def build_notification_inbox(
@@ -21,6 +34,8 @@ def build_notification_inbox(
     last_read_at = _last_read_at(db, user_id)
     candidates = [
         *_friend_request_items(db, user_id),
+        *_duel_invite_items(db, user_id),
+        *_duel_accepted_items(db, user_id),
         *_comment_items(db, user_id),
         *_achievement_items(db, user_id),
         *_streak_risk_items(db, user_id, now),
@@ -79,6 +94,89 @@ def _friend_request_items(db: Session, user_id: int) -> Iterable[NotificationInb
             body_params={"username": username},
             created_at=created_at,
             expires_at=created_at + timedelta(days=7),
+            action_label="Open friends",
+            action_route="/(tabs)/friends",
+        )
+
+
+def _duel_invite_items(db: Session, user_id: int) -> Iterable[NotificationInboxItemPublic]:
+    friend_ids = friend_user_ids(db, user_id)
+    if not friend_ids:
+        return
+    invites = db.scalars(
+        select(SocialChallenge)
+        .where(
+            SocialChallenge.owner_id.in_(friend_ids),
+            SocialChallenge.challenge_kind == "duel",
+            SocialChallenge.status == "pending",
+        )
+        .order_by(desc(SocialChallenge.created_at))
+        .limit(20)
+    ).all()
+    open_invites = [
+        (invite, meta)
+        for invite, meta in ((invite, load_challenge_meta(invite)) for invite in invites)
+        if meta.get("invitee_user_id") == user_id and not invite_is_expired(meta)
+    ]
+    if not open_invites:
+        return
+    owner_ids = {invite.owner_id for invite, _ in open_invites}
+    usernames = {user.id: user.username for user in db.scalars(select(User).where(User.id.in_(owner_ids))).all()}
+    for invite, meta in open_invites:
+        username = usernames.get(invite.owner_id, "A producer")
+        created_at = _aware(invite.created_at)
+        yield NotificationInboxItemPublic(
+            id=f"duel-invite-{invite.id}",
+            category="social",
+            priority="high",
+            title="Duel invite",
+            body=f"{username} challenged you to a duel.",
+            title_key="notificationsUi.duelInviteTitle",
+            body_key="notificationsUi.duelInviteBody",
+            body_params={"username": username},
+            created_at=created_at,
+            expires_at=invite_expires_at(meta) or created_at + timedelta(days=2),
+            action_label="Open friends",
+            action_route="/(tabs)/friends",
+        )
+
+
+def _duel_accepted_items(db: Session, user_id: int) -> Iterable[NotificationInboxItemPublic]:
+    duels = db.scalars(
+        select(SocialChallenge)
+        .where(
+            SocialChallenge.owner_id == user_id,
+            SocialChallenge.challenge_kind == "duel",
+            SocialChallenge.status == "active",
+        )
+        .order_by(desc(SocialChallenge.created_at))
+        .limit(10)
+    ).all()
+    accepted = [(duel, load_challenge_meta(duel)) for duel in duels]
+    accepted = [(duel, meta) for duel, meta in accepted if meta.get("invitee_user_id") and meta.get("started_at")]
+    invitee_ids = [int(meta["invitee_user_id"]) for _, meta in accepted]
+    usernames = (
+        {user.id: user.username for user in db.scalars(select(User).where(User.id.in_(invitee_ids))).all()}
+        if invitee_ids
+        else {}
+    )
+    for duel, meta in accepted:
+        try:
+            started_at = _aware(datetime.fromisoformat(str(meta["started_at"])))
+        except ValueError:
+            continue
+        username = usernames.get(int(meta["invitee_user_id"]), "A producer")
+        yield NotificationInboxItemPublic(
+            id=f"duel-accepted-{duel.id}",
+            category="social",
+            priority="high",
+            title="Duel accepted",
+            body=f"{username} accepted your duel.",
+            title_key="notificationsUi.duelAcceptedTitle",
+            body_key="notificationsUi.duelAcceptedBody",
+            body_params={"username": username},
+            created_at=started_at,
+            expires_at=started_at + timedelta(days=3),
             action_label="Open friends",
             action_route="/(tabs)/friends",
         )

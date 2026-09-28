@@ -20,7 +20,14 @@ module.exports = {
   FadeInDown: enter,
   SlideInDown: enter,
   SlideOutDown: enter,
-  useSharedValue: (value) => ({ value }),
+  useSharedValue: (initial) => {
+    const shared = { value: initial };
+    shared.get = () => shared.value;
+    shared.set = (next) => {
+      shared.value = typeof next === "function" ? next(shared.value) : next;
+    };
+    return shared;
+  },
   useAnimatedStyle: (fn) => fn(),
   useAnimatedProps: (fn) => fn(),
   useReducedMotion: () => false,

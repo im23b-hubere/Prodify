@@ -13,6 +13,7 @@ from app.services.progression_service import SESSION_XP_MINUTES_FLOOR
 
 CHALLENGE_MIN_DURATION_SECONDS = SESSION_XP_MINUTES_FLOOR * 60
 COMPLETED_VISIBLE_DAYS = 14
+INVITE_TTL = timedelta(hours=48)
 
 
 def _as_utc_aware(value: datetime) -> datetime:
@@ -45,12 +46,36 @@ def challenge_duration_days(meta: dict[str, Any]) -> int:
 
 
 def challenge_window_start(row: SocialChallenge) -> datetime:
+    meta = load_challenge_meta(row)
+    started_at = meta.get("started_at")
+    if isinstance(started_at, str):
+        try:
+            return _as_utc_aware(datetime.fromisoformat(started_at))
+        except ValueError:
+            pass
     try:
         week_start = datetime.fromisoformat(row.week_start).replace(tzinfo=timezone.utc)
     except ValueError:
         week_start = _as_utc_aware(row.created_at)
     created = _as_utc_aware(row.created_at)
     return max(week_start, created)
+
+
+def invite_expires_at(meta: dict[str, Any]) -> datetime | None:
+    invited_at = meta.get("invited_at")
+    if not isinstance(invited_at, str):
+        return None
+    try:
+        return _as_utc_aware(datetime.fromisoformat(invited_at)) + INVITE_TTL
+    except ValueError:
+        return None
+
+
+def invite_is_expired(meta: dict[str, Any], *, now: datetime | None = None) -> bool:
+    expires_at = invite_expires_at(meta)
+    if expires_at is None:
+        return False
+    return _as_utc_aware(now or utcnow()) >= expires_at
 
 
 def challenge_window_end(row: SocialChallenge, meta: dict[str, Any]) -> datetime:
@@ -106,7 +131,7 @@ def _leader_member(members: list[SocialChallengeMember]) -> SocialChallengeMembe
 
 
 def cancel_challenge(db: Session, challenge: SocialChallenge, *, reason: str = "cancelled") -> None:
-    if challenge.status != "active":
+    if challenge.status not in {"active", "pending"}:
         return
     meta = load_challenge_meta(challenge)
     challenge.status = "cancelled"
@@ -281,4 +306,13 @@ def challenge_public_extras(
         "is_tie": bool(meta.get("is_tie")),
         "completion_reason": meta.get("completion_reason"),
         "your_rank": your_rank,
+        "invitee_user_id": _invitee_user_id(meta),
     }
+
+
+def _invitee_user_id(meta: dict[str, Any]) -> int | None:
+    raw = meta.get("invitee_user_id")
+    try:
+        return int(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        return None

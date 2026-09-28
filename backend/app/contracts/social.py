@@ -162,6 +162,7 @@ class SocialChallengeMemberPublic(BaseModel):
     username: str
     progress_sessions: int
     team_label: str | None = None
+    profile_picture_url: str | None = None
 
 
 class SocialChallengePublic(BaseModel):
@@ -179,6 +180,8 @@ class SocialChallengePublic(BaseModel):
     is_tie: bool = False
     completion_reason: str | None = None
     your_rank: int | None = None
+    invitee_user_id: int | None = None
+    invitee_username: str | None = None
     premium_detail_locked: bool = False
     upsell_hint: str | None = None
     members: list[SocialChallengeMemberPublic] = Field(default_factory=list)

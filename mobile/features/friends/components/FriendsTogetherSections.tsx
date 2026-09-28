@@ -2,9 +2,11 @@ import { type Href, useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
 import type { SocialChallengeDto } from "../../../types/friends";
+import { isOutgoingDuelInvite } from "../utils/duelInvites";
 import { challengeDaysLeft } from "../utils/friendsScreenFormat";
 import type { FriendsTogetherProps } from "./FriendsTogetherSection";
 import { FriendsBuddyDuelCard } from "./FriendsBuddyDuelCard";
+import { FriendsDuelInviteRow } from "./FriendsDuelInviteRow";
 import { FriendsDuelScoreboard } from "./FriendsDuelScoreboard";
 import { friendsTogetherStyles as styles } from "../styles/friendsTogether.styles";
 
@@ -13,14 +15,24 @@ export function FriendsChallengesBody({ props }: { props: FriendsTogetherProps }
   const buddyActive = buddy?.status === "active";
   const inviteIncoming = buddy?.status === "pending_incoming";
   const inviteOutgoing = buddy?.status === "pending_outgoing";
-  const heroChallenge = buddyActive ? null : props.challengeCards.find((item) => item.status === "active");
-  const rows = props.challengeCards.filter((item) => item.id !== heroChallenge?.id);
-  const empty = !buddyActive && !inviteIncoming && !inviteOutgoing && props.challengeCards.length === 0;
+  const sentInvites = props.challengeCards.filter((item) => isOutgoingDuelInvite(item, props.currentUserId));
+  const settled = props.challengeCards.filter((item) => item.status !== "pending");
+  const heroChallenge = buddyActive ? null : settled.find((item) => item.status === "active");
+  const rows = settled.filter((item) => item.id !== heroChallenge?.id);
+  const empty =
+    !buddyActive && !inviteIncoming && !inviteOutgoing && settled.length === 0 && sentInvites.length === 0;
 
   if (empty) return <ChallengesEmpty props={props} />;
 
   return (
     <View style={styles.stack}>
+      {sentInvites.length > 0 ? (
+        <View style={styles.listCard}>
+          {sentInvites.map((challenge, index) => (
+            <FriendsDuelInviteRow key={challenge.id} challenge={challenge} actions={props} divided={index > 0} />
+          ))}
+        </View>
+      ) : null}
       {inviteIncoming || inviteOutgoing ? <BuddyInviteRow props={props} /> : null}
       {buddyActive ? (
         <FriendsBuddyDuelCard

@@ -80,7 +80,7 @@ export async function syncServerInbox(token: string, limit = 40): Promise<number
       bypassFirstWeekQuietMode:
         row.category === "social" &&
         typeof row.id === "string" &&
-        row.id.startsWith("friend-request-"),
+        (row.id.startsWith("friend-request-") || row.id.startsWith("duel-invite-")),
     });
     if (inserted) {
       insertedCount += 1;

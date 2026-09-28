@@ -14,6 +14,8 @@ export type FriendsTogetherProps = {
   onOpenBuddyPicker: () => void;
   onOpenAddFriend: () => void;
   onAcceptBuddyInvite: (inviteId: number) => void;
+  onAcceptChallengeInvite: (challengeId: number) => void;
+  onDeclineChallengeInvite: (challengeId: number) => void;
   pendingBuddyInviteId: number | null;
   challengeCards: SocialChallengeDto[];
   currentUserId?: number;

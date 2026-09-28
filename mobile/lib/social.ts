@@ -84,6 +84,23 @@ export async function createSessionComment(
   });
 }
 
+export async function acceptSocialChallenge(
+  token: string,
+  challengeId: number,
+): Promise<SocialChallengeDto> {
+  return apiJson<SocialChallengeDto>(`/social/challenges/${challengeId}/accept`, {
+    token,
+    method: "POST",
+  });
+}
+
+export async function declineSocialChallenge(token: string, challengeId: number): Promise<void> {
+  await apiJson(`/social/challenges/${challengeId}/decline`, {
+    token,
+    method: "POST",
+  });
+}
+
 export async function joinSocialChallenge(
   token: string,
   challengeId: number,
