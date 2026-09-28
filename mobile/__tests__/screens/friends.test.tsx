@@ -300,6 +300,9 @@ describe("Friends Screen", () => {
     expect(queryByTestId("friends-ranking")).toBeNull();
     expect(getByTestId("friends-buddy-duel")).toBeTruthy();
     expect(queryByText("friendsScreen.sectionActivityTitle")).toBeNull();
+    expect(queryByText("friendsScreen.togetherOr")).toBeNull();
+    expect(queryByText("friendsScreen.challengeTapHint")).toBeNull();
+    expect(queryByText("friendsScreen.challengeKindDuel")).toBeNull();
   });
 
   it("shows incoming friend requests above ranking and activity", () => {

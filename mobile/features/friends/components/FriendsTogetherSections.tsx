@@ -1,228 +1,220 @@
 import { type Href, useRouter } from "expo-router";
-import { ChevronRight, Swords, Users } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 
-import { PrimaryButton } from "../../../components/ui/PrimaryButton";
-import { colors } from "../../../constants/theme";
 import type { SocialChallengeDto } from "../../../types/friends";
+import { challengeDaysLeft } from "../utils/friendsScreenFormat";
 import type { FriendsTogetherProps } from "./FriendsTogetherSection";
 import { FriendsBuddyDuelCard } from "./FriendsBuddyDuelCard";
-import { FriendsSectionHeader } from "./FriendsSectionHeader";
-import { challengeDaysLeft, challengeKindLabel } from "../utils/friendsScreenFormat";
+import { FriendsDuelScoreboard } from "./FriendsDuelScoreboard";
 import { friendsTogetherStyles as styles } from "../styles/friendsTogether.styles";
 
-export function TogetherGetStarted({ props }: { props: FriendsTogetherProps }) {
-  const { t } = props;
-  return (
-    <View style={styles.togetherGetStartedCard}>
-      <Text style={styles.togetherGetStartedTitle}>
-        {t("friendsScreen.togetherGetStartedTitle")}
-      </Text>
-      <PrimaryButton
-        label={
-          props.busyActionKey === "buddy_invite"
-            ? t("friendsScreen.loading")
-            : t("friendsScreen.togetherPickBuddy")
-        }
-        onPress={props.hasOtherFriends ? props.onOpenBuddyPicker : props.onOpenAddFriend}
-        disabled={props.busyActionKey === "buddy_invite"}
-      />
-      <Text style={styles.togetherOrDivider}>{t("friendsScreen.togetherOr")}</Text>
-      <Pressable
-        accessibilityRole="button"
-        style={({ pressed }) => [
-          styles.secondaryBtn,
-          styles.togetherSecondaryFull,
-          pressed && { opacity: 0.88 },
-        ]}
-        onPress={props.onOpenChallengeCreate}
-      >
-        <Text style={styles.secondaryBtnText}>{t("friendsScreen.togetherStartChallenge")}</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-export function TogetherBuddySection({ props }: { props: FriendsTogetherProps }) {
+export function FriendsChallengesBody({ props }: { props: FriendsTogetherProps }) {
   const { t, buddy } = props;
+  const buddyActive = buddy?.status === "active";
+  const inviteIncoming = buddy?.status === "pending_incoming";
+  const inviteOutgoing = buddy?.status === "pending_outgoing";
+  const heroChallenge = buddyActive ? null : props.challengeCards.find((item) => item.status === "active");
+  const rows = props.challengeCards.filter((item) => item.id !== heroChallenge?.id);
+  const empty = !buddyActive && !inviteIncoming && !inviteOutgoing && props.challengeCards.length === 0;
+
+  if (empty) return <ChallengesEmpty props={props} />;
+
   return (
-    <View style={styles.sectionWrap}>
-      <FriendsSectionHeader
-        icon={<Users color={colors.primary} size={20} />}
-        title={t("friendsScreen.togetherBuddyTitle")}
-        subtitle={t("friendsScreen.togetherBuddySub")}
-      />
-      {buddy?.status === "active" ? (
+    <View style={styles.stack}>
+      {inviteIncoming || inviteOutgoing ? <BuddyInviteRow props={props} /> : null}
+      {buddyActive ? (
         <FriendsBuddyDuelCard
           t={t}
-          buddyName={buddy.buddy_username ?? t("friendsScreen.challengeSomeone")}
-          yourSessions={buddy.this_week_sessions ?? 0}
-          buddySessions={buddy.buddy_week_sessions ?? 0}
+          buddyName={buddy?.buddy_username ?? t("friendsScreen.challengeSomeone")}
+          yourSessions={buddy?.this_week_sessions ?? 0}
+          buddySessions={buddy?.buddy_week_sessions ?? 0}
           onCatchUp={props.onOpenSessionSetup}
         />
-      ) : (
-        <BuddyEmptyState props={props} />
-      )}
-    </View>
-  );
-}
-
-function BuddyEmptyState({ props }: { props: FriendsTogetherProps }) {
-  const { t, buddy } = props;
-  return (
-    <View style={styles.cardElevated}>
-      {buddy?.status === "pending_incoming" ? (
-        <>
-          <Text style={styles.userMeta}>
-            {t("friendsScreen.buddyPendingIncoming", { buddy: buddy.buddy_username ?? "buddy" })}
-          </Text>
-          {props.pendingBuddyInviteId != null ? (
-            <PrimaryButton
-              label={
-                props.busyActionKey === "buddy_accept"
-                  ? t("friendsScreen.loading")
-                  : t("friendsScreen.acceptBuddyInvite")
-              }
-              onPress={() => props.onAcceptBuddyInvite(props.pendingBuddyInviteId!)}
-              disabled={props.busyActionKey === "buddy_accept"}
-            />
-          ) : null}
-        </>
-      ) : buddy?.status === "pending_outgoing" ? (
-        <Text style={styles.userMeta}>
-          {t("friendsScreen.buddyPendingOutgoing", { buddy: buddy.buddy_username ?? "buddy" })}
-        </Text>
-      ) : (
-        <>
-          <Text style={styles.userMeta}>{t("friendsScreen.togetherBuddyEmpty")}</Text>
-          <PrimaryButton
-            label={
-              props.busyActionKey === "buddy_invite"
-                ? t("friendsScreen.loading")
-                : props.hasOtherFriends
-                  ? t("friendsScreen.togetherPickBuddy")
-                  : t("friendsScreen.feedEmptyCta")
-            }
-            onPress={props.hasOtherFriends ? props.onOpenBuddyPicker : props.onOpenAddFriend}
-            disabled={props.busyActionKey === "buddy_invite"}
-          />
-        </>
-      )}
-    </View>
-  );
-}
-
-export function TogetherChallengesSection({
-  props,
-  activeCount,
-}: {
-  props: FriendsTogetherProps;
-  activeCount: number;
-}) {
-  const router = useRouter();
-  const { t } = props;
-  return (
-    <View style={styles.sectionWrap}>
-      <FriendsSectionHeader
-        icon={<Swords color={colors.primary} size={20} />}
-        title={t("friendsScreen.togetherChallengesTitle")}
-        subtitle={t("friendsScreen.togetherChallengesSub")}
-        right={
-          activeCount > 0 ? (
-            <View style={styles.collapseBadge}>
-              <Text style={styles.collapseBadgeText}>
-                {t("friendsScreen.challengesCollapsedSummary", { count: activeCount })}
-              </Text>
-            </View>
-          ) : null
-        }
-      />
-      <View style={styles.cardElevated}>
-        <PrimaryButton
+      ) : null}
+      {heroChallenge ? <ChallengeHero challenge={heroChallenge} props={props} /> : null}
+      <View style={styles.listCard}>
+        {rows.map((challenge, index) => (
+          <ChallengeRow key={challenge.id} challenge={challenge} props={props} divided={index > 0} />
+        ))}
+        <QuietLink
+          divided={rows.length > 0}
           label={t("friendsScreen.togetherStartChallenge")}
           onPress={props.onOpenChallengeCreate}
         />
-        {props.challengeCards.length === 0 ? (
-          <Text style={styles.userMeta}>{t("friendsScreen.togetherChallengesEmpty")}</Text>
-        ) : null}
-        {props.challengeCards.map((challenge) => (
-          <ChallengeCard
-            key={challenge.id}
-            challenge={challenge}
-            props={props}
-            onOpen={() => router.push(`/challenge/${challenge.id}` as Href)}
+        {!buddyActive && !inviteIncoming && !inviteOutgoing ? (
+          <QuietLink
+            divided
+            label={t("friendsScreen.togetherPickBuddy")}
+            onPress={props.hasOtherFriends ? props.onOpenBuddyPicker : props.onOpenAddFriend}
           />
-        ))}
+        ) : null}
       </View>
     </View>
   );
 }
 
-function ChallengeCard({
-  challenge,
-  props,
-  onOpen,
-}: {
-  challenge: SocialChallengeDto;
-  props: FriendsTogetherProps;
-  onOpen: () => void;
-}) {
-  const { t, currentUserId } = props;
-  const member =
-    typeof currentUserId === "number" &&
-    challenge.members.some((item) => item.user_id === currentUserId);
-  const joinBusy = props.busyActionKey === `join_challenge_${challenge.id}`;
-  const winner =
-    challenge.members.find((item) => item.user_id === challenge.winner_user_id)?.username ??
-    t("friendsScreen.challengeSomeone");
-  const summary =
-    challenge.status === "completed"
-      ? challenge.is_tie
-        ? t("friendsScreen.challengeEndedTie")
-        : challenge.winner_user_id === currentUserId
-          ? t("friendsScreen.challengeYouWon")
-          : t("friendsScreen.challengeEndedWinner", { winner })
-      : t("friendsScreen.challengeActiveLine", {
-          target: challenge.target_sessions,
-          days:
-            challenge.days_remaining ??
-            challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
-            challenge.duration_days ??
-            7,
-          rank: challenge.your_rank ?? "—",
-        });
+function ChallengesEmpty({ props }: { props: FriendsTogetherProps }) {
+  const { t } = props;
   return (
-    <View style={styles.challengeBlock}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t("friendsScreen.challengeOpenDetailA11y", { title: challenge.title })}
-        style={({ pressed }) => [
-          styles.challengeTapCard,
-          pressed && styles.challengeTapCardPressed,
-        ]}
-        onPress={onOpen}
-      >
-        <View style={styles.challengeHeaderRow}>
-          <Text style={styles.userName}>{challenge.title}</Text>
-          <View style={styles.challengeHeaderRight}>
-            <View style={styles.challengeKindPill}>
-              <Text style={styles.challengeKindPillText}>
-                {challengeKindLabel(challenge.challenge_kind, t)}
-              </Text>
-            </View>
-            <ChevronRight color={colors.textSecondary} size={18} />
-          </View>
-        </View>
-        <Text style={styles.userMeta}>{summary}</Text>
-        <Text style={styles.challengeTapHint}>{t("friendsScreen.challengeTapHint")}</Text>
-      </Pressable>
-      {!member && challenge.status === "active" ? (
-        <PrimaryButton
-          label={joinBusy ? t("friendsScreen.loading") : t("friendsScreen.joinThisChallenge")}
-          onPress={() => props.onJoinSocialChallenge(challenge.id)}
-          disabled={joinBusy}
+    <View style={styles.emptyWrap}>
+      <Text style={styles.emptyTitle}>{t("friendsScreen.challengesEmptyTitle")}</Text>
+      <View style={styles.listCard}>
+        <QuietLink
+          label={t("friendsScreen.togetherPickBuddy")}
+          onPress={props.hasOtherFriends ? props.onOpenBuddyPicker : props.onOpenAddFriend}
         />
+        <QuietLink divided label={t("friendsScreen.togetherStartChallenge")} onPress={props.onOpenChallengeCreate} />
+      </View>
+    </View>
+  );
+}
+
+function BuddyInviteRow({ props }: { props: FriendsTogetherProps }) {
+  const { t, buddy } = props;
+  const name = buddy?.buddy_username ?? t("friendsScreen.challengeSomeone");
+  const incoming = buddy?.status === "pending_incoming";
+  const busy = props.busyActionKey === "buddy_accept";
+  return (
+    <View style={styles.inviteRow}>
+      <View style={styles.inviteCopy}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {name}
+        </Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>
+          {t(incoming ? "friendsScreen.buddyInviteIncomingMeta" : "friendsScreen.buddyInviteOutgoingMeta")}
+        </Text>
+      </View>
+      {incoming && props.pendingBuddyInviteId != null ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("friendsScreen.acceptBuddyInvite")}
+          style={({ pressed }) => [styles.acceptBtn, pressed && { opacity: 0.55 }]}
+          disabled={busy}
+          onPress={() => props.onAcceptBuddyInvite(props.pendingBuddyInviteId!)}
+        >
+          <Text style={styles.acceptText}>
+            {busy ? t("friendsScreen.loading") : t("friendsScreen.accept")}
+          </Text>
+        </Pressable>
       ) : null}
     </View>
   );
+}
+
+function ChallengeHero({
+  challenge,
+  props,
+}: {
+  challenge: SocialChallengeDto;
+  props: FriendsTogetherProps;
+}) {
+  const sides = challengeSides(challenge, props.currentUserId, props.t("friendsScreen.buddyDuelYouLabel"));
+  const behind = sides.opponentScore > sides.youScore;
+  const quiet = sides.youScore === 0 && sides.opponentScore === 0;
+  const actionLabel =
+    challenge.status === "active" && (behind || quiet) ? props.t("friendsScreen.heroCtaStartSession") : null;
+  return (
+    <FriendsDuelScoreboard
+      t={props.t}
+      leftLabel={sides.youLabel}
+      leftScore={sides.youScore}
+      rightLabel={sides.opponentName}
+      rightScore={sides.opponentScore}
+      meta={props.t("friendsScreen.challengeDaysLeftShort", { count: challengeDayCount(challenge) })}
+      actionLabel={actionLabel}
+      onAction={actionLabel ? props.onOpenSessionSetup : undefined}
+      testID="friends-challenge-duel"
+    />
+  );
+}
+
+function ChallengeRow({
+  challenge,
+  props,
+  divided,
+}: {
+  challenge: SocialChallengeDto;
+  props: FriendsTogetherProps;
+  divided: boolean;
+}) {
+  const router = useRouter();
+  const sides = challengeSides(challenge, props.currentUserId, props.t("friendsScreen.buddyDuelYouLabel"));
+  const meta =
+    challenge.status === "completed"
+      ? completedLine(challenge, props)
+      : props.t("friendsScreen.challengeDaysLeftShort", { count: challengeDayCount(challenge) });
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={props.t("friendsScreen.challengeOpenDetailA11y", { title: challenge.title })}
+      style={({ pressed }) => [styles.challengeRow, pressed && styles.rowPressed]}
+      onPress={() => router.push(`/challenge/${challenge.id}` as Href)}
+    >
+      {divided ? <View style={styles.separator} /> : null}
+      <View style={styles.inviteCopy}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {challenge.title}
+        </Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>
+          {meta}
+        </Text>
+      </View>
+      <Text style={styles.rowScore}>
+        {sides.youScore}–{sides.opponentScore}
+      </Text>
+    </Pressable>
+  );
+}
+
+function QuietLink({
+  label,
+  onPress,
+  divided,
+}: {
+  label: string;
+  onPress: () => void;
+  divided?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.quietLink, pressed && styles.rowPressed]}
+      onPress={onPress}
+    >
+      {divided ? <View style={styles.separator} /> : null}
+      <Text style={styles.quietLinkText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function challengeSides(challenge: SocialChallengeDto, currentUserId: number | undefined, youLabel: string) {
+  const you = challenge.members.find((member) => member.user_id === currentUserId);
+  const opponent = challenge.members
+    .filter((member) => member.user_id !== currentUserId)
+    .sort((left, right) => right.progress_sessions - left.progress_sessions)[0];
+  return {
+    youLabel,
+    youScore: you?.progress_sessions ?? 0,
+    opponentName: opponent?.username ?? youLabel,
+    opponentScore: opponent?.progress_sessions ?? 0,
+  };
+}
+
+function challengeDayCount(challenge: SocialChallengeDto) {
+  return (
+    challenge.days_remaining ??
+    challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
+    challenge.duration_days ??
+    7
+  );
+}
+
+function completedLine(challenge: SocialChallengeDto, props: FriendsTogetherProps) {
+  if (challenge.is_tie) return props.t("friendsScreen.challengeEndedTie");
+  if (challenge.winner_user_id === props.currentUserId) return props.t("friendsScreen.challengeYouWon");
+  const winner =
+    challenge.members.find((member) => member.user_id === challenge.winner_user_id)?.username ??
+    props.t("friendsScreen.challengeSomeone");
+  return props.t("friendsScreen.challengeEndedWinner", { winner });
 }

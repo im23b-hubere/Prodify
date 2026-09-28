@@ -1,11 +1,7 @@
 import type { TFunction } from "i18next";
 
 import type { BuddyStatusDto, SocialChallengeDto } from "../../../types/friends";
-import {
-  TogetherBuddySection,
-  TogetherChallengesSection,
-  TogetherGetStarted,
-} from "./FriendsTogetherSections";
+import { FriendsChallengesBody } from "./FriendsTogetherSections";
 
 export type FriendsTogetherProps = {
   t: TFunction;
@@ -24,24 +20,5 @@ export type FriendsTogetherProps = {
 };
 
 export function FriendsTogetherSection(props: FriendsTogetherProps) {
-  const activeCount = props.challengeCards.filter(
-    (challenge) => challenge.status === "active",
-  ).length;
-  const showGetStarted =
-    props.challengeCards.length === 0 &&
-    props.buddy?.status !== "active" &&
-    props.buddy?.status !== "pending_incoming" &&
-    props.buddy?.status !== "pending_outgoing";
-  return (
-    <>
-      {showGetStarted ? (
-        <TogetherGetStarted props={props} />
-      ) : (
-        <>
-          <TogetherBuddySection props={props} />
-          <TogetherChallengesSection props={props} activeCount={activeCount} />
-        </>
-      )}
-    </>
-  );
+  return <FriendsChallengesBody props={props} />;
 }

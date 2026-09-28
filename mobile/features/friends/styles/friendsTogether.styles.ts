@@ -1,118 +1,99 @@
 import { StyleSheet } from "react-native";
 
 import { fontFamily } from "../../../constants/fonts";
-import { colors, radii, shadows, spacing, typography } from "../../../constants/theme";
+import { colors, radii, spacing } from "../../../constants/theme";
 import { friendsSharedStyles } from "./friendsShared.styles";
 
+const separator = "rgba(255,255,255,0.12)";
+
 const localStyles = StyleSheet.create({
-  challengeBlock: {
-    width: "100%",
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    backgroundColor: "rgba(255,255,255,0.02)",
-    padding: spacing.sm,
-  },
-  challengeHeaderRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  challengeHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  challengeKindPill: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: radii.round,
+  acceptBtn: {
+    minHeight: 44,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  challengeKindPillText: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    fontFamily: fontFamily.bodyBold,
-    textTransform: "capitalize",
-  },
-  challengeTapCard: {
-    gap: spacing.xs,
-    borderRadius: radii.md,
-    padding: spacing.sm,
-    marginHorizontal: -spacing.sm,
-  },
-  challengeTapCardPressed: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  challengeTapHint: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    fontSize: 12,
-    opacity: 0.85,
-  },
-  collapseBadge: {
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  collapseBadgeText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  secondaryBtn: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    minHeight: 48,
+    alignItems: "center",
     justifyContent: "center",
+  },
+  acceptText: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 17,
+    lineHeight: 22,
+  },
+  challengeRow: {
+    position: "relative",
+    flexDirection: "row",
     alignItems: "center",
-  },
-  secondaryBtnText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    textAlign: "center",
-  },
-  togetherGetStartedCard: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
     gap: spacing.md,
-    marginBottom: spacing.xl,
-    ...shadows.card,
+    minHeight: 60,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  togetherGetStartedTitle: {
+  emptyTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.body,
-    lineHeight: 22,
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.3,
     textAlign: "center",
+    marginBottom: spacing.md,
   },
-  togetherOrDivider: {
+  emptyWrap: { marginBottom: spacing.xl },
+  inviteCopy: { flex: 1, minWidth: 0, gap: 2 },
+  inviteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.sm,
+    minHeight: 64,
+  },
+  listCard: {
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
+  },
+  quietLink: {
+    position: "relative",
+    minHeight: 48,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+  },
+  quietLinkText: {
+    color: colors.primary,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 17,
+    lineHeight: 22,
+  },
+  rowMeta: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
-    ...typography.caption,
-    textAlign: "center",
+    fontSize: 13,
+    lineHeight: 16,
   },
-  togetherSecondaryFull: {
-    alignSelf: "stretch",
-    alignItems: "center",
-    paddingVertical: spacing.sm,
+  rowPressed: { backgroundColor: "rgba(255,255,255,0.06)" },
+  rowScore: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 17,
+    lineHeight: 22,
   },
+  rowTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 17,
+    lineHeight: 22,
+  },
+  separator: {
+    position: "absolute",
+    top: 0,
+    left: spacing.md,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: separator,
+  },
+  stack: { gap: spacing.lg, marginBottom: spacing.xl },
 });
 
 export const friendsTogetherStyles = { ...friendsSharedStyles, ...localStyles };

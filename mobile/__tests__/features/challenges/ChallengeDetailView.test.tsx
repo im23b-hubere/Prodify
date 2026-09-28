@@ -63,7 +63,9 @@ describe("Challenge detail views", () => {
     render(<ChallengeDetailContent detail={detail} currentUserId={2} />);
 
     expect(screen.getByText("Finish tracks")).toBeTruthy();
-    expect(screen.getByText("4/5")).toBeTruthy();
+    expect(screen.getByText("2")).toBeTruthy();
+    expect(screen.getByText("4")).toBeTruthy();
+    expect(screen.queryByText("challengeDetail.statTarget")).toBeNull();
     fireEvent.press(screen.getByText("friendsScreen.joinThisChallenge"));
     expect(detail.join).toHaveBeenCalledTimes(1);
   });
