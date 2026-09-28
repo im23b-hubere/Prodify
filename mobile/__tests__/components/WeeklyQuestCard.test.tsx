@@ -64,7 +64,7 @@ describe("WeeklyQuestCard", () => {
     );
 
     expect(
-      screen.getByText('dashboard.weeklyGoalProgressSimple:{"current":2,"target":5}'),
+      screen.getByLabelText('dashboard.weeklyGoalProgressSimple:{"current":2,"target":5}'),
     ).toBeTruthy();
     fireEvent.press(screen.getByLabelText("dashboard.weeklyGoalEdit"));
     expect(screen.getByLabelText('dashboard.weeklyGoalChipA11y:{"count":7}')).toBeTruthy();

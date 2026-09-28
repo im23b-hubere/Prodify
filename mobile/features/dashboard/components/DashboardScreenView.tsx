@@ -1,4 +1,3 @@
-import * as Haptics from "expo-haptics";
 import { useCallback, useRef, useState } from "react";
 import {
   FlatList,
@@ -21,6 +20,7 @@ import { EmptyState } from "../../../components/states/EmptyState";
 import { ErrorState } from "../../../components/states/ErrorState";
 import { TutorialOverlay } from "../../../components/TutorialOverlay";
 import { colors, spacing } from "../../../constants/theme";
+import { progressionOverviewHref } from "../../../lib/progressionNavigation";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
 import type { SessionDto } from "../../../types/session";
 import { styles } from "../dashboardScreen.styles";
@@ -177,10 +177,10 @@ function StudioSection({ controller }: { controller: DashboardScreenController }
       freezeBusy={sessionActions.freezeBusy}
       onUseFreeze={sessionActions.useFreeze}
       onFreezeUnavailable={sessionActions.explainFreezeUnavailable}
-      onOpenStreakHistory={() => {
-        void Haptics.selectionAsync().catch(() => undefined);
-        controller.router.push("/streak/history");
-      }}
+      onOpenStreakHistory={() => controller.router.push("/streak/history")}
+      onOpenSessionHistory={() => controller.router.push("/session/history")}
+      onOpenRank={() => controller.router.push(progressionOverviewHref("dashboard"))}
+      onOpenStats={() => controller.router.push("/(tabs)/stats")}
     />
   );
 }

@@ -131,12 +131,6 @@ export const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 34,
   },
-  devBundleHint: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-    marginTop: 2,
-  },
   sparkLine: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,

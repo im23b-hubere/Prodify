@@ -6,7 +6,9 @@ import { buildCalendarWeeksFromDays } from "../../../lib/streakCalendarWeeks";
 import type { StreakOverviewDto } from "../../../types/streak";
 
 jest.mock("lucide-react-native", () => ({
+  Check: () => null,
   ChevronRight: () => null,
+  Shield: () => null,
 }));
 
 jest.mock("expo-haptics", () => ({
@@ -20,13 +22,19 @@ const t = ((key: string, options?: { returnObjects?: boolean }) => {
   if (options?.returnObjects && key === "dashboard.weekdayShort") return LABELS;
   if (key === "dashboard.weekStripThisWeek") return "This week";
   if (key === "dashboard.weekStripLastWeek") return "Last week";
-  if (key === "dashboard.weekStripPagerA11y") return "Weekly activity. Swipe to see previous weeks.";
-  if (key === "streakHero.historyA11y") return "View streak history";
+  if (key === "dashboard.weekStripPagerA11y")
+    return "Weekly activity. Swipe to see previous weeks.";
+  if (key === "dashboard.weekStripStatsA11y") return "Open full stats";
   return key;
 }) as TFunction;
 
 function overviewFromDays(sessionDays: string[]): StreakOverviewDto {
-  const calendar_weeks = buildCalendarWeeksFromDays(new Set(sessionDays), new Set(), LABELS, WEDNESDAY);
+  const calendar_weeks = buildCalendarWeeksFromDays(
+    new Set(sessionDays),
+    new Set(),
+    LABELS,
+    WEDNESDAY,
+  );
   const current = calendar_weeks[calendar_weeks.length - 1]!;
   return {
     current_streak: 2,
@@ -58,7 +66,7 @@ describe("DashboardWeekDots", () => {
     render(
       <DashboardWeekDots
         overview={overviewFromDays(["2026-08-31", "2026-09-02"])}
-        onOpenHistory={jest.fn()}
+        onOpenStats={jest.fn()}
         t={t}
       />,
     );
@@ -71,19 +79,27 @@ describe("DashboardWeekDots", () => {
     expect(screen.getByTestId("dashboard-week-page--3")).toBeTruthy();
   });
 
-  it("opens streak history from the chevron only", async () => {
-    const onOpenHistory = jest.fn();
+  it("opens full stats from the chevron", async () => {
+    const onOpenStats = jest.fn();
     render(
-      <DashboardWeekDots overview={overviewFromDays(["2026-09-02"])} onOpenHistory={onOpenHistory} t={t} />,
+      <DashboardWeekDots
+        overview={overviewFromDays(["2026-09-02"])}
+        onOpenStats={onOpenStats}
+        t={t}
+      />,
     );
 
-    fireEvent.press(screen.getByLabelText("View streak history"));
-    expect(onOpenHistory).toHaveBeenCalledTimes(1);
+    fireEvent.press(screen.getByLabelText("Open full stats"));
+    expect(onOpenStats).toHaveBeenCalledTimes(1);
   });
 
   it("updates the title when paging to last week", async () => {
     render(
-      <DashboardWeekDots overview={overviewFromDays(["2026-09-02"])} onOpenHistory={jest.fn()} t={t} />,
+      <DashboardWeekDots
+        overview={overviewFromDays(["2026-09-02"])}
+        onOpenStats={jest.fn()}
+        t={t}
+      />,
     );
     await layoutPager();
 

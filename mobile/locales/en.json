@@ -958,6 +958,9 @@
     "weekStripThisWeek": "This week",
     "weekStripLastWeek": "Last week",
     "weekStripPagerA11y": "Weekly activity. Swipe to see previous weeks.",
+    "weekStripStatsA11y": "Open full stats",
+    "todayStatA11y": "Today's time. Open session history",
+    "levelStatA11y": "Your level. Open your rank",
     "liveLabel": "Live",
     "spark": {
       "morning": "Morning clarity. One session sets the week.",
@@ -1171,7 +1174,6 @@
     "xpTotal": "{{xp}} XP total",
     "hint": "Levels = your XP rank. Streak badges in Profile are separate.",
     "toNext": "{{xp}} XP to {{nextName}} ({{percent}}%)",
-    "xpHudA11y": "Open level overview, {{name}}",
     "xpHudLevelShort": "Lv {{level}}",
     "xpHudToNext": "{{xp}} XP to {{nextName}}",
     "xpHudPercent": "{{percent}}% to next rank",

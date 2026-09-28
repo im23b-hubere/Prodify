@@ -167,7 +167,10 @@ function WidgetHeader({
         accessibilityRole="button"
         onPress={collapsible ? onToggle : undefined}
         disabled={!collapsible}
-        style={({ pressed }) => [styles.headerTitleHit, collapsible && pressed && { opacity: 0.88 }]}
+        style={({ pressed }) => [
+          styles.headerTitleHit,
+          collapsible && pressed && { opacity: 0.88 },
+        ]}
       >
         <Text style={styles.title}>{t("friendsWidget.title")}</Text>
         {hasPrimaryAction && collapsed ? <View style={styles.nudgeDot} /> : null}
@@ -207,7 +210,11 @@ function WidgetContent({
 }) {
   return (
     <>
-      {leaders.length > 0 ? <LeaderboardBlock t={t} leaders={leaders} /> : <ActivityFeed t={t} feed={feed} />}
+      {leaders.length > 0 ? (
+        <LeaderboardBlock t={t} leaders={leaders} />
+      ) : (
+        <ActivityFeed t={t} feed={feed} />
+      )}
       <NudgeAction t={t} action={primaryAction} />
       {!primaryAction && secondaryHint ? (
         <Text style={styles.signalTxt}>{secondaryHint}</Text>

@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { ChevronRight } from "lucide-react-native";
+import { Check, ChevronRight, Shield } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 import {
@@ -12,23 +12,21 @@ import {
 } from "react-native";
 
 import { colors } from "../../constants/theme";
-import { resolveCalendarWeeks, weekStripTitle, weekdayShortLabels } from "../../lib/streakCalendarWeeks";
+import {
+  resolveCalendarWeeks,
+  weekStripTitle,
+  weekdayShortLabels,
+} from "../../lib/streakCalendarWeeks";
 import type { StreakCalendarWeekDto, StreakDayKind, StreakOverviewDto } from "../../types/streak";
 import { styles } from "./DashboardStudioHud.styles";
 
-const BAR_HEIGHT = {
-  none: 6,
-  freeze: 12,
-  session: 22,
-} as const;
-
 export function DashboardWeekDots({
   overview,
-  onOpenHistory,
+  onOpenStats,
   t,
 }: {
   overview: StreakOverviewDto;
-  onOpenHistory: () => void;
+  onOpenStats: () => void;
   t: TFunction;
 }) {
   const weeks = useMemo(
@@ -37,18 +35,16 @@ export function DashboardWeekDots({
   );
   if (weeks.length === 0) return null;
 
-  return (
-    <WeekStripPager weeks={weeks} onOpenHistory={onOpenHistory} t={t} />
-  );
+  return <WeekStripPager weeks={weeks} onOpenStats={onOpenStats} t={t} />;
 }
 
 function WeekStripPager({
   weeks,
-  onOpenHistory,
+  onOpenStats,
   t,
 }: {
   weeks: StreakCalendarWeekDto[];
-  onOpenHistory: () => void;
+  onOpenStats: () => void;
   t: TFunction;
 }) {
   const scrollRef = useRef<ScrollView>(null);
@@ -73,9 +69,9 @@ function WeekStripPager({
     [pageWidth, weeks.length],
   );
 
-  const openHistory = () => {
+  const openStats = () => {
     Haptics.selectionAsync().catch(() => undefined);
-    onOpenHistory();
+    onOpenStats();
   };
 
   const visibleWeek = weeks[pageIndex] ?? weeks[startIndex];
@@ -94,8 +90,8 @@ function WeekStripPager({
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t("streakHero.historyA11y")}
-          onPress={openHistory}
+          accessibilityLabel={t("dashboard.weekStripStatsA11y")}
+          onPress={openStats}
           hitSlop={10}
           style={({ pressed }) => [styles.weekStripHistory, pressed && { opacity: 0.85 }]}
         >
@@ -108,6 +104,8 @@ function WeekStripPager({
           testID="dashboard-week-pager"
           accessibilityLabel={t("dashboard.weekStripPagerA11y")}
           horizontal
+          // Opens on the page the title describes, even if the pager is re-created mid-session.
+          contentOffset={{ x: pageWidth * pageIndex, y: 0 }}
           pagingEnabled
           nestedScrollEnabled
           directionalLockEnabled
@@ -157,6 +155,7 @@ function WeekPage({ week, width }: { week: StreakCalendarWeekDto; width?: number
   );
 }
 
+/** One day of the week: a check for a session, a shield for a streak freeze, a ring for today. */
 function WeekDayColumn({
   label,
   kind,
@@ -171,15 +170,19 @@ function WeekDayColumn({
   return (
     <View style={[styles.dayColumn, isFuture && styles.dayColumnFuture]}>
       <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>{label.slice(0, 2)}</Text>
-      <View style={[styles.weekBarTrack, isToday && styles.weekBarTrackToday]}>
-        <View
-          style={[
-            styles.weekBarFill,
-            { height: BAR_HEIGHT[kind] },
-            kind === "session" && styles.weekBarSession,
-            kind === "freeze" && styles.weekBarFreeze,
-          ]}
-        />
+      <View
+        style={[
+          styles.dayMarker,
+          kind === "session" && styles.dayMarkerSession,
+          kind === "freeze" && styles.dayMarkerFreeze,
+          isToday && kind === "none" && styles.dayMarkerToday,
+        ]}
+      >
+        {kind === "session" ? <Check color="#ffffff" size={14} strokeWidth={3} /> : null}
+        {kind === "freeze" ? (
+          <Shield color={colors.textPrimary} size={13} strokeWidth={2.4} />
+        ) : null}
+        {kind === "none" && isToday ? <View style={styles.dayTodayDot} /> : null}
       </View>
     </View>
   );

@@ -9,6 +9,7 @@ jest.mock("lucide-react-native", () => ({
   Shield: () => null,
   Play: () => null,
   Flame: () => null,
+  Clock: () => null,
 }));
 
 jest.mock("react-native-reanimated", () => {
@@ -23,7 +24,9 @@ jest.mock("react-native-reanimated", () => {
 jest.mock("expo-linear-gradient", () => {
   const React = require("react");
   const { View } = require("react-native");
-  return { LinearGradient: ({ children }: { children: React.ReactNode }) => <View>{children}</View> };
+  return {
+    LinearGradient: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+  };
 });
 
 jest.mock("../../../components/studio/WeeklyQuestCard", () => ({
@@ -75,6 +78,9 @@ const baseProps = {
   onUseFreeze: jest.fn(),
   onFreezeUnavailable: jest.fn(),
   onOpenStreakHistory: jest.fn(),
+  onOpenSessionHistory: jest.fn(),
+  onOpenRank: jest.fn(),
+  onOpenStats: jest.fn(),
 } satisfies ComponentProps<typeof DashboardStudioHud>;
 
 describe("DashboardStudioHud session start gate", () => {
@@ -102,20 +108,57 @@ describe("DashboardStudioHud session start gate", () => {
       <DashboardStudioHud
         {...baseProps}
         activeResolved={true}
-        active={{
-          id: 9,
-          user_id: 1,
-          started_at: "2026-08-31T10:00:00.000Z",
-          stopped_at: null,
-          duration_seconds: 300,
-          session_type: "beat_making",
-          notes: null,
-        } satisfies SessionDto}
+        active={
+          {
+            id: 9,
+            user_id: 1,
+            started_at: "2026-08-31T10:00:00.000Z",
+            stopped_at: null,
+            duration_seconds: 300,
+            session_type: "beat_making",
+            notes: null,
+          } satisfies SessionDto
+        }
       />,
     );
 
     expect(screen.queryByTestId("dashboard-start-session")).toBeNull();
     expect(screen.queryByTestId("dashboard-start-session-loading")).toBeNull();
     expect(screen.getByTestId("dashboard-stop-session")).toBeTruthy();
+  });
+
+  it("opens streak history from the streak stat", () => {
+    const onOpenStreakHistory = jest.fn();
+    render(
+      <DashboardStudioHud
+        {...baseProps}
+        activeResolved={true}
+        active={null}
+        onOpenStreakHistory={onOpenStreakHistory}
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText("streakHero.historyA11y"));
+    expect(onOpenStreakHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens session history from today's time and the rank from the level", () => {
+    const onOpenSessionHistory = jest.fn();
+    const onOpenRank = jest.fn();
+    render(
+      <DashboardStudioHud
+        {...baseProps}
+        activeResolved={true}
+        active={null}
+        level={3}
+        onOpenSessionHistory={onOpenSessionHistory}
+        onOpenRank={onOpenRank}
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText("dashboard.todayStatA11y"));
+    fireEvent.press(screen.getByLabelText("dashboard.levelStatA11y"));
+    expect(onOpenSessionHistory).toHaveBeenCalledTimes(1);
+    expect(onOpenRank).toHaveBeenCalledTimes(1);
   });
 });

@@ -2,7 +2,6 @@ import * as Haptics from "expo-haptics";
 import { UserPlus } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { RankHudChip } from "../../../components/progression/RankHudChip";
 import { SegmentedControl } from "../../../components/ui/SegmentedControl";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
@@ -34,7 +33,6 @@ export function FriendsScreenHeader({
           <Text style={styles.title}>{title}</Text>
         </View>
         <View style={styles.topActions}>
-          <RankHudChip from="friends" />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={addFriendA11y}

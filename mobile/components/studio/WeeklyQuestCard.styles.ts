@@ -18,38 +18,48 @@ export const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   headerPressed: { opacity: 0.82 },
   titleBlock: { flex: 1, gap: 2 },
   title: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.body,
+    fontSize: 17,
+    lineHeight: 22,
   },
   remainingText: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
     ...typography.meta,
   },
-  progressNumbers: {
+  remainingDone: {
+    color: colors.success,
+    fontFamily: fontFamily.bodyBold,
+  },
+  ring: {
+    width: 58,
+    height: 58,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ringSvg: {
+    position: "absolute",
+    // Start the arc at 12 o'clock.
+    transform: [{ rotate: "-90deg" }],
+  },
+  ringCount: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     fontSize: 20,
-    lineHeight: 25,
+    lineHeight: 24,
+    // Syne defaults to old-style figures, which drop some digits below the baseline.
+    fontVariant: ["lining-nums"],
   },
-  goalProgressTrack: {
-    width: "100%",
-    height: 8,
-    borderRadius: radii.round,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    overflow: "hidden",
-  },
-  goalProgressFill: {
-    height: "100%",
-    borderRadius: radii.round,
-    backgroundColor: colors.primary,
+  ringTarget: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 12,
   },
   chipRow: { flexDirection: "row", gap: spacing.sm },
   chip: {

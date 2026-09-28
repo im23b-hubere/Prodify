@@ -2,6 +2,7 @@ import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
 import { memo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import Svg, { Circle } from "react-native-svg";
 
 import { colors } from "../../constants/theme";
 import type { ForecastComputed } from "../../lib/forecastEngine";
@@ -10,6 +11,10 @@ import { styles } from "./WeeklyQuestCard.styles";
 import { weeklyQuestPresentation } from "./weeklyQuestPresentation";
 
 const GOAL_CHIPS = [3, 5, 7] as const;
+const RING_SIZE = 58;
+const RING_STROKE = 5;
+const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 type SetupProps = {
   mode: "setup";
@@ -134,24 +139,24 @@ function WeeklyQuestProgress({
         onPress={toggleEditing}
         style={({ pressed }) => [styles.headerRow, pressed && styles.headerPressed]}
       >
+        <GoalRing
+          current={weekSessionsCount}
+          target={weeklyGoalTarget}
+          progress={progress}
+          label={t("dashboard.weeklyGoalProgressSimple", {
+            current: weekSessionsCount,
+            target: weeklyGoalTarget,
+          })}
+        />
         <View style={styles.titleBlock}>
           <Text style={styles.title}>{t("dashboard.weeklyGoalTitle")}</Text>
-          <Text style={styles.remainingText}>
+          <Text style={[styles.remainingText, remaining === 0 && styles.remainingDone]}>
             {remaining === 0
               ? t("dashboard.weeklyGoalComplete")
               : t("dashboard.weeklyGoalRemaining", { count: remaining })}
           </Text>
         </View>
-        <Text style={styles.progressNumbers}>
-          {t("dashboard.weeklyGoalProgressSimple", {
-            current: weekSessionsCount,
-            target: weeklyGoalTarget,
-          })}
-        </Text>
       </Pressable>
-      <View style={styles.goalProgressTrack}>
-        <View style={[styles.goalProgressFill, { width: `${progress}%` }]} />
-      </View>
       {editing && onChangeTarget ? (
         <GoalChoices
           t={t}
@@ -160,6 +165,52 @@ function WeeklyQuestProgress({
           onSelect={saveTarget}
         />
       ) : null}
+    </View>
+  );
+}
+
+/** Sessions this week against the goal, as a ring with the count in the middle. */
+function GoalRing({
+  current,
+  target,
+  progress,
+  label,
+}: {
+  current: number;
+  target: number;
+  progress: number;
+  label: string;
+}) {
+  const fraction = Math.max(0, Math.min(1, progress / 100));
+  return (
+    <View style={styles.ring} accessible accessibilityRole="progressbar" accessibilityLabel={label}>
+      <Svg width={RING_SIZE} height={RING_SIZE} style={styles.ringSvg}>
+        <Circle
+          cx={RING_SIZE / 2}
+          cy={RING_SIZE / 2}
+          r={RING_RADIUS}
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth={RING_STROKE}
+          fill="none"
+        />
+        {fraction > 0 ? (
+          <Circle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={RING_RADIUS}
+            stroke={colors.primary}
+            strokeWidth={RING_STROKE}
+            strokeLinecap="round"
+            strokeDasharray={`${RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`}
+            strokeDashoffset={RING_CIRCUMFERENCE * (1 - fraction)}
+            fill="none"
+          />
+        ) : null}
+      </Svg>
+      <Text style={styles.ringCount}>
+        {current}
+        <Text style={styles.ringTarget}>/{target}</Text>
+      </Text>
     </View>
   );
 }

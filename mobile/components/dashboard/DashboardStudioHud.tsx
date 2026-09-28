@@ -1,7 +1,6 @@
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import type { TFunction } from "i18next";
-import { Flame, Play, Shield } from "lucide-react-native";
+import { Clock, Play, Shield } from "lucide-react-native";
 import { memo, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
@@ -11,9 +10,11 @@ import type { ForecastComputed } from "../../lib/forecastEngine";
 import type { SessionFeedbackComputed } from "../../lib/sessionFeedbackEngine";
 import type { SessionDto } from "../../types/session";
 import type { StreakOverviewDto } from "../../types/streak";
+import { AppFlame } from "../icons/ProdifyGlyphs";
+import { RankArt } from "../progression/RankArt";
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { WeeklyQuestCard } from "../studio/WeeklyQuestCard";
-import { styles } from "./DashboardStudioHud.styles";
+import { METRIC_VALUE_HEIGHT, styles } from "./DashboardStudioHud.styles";
 import { DashboardWeekDots } from "./DashboardWeekDots";
 
 type Props = {
@@ -41,31 +42,28 @@ type Props = {
   onUseFreeze: () => void;
   onFreezeUnavailable: () => void;
   onOpenStreakHistory: () => void;
+  onOpenSessionHistory: () => void;
+  onOpenRank: () => void;
+  onOpenStats: () => void;
 };
 
 export const DashboardStudioHud = memo(function DashboardStudioHud(props: Props) {
   return (
     <View style={styles.stack} testID="dashboard-studio-hud">
       <SessionAction props={props} />
-      <LinearGradient
-        colors={["#241410", "#141414"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.weekPanel}
-      >
+      <View style={styles.weekPanel}>
         <WeeklyGoalBlock props={props} />
-        <DashboardStats props={props} />
         {props.streakOverview ? (
-          <>
-            <DashboardWeekDots
-              overview={props.streakOverview}
-              onOpenHistory={props.onOpenStreakHistory}
-              t={props.t}
-            />
-            <FreezeAction props={props} />
-          </>
+          <DashboardWeekDots
+            overview={props.streakOverview}
+            onOpenStats={props.onOpenStats}
+            t={props.t}
+          />
         ) : null}
-      </LinearGradient>
+        <View style={styles.panelDivider} />
+        <DashboardStats props={props} />
+        <FreezeAction props={props} />
+      </View>
     </View>
   );
 });
@@ -132,15 +130,22 @@ function SessionAction({ props }: { props: Props }) {
 }
 
 function DashboardStats({ props }: { props: Props }) {
+  const streaking = props.streakCount > 0;
   return (
     <View style={styles.metricsRow}>
       <MetricItem
         label={props.t("sessionComplete.statStreakLabel")}
         value={String(props.streakCount)}
         icon={
-          props.streakCount > 0 ? <Flame color={colors.primary} size={14} /> : undefined
+          streaking ? (
+            <AppFlame size={16} />
+          ) : (
+            <AppFlame size={16} color={colors.textSecondary} filled={false} />
+          )
         }
-        accent={props.streakCount > 0}
+        accent={streaking}
+        onPress={props.onOpenStreakHistory}
+        accessibilityLabel={props.t("streakHero.historyA11y")}
       />
       <View style={styles.metricDivider} />
       <MetricItem
@@ -149,36 +154,72 @@ function DashboardStats({ props }: { props: Props }) {
           sessions: props.todaySessions,
           minutes: props.todayMinutes,
         })}
+        icon={<Clock color={colors.textSecondary} size={15} />}
+        onPress={props.onOpenSessionHistory}
+        accessibilityLabel={props.t("dashboard.todayStatA11y")}
       />
       {props.level != null ? (
         <>
           <View style={styles.metricDivider} />
-          <MetricItem label={props.t("sessionComplete.statLevelLabel")} value={`${props.level}`} />
+          {/* The medallion is the value here; the level number moves into the label. */}
+          <MetricItem
+            label={props.t("progression.xpHudLevelShort", { level: props.level })}
+            hero={
+              <View style={styles.metricHero}>
+                <RankArt level={props.level} size={METRIC_VALUE_HEIGHT} />
+              </View>
+            }
+            onPress={props.onOpenRank}
+            accessibilityLabel={props.t("dashboard.levelStatA11y")}
+          />
         </>
       ) : null}
     </View>
   );
 }
 
+type MetricItemProps = {
+  label: string;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+} & (
+  | { value: string; icon: ReactNode; accent?: boolean; hero?: never }
+  | { hero: ReactNode; value?: never; icon?: never; accent?: never }
+);
+
 function MetricItem({
   label,
   value,
   icon,
   accent = false,
-}: {
-  label: string;
-  value: string;
-  icon?: ReactNode;
-  accent?: boolean;
-}) {
-  return (
-    <View style={styles.metricItem}>
-      <View style={styles.metricValueRow}>
-        {icon}
-        <Text style={[styles.metricValue, accent && styles.metricValueAccent]}>{value}</Text>
-      </View>
+  hero,
+  onPress,
+  accessibilityLabel,
+}: MetricItemProps) {
+  const content = (
+    <>
+      {hero ?? (
+        <View style={styles.metricValueRow}>
+          {icon}
+          <Text style={[styles.metricValue, accent && styles.metricValueAccent]}>{value}</Text>
+        </View>
+      )}
       <Text style={styles.metricLabel}>{label}</Text>
-    </View>
+    </>
+  );
+  if (!onPress) return <View style={styles.metricItem}>{content}</View>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={() => {
+        Haptics.selectionAsync().catch(() => undefined);
+        onPress();
+      }}
+      style={({ pressed }) => [styles.metricItem, pressed && styles.metricItemPressed]}
+    >
+      {content}
+    </Pressable>
   );
 }
 
