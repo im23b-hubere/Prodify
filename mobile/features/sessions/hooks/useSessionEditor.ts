@@ -3,9 +3,12 @@ import type { TFunction } from "i18next";
 import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 
+import { skillBranchesForSessionType } from "../../../constants/skills";
 import { apiJson } from "../../../lib/client";
 import { tryParseSessionDto } from "../../../lib/sessionDto";
 import { DEFAULT_SESSION_TYPE, type SessionDto, type SessionType } from "../../../types/session";
+import { isSameReflection, restrictToBranches, type FocusReflection } from "../skillFocusReflection";
+import { useFocusReflectionSelection } from "./useFocusReflectionSelection";
 
 type UseSessionEditorOptions = {
   token?: string | null;
@@ -17,6 +20,16 @@ type UseSessionEditorOptions = {
   onClose: () => void;
   onError: (message: string) => void;
 };
+
+const NO_REFLECTION: FocusReflection = { focusIds: [], primaryFocusId: null };
+
+function storedReflection(session: SessionDto | null): FocusReflection {
+  if (!session) return NO_REFLECTION;
+  return {
+    focusIds: session.skill_focus_ids ?? [],
+    primaryFocusId: session.primary_skill_focus_id ?? null,
+  };
+}
 
 function useSessionDraft(session: SessionDto | null, currentUserId?: number | null) {
   const [selectedType, setSelectedType] = useState<SessionType>(DEFAULT_SESSION_TYPE);
@@ -32,13 +45,34 @@ function useSessionDraft(session: SessionDto | null, currentUserId?: number | nu
     setNote(session.notes ?? "");
   }
 
-  const isDirty = useMemo(() => {
-    if (!session || currentUserId == null || session.user_id !== currentUserId) return false;
-    const savedType = (session.session_type as SessionType) || DEFAULT_SESSION_TYPE;
-    return selectedType !== savedType || note.trim() !== (session.notes?.trim() ?? "");
-  }, [currentUserId, note, selectedType, session]);
+  const savedReflection = useMemo(() => storedReflection(session), [session]);
+  const focusSelection = useFocusReflectionSelection(selectedType, savedReflection);
+  const isOwnSession = !!session && currentUserId != null && session.user_id === currentUserId;
+  const canEditFocuses = isOwnSession && session?.stopped_at != null;
 
-  return { selectedType, setSelectedType, note, setNote, isDirty };
+  const savedType = (session?.session_type as SessionType) || DEFAULT_SESSION_TYPE;
+  const hasFocusChanges =
+    canEditFocuses &&
+    !isSameReflection(
+      focusSelection.committedReflection,
+      restrictToBranches(savedReflection, skillBranchesForSessionType(selectedType)),
+    );
+  const isDirty =
+    isOwnSession &&
+    (selectedType !== savedType ||
+      note.trim() !== (session?.notes?.trim() ?? "") ||
+      hasFocusChanges);
+
+  return {
+    selectedType,
+    setSelectedType,
+    note,
+    setNote,
+    focusSelection,
+    canEditFocuses,
+    hasFocusChanges,
+    isDirty,
+  };
 }
 
 export function useSessionEditor({
@@ -51,23 +85,34 @@ export function useSessionEditor({
   onClose,
   onError,
 }: UseSessionEditorOptions) {
-  const { selectedType, setSelectedType, note, setNote, isDirty } = useSessionDraft(
-    session,
-    currentUserId,
-  );
+  const {
+    selectedType,
+    setSelectedType,
+    note,
+    setNote,
+    focusSelection,
+    canEditFocuses,
+    hasFocusChanges,
+    isDirty,
+  } = useSessionDraft(session, currentUserId);
   const [busy, setBusy] = useState(false);
+  const { focusIds, primaryFocusId } = focusSelection.committedReflection;
 
   const save = useCallback(async () => {
     if (!token || !sessionId) return;
     setBusy(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+      const focusFields = hasFocusChanges
+        ? { skill_focus_ids: focusIds, primary_skill_focus_id: primaryFocusId }
+        : {};
       const response = await apiJson<unknown>(`/sessions/item/${sessionId}`, {
         token,
         method: "PATCH",
         body: {
           session_type: selectedType,
           notes: note.trim() || null,
+          ...focusFields,
         },
       });
       const updatedSession = tryParseSessionDto(response);
@@ -82,7 +127,19 @@ export function useSessionEditor({
     } finally {
       setBusy(false);
     }
-  }, [note, onClose, onError, onSessionUpdated, selectedType, sessionId, t, token]);
+  }, [
+    focusIds,
+    hasFocusChanges,
+    note,
+    onClose,
+    onError,
+    onSessionUpdated,
+    primaryFocusId,
+    selectedType,
+    sessionId,
+    t,
+    token,
+  ]);
 
   const confirmDelete = useCallback(() => {
     if (!token || !sessionId) return;
@@ -111,6 +168,8 @@ export function useSessionEditor({
     setSelectedType,
     note,
     setNote,
+    focusSelection,
+    canEditFocuses,
     busy,
     isDirty,
     save,

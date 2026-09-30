@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
+import { useSkillProfile } from "../../skills/hooks/useSkillProfile";
 import { useStatsScreenData } from "./useStatsScreenData";
 import { useStatsScreenLifecycle } from "./useStatsScreenLifecycle";
 import { useStatsFilters, useStatsPresentation } from "./useStatsPresentation";
@@ -17,6 +18,8 @@ export function useStatsScreenController() {
   const [filterIdx, setFilterIdx] = useState(0);
   const { filters, filter, periodParam } = useStatsFilters(t, filterIdx);
   const data = useStatsScreenData(token, user?.id, periodParam, t);
+  const skillProfile = useSkillProfile(token);
+  const { reload: reloadSkillProfile } = skillProfile;
   const presentation = useStatsPresentation(data.stats, data.records, filter.period, t);
   const showInitialLoading = !data.refreshing && !data.error && !data.stats;
   const showScanLine = !data.refreshing && !data.error && data.loading;
@@ -36,7 +39,8 @@ export function useStatsScreenController() {
   const refresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     void data.onRefresh();
-  }, [data]);
+    reloadSkillProfile();
+  }, [data, reloadSkillProfile]);
 
   return {
     t,
@@ -49,6 +53,7 @@ export function useStatsScreenController() {
     ...lifecycle,
     showInitialLoading,
     showScanLine,
+    skillProfile,
     selectFilter,
     refresh,
     startSession: () => router.push("/session/setup"),

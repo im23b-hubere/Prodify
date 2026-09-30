@@ -324,6 +324,377 @@
     "learning": "Learning / Practice",
     "defaultName": "Session"
   },
+  "skills": {
+    "beatMaking": {
+      "description": "Drums, bass, chords and samples — the foundation of every beat.",
+      "focuses": {
+        "drums": {
+          "label": "Drum Programming",
+          "short": "Drums",
+          "description": "Build drum patterns that drive the track — kicks, snares, hats, percussion and fills.",
+          "practice": "Program three versions of one drum loop: main groove, fill and a stripped-back variation.",
+          "covers": "Kicks, snares, hats, percussion, fills"
+        },
+        "groove": {
+          "label": "Groove & Feel",
+          "short": "Groove",
+          "description": "Make patterns breathe with swing, velocity and small timing shifts off the grid.",
+          "practice": "Take a stiff loop and give it feel using only swing and velocity — no new sounds.",
+          "covers": "Swing, velocity, humanizing, ghost notes"
+        },
+        "bass": {
+          "label": "Bass & 808",
+          "short": "Bass & 808",
+          "description": "Write basslines and tune 808s so the low end locks in with the kick.",
+          "practice": "Tune your 808 to the key of the track and rewrite the bassline so it never fights the kick.",
+          "covers": "808 tuning, glides, basslines, kick & bass"
+        },
+        "chordsMelody": {
+          "label": "Chords & Melody",
+          "short": "Chords & Melody",
+          "description": "Choose a key, build chord progressions and write melodic loops that set the mood.",
+          "practice": "Write two different progressions in the same key and keep the one that fits the drums best.",
+          "covers": "Keys, progressions, melodic loops, voicings"
+        },
+        "sampling": {
+          "label": "Sampling & Chops",
+          "short": "Sampling",
+          "description": "Find samples, chop them into playable pieces and flip them into something new.",
+          "practice": "Chop one sample into at least eight slices and play a completely new phrase from them.",
+          "covers": "Digging, chopping, time-stretching, flips"
+        },
+        "soundSelection": {
+          "label": "Sound Selection",
+          "short": "Sounds",
+          "description": "Pick sounds that fit together before processing anything — the fastest route to a good mix.",
+          "practice": "Swap every drum sound in a finished beat and compare both versions at matched volume.",
+          "covers": "Drum kits, presets, sample choice, layering choices"
+        }
+      }
+    },
+    "mixing": {
+      "description": "Balancing and shaping every element into one clear, powerful mix.",
+      "focuses": {
+        "balance": {
+          "label": "Levels & Gain Staging",
+          "short": "Levels",
+          "description": "Set clean gain and balance the faders so every element has its place before processing.",
+          "practice": "Build a rough mix using only faders and panning, then compare it to your processed mix.",
+          "covers": "Gain staging, faders, rough mix, bus levels"
+        },
+        "eq": {
+          "label": "EQ",
+          "short": "EQ",
+          "description": "Shape each sound's frequencies — remove what's in the way, then enhance what matters.",
+          "practice": "Clean up muddiness on three tracks using cuts only, no boosts.",
+          "covers": "Cuts, boosts, filters, dynamic EQ"
+        },
+        "dynamics": {
+          "label": "Compression & Dynamics",
+          "short": "Compression",
+          "description": "Control peaks, add punch and glue elements together with compressors, gates and sidechain.",
+          "practice": "Compress a drum bus and a lead vocal, level-matching before and after to judge the real difference.",
+          "covers": "Compressors, gates, sidechain, transients, parallel"
+        },
+        "saturation": {
+          "label": "Saturation & Color",
+          "short": "Saturation",
+          "description": "Add warmth, grit and harmonics with saturation, tape and distortion so sounds cut through without getting louder.",
+          "practice": "Saturate your drum bus and bass in parallel, then level-match to hear what the color really adds.",
+          "covers": "Tape, tube, distortion, exciters, parallel drive"
+        },
+        "space": {
+          "label": "Reverb & Delay",
+          "short": "Reverb & Delay",
+          "description": "Create depth and space with reverbs and delays without washing out the mix.",
+          "practice": "Place the whole mix in one shared reverb and one delay, using sends only.",
+          "covers": "Sends, plates, rooms, echoes, pre-delay"
+        },
+        "stereo": {
+          "label": "Panning & Stereo",
+          "short": "Stereo",
+          "description": "Spread elements across the stereo field and keep the mix solid when played in mono.",
+          "practice": "Pan every element on purpose, then check the mix in mono and fix whatever disappears.",
+          "covers": "Panning, width, mid/side, mono check"
+        },
+        "automation": {
+          "label": "Automation",
+          "short": "Automation",
+          "description": "Move levels and effects over time so the mix follows the song instead of standing still.",
+          "practice": "Automate the level of your lead element through the whole song, section by section.",
+          "covers": "Volume rides, FX throws, filter sweeps"
+        },
+        "translation": {
+          "label": "References & Translation",
+          "short": "References",
+          "description": "Compare against reference tracks and check different speakers so your mix works everywhere.",
+          "practice": "Level-match a reference track and compare your mix against it on two different playback systems.",
+          "covers": "Reference tracks, level matching, speakers, headphones"
+        }
+      }
+    },
+    "mastering": {
+      "description": "The final polish that makes a mix release-ready on every platform.",
+      "focuses": {
+        "tonalBalance": {
+          "label": "Tonal Balance",
+          "short": "Tonal Balance",
+          "description": "Make small EQ moves across the whole mix so it feels balanced from low end to air.",
+          "practice": "Match the overall tone of a reference track without any EQ move larger than 2 dB.",
+          "covers": "Broad EQ, tilt, low end, air"
+        },
+        "dynamics": {
+          "label": "Dynamics",
+          "short": "Dynamics",
+          "description": "Gently control the mix's dynamics with glue compression, multiband or dynamic EQ.",
+          "practice": "Add glue compression with only 1–2 dB of gain reduction and compare at matched volume.",
+          "covers": "Glue compression, multiband, dynamic EQ"
+        },
+        "loudness": {
+          "label": "Limiting & Loudness",
+          "short": "Loudness",
+          "description": "Reach a competitive level with a limiter while keeping punch, true peak and LUFS in check.",
+          "practice": "Master one track to around −14 LUFS and one louder, then decide which keeps more punch.",
+          "covers": "Limiter, LUFS, true peak, clipping"
+        },
+        "stereo": {
+          "label": "Stereo Image",
+          "short": "Stereo",
+          "description": "Control the width of the master while keeping the low end centered and mono-safe.",
+          "practice": "Keep everything below 120 Hz centered and compare your master's width to a reference.",
+          "covers": "Width, mid/side, mono low end"
+        },
+        "references": {
+          "label": "References & Metering",
+          "short": "Metering",
+          "description": "Judge your master with level-matched references and meters, not just by ear.",
+          "practice": "Compare your master to three level-matched references using a spectrum and loudness meter.",
+          "covers": "References, spectrum, loudness meters"
+        },
+        "delivery": {
+          "label": "Delivery & Sequencing",
+          "short": "Delivery",
+          "description": "Finish the release: fades, track order, spacing, metadata and the right export for each platform.",
+          "practice": "Prepare final exports with clean fades and correct formats, then do a full quality-control listen.",
+          "covers": "Fades, sequencing, metadata, export formats"
+        }
+      }
+    },
+    "soundDesign": {
+      "description": "Creating and shaping your own sounds with synths, samples and effects.",
+      "focuses": {
+        "synthesis": {
+          "label": "Synthesis Basics",
+          "short": "Synthesis",
+          "description": "Build sounds from scratch with oscillators, filters and envelopes.",
+          "practice": "Design a bass, a pad and a pluck from an init patch — no presets.",
+          "covers": "Oscillators, filters, envelopes, init patches"
+        },
+        "advancedSynthesis": {
+          "label": "FM & Wavetable",
+          "short": "FM & Wavetable",
+          "description": "Go beyond subtractive with FM, wavetable, granular and additive synthesis.",
+          "practice": "Create a bell or a growl using only FM or wavetable movement.",
+          "covers": "FM, wavetables, granular, additive"
+        },
+        "modulation": {
+          "label": "Modulation",
+          "short": "Modulation",
+          "description": "Bring sounds to life with LFOs, envelopes and macros that move them over time.",
+          "practice": "Take a static patch and add three modulations that make it evolve over eight bars.",
+          "covers": "LFOs, envelopes, macros, mod matrix"
+        },
+        "sampling": {
+          "label": "Sampling & Resampling",
+          "short": "Resampling",
+          "description": "Turn recordings and found sounds into instruments, then resample and reshape them.",
+          "practice": "Record an everyday sound and turn it into a playable instrument.",
+          "covers": "Recording, found sounds, sampler, resampling"
+        },
+        "effects": {
+          "label": "FX & Processing",
+          "short": "FX",
+          "description": "Transform sounds with distortion, waveshaping and creative effect chains.",
+          "practice": "Build one effect chain that turns a clean sound into something unrecognizable.",
+          "covers": "Distortion, waveshaping, effect chains, creative FX"
+        },
+        "layering": {
+          "label": "Layering",
+          "short": "Layering",
+          "description": "Combine several sounds into one bigger sound where every layer has a clear job.",
+          "practice": "Build a lead from three layers — body, top and texture — and group them into one sound.",
+          "covers": "Body, top, texture, grouping"
+        }
+      }
+    },
+    "recording": {
+      "description": "Capturing clean, inspired performances at the source.",
+      "focuses": {
+        "micTechnique": {
+          "label": "Mic Technique",
+          "short": "Mic Technique",
+          "description": "Choose and place microphones to capture the sound you want at the source.",
+          "practice": "Record the same source from three mic positions and compare the takes.",
+          "covers": "Mic choice, placement, polar patterns"
+        },
+        "vocals": {
+          "label": "Recording Vocals",
+          "short": "Vocals",
+          "description": "Capture clean, confident vocal takes — mic distance, pop control, headphone mix and a good performance.",
+          "practice": "Record one verse at three mic distances with a pop filter and keep the take that sounds closest and cleanest.",
+          "covers": "Mic distance, pop filter, headphone mix, performance"
+        },
+        "gainStaging": {
+          "label": "Gain Staging & Signal Flow",
+          "short": "Gain Staging",
+          "description": "Set clean input levels and understand how your signal travels from source to DAW.",
+          "practice": "Record a full take with peaks between −12 and −6 dBFS and no clipping.",
+          "covers": "Input levels, interface, signal flow, headroom"
+        },
+        "room": {
+          "label": "Room & Acoustics",
+          "short": "Room",
+          "description": "Tame reflections and noise so your recordings sound clean and focused.",
+          "practice": "Record in two different spots of your room and keep the one with fewer reflections.",
+          "covers": "Reflections, treatment, noise, placement"
+        },
+        "tracking": {
+          "label": "Tracking & Takes",
+          "short": "Tracking",
+          "description": "Run efficient sessions with punch-ins, loop recording and well-organized takes.",
+          "practice": "Record one part in several loop takes and mark the best ones while you go.",
+          "covers": "Punch-ins, loop takes, take management"
+        },
+        "instruments": {
+          "label": "Recording Instruments",
+          "short": "Instruments",
+          "description": "Capture guitars, keys, bass and drums with the right setup for each.",
+          "practice": "Record one instrument with two sources (DI and mic, or two mics) and blend them.",
+          "covers": "Guitar, keys, bass, drums, DI"
+        }
+      }
+    },
+    "songwriting": {
+      "description": "Writing the song itself — melody, chords, lyrics and hooks.",
+      "focuses": {
+        "melody": {
+          "label": "Melody & Topline",
+          "short": "Melody",
+          "description": "Write memorable melodies with strong motifs, clear shape and natural phrasing.",
+          "practice": "Write a topline, then develop its main motif into a second, contrasting section.",
+          "covers": "Toplines, motifs, phrasing, range"
+        },
+        "harmony": {
+          "label": "Harmony",
+          "short": "Harmony",
+          "description": "Choose chords and progressions that carry the emotion of the song.",
+          "practice": "Reharmonize one finished section using at least one borrowed chord.",
+          "covers": "Progressions, borrowed chords, reharmonization"
+        },
+        "lyrics": {
+          "label": "Lyrics",
+          "short": "Lyrics",
+          "description": "Write lyrics with a clear idea, vivid images and phrasing that fits the melody.",
+          "practice": "Rewrite one verse with concrete images and make sure every line sings naturally.",
+          "covers": "Concept, imagery, rhyme, prosody"
+        },
+        "songForm": {
+          "label": "Song Form",
+          "short": "Song Form",
+          "description": "Write sections — verse, pre-chorus, chorus, bridge — that each have a clear role.",
+          "practice": "Write a pre-chorus or bridge for an existing song idea.",
+          "covers": "Verse, pre-chorus, chorus, bridge"
+        },
+        "hooks": {
+          "label": "Hooks",
+          "short": "Hooks",
+          "description": "Create the part people remember — a lyric, melody or rhythm that sticks.",
+          "practice": "Write three different hook ideas for one song and keep the strongest.",
+          "covers": "Melodic, lyrical and rhythmic hooks"
+        }
+      }
+    },
+    "arrangement": {
+      "description": "Turning ideas into a full track that builds, moves and holds attention.",
+      "focuses": {
+        "structure": {
+          "label": "Structure",
+          "short": "Structure",
+          "description": "Lay out your track's sections on the timeline and decide how long each one lasts.",
+          "practice": "Turn an 8-bar loop into a full structure from intro to outro.",
+          "covers": "Sections, lengths, intro, outro"
+        },
+        "transitions": {
+          "label": "Transitions",
+          "short": "Transitions",
+          "description": "Connect sections with fills, risers, reverse FX or silence so every change feels earned.",
+          "practice": "Give every section change in your track its own distinct transition.",
+          "covers": "Fills, risers, reverse FX, drops to silence"
+        },
+        "energy": {
+          "label": "Energy & Tension",
+          "short": "Energy",
+          "description": "Plan how energy rises and falls, with build-ups, drops and breakdowns that pay off.",
+          "practice": "Sketch an energy curve for your track and adjust the sections until they follow it.",
+          "covers": "Build-ups, drops, breakdowns, energy curve"
+        },
+        "variation": {
+          "label": "Variation & Contrast",
+          "short": "Variation",
+          "description": "Keep listeners hooked by adding, removing or changing elements every 8–16 bars.",
+          "practice": "Make every repeat of your main section differ by at least one element.",
+          "covers": "Adding, removing, changing every 8–16 bars"
+        },
+        "instrumentation": {
+          "label": "Instrumentation",
+          "short": "Instrumentation",
+          "description": "Decide which elements play where so every section has the right density and focus.",
+          "practice": "Make one crowded section clearer by removing two elements or adding a single counter-melody.",
+          "covers": "Density, roles, counter-melodies"
+        }
+      }
+    },
+    "vocalProduction": {
+      "description": "Taking raw vocals to a finished, polished performance.",
+      "focuses": {
+        "comping": {
+          "label": "Comping & Editing",
+          "short": "Comping",
+          "description": "Assemble the best phrases from multiple takes and clean up breaths, noises and levels.",
+          "practice": "Comp a lead vocal from at least three takes with inaudible crossfades.",
+          "covers": "Takes, crossfades, breaths, clip gain"
+        },
+        "tuning": {
+          "label": "Tuning & Timing",
+          "short": "Tuning",
+          "description": "Correct pitch and timing — transparently or as an audible effect.",
+          "practice": "Tune one vocal naturally, then duplicate it and tune the copy as a hard effect.",
+          "covers": "Pitch correction, timing, hard-tune effect"
+        },
+        "chain": {
+          "label": "Vocal Chain",
+          "short": "Vocal Chain",
+          "description": "Shape the vocal with EQ, compression, de-essing and saturation in a deliberate order.",
+          "practice": "Build a vocal chain from scratch and save it as your own template.",
+          "covers": "EQ, compression, de-essing, saturation"
+        },
+        "fx": {
+          "label": "Vocal FX",
+          "short": "Vocal FX",
+          "description": "Place the vocal in space and add character with reverb, delay throws and creative effects.",
+          "practice": "Add delay throws on the last word of three different lines.",
+          "covers": "Reverb, delay throws, creative effects"
+        },
+        "layering": {
+          "label": "Doubles & Harmonies",
+          "short": "Doubles",
+          "description": "Stack doubles, harmonies and ad-libs to make vocals wider and fuller.",
+          "practice": "Add a double and a harmony to the chorus and mix them to sit under the lead.",
+          "covers": "Doubles, harmonies, ad-libs, stacks"
+        }
+      }
+    }
+  },
   "crashBoundary": {
     "sessionSetupTitle": "Session setup failed",
     "sessionSetupMessage": "The setup form hit an error. You can retry or open the full setup screen.",
@@ -693,6 +1064,11 @@
     "tagTooLong": "Tags can be up to 32 characters.",
     "tagLimitReached": "You can add up to 20 tags.",
     "tagAlreadyAdded": "This tag is already added.",
+    "focusSection": "Focus",
+    "focusHint": "Optional · up to {{max}}",
+    "focusLimitReached": "{{max}} picked · tap one to change",
+    "practiceAreaPrompt": "What are you practicing?",
+    "practiceTryThis": "Try this · {{focus}}",
     "addOptionalDetails": "Add optional details",
     "hideOptionalDetails": "Hide optional details",
     "notSignedIn": "Not signed in. Please log in again.",
@@ -760,7 +1136,66 @@
     },
     "viewDetails": "View session details",
     "xpMinDurationHint": "Sessions under {{min}} minutes do not grant XP or weekly-goal progress.",
-    "levelProgress": "{{name}} · {{toNext}} XP to {{nextName}}"
+    "levelProgress": "{{name}} · {{toNext}} XP to {{nextName}}",
+    "focusEyebrow": "Skill progress",
+    "focusTitle": "What did you work on?",
+    "focusTitlePlanned": "Your focus this session",
+    "focusHint": "Tap everything you touched · star your main focus",
+    "focusHintPlanned": "Worked on more? Tap it · the star gets half the time",
+    "focusSaving": "Saving…",
+    "focusSaved": "Saved",
+    "focusSaveFailed": "Couldn't save your focus.",
+    "focusRetry": "Retry",
+    "fullPass": "Full pass",
+    "fullPassHint": "Selects every {{area}} focus",
+    "markMainFocus": "Mark as main focus",
+    "mainFocus": "Main focus",
+    "progressGained": "+{{minutes}} min",
+    "progressLevel": "Lvl {{level}}",
+    "progressToNext": "{{time}} to Lvl {{level}}",
+    "progressLevelUp": "Level up · Lvl {{level}}",
+    "progressTopLevel": "Top level reached",
+    "progressUnavailable": "Skill progress is unavailable right now.",
+    "progressAccessibility": "Plus {{minutes}} minutes. Level {{level}}.",
+    "viewSkillTree": "View skill tree"
+  },
+  "skillTree": {
+    "title": "Skill Tree",
+    "sectionSubtitle": "{{unlocked}} of {{total}} skills unlocked · all time",
+    "openTree": "Open skill tree",
+    "openTreeHint": "Shows your full skill tree",
+    "emptyTitle": "Your tree is still asleep",
+    "emptyBody": "Finish a session to unlock your first area, then mark what you worked on to light up skills.",
+    "loadError": "Your skill tree couldn't load.",
+    "retry": "Try again",
+    "back": "Back",
+    "summary": "{{unlocked}}/{{total}} unlocked · {{time}} trained",
+    "showList": "Show as list",
+    "showTree": "Show as tree",
+    "gestureHint": "Pinch to zoom · drag to explore · tap a skill",
+    "you": "You",
+    "centerTitle": "Your producer journey",
+    "centerBody": "{{unlocked}} of {{total}} skills unlocked across {{areas}} areas.",
+    "level": "Lvl {{level}}",
+    "levelLong": "Level {{level}}",
+    "locked": "Locked",
+    "trained": "{{time}} trained",
+    "toNextLevel": "{{time}} to Lvl {{level}}",
+    "topLevel": "Top level reached",
+    "sessionCount_one": "{{count}} session",
+    "sessionCount_other": "{{count}} sessions",
+    "lastTrainedToday": "Trained today",
+    "lastTrained_one": "Trained {{count}} day ago",
+    "lastTrained_other": "Trained {{count}} days ago",
+    "lockedFocusHint": "Mark it after a session to unlock it.",
+    "lockedBranchHint": "Finish a {{area}} session to unlock this area.",
+    "branchFocuses": "{{unlocked}} of {{total}} skills unlocked",
+    "neglected": "Resting for {{count}} days: {{focus}}",
+    "neglectedHint": "Shows this skill in the tree",
+    "newUnlock": "New",
+    "close": "Close",
+    "nodeAccessibility": "{{name}}, level {{level}}",
+    "nodeLockedAccessibility": "{{name}}, locked"
   },
   "sessionFeedback": {
     "progressTitle": "Session impact",
@@ -815,6 +1250,7 @@
     "pauseSummary_one": "{{count}} pause · {{m}} min",
     "pauseSummary_other": "{{count}} pauses · {{m}} min",
     "sessionType": "Session type",
+    "skillFocus": "Focus",
     "notes": "Notes",
     "notesPlaceholder": "Add context for this session",
     "tags": "Tags",

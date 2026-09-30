@@ -1,5 +1,6 @@
 import { Animated, Text, View } from "react-native";
 
+import { SkillTreeSection } from "../../skills/components/SkillTreeSection";
 import type { StatsScreenController } from "../hooks/useStatsScreenController";
 import { styles } from "../statsScreen.styles";
 import { StatsHero } from "./StatsHero";
@@ -14,6 +15,7 @@ export function StatsScreenContent({ controller }: { controller: StatsScreenCont
     <Animated.View style={[styles.contentFadeWrap, { opacity: controller.contentFade }]}>
       <StatsHero controller={controller} />
       <StatsKpiBlock controller={controller} />
+      <SkillTreeSection skillProfile={controller.skillProfile} />
       {controller.productivityHintText ? (
         <View style={styles.hintCard} testID="stats-ai-insight">
           <Text style={styles.hintLabel}>{t("stats.aiInsightLabel")}</Text>

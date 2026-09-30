@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
-from app.contracts.sessions import SessionPublic, SessionUpdate
+from app.contracts.sessions import SessionPublic, SessionUpdate, SkillProgressPublic
 from app.services.session_record_service import (
     ActiveSessionDeleteError,
     ActiveSessionRestoreConflictError,
@@ -14,11 +14,14 @@ from app.services.session_record_service import (
     SessionNotDeletedError,
     SessionRecordNotFoundError,
     delete_session_record,
+    get_owned_session,
     get_visible_session,
     list_user_sessions,
     restore_session_record,
     update_session_record,
 )
+from app.services.session_skill_focus_service import SkillFocusValidationError
+from app.services.skill_progress_service import session_skill_progress
 
 router = APIRouter()
 
@@ -68,6 +71,21 @@ def update_session(
         raise HTTPException(status_code=404, detail="Session not found")
     except DeletedSessionEditError as error:
         raise HTTPException(status_code=400, detail="Deleted sessions cannot be edited")
+    except SkillFocusValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.get("/item/{session_id}/skill-progress", response_model=list[SkillProgressPublic])
+def get_session_skill_progress(
+    session_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    try:
+        session = get_owned_session(db, session_id, current.id)
+    except SessionRecordNotFoundError:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session_skill_progress(db, session)
 
 
 @router.delete("/item/{session_id}", status_code=status.HTTP_204_NO_CONTENT)

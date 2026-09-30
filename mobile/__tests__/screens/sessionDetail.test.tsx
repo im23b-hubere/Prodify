@@ -55,6 +55,8 @@ jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "Success" },
 }));
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
 jest.mock("expo-linear-gradient", () => {
   const React = require("react");
   const { View } = require("react-native");
@@ -208,6 +210,84 @@ describe("SessionDetailScreen", () => {
       );
       expect(mockBack).toHaveBeenCalled();
       expect(mockReplace).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("skill focus editing", () => {
+    const patchBody = () => {
+      const patchCall = mockApiJson.mock.calls.find(
+        ([path, opts]) => path === "/sessions/item/12" && opts?.method === "PATCH",
+      );
+      return patchCall?.[1]?.body;
+    };
+
+    it("saves touched focuses and the main focus with the other changes", async () => {
+      const { findByTestId, findByText, getByTestId } = render(<SessionDetailScreen />);
+
+      fireEvent.press(await findByTestId("skill-focus-beat_making.drums"));
+      fireEvent.press(getByTestId("skill-focus-beat_making.groove"));
+      fireEvent.press(getByTestId("skill-focus-star-beat_making.groove", { includeHiddenElements: true }));
+      fireEvent.press(await findByText("sessionDetail.saveChanges"));
+
+      await waitFor(() => {
+        expect(patchBody()).toEqual(
+          expect.objectContaining({
+            skill_focus_ids: ["beat_making.drums", "beat_making.groove"],
+            primary_skill_focus_id: "beat_making.groove",
+          }),
+        );
+      });
+    });
+
+    it("leaves the stored focuses untouched when only the note changes", async () => {
+      const { findByPlaceholderText, findByText } = render(<SessionDetailScreen />);
+
+      fireEvent.changeText(await findByPlaceholderText("sessionDetail.notesPlaceholder"), "new note");
+      fireEvent.press(await findByText("sessionDetail.saveChanges"));
+
+      await waitFor(() => expect(patchBody()).toBeDefined());
+      expect(patchBody()).not.toHaveProperty("skill_focus_ids");
+      expect(patchBody()).not.toHaveProperty("primary_skill_focus_id");
+    });
+
+    it("does not offer saving until a focus actually changes", async () => {
+      const { findByTestId, queryByText, getByTestId } = render(<SessionDetailScreen />);
+      const drums = await findByTestId("skill-focus-beat_making.drums");
+
+      expect(queryByText("sessionDetail.saveChanges")).toBeNull();
+      fireEvent.press(drums);
+      expect(queryByText("sessionDetail.saveChanges")).toBeTruthy();
+      fireEvent.press(getByTestId("skill-focus-beat_making.drums"));
+      expect(queryByText("sessionDetail.saveChanges")).toBeNull();
+    });
+
+    it("selects every focus of the area with a full pass", async () => {
+      const { findByTestId, findByText } = render(<SessionDetailScreen />);
+
+      fireEvent.press(await findByTestId("full-pass-beat_making"));
+      fireEvent.press(await findByText("sessionDetail.saveChanges"));
+
+      await waitFor(() => {
+        expect(patchBody()?.skill_focus_ids).toHaveLength(6);
+      });
+    });
+
+    it("keeps focuses read-only while the session is still running", async () => {
+      mockApiJson.mockImplementation((path: string) => {
+        if (path === "/sessions/item/12") {
+          return Promise.resolve({
+            ...baseSession,
+            stopped_at: null,
+            skill_focus_ids: ["beat_making.drums"],
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      const { findByText, queryByTestId } = render(<SessionDetailScreen />);
+
+      expect(await findByText("sessionDetail.skillFocus")).toBeTruthy();
+      expect(queryByTestId("session-detail-focus-editor")).toBeNull();
     });
   });
 });

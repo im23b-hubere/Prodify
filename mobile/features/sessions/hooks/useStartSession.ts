@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 
 import type { SessionType } from "../../../constants/sessionTypes";
+import type { SkillFocusId } from "../../../constants/skills";
 import { ApiError, apiJson } from "../../../lib/client";
 import { debugLog } from "../../../lib/debugLog";
 import { tryParseSessionDto } from "../../../lib/sessionDto";
@@ -17,6 +18,7 @@ type Args = {
   notes: string;
   mood: number | null;
   tags: string[];
+  skillFocusIds: SkillFocusId[];
   t: TFunction;
   onStarted: (session: SessionDto) => void;
   onConflict?: (id?: number) => void;
@@ -41,6 +43,7 @@ export function useStartSession(args: Args) {
       hasNotes: Boolean(args.notes.trim()),
       moodLevel: args.mood,
       tagCount: args.tags.length,
+      skillFocusCount: args.skillFocusIds.length,
     });
     try {
       const session = await requestSession(token, args);
@@ -100,6 +103,7 @@ async function requestSession(token: string, args: Args): Promise<SessionDto> {
       notes: args.notes.trim() ? args.notes.trim().slice(0, 200) : undefined,
       mood_level: args.mood ?? undefined,
       tags: args.tags.length ? args.tags : undefined,
+      skill_focus_ids: args.skillFocusIds.length ? args.skillFocusIds : undefined,
     },
   });
   const session = tryParseSessionDto(raw);

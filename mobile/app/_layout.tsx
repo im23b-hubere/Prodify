@@ -78,6 +78,13 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                name="skill-tree"
+                options={{
+                  animation: "slide_from_right",
+                  gestureEnabled: false,
+                }}
+              />
+              <Stack.Screen
                 name="challenge/new"
                 options={{
                   presentation: "formSheet",

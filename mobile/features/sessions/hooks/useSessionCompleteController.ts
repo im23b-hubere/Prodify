@@ -7,7 +7,10 @@ import { buildWeeklyForecast } from "../../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../../lib/goalPace";
 import { buildSessionFeedback } from "../../../lib/sessionFeedbackEngine";
 import { useSessionCompleteData } from "./useSessionCompleteData";
-import { estimateSessionXpGain } from "../sessionCompletePresentation";
+import {
+  estimateSessionXpGain,
+  focusReflectionSessionType,
+} from "../sessionCompletePresentation";
 
 export function useSessionCompleteController() {
   const { t } = useTranslation();
@@ -51,6 +54,7 @@ export function useSessionCompleteController() {
     feedback,
     paceForecast,
     xpGainEstimate: estimateSessionXpGain(durationSeconds),
+    focusReflectionType: data.session ? focusReflectionSessionType(data.session) : null,
     openDetails: () => router.replace(`/session/${id}` as never),
     openDashboard: () => router.replace("/(tabs)/dashboard"),
   };

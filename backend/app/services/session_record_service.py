@@ -6,6 +6,12 @@ from sqlalchemy.orm import Session
 from app.contracts.sessions import SessionUpdate
 from app.models import ProductionSession, utcnow
 from app.services.friend_graph import friend_user_ids
+from app.services.kpi_tracker import track_event_deduped
+from app.services.session_skill_focus_service import (
+    drop_incompatible_skill_focuses,
+    replace_skill_focuses,
+    set_primary_skill_focus,
+)
 from app.services.streak_reconcile_service import reconcile_streak_row_for_user
 
 
@@ -62,6 +68,10 @@ def get_visible_session(db: Session, session_id: int, viewer_id: int) -> Product
     return session
 
 
+def get_owned_session(db: Session, session_id: int, user_id: int) -> ProductionSession:
+    return _owned_session(db, session_id, user_id, require_not_deleted=True)
+
+
 def update_session_record(
     db: Session,
     session_id: int,
@@ -71,7 +81,10 @@ def update_session_record(
     session = _owned_session(db, session_id, user_id)
     if session.deleted_at is not None:
         raise DeletedSessionEditError
+    focuses_before = _focus_snapshot(session)
     _apply_updates(session, request.model_dump(exclude_unset=True))
+    if session.stopped_at is not None and _focus_snapshot(session) != focuses_before:
+        _track_focus_reflection(db, session, had_planned_focus=bool(focuses_before[0]))
     db.commit()
     db.refresh(session)
     return session
@@ -141,9 +154,49 @@ def _can_view_session(db: Session, viewer_id: int, session: ProductionSession) -
     return session.user_id in friend_user_ids(db, viewer_id)
 
 
+def _focus_snapshot(session: ProductionSession) -> tuple[frozenset[str], str | None]:
+    return frozenset(session.skill_focus_ids), session.primary_skill_focus_id
+
+
+def _track_focus_reflection(
+    db: Session, session: ProductionSession, *, had_planned_focus: bool
+) -> None:
+    """Counts each session once, so the event measures how many sessions get reflected."""
+    track_event_deduped(
+        db,
+        user_id=session.user_id,
+        bucket_key=f"session_focus_reflected:{session.id}",
+        event_name="session_focus_reflected",
+        props={
+            "session_id": session.id,
+            "session_type": session.session_type,
+            "focus_count": len(session.skill_focus_ids),
+            "has_main_focus": session.primary_skill_focus_id is not None,
+            "had_planned_focus": had_planned_focus,
+        },
+    )
+
+
+def _requested_primary(
+    session: ProductionSession, updates: dict, focus_ids: list[str]
+) -> str | None:
+    """An omitted main focus stays as long as it is still one of the session's focuses."""
+    if "primary_skill_focus_id" in updates:
+        return updates["primary_skill_focus_id"]
+    current = session.primary_skill_focus_id
+    return current if current in focus_ids else None
+
+
 def _apply_updates(session: ProductionSession, updates: dict) -> None:
     if "session_type" in updates and updates["session_type"] is not None:
         session.session_type = updates["session_type"].value
+    if "skill_focus_ids" in updates:
+        focus_ids = updates["skill_focus_ids"] or []
+        replace_skill_focuses(session, focus_ids, _requested_primary(session, updates, focus_ids))
+    else:
+        drop_incompatible_skill_focuses(session)
+        if "primary_skill_focus_id" in updates:
+            set_primary_skill_focus(session, updates["primary_skill_focus_id"])
     for field in ("notes", "mood_level"):
         if field in updates:
             setattr(session, field, updates[field])

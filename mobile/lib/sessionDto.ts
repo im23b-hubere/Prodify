@@ -1,3 +1,4 @@
+import { isSkillFocusId } from "../constants/skills";
 import type { SessionDto } from "../types/session";
 
 /**
@@ -71,6 +72,14 @@ export function tryParseSessionDto(value: unknown): SessionDto | null {
       : typeof v.track_title === "string"
         ? v.track_title
         : null;
+  // Ids unknown to this app version (newer catalog) are dropped: they have no copy to render.
+  const skill_focus_ids = Array.isArray(v.skill_focus_ids)
+    ? v.skill_focus_ids.filter(isSkillFocusId)
+    : [];
+  const primary_skill_focus_id =
+    isSkillFocusId(v.primary_skill_focus_id) && skill_focus_ids.includes(v.primary_skill_focus_id)
+      ? v.primary_skill_focus_id
+      : null;
 
   return {
     id,
@@ -87,6 +96,8 @@ export function tryParseSessionDto(value: unknown): SessionDto | null {
     focus_score,
     track_outcome,
     track_title,
+    skill_focus_ids,
+    primary_skill_focus_id,
   };
 }
 

@@ -20,6 +20,8 @@ export function SessionDetailContent({ controller }: { controller: SessionDetail
         note={controller.note}
         onTypeChange={controller.setSelectedType}
         onNoteChange={controller.setNote}
+        focusSelection={controller.focusSelection}
+        canEditFocuses={controller.canEditFocuses}
       />
       <SessionSocialSections
         comments={controller.comments}

@@ -38,6 +38,7 @@ def start_session(
             notes=body.notes,
             mood_level=body.mood_level,
             tags=body.tags,
+            skill_focus_ids=body.skill_focus_ids,
         )
     except ActiveSessionExistsError as error:
         _raise_active_conflict(error.session_id)

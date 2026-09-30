@@ -35,6 +35,7 @@ from app.routers import (
     progression as progression_router,
     social as social_router,
     sessions,
+    skills as skills_router,
     stats as stats_router,
     streak,
     users as users_router,
@@ -113,6 +114,7 @@ app.include_router(sessions.router, dependencies=_subscriber)
 app.include_router(streak.router, dependencies=_subscriber)
 app.include_router(friends.router, dependencies=_subscriber)
 app.include_router(stats_router.router, dependencies=_subscriber)
+app.include_router(skills_router.router, dependencies=_subscriber)
 app.include_router(motivation.router, dependencies=_subscriber)
 app.include_router(notifications_router.router, dependencies=_subscriber)
 app.include_router(goals_router.router, dependencies=_subscriber)

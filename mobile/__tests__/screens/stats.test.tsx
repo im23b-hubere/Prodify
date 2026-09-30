@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 
 import StatsScreen from "../../app/(tabs)/stats";
 
@@ -176,6 +176,27 @@ describe("Stats Screen", () => {
     const { findByText, findByTestId } = render(<StatsScreen />);
     expect(await findByText("stats.filter7d")).toBeTruthy();
     expect(await findByTestId("stats-week-hero")).toBeTruthy();
+    expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
+  });
+
+  it("opens the full skill tree from its stats card", async () => {
+    const statsResponses = apiJson.getMockImplementation()!;
+    apiJson.mockImplementation((path: string) =>
+      path === "/skills/profile"
+        ? Promise.resolve({ total_seconds: 0, branches: [], focuses: [] })
+        : statsResponses(path),
+    );
+    const { findByTestId } = render(<StatsScreen />);
+
+    fireEvent.press(await findByTestId("stats-skill-tree-open"));
+
+    expect(mockPush).toHaveBeenCalledWith("/skill-tree");
+  });
+
+  it("keeps the rest of the stats usable when the skill tree fails to load", async () => {
+    const { findByText, findByTestId } = render(<StatsScreen />);
+
+    expect(await findByText("skillTree.loadError")).toBeTruthy();
     expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
   });
 

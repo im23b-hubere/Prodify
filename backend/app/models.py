@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -100,6 +100,41 @@ class ProductionSession(Base):
     track_title: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="sessions")
+    skill_focuses: Mapped[list["SessionSkillFocus"]] = relationship(
+        "SessionSkillFocus",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="SessionSkillFocus.id",
+    )
+
+    @property
+    def skill_focus_ids(self) -> list[str]:
+        return [focus.skill_id for focus in self.skill_focuses]
+
+    @property
+    def primary_skill_focus_id(self) -> Optional[str]:
+        return next((focus.skill_id for focus in self.skill_focuses if focus.is_primary), None)
+
+
+class SkillFocusSource(str, enum.Enum):
+    planned = "planned"
+    reflected = "reflected"
+
+
+class SessionSkillFocus(Base):
+    """A skill (see app/skill_catalog.py) the user practiced during a session."""
+
+    __tablename__ = "session_skill_focuses"
+    __table_args__ = (UniqueConstraint("session_id", "skill_id", name="uq_session_skill_focus"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
+    skill_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # "planned" = chosen before/while producing; "reflected" = added after the session ended.
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default=SkillFocusSource.planned.value)
+    # At most one focus per session is the main focus; it earns the larger share of the time.
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Streak(Base):

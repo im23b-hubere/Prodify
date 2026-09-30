@@ -8,6 +8,7 @@ import { TextButton } from "../../../components/ui/TextButton";
 import { colors } from "../../../constants/theme";
 import type { SessionCompleteController } from "../hooks/useSessionCompleteController";
 import { styles } from "../sessionComplete.styles";
+import { SessionCompleteFocusCard } from "./SessionCompleteFocusCard";
 import { SessionCompleteHero } from "./SessionCompleteHero";
 
 export function SessionCompleteView({ controller }: { controller: SessionCompleteController }) {
@@ -18,6 +19,12 @@ export function SessionCompleteView({ controller }: { controller: SessionComplet
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]} testID="session-complete-screen">
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <SessionCompleteHero controller={controller} />
+        {controller.session && controller.focusReflectionType ? (
+          <SessionCompleteFocusCard
+            session={controller.session}
+            sessionType={controller.focusReflectionType}
+          />
+        ) : null}
         <SessionCompleteWeekCard
           t={t}
           feedback={controller.feedback}

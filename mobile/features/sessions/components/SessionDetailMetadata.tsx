@@ -5,8 +5,12 @@ import { SessionTypeChip } from "../../../components/ui/SessionTypeChip";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
 import { sessionMoodLabel, sessionTypeLabel } from "../../../lib/sessionI18n";
+import { skillFocusText } from "../../../lib/skillI18n";
 import { SESSION_TYPE_IDS, type SessionDto, type SessionType } from "../../../types/session";
+import type { FocusReflectionSelection } from "../hooks/useFocusReflectionSelection";
 import type { SessionDetailPresentation } from "../sessionDetailPresentation";
+import { focusesAllowedForSessionType } from "../skillFocusSelection";
+import { SkillFocusReflectionPicker } from "./SkillFocusReflectionPicker";
 
 const NOTES_MAX_LENGTH = 2000;
 
@@ -18,6 +22,8 @@ type SessionDetailMetadataProps = {
   note: string;
   onTypeChange: (type: SessionType) => void;
   onNoteChange: (note: string) => void;
+  focusSelection: FocusReflectionSelection;
+  canEditFocuses: boolean;
 };
 
 function SessionTypeSection({
@@ -83,6 +89,61 @@ function NotesSection({
   );
 }
 
+function SkillFocusSection({
+  session,
+  selectedType,
+  focusSelection,
+  canEditFocuses,
+}: Pick<
+  SessionDetailMetadataProps,
+  "session" | "selectedType" | "focusSelection" | "canEditFocuses"
+>) {
+  const { t } = useTranslation();
+  if (canEditFocuses) {
+    return (
+      <View style={styles.section} testID="session-detail-focus-editor">
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          {t("sessionDetail.skillFocus")}
+        </Text>
+        <Text style={styles.sectionHint}>{t("sessionComplete.focusHint")}</Text>
+        <SkillFocusReflectionPicker selection={focusSelection} />
+      </View>
+    );
+  }
+  // Mirrors the server: changing the session type drops focuses from other branches on save.
+  const focusIds = focusesAllowedForSessionType(session.skill_focus_ids ?? [], selectedType);
+  if (focusIds.length === 0) return null;
+  const mainFocusId = session.primary_skill_focus_id ?? null;
+  const orderedIds = [...focusIds].sort((a, b) => Number(b === mainFocusId) - Number(a === mainFocusId));
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{t("sessionDetail.skillFocus")}</Text>
+      <View style={styles.tagRow}>
+        {orderedIds.map((id) => {
+          const isMainFocus = id === mainFocusId;
+          return (
+            <View
+              key={id}
+              style={[styles.tag, isMainFocus && styles.mainFocusTag]}
+              accessibilityLabel={
+                isMainFocus
+                  ? `${skillFocusText(id, "label", t)}, ${t("sessionComplete.mainFocus")}`
+                  : skillFocusText(id, "label", t)
+              }
+              accessibilityHint={skillFocusText(id, "description", t)}
+            >
+              <Text style={styles.tagText}>
+                {isMainFocus ? "★ " : ""}
+                {skillFocusText(id, "label", t)}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function TagsSection({ tags }: { tags: string[] }) {
   const { t } = useTranslation();
   if (tags.length === 0) return null;
@@ -108,6 +169,8 @@ export function SessionDetailMetadata({
   note,
   onTypeChange,
   onNoteChange,
+  focusSelection,
+  canEditFocuses,
 }: SessionDetailMetadataProps) {
   const { t } = useTranslation();
   return (
@@ -137,6 +200,12 @@ export function SessionDetailMetadata({
         isOwnSession={isOwnSession}
         selectedType={selectedType}
         onTypeChange={onTypeChange}
+      />
+      <SkillFocusSection
+        session={session}
+        selectedType={selectedType}
+        focusSelection={focusSelection}
+        canEditFocuses={canEditFocuses}
       />
       <NotesSection isOwnSession={isOwnSession} note={note} onNoteChange={onNoteChange} />
       <TagsSection tags={presentation.tags} />
@@ -174,6 +243,12 @@ const styles = StyleSheet.create({
     ...typography.body,
     marginBottom: spacing.sm,
   },
+  sectionHint: {
+    color: colors.textSecondary,
+    ...typography.caption,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.xs,
+  },
   chips: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   readOnlyValue: { color: colors.textPrimary, fontFamily: fontFamily.body, ...typography.body },
   noteInput: {
@@ -208,5 +283,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
     backgroundColor: "rgba(162,89,255,0.2)",
   },
+  mainFocusTag: { backgroundColor: "rgba(162,89,255,0.4)" },
   tagText: { color: colors.textPrimary, ...typography.caption },
 });

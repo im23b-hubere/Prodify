@@ -16,6 +16,7 @@ from app.models import (
     PublicGoal,
     PushToken,
     RefreshToken,
+    SessionSkillFocus,
     SocialChallengeMember,
     SocialComment,
     SocialCommitment,
@@ -66,6 +67,7 @@ def delete_user_account(db: Session, user: User) -> None:
         db.scalars(select(ProductionSession.id).where(ProductionSession.user_id == user.id)).all()
     )
     if session_ids:
+        db.execute(delete(SessionSkillFocus).where(SessionSkillFocus.session_id.in_(session_ids)))
         db.execute(
             delete(SocialComment).where(
                 SocialComment.target_type == "session",

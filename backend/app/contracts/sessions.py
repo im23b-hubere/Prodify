@@ -2,9 +2,14 @@ import json
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models import SessionType
+from app.skill_catalog import (
+    MAX_PLANNED_FOCUSES_PER_SESSION,
+    incompatible_focus_ids,
+    normalize_focus_ids,
+)
 
 
 def _clean_optional_text(value: str | None) -> str | None:
@@ -40,6 +45,7 @@ class SessionStart(BaseModel):
     notes: str | None = Field(default=None, max_length=200)
     mood_level: int | None = Field(default=None, ge=1, le=5)
     tags: list[str] | None = None
+    skill_focus_ids: list[str] = Field(default_factory=list)
 
     @field_validator("notes")
     @classmethod
@@ -50,6 +56,23 @@ class SessionStart(BaseModel):
     @classmethod
     def normalize_tags(cls, value: object) -> list[str] | None:
         return _normalize_tags(value)
+
+    @field_validator("skill_focus_ids", mode="before")
+    @classmethod
+    def normalize_skill_focus_ids(cls, value: object) -> list[str]:
+        if value is None:
+            return []
+        return normalize_focus_ids(value, max_count=MAX_PLANNED_FOCUSES_PER_SESSION)
+
+    @model_validator(mode="after")
+    def require_focuses_matching_session_type(self) -> "SessionStart":
+        mismatched = incompatible_focus_ids(self.skill_focus_ids, self.session_type.value)
+        if mismatched:
+            raise ValueError(
+                f"skill focuses {', '.join(mismatched)} do not belong to session type "
+                f"{self.session_type.value}"
+            )
+        return self
 
 
 class SessionStop(BaseModel):
@@ -63,6 +86,10 @@ class SessionUpdate(BaseModel):
     tags: list[str] | None = None
     track_outcome: Literal["none", "wip", "finished"] | None = None
     track_title: str | None = Field(default=None, max_length=160)
+    # Compatibility with the (possibly updated) session type, the running-session limit and the
+    # main focus are checked in the service, because the stored session is only known there.
+    skill_focus_ids: list[str] | None = None
+    primary_skill_focus_id: str | None = None
 
     @field_validator("notes")
     @classmethod
@@ -73,6 +100,11 @@ class SessionUpdate(BaseModel):
     @classmethod
     def normalize_tags(cls, value: object) -> list[str] | None:
         return _normalize_tags(value)
+
+    @field_validator("skill_focus_ids", mode="before")
+    @classmethod
+    def normalize_skill_focus_ids(cls, value: object) -> list[str]:
+        return [] if value is None else normalize_focus_ids(value)
 
     @field_validator("track_title")
     @classmethod
@@ -97,6 +129,8 @@ class SessionPublic(BaseModel):
     focus_score: int | None = None
     track_outcome: Literal["none", "wip", "finished"] | None = None
     track_title: str | None = None
+    skill_focus_ids: list[str] = Field(default_factory=list)
+    primary_skill_focus_id: str | None = None
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -112,6 +146,18 @@ class SessionPublic(BaseModel):
         except json.JSONDecodeError:
             return None
         return [str(item) for item in parsed] if isinstance(parsed, list) else None
+
+
+class SkillProgressPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    skill_id: str
+    gained_seconds: int
+    total_seconds: int
+    level: int
+    previous_level: int
+    level_start_seconds: int
+    next_level_seconds: int | None
 
 
 class SessionStatsSummary(BaseModel):

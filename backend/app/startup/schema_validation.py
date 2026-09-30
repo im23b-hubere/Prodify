@@ -42,6 +42,7 @@ REQUIRED_TABLES = {
     "streak_break_notify_dedupe",
     "analytics_event_dedupe",
     "notification_read_states",
+    "session_skill_focuses",
 }
 REQUIRED_COLUMNS = {
     "streaks": {"frozen_day_keys", "freezes_remaining", "billing_month"},
@@ -66,6 +67,7 @@ REQUIRED_COLUMNS = {
         "access_token_version",
         "timezone",
     },
+    "session_skill_focuses": {"is_primary"},
 }
 
 
@@ -77,6 +79,7 @@ def validate_schema() -> None:
     _require_columns(inspector, "sessions", REQUIRED_COLUMNS["sessions"])
     _require_push_token_columns(inspector)
     _require_columns(inspector, "users", REQUIRED_COLUMNS["users"])
+    _require_columns(inspector, "session_skill_focuses", REQUIRED_COLUMNS["session_skill_focuses"])
     _require_production_revision_table(table_names)
 
 

@@ -12,6 +12,7 @@ from app.achievementsutil import compute_focus_score_for_session, grant_achievem
 from app.models import CheckinLog, ProductionSession, Streak, utcnow
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp, xp_for_completed_session
+from app.services.session_skill_focus_service import replace_skill_focuses
 from app.services.social_challenge_service import sync_challenge_progress_on_session_complete
 from app.services.streak_calendar import StreakCalendar, load_calendar
 from app.services.streak_reconcile_service import reconcile_streak_row_for_user
@@ -49,6 +50,7 @@ def create_session(
     notes: str | None = None,
     mood_level: int | None = None,
     tags: list[str] | None = None,
+    skill_focus_ids: list[str] | None = None,
 ) -> ProductionSession:
     session = ProductionSession(
         user_id=user_id,
@@ -59,13 +61,20 @@ def create_session(
         tags=json.dumps(tags) if tags else None,
         paused_duration_seconds=0,
     )
+    focus_ids = skill_focus_ids or []
+    single_planned_focus = focus_ids[0] if len(focus_ids) == 1 else None
+    replace_skill_focuses(session, focus_ids, primary_focus_id=single_planned_focus)
     db.add(session)
     db.flush()
     track_event(
         db,
         "session_started",
         user_id,
-        {"session_id": session.id, "session_type": session.session_type},
+        {
+            "session_id": session.id,
+            "session_type": session.session_type,
+            "skill_focus_ids": session.skill_focus_ids,
+        },
     )
     db.commit()
     db.refresh(session)

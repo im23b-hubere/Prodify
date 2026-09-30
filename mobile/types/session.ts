@@ -4,6 +4,7 @@ import {
   SESSION_TYPES,
   type SessionType,
 } from "../constants/sessionTypes";
+import type { SkillFocusId } from "../constants/skills";
 
 export type { SessionType };
 export { DEFAULT_SESSION_TYPE, SESSION_TYPE_IDS, SESSION_TYPES };
@@ -23,6 +24,8 @@ export type SessionDto = {
   focus_score?: number | null;
   track_outcome?: "none" | "wip" | "finished" | null;
   track_title?: string | null;
+  skill_focus_ids?: SkillFocusId[];
+  primary_skill_focus_id?: SkillFocusId | null;
 };
 
 export type SessionStatsDto = {

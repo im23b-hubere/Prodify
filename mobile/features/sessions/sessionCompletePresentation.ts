@@ -1,4 +1,7 @@
+import { SESSION_TYPE_IDS, type SessionType } from "../../constants/sessionTypes";
+import { skillBranchesForSessionType } from "../../constants/skills";
 import type { SessionFeedbackComputed } from "../../lib/sessionFeedbackEngine";
+import type { SessionDto } from "../../types/session";
 
 const SESSION_XP_MINUTES_FLOOR = 5;
 const BASE_SESSION_XP = 5;
@@ -39,3 +42,11 @@ export function estimateSessionXpGain(durationSeconds: number): number {
 }
 
 export const MINIMUM_COUNTED_SESSION_SECONDS = SESSION_XP_MINUTES_FLOOR * 60;
+
+/** Session type to reflect focuses for, or null when a reflection would add noise. */
+export function focusReflectionSessionType(session: SessionDto): SessionType | null {
+  if ((session.duration_seconds ?? 0) < MINIMUM_COUNTED_SESSION_SECONDS) return null;
+  const type = SESSION_TYPE_IDS.find((id) => id === session.session_type);
+  if (!type || skillBranchesForSessionType(type).length === 0) return null;
+  return type;
+}

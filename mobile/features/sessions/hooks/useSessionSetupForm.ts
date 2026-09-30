@@ -4,6 +4,7 @@ import type { SessionType } from "../../../constants/sessionTypes";
 import { useAuth } from "../../../context/AuthContext";
 import type { SessionDto } from "../../../types/session";
 import { useSessionSetupFields } from "./useSessionSetupFields";
+import { useSkillFocusFields } from "./useSkillFocusFields";
 import { useStartSession } from "./useStartSession";
 
 type Options = {
@@ -20,6 +21,7 @@ export function useSessionSetupForm({
   const { t } = useTranslation();
   const { token, hydrated } = useAuth();
   const fields = useSessionSetupFields(initialSessionType, t);
+  const focus = useSkillFocusFields(fields.selectedType);
   const start = useStartSession({
     token,
     hydrated,
@@ -27,11 +29,12 @@ export function useSessionSetupForm({
     notes: fields.notes,
     mood: fields.mood,
     tags: fields.tags,
+    skillFocusIds: focus.focusIds,
     t,
     onStarted,
     onConflict: onActiveSessionConflict,
   });
-  return { ...fields, ...start, hydrated };
+  return { ...fields, ...focus, ...start, hydrated };
 }
 
 export type SessionSetupFormState = ReturnType<typeof useSessionSetupForm>;

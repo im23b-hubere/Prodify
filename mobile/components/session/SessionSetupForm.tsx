@@ -7,6 +7,7 @@ import { useSessionSetupForm } from "../../features/sessions/hooks/useSessionSet
 import type { SessionDto } from "../../types/session";
 import { PrimaryButton } from "../ui/PrimaryButton";
 import { sessionSetupStyles as styles } from "./sessionSetup.styles";
+import { SessionFocusPicker } from "./SessionFocusPicker";
 import { SessionSetupHeader } from "./SessionSetupHeader";
 import { SessionSetupOptionalDetails } from "./SessionSetupOptionalDetails";
 import { SessionTypeSelector } from "./SessionTypeSelector";
@@ -42,6 +43,7 @@ export function SessionSetupForm({
           {t("sessionActive.sessionType")}
         </Text>
         <SessionTypeSelector selectedType={form.selectedType} onSelect={form.setSelectedType} />
+        <SessionFocusPicker form={form} />
         <Pressable
           style={({ pressed }) => [styles.optionalToggle, pressed && styles.optionalTogglePressed]}
           onPress={() => {
