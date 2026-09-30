@@ -86,7 +86,7 @@ export const profileScreenStyles = StyleSheet.create({
     borderColor: colors.background,
   },
   avatarBusyOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 46,
     backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",

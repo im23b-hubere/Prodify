@@ -50,9 +50,9 @@ from app.services.social_challenge_queries import (
     ChallengeParticipantNotFriendError,
     TooManyChallengeParticipantsError,
 )
-from app.services.social_duel_record_service import duel_records
 from app.services.push_dispatch import schedule_push_to_user
 from app.services.push_links import push_data_duel_accepted, push_data_duel_invite
+from app.services.social_duel_record_service import duel_records
 
 
 router = APIRouter(prefix="/challenges")

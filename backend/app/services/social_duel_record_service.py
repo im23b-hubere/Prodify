@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -47,11 +49,18 @@ def _opponents_by_challenge(db: Session, challenge_ids: list[int], user_id: int)
     return {challenge_id: opponent_id for challenge_id, opponent_id in rows}
 
 
-def _count_result(record: DuelRecordPublic, meta: dict, user_id: int) -> None:
-    winner = meta.get("winner_user_id")
+def _count_result(record: DuelRecordPublic, meta: dict[str, Any], user_id: int) -> None:
+    winner = _winner_user_id(meta)
     if meta.get("is_tie") or winner is None:
         record.ties += 1
-    elif int(winner) == user_id:
+    elif winner == user_id:
         record.wins += 1
     else:
         record.losses += 1
+
+
+def _winner_user_id(meta: dict[str, Any]) -> int | None:
+    try:
+        return int(meta["winner_user_id"])
+    except (KeyError, TypeError, ValueError):
+        return None
