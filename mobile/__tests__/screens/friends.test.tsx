@@ -58,7 +58,6 @@ jest.mock("@react-native-community/netinfo", () => ({
 
 const mockAcceptRequest = jest.fn();
 const mockDeclineRequest = jest.fn();
-const mockCompleteTriggerAction = jest.fn();
 
 const createFriendsActions = (overrides: Record<string, unknown> = {}) => ({
   hasOtherFriends: false,
@@ -66,10 +65,8 @@ const createFriendsActions = (overrides: Record<string, unknown> = {}) => ({
   friendCandidates: [],
   challengeCards: [],
   pendingBuddyInviteId: null,
-  activeTriggerCard: null,
   acceptRequest: mockAcceptRequest,
   declineRequest: mockDeclineRequest,
-  completeTriggerAction: mockCompleteTriggerAction,
   sendRequest: jest.fn(),
   inviteBuddy: jest.fn(),
   withdrawChallengeInvite: jest.fn(),
@@ -501,6 +498,107 @@ describe("Friends Screen", () => {
     expect(getByText("bob")).toBeTruthy();
     fireEvent.press(getByText("friendsScreen.accept"));
     expect(acceptChallengeInvite).toHaveBeenCalledWith(12);
+  });
+
+  describe("live strip and activity", () => {
+    const friends = [
+      { rank: 1, user_id: 2, username: "bob", current_streak_days: 5, sessions_in_period: 3 },
+      { rank: 2, user_id: 1, username: "alice", current_streak_days: 2, sessions_in_period: 1 },
+    ];
+    const liveSession = {
+      session_id: 201,
+      user_id: 2,
+      username: "bob",
+      session_type: "beat_making",
+      activity_at: new Date().toISOString(),
+      status: "live",
+    };
+    const finishedSession = {
+      session_id: 101,
+      user_id: 3,
+      username: "carol",
+      session_type: "mixing",
+      activity_at: new Date().toISOString(),
+      duration_seconds: 2700,
+      reactions_count: 2,
+      comments_count: 0,
+      status: "completed",
+    };
+
+    function renderActivity(activity: unknown[], actionOverrides: Record<string, unknown> = {}) {
+      mockUseFriendsScreenState.mockReturnValue(createFriendsState({ loading: false, activity }));
+      mockUseFriendsScreenActions.mockReturnValue(
+        createFriendsActions({ hasOtherFriends: true, entries: friends, ...actionOverrides }),
+      );
+      return render(<FriendsScreen />);
+    }
+
+    it("shows friends who are live and opens their profile", () => {
+      const { getByTestId } = renderActivity([liveSession, finishedSession]);
+      expect(getByTestId("friends-live")).toBeTruthy();
+      fireEvent.press(getByTestId("friends-live-2"));
+      expect(mockPush).toHaveBeenCalledWith("/profile/2");
+    });
+
+    it("keeps running sessions out of the activity feed", () => {
+      const { getByTestId, queryByTestId } = renderActivity([liveSession, finishedSession]);
+      expect(queryByTestId("friends-activity-201")).toBeNull();
+      expect(getByTestId("friends-activity-101")).toBeTruthy();
+    });
+
+    it("hides the live strip when nobody is producing", () => {
+      const { queryByTestId } = renderActivity([finishedSession]);
+      expect(queryByTestId("friends-live")).toBeNull();
+    });
+
+    it("groups today's sessions under a day heading", () => {
+      const { getByText } = renderActivity([finishedSession]);
+      expect(getByText("friendsOverview.today")).toBeTruthy();
+    });
+
+    it("reacts to a session from the compact reaction button", () => {
+      const toggleThumbReaction = jest.fn();
+      const { getByTestId } = renderActivity([finishedSession], { toggleThumbReaction });
+      fireEvent.press(getByTestId("friends-activity-react-101", { includeHiddenElements: true }));
+      expect(toggleThumbReaction).toHaveBeenCalledWith(finishedSession);
+    });
+
+    it("offers the reaction as a screen reader action on the row", () => {
+      const toggleThumbReaction = jest.fn();
+      const { getByTestId } = renderActivity([finishedSession], { toggleThumbReaction });
+      fireEvent(getByTestId("friends-activity-101"), "accessibilityAction", {
+        nativeEvent: { actionName: "react" },
+      });
+      expect(toggleThumbReaction).toHaveBeenCalledWith(finishedSession);
+    });
+
+    it("lets you support a friend whose streak broke", () => {
+      const supportStreakBreak = jest.fn();
+      const streakBreak = {
+        session_id: 0,
+        user_id: 3,
+        username: "carol",
+        session_type: "streak",
+        activity_at: new Date().toISOString(),
+        status: "streak_broken",
+        event_message: "Streak ended after 12 days",
+      };
+      const { getByText } = renderActivity([streakBreak], { supportStreakBreak });
+      expect(getByText("Streak ended after 12 days")).toBeTruthy();
+      fireEvent.press(getByText("friendsScreen.supportStreakBreakCta"));
+      expect(supportStreakBreak).toHaveBeenCalledWith(streakBreak);
+    });
+
+    it("shows ten entries until you ask for more", () => {
+      const many = Array.from({ length: 12 }, (_, index) => ({
+        ...finishedSession,
+        session_id: 300 + index,
+      }));
+      const { getByTestId, queryByTestId } = renderActivity(many);
+      expect(queryByTestId("friends-activity-311")).toBeNull();
+      fireEvent.press(getByTestId("friends-activity-toggle"));
+      expect(getByTestId("friends-activity-311")).toBeTruthy();
+    });
   });
 
   it("collects friend requests and duel invites in one inbox", () => {

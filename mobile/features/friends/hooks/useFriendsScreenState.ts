@@ -112,7 +112,6 @@ function useFriendsFeedbackState() {
   const [addBusy, setAddBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [triggerIndex, setTriggerIndex] = useState(0);
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [reactionUsersLoading, setReactionUsersLoading] = useState(false);
   const [reactionBusyBySession, setReactionBusyBySession] = useState<Record<number, boolean>>({});
@@ -142,8 +141,6 @@ function useFriendsFeedbackState() {
     toastMessage,
     setToastMessage,
     showToast,
-    triggerIndex,
-    setTriggerIndex,
     busyActionKey,
     setBusyActionKey,
     reactionUsersLoading,

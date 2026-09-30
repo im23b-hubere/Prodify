@@ -13,7 +13,7 @@ export function FriendsStandingSection({ props }: { props: FriendsOverviewProps 
     [props.currentUserId, props.entries],
   );
   return (
-    <View style={styles.overview}>
+    <View style={styles.standing}>
       {standing ? (
         <WeekHeroCard
           t={props.t}

@@ -1,5 +1,5 @@
 import { UserPlus } from "lucide-react-native";
-import { RefreshControl, ScrollView, Text } from "react-native";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -8,10 +8,11 @@ import { ErrorState } from "../../../components/states/ErrorState";
 import { LoadingState } from "../../../components/states/LoadingState";
 import { colors } from "../../../constants/theme";
 import { DuelBoardSkeleton } from "../../challenges/board/components/DuelBoardSkeleton";
+import { ActivitySection } from "../activity/components/ActivitySection";
+import { LiveNowStrip } from "../activity/components/LiveNowStrip";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 import type { FriendsScreenController } from "../hooks/useFriendsScreenController";
 import { FriendsStandingSection } from "../ranking/components/FriendsStandingSection";
-import { FriendsActivitySection } from "./FriendsActivitySection";
 import { FriendsInboxSection } from "./inbox/FriendsInboxSection";
 import { FriendsModals } from "./FriendsModals";
 import type { FriendsOverviewProps } from "./FriendsOverviewSection";
@@ -56,19 +57,14 @@ function FriendsStatusMessages({ controller }: Props) {
 }
 
 function FriendsLoadedSections({ controller }: Props) {
-  const { t, userId, state, actions, visibleActivity, renderActivity } = controller;
+  const { t, userId, state, actions } = controller;
+  const showOverview = state.sectionTab === "overview" && actions.hasOtherFriends;
   const sectionProps: FriendsOverviewProps = {
     t,
     mode: state.mode,
     setMode: state.setMode,
-    loading: state.loading,
     entries: actions.entries,
     currentUserId: userId,
-    activity: visibleActivity,
-    renderActivity,
-    activeTriggerCard: actions.activeTriggerCard,
-    onCompleteTriggerAction: actions.completeTriggerAction,
-    onAddFriendFromEmptyFeed: () => state.setAddOpen(true),
     onStartSession: controller.openSessionSetup,
     onOpenProfile: controller.openProfile,
   };
@@ -89,11 +85,20 @@ function FriendsLoadedSections({ controller }: Props) {
           onDeclineChallengeInvite: actions.declineChallengeInvite,
         }}
       />
-      {state.sectionTab === "overview" && actions.hasOtherFriends ? (
-        <FriendsStandingSection props={sectionProps} />
-      ) : null}
-      {state.sectionTab === "overview" && actions.hasOtherFriends ? (
-        <FriendsActivitySection props={sectionProps} />
+      {showOverview ? (
+        <View style={styles.overview}>
+          <LiveNowStrip
+            t={t}
+            live={controller.liveActivity}
+            onOpenProfile={controller.openProfile}
+          />
+          <FriendsStandingSection props={sectionProps} />
+          <ActivitySection
+            t={t}
+            activity={controller.feedActivity}
+            renderActivity={controller.renderActivity}
+          />
+        </View>
       ) : null}
       {state.sectionTab === "challenges" ? (
         <FriendsTogetherSection

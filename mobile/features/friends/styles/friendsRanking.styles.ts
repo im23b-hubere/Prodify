@@ -7,7 +7,7 @@ import { colors, radii, spacing, typography } from "../../../constants/theme";
 const ACCENT_TINT = "rgba(255,61,0,0.12)";
 
 const rankingStyles = StyleSheet.create({
-  overview: { gap: spacing.lg, marginBottom: spacing.xl },
+  standing: { gap: spacing.lg },
 
   hero: { padding: spacing.lg, gap: spacing.md },
   heroTop: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

@@ -1,8 +1,10 @@
 import type { TFunction } from "i18next";
-import { useCallback } from "react";
+import { type ReactNode, useCallback } from "react";
 
 import type { FriendActivityDto } from "../../../types/friends";
-import { FriendsActivityFeedItem } from "../components/FriendsActivityFeedItem";
+import { ActivityEventRow } from "../activity/components/ActivityEventRow";
+import { ActivitySessionRow } from "../activity/components/ActivitySessionRow";
+import { activityKind, isOpenableSession } from "../activity/friendsActivityFeed";
 import type { FriendsScreenActions } from "./useFriendsScreenActions";
 import type { FriendsScreenState } from "./useFriendsScreenState";
 
@@ -15,50 +17,7 @@ type ActivityRendererOptions = {
   openStatsYourWeek: () => void;
 };
 
-function runWhen(condition: boolean, action: () => void) {
-  return () => {
-    if (condition) action();
-  };
-}
-
-function activityMetrics(
-  item: FriendActivityDto,
-  feedMetrics: FriendsScreenState["feedMetricsBySession"],
-  reactionBusy: FriendsScreenState["reactionBusyBySession"],
-) {
-  const metrics = feedMetrics[item.session_id];
-  return {
-    reactionTotal: metrics?.reactionsCount ?? item.reactions_count ?? 0,
-    commentCount: metrics?.commentsCount ?? item.comments_count ?? 0,
-    reactedByMe: metrics?.viewerReaction === "👍",
-    reactionBusy: Boolean(reactionBusy[item.session_id]),
-  };
-}
-
-function activityHandlers(
-  item: FriendActivityDto,
-  options: Pick<
-    ActivityRendererOptions,
-    "actions" | "openSession" | "openStatsYourWeek" | "userId"
-  >,
-) {
-  const { actions, openSession, openStatsYourWeek, userId } = options;
-  const isSessionItem =
-    item.session_id > 0 && (item.status === "live" || item.status === "completed");
-  return {
-    onOpenSession: runWhen(isSessionItem, () => openSession(item.session_id, item.username)),
-    onToggleThumb: runWhen(isSessionItem, () => void actions.toggleThumbReaction(item)),
-    onOpenReactionUsers: runWhen(
-      isSessionItem,
-      () => void actions.openReactionUsers(item.session_id),
-    ),
-    onSupportStreakBreak: runWhen(
-      item.status === "streak_broken" && item.user_id !== userId,
-      () => void actions.supportStreakBreak(item),
-    ),
-    onViewCommitment: runWhen(item.status === "commitment_published", openStatsYourWeek),
-  };
-}
+export type RenderActivity = (item: FriendActivityDto, divided: boolean) => ReactNode;
 
 export function useFriendsActivityRenderer({
   actions,
@@ -67,41 +26,77 @@ export function useFriendsActivityRenderer({
   t,
   openSession,
   openStatsYourWeek,
-}: ActivityRendererOptions) {
+}: ActivityRendererOptions): RenderActivity {
   const { busyActionKey, feedMetricsBySession, reactionBusyBySession } = state;
+  const { toggleThumbReaction, openReactionUsers, supportStreakBreak } = actions;
+
+  const openActivitySession = useCallback(
+    (item: FriendActivityDto) => {
+      if (isOpenableSession(item)) openSession(item.session_id, item.username);
+    },
+    [openSession],
+  );
+  const toggleThumb = useCallback(
+    (item: FriendActivityDto) => {
+      if (isOpenableSession(item)) void toggleThumbReaction(item);
+    },
+    [toggleThumbReaction],
+  );
+  const showReactionUsers = useCallback(
+    (item: FriendActivityDto) => {
+      if (isOpenableSession(item)) void openReactionUsers(item.session_id);
+    },
+    [openReactionUsers],
+  );
+  const supportFriend = useCallback(
+    (item: FriendActivityDto) => void supportStreakBreak(item),
+    [supportStreakBreak],
+  );
+
   return useCallback(
-    (item: FriendActivityDto, index: number) => {
-      const metrics = activityMetrics(item, feedMetricsBySession, reactionBusyBySession);
-      const handlers = activityHandlers(item, {
-        actions,
-        openSession,
-        openStatsYourWeek,
-        userId,
-      });
+    (item: FriendActivityDto, divided: boolean) => {
+      const kind = activityKind(item);
+      if (kind !== "session") {
+        const isOwnStreakBreak = kind === "streak_broken" && item.user_id === userId;
+        return (
+          <ActivityEventRow
+            t={t}
+            item={item}
+            kind={kind}
+            divided={divided}
+            canAct={!isOwnStreakBreak}
+            actionBusy={kind === "streak_broken" && busyActionKey === "streak_support"}
+            onSupportStreakBreak={supportFriend}
+            onViewCommitment={openStatsYourWeek}
+          />
+        );
+      }
+      const metrics = feedMetricsBySession[item.session_id];
       return (
-        <FriendsActivityFeedItem
-          item={item}
-          index={index}
-          {...metrics}
-          {...handlers}
-          currentUserId={userId}
+        <ActivitySessionRow
           t={t}
-          supportBusy={
-            item.status === "streak_broken" &&
-            item.user_id !== userId &&
-            busyActionKey === "streak_support"
-          }
+          item={item}
+          divided={divided}
+          reactionTotal={metrics?.reactionsCount ?? item.reactions_count ?? 0}
+          commentCount={metrics?.commentsCount ?? item.comments_count ?? 0}
+          reactedByMe={metrics?.viewerReaction === "👍"}
+          reactionBusy={Boolean(reactionBusyBySession[item.session_id])}
+          onOpenSession={openActivitySession}
+          onToggleThumb={toggleThumb}
+          onOpenReactionUsers={showReactionUsers}
         />
       );
     },
     [
-      actions,
       busyActionKey,
       feedMetricsBySession,
-      openSession,
+      openActivitySession,
       openStatsYourWeek,
       reactionBusyBySession,
+      showReactionUsers,
+      supportFriend,
       t,
+      toggleThumb,
       userId,
     ],
   );

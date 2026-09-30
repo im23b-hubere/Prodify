@@ -210,3 +210,85 @@ def test_activity_includes_commitment_published_event_item(client):
     assert event is not None
     assert event["user_id"] == 1
     assert event["session_type"] == "commitment_published"
+
+
+def _befriend(client, token_a: str, token_b: str, username_b: str) -> None:
+    req = client.post(
+        "/friends/request",
+        headers={"Authorization": f"Bearer {token_a}"},
+        json={"username": username_b},
+    )
+    assert req.status_code == 201
+    acc = client.post(f"/friends/{req.json()['id']}/accept", headers={"Authorization": f"Bearer {token_b}"})
+    assert acc.status_code == 200
+
+
+def test_activity_lists_a_friends_running_session_as_live(client):
+    t_a = _register(client, "m@example.com", "mira")
+    t_b = _register(client, "n@example.com", "nico")
+    _befriend(client, t_a, t_b, "nico")
+
+    start = client.post(
+        "/sessions/quick-start",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={"session_type": "mixing"},
+    )
+    assert start.status_code == 201
+    sid = start.json()["id"]
+
+    rows = client.get("/friends/activity?limit=20", headers={"Authorization": f"Bearer {t_b}"}).json()
+    live = [item for item in rows if item["status"] == "live"]
+    assert [item["session_id"] for item in live] == [sid]
+    assert live[0]["username"] == "mira"
+    assert live[0]["session_type"] == "mixing"
+
+    own_rows = client.get("/friends/activity?limit=20", headers={"Authorization": f"Bearer {t_a}"}).json()
+    assert all(item["status"] != "live" for item in own_rows)
+
+
+def test_activity_hides_a_paused_session_from_live(client):
+    t_a = _register(client, "q@example.com", "quinn")
+    t_b = _register(client, "r@example.com", "rosa")
+    _befriend(client, t_a, t_b, "rosa")
+
+    start = client.post(
+        "/sessions/quick-start",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={"session_type": "mixing"},
+    )
+    assert start.status_code == 201
+
+    from app.database import SessionLocal
+    from app.models import ProductionSession
+
+    with SessionLocal() as db:
+        session = db.get(ProductionSession, start.json()["id"])
+        session.pause_started_at = utcnow()
+        db.commit()
+
+    rows = client.get("/friends/activity?limit=20", headers={"Authorization": f"Bearer {t_b}"}).json()
+    assert all(item["status"] != "live" for item in rows)
+
+
+def test_activity_drops_a_forgotten_session_from_live(client):
+    t_a = _register(client, "o@example.com", "omar")
+    t_b = _register(client, "p@example.com", "pia")
+    _befriend(client, t_a, t_b, "pia")
+
+    start = client.post(
+        "/sessions/quick-start",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={"session_type": "mixing"},
+    )
+    assert start.status_code == 201
+
+    from app.database import SessionLocal
+    from app.models import ProductionSession
+
+    with SessionLocal() as db:
+        session = db.get(ProductionSession, start.json()["id"])
+        session.started_at = utcnow() - timedelta(hours=13)
+        db.commit()
+
+    rows = client.get("/friends/activity?limit=20", headers={"Authorization": f"Bearer {t_b}"}).json()
+    assert all(item["status"] != "live" for item in rows)

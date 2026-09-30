@@ -51,7 +51,7 @@ export function InboxRow({
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={declineLabel}
+        accessibilityLabel={`${declineLabel}, ${name}`}
         accessibilityState={{ disabled: busy }}
         style={({ pressed }) => [styles.declineBtn, pressed && styles.actionPressed]}
         disabled={busy}
@@ -62,7 +62,7 @@ export function InboxRow({
       </Pressable>
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel={acceptLabel}
+        accessibilityLabel={`${acceptLabel}, ${name}`}
         accessibilityState={{ disabled: busy, busy: accepting }}
         style={styles.acceptPill}
         disabled={busy}

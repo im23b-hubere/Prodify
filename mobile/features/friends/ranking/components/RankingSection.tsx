@@ -76,6 +76,7 @@ export const RankingSection = memo(function RankingSection({
         {isCollapsible ? (
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ expanded }}
             style={({ pressed }) => [styles.showMore, pressed && styles.rowPressed]}
             onPress={() => setExpanded((value) => !value)}
             testID="friends-ranking-toggle"

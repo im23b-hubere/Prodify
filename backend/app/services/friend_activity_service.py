@@ -1,6 +1,7 @@
 """Build the shared friend activity feed from sessions and growth events."""
 
 import json
+from datetime import timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -10,10 +11,14 @@ from app.schemas import FriendActivityPublic
 from app.services.friend_graph import friend_user_ids
 from app.services.streak_status_service import streak_status_for_days
 
+# A session still open after this long was almost certainly forgotten, not being worked on.
+LIVE_SESSION_MAX_AGE = timedelta(hours=12)
+
 
 def build_friend_activity(db: Session, viewer_id: int, requested_limit: int) -> list[FriendActivityPublic]:
     limit = max(1, min(requested_limit, 50))
-    user_ids = [viewer_id, *friend_user_ids(db, viewer_id)]
+    friend_ids = friend_user_ids(db, viewer_id)
+    user_ids = [viewer_id, *friend_ids]
     sessions = _recent_sessions(db, user_ids, limit)
     events = _recent_events(db, user_ids, limit)
     reactions, comments, viewer_reactions = _session_engagement(db, sessions, viewer_id)
@@ -24,7 +29,26 @@ def build_friend_activity(db: Session, viewer_id: int, requested_limit: int) -> 
         *[_event_item(event, users) for event in events],
     ]
     items.sort(key=lambda item: item.activity_at, reverse=True)
-    return items[:limit]
+    live = [_live_item(row, users) for row in _live_sessions(db, friend_ids)]
+    return [*live, *items[:limit]]
+
+
+def _live_sessions(db: Session, friend_ids: list[int]) -> list[ProductionSession]:
+    if not friend_ids:
+        return []
+    return list(
+        db.scalars(
+            select(ProductionSession)
+            .where(
+                ProductionSession.user_id.in_(friend_ids),
+                ProductionSession.deleted_at.is_(None),
+                ProductionSession.stopped_at.is_(None),
+                ProductionSession.pause_started_at.is_(None),
+                ProductionSession.started_at >= utcnow() - LIVE_SESSION_MAX_AGE,
+            )
+            .order_by(ProductionSession.started_at.desc())
+        ).all()
+    )
 
 
 def _recent_sessions(db: Session, user_ids: list[int], limit: int) -> list[ProductionSession]:
@@ -132,6 +156,20 @@ def _session_item(
         reactions_count=reactions.get(session.id, 0),
         comments_count=comments.get(session.id, 0),
         viewer_reaction=viewer_reactions.get(session.id),
+        **_streak_fields(user),
+    )
+
+
+def _live_item(session: ProductionSession, users: dict[int, dict[str, str | None]]) -> FriendActivityPublic:
+    user = users.get(session.user_id, {})
+    return FriendActivityPublic(
+        session_id=session.id,
+        user_id=session.user_id,
+        username=user.get("username") or "?",
+        profile_picture_url=user.get("profile_picture_url"),
+        session_type=session.session_type,
+        activity_at=session.started_at,
+        status="live",
         **_streak_fields(user),
     )
 

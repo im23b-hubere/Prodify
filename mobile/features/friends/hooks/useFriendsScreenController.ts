@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/AuthContext";
 import { subscribeChallengeCreated } from "../../challengeCreate/challengeCreatedSignal";
 import type { RematchRequest } from "../../challenges/board/duelBoard";
+import { liveFriends, pastActivity } from "../activity/friendsActivityFeed";
 import { useFriendsActivityRenderer } from "./useFriendsActivityRenderer";
 import { useFriendsDashboardData } from "./useFriendsDashboardData";
 import { useDuelInviteNotifications, useFriendsNotifications } from "./useFriendsNotifications";
@@ -51,13 +52,13 @@ export function useFriendsScreenController() {
     t,
     load,
     state,
-    openSession,
-    openSessionSetup,
   });
-  const visibleActivity = useMemo(
+  const friendActivity = useMemo(
     () => state.activity.filter((item) => item.user_id !== user?.id),
     [state.activity, user?.id],
   );
+  const liveActivity = useMemo(() => liveFriends(friendActivity), [friendActivity]);
+  const feedActivity = useMemo(() => pastActivity(friendActivity), [friendActivity]);
   useFriendsNotifications(state.incoming, state.activity, user?.id, t);
   useDuelInviteNotifications(state.challenges, user?.id, t);
 
@@ -107,7 +108,8 @@ export function useFriendsScreenController() {
     actions,
     load,
     onRefresh,
-    visibleActivity,
+    liveActivity,
+    feedActivity,
     renderActivity,
     openSessionSetup,
     openChallengeCreate,

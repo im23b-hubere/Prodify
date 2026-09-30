@@ -6,6 +6,7 @@ import { colors, radii, spacing, typography } from "../../../constants/theme";
 export const friendsScreenStyles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xxl },
   safe: { flex: 1, backgroundColor: colors.background },
+  overview: { gap: spacing.xl },
   toast: {
     position: "absolute",
     bottom: 18,

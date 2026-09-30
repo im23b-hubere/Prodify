@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { colors } from "../../constants/theme";
+import { pastActivity } from "../../features/friends/activity/friendsActivityFeed";
 import { AppCard } from "../ui/AppCard";
 import { TextButton } from "../ui/TextButton";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
@@ -52,7 +53,9 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
   }, []);
   const leaders = leaderboard.filter((entry) => entry.user_id !== currentUserId).slice(0, 3);
   // The activity feed also contains your own sessions; those already show under "Recent sessions".
-  const feed = activity.filter((entry) => entry.user_id !== currentUserId).slice(0, 3);
+  const feed = pastActivity(activity)
+    .filter((entry) => entry.user_id !== currentUserId)
+    .slice(0, 3);
   if (loading) return <LoadingWidget t={t} />;
   if (leaders.length === 0 && feed.length === 0) {
     return (
