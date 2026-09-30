@@ -307,6 +307,7 @@ def challenge_public_extras(
         "completion_reason": meta.get("completion_reason"),
         "your_rank": your_rank,
         "invitee_user_id": _invitee_user_id(meta),
+        "invite_expires_at": invite_expires_at(meta) if row.status == "pending" else None,
     }
 
 

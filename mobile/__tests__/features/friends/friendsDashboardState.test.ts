@@ -23,6 +23,7 @@ function dashboardWriter() {
     setBuddy: jest.fn(),
     setCheckin: jest.fn(),
     setChallenges: jest.fn(),
+    setDuelRecords: jest.fn(),
     setCommitment: jest.fn(),
     setRecap: jest.fn(),
     setFeedMetricsBySession: jest.fn(),
@@ -71,6 +72,7 @@ describe("friends dashboard state", () => {
       buddy: null,
       checkin: null,
       challenges: [],
+      duelRecords: [{ friend_user_id: 2, wins: 3, losses: 1, ties: 0 }],
       commitment: null,
       recap: null,
     } as FriendsDashboardSnapshot;
@@ -79,6 +81,7 @@ describe("friends dashboard state", () => {
 
     expect(writer.setLeaderboard).toHaveBeenCalledWith(snapshot.leaderboard);
     expect(writer.setActivity).toHaveBeenCalledWith(snapshot.activity);
+    expect(writer.setDuelRecords).toHaveBeenCalledWith(snapshot.duelRecords);
     expect(writer.setFeedMetricsBySession).toHaveBeenCalledWith({
       7: { reactionsCount: 2, commentsCount: 0, viewerReaction: null },
     });
@@ -93,6 +96,7 @@ describe("friends dashboard state", () => {
       buddy: null,
       checkin: null,
       challenges: [],
+      duelRecords: [],
       commitment: null,
       recap: null,
     } as FriendsDashboardSnapshot;

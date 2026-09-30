@@ -182,9 +182,17 @@ class SocialChallengePublic(BaseModel):
     your_rank: int | None = None
     invitee_user_id: int | None = None
     invitee_username: str | None = None
+    invite_expires_at: datetime | None = None
     premium_detail_locked: bool = False
     upsell_hint: str | None = None
     members: list[SocialChallengeMemberPublic] = Field(default_factory=list)
+
+
+class DuelRecordPublic(BaseModel):
+    friend_user_id: int
+    wins: int = 0
+    losses: int = 0
+    ties: int = 0
 
 
 class CommitmentBody(BaseModel):

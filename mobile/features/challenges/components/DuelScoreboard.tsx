@@ -3,7 +3,7 @@ import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../../constants/fonts";
-import { colors, radii, spacing, typography } from "../../../constants/theme";
+import { colors, radii, spacing } from "../../../constants/theme";
 
 type Props = {
   t: TFunction;
@@ -17,7 +17,7 @@ type Props = {
   testID?: string;
 };
 
-export const FriendsDuelScoreboard = memo(function FriendsDuelScoreboard({
+export const DuelScoreboard = memo(function DuelScoreboard({
   t,
   leftLabel,
   leftScore,

@@ -11,6 +11,7 @@ export type FriendsDashboardWriter = Pick<
   | "setBuddy"
   | "setCheckin"
   | "setChallenges"
+  | "setDuelRecords"
   | "setCommitment"
   | "setRecap"
   | "setFeedMetricsBySession"
@@ -39,6 +40,7 @@ export function applyFriendsDashboardSnapshot(
   state.setBuddy(snapshot.buddy);
   state.setCheckin(snapshot.checkin);
   state.setChallenges(snapshot.challenges);
+  state.setDuelRecords(snapshot.duelRecords);
   state.setCommitment(snapshot.commitment);
   state.setRecap(snapshot.recap);
   state.setFeedMetricsBySession(buildFeedMetrics(snapshot.activity));

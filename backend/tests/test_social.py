@@ -1,10 +1,11 @@
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 
 from app.database import SessionLocal
 from app.models import BuddyRelationship, BuddyStatus, CheckinLog, GrowthEvent, ProductionSession, SocialChallenge, Streak, User, utcnow
+from app.services.social_challenge_service import complete_challenge
 
 
 from tests.auth_helpers import auth_headers as _auth_headers
@@ -791,6 +792,56 @@ def test_accepted_duel_reaches_the_owner_inbox(client):
     assert item["body_params"] == {"username": "social-news-b"}
     invitee_inbox = client.get("/notifications/inbox?limit=40", headers=b)
     assert all(not row["id"].startswith("duel-accepted-") for row in invitee_inbox.json())
+
+
+def test_duel_invite_exposes_expiry_only_while_pending(client):
+    a = _auth_headers(client, "social-ttl-a@example.com", "social-ttl-a")
+    b = _auth_headers(client, "social-ttl-b@example.com", "social-ttl-b")
+    _make_friends(client, a, b, "social-ttl-b")
+
+    created = _duel(client, a, title="Countdown")
+    expires_at = datetime.fromisoformat(created["invite_expires_at"])
+    remaining = expires_at - datetime.now(expires_at.tzinfo)
+    assert timedelta(hours=47) < remaining <= timedelta(hours=48)
+
+    accepted = _accept_challenge(client, b, created["id"])
+    assert accepted["invite_expires_at"] is None
+
+
+def _finish_duel(challenge_id: int, *, winner_user_id: int | None, is_tie: bool = False) -> None:
+    with SessionLocal() as db:
+        row = db.get(SocialChallenge, challenge_id)
+        assert row is not None
+        complete_challenge(db, row, winner_user_id=winner_user_id, reason="time_expired", is_tie=is_tie)
+        db.commit()
+
+
+def test_duel_records_tally_lifetime_results_per_opponent(client):
+    a = _auth_headers(client, "social-rec-a@example.com", "social-rec-a")
+    b = _auth_headers(client, "social-rec-b@example.com", "social-rec-b")
+    c = _auth_headers(client, "social-rec-c@example.com", "social-rec-c")
+    _make_friends(client, a, b, "social-rec-b")
+    _make_friends(client, a, c, "social-rec-c")
+
+    won = _duel(client, a, title="Won vs B")
+    _accept_challenge(client, b, won["id"])
+    _finish_duel(won["id"], winner_user_id=1)
+    tied = _duel(client, a, title="Tie vs B")
+    _accept_challenge(client, b, tied["id"])
+    _finish_duel(tied["id"], winner_user_id=None, is_tie=True)
+    lost = _duel(client, a, title="Lost vs C", friend_id=3)
+    _accept_challenge(client, c, lost["id"])
+    _finish_duel(lost["id"], winner_user_id=3)
+    _duel(client, a, title="Still pending")
+
+    records = client.get("/social/challenges/records", headers=a)
+    assert records.status_code == 200
+    assert records.json() == [
+        {"friend_user_id": 2, "wins": 1, "losses": 0, "ties": 1},
+        {"friend_user_id": 3, "wins": 0, "losses": 1, "ties": 0},
+    ]
+    from_b = client.get("/social/challenges/records", headers=b).json()
+    assert from_b == [{"friend_user_id": 1, "wins": 0, "losses": 1, "ties": 1}]
 
 
 def test_duel_invite_can_be_declined_or_withdrawn_and_not_duplicated(client):

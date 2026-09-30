@@ -21,6 +21,7 @@ export function resetFriendsAccountOwnedState(
   state.setBuddy(null);
   state.setCheckin(null);
   state.setChallenges([]);
+  state.setDuelRecords([]);
   state.setCommitment(null);
   state.setRecap(null);
   state.setFeedMetricsBySession({});

@@ -108,13 +108,6 @@ export const challengeCreateStyles = StyleSheet.create({
     textAlign: "center",
   },
 
-  avatarFallback: {
-    backgroundColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitials: { color: colors.textPrimary, fontFamily: fontFamily.heading },
-
   presetList: { gap: 10 },
   presetCard: {
     flexDirection: "row",

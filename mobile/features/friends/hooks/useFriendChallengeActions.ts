@@ -1,13 +1,14 @@
 import type { TFunction } from "i18next";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { Alert } from "react-native";
 
 import { recordMomentumAction } from "../../../lib/momentum";
 import {
   acceptSocialChallenge,
+  cancelChallenge,
   declineSocialChallenge,
-  joinSocialChallenge,
 } from "../../../lib/social";
+import type { SocialChallengeDto } from "../../../types/friends";
 import { duelClashPayload } from "../../duelClash/duelClashPayload";
 import { markDuelClashSeen } from "../../duelClash/duelClashSeen";
 import { showDuelClash } from "../../duelClash/duelClashStore";
@@ -22,27 +23,7 @@ type ActionContext = {
 };
 
 export function useFriendChallengeActions({ token, userId, t, load, state }: ActionContext) {
-  const challengeCards = useMemo(() => state.challenges.slice(0, 5), [state.challenges]);
-  const joinSocialChallengeById = useCallback(
-    async (challengeId: number) => {
-      if (!token) return;
-      state.setBusyActionKey(`join_challenge_${challengeId}`);
-      try {
-        await joinSocialChallenge(token, challengeId);
-        await load({ force: true });
-        if (userId) {
-          await recordMomentumAction(userId, "challenge");
-        }
-        state.showToast(t("friendsScreen.toastChallengeJoined"));
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : t("common.tryAgain");
-        Alert.alert(t("friendsScreen.errorGeneric"), msg);
-      } finally {
-        state.setBusyActionKey(null);
-      }
-    },
-    [load, state, t, token, userId],
-  );
+  const challengeCards = state.challenges;
 
   const acceptChallengeInvite = useCallback(
     async (challengeId: number) => {
@@ -82,10 +63,43 @@ export function useFriendChallengeActions({ token, userId, t, load, state }: Act
     [load, state, t, token],
   );
 
+  const runWithdraw = useCallback(
+    async (challengeId: number) => {
+      if (!token) return;
+      state.setBusyActionKey(`withdraw_challenge_${challengeId}`);
+      try {
+        await cancelChallenge(token, challengeId);
+        await load({ force: true });
+        state.showToast(t("duelBoard.withdrawnToast"));
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : t("common.tryAgain");
+        Alert.alert(t("friendsScreen.errorGeneric"), msg);
+      } finally {
+        state.setBusyActionKey(null);
+      }
+    },
+    [load, state, t, token],
+  );
+
+  const withdrawChallengeInvite = useCallback(
+    (challenge: SocialChallengeDto) => {
+      const name = challenge.invitee_username ?? t("friendsScreen.challengeSomeone");
+      Alert.alert(t("duelBoard.withdrawTitle"), t("duelBoard.withdrawBody", { name }), [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("duelBoard.withdrawConfirm"),
+          style: "destructive",
+          onPress: () => void runWithdraw(challenge.id),
+        },
+      ]);
+    },
+    [runWithdraw, t],
+  );
+
   return {
     challengeCards,
-    joinSocialChallengeById,
     acceptChallengeInvite,
     declineChallengeInvite,
+    withdrawChallengeInvite,
   };
 }

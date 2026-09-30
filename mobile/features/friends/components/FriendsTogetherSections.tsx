@@ -1,40 +1,160 @@
-import { type Href, useRouter } from "expo-router";
+import { useCallback, useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { useNow } from "../../../hooks/useNow";
 import type { SocialChallengeDto } from "../../../types/friends";
-import { isOutgoingDuelInvite } from "../utils/duelInvites";
-import { challengeDaysLeft } from "../utils/friendsScreenFormat";
+import { friendDuelStatus } from "../../challengeCreate/challengeDraft";
+import { challengeFriendOptions } from "../../challengeCreate/challengeFriends";
+import { DuelArenaCard } from "../../challenges/board/components/DuelArenaCard";
+import { DuelBoardEmpty } from "../../challenges/board/components/DuelBoardEmpty";
+import {
+  HistoryDuelRow,
+  LiveDuelRow,
+  WaitingDuelRow,
+} from "../../challenges/board/components/DuelBoardRows";
+import { DuelBoardSection } from "../../challenges/board/components/DuelBoardSection";
+import { RivalsStrip } from "../../challenges/board/components/RivalsStrip";
+import {
+  buildDuelBoard,
+  duelRecordsByFriend,
+  isDuelBoardEmpty,
+  rematchableDuelIds,
+  rematchRequest,
+} from "../../challenges/board/duelBoard";
+import { duelBoardStyles } from "../../challenges/board/duelBoard.styles";
+import { duelParticipants } from "../../challenges/duelParticipants";
+import { friendsTogetherStyles as styles } from "../styles/friendsTogether.styles";
 import type { FriendsTogetherProps } from "./FriendsTogetherSection";
 import { FriendsBuddyDuelCard } from "./FriendsBuddyDuelCard";
-import { FriendsDuelInviteRow } from "./FriendsDuelInviteRow";
-import { FriendsDuelScoreboard } from "./FriendsDuelScoreboard";
-import { friendsTogetherStyles as styles } from "../styles/friendsTogether.styles";
 
 export function FriendsChallengesBody({ props }: { props: FriendsTogetherProps }) {
-  const { t, buddy } = props;
-  const buddyActive = buddy?.status === "active";
-  const inviteIncoming = buddy?.status === "pending_incoming";
-  const inviteOutgoing = buddy?.status === "pending_outgoing";
-  const sentInvites = props.challengeCards.filter((item) => isOutgoingDuelInvite(item, props.currentUserId));
-  const settled = props.challengeCards.filter((item) => item.status !== "pending");
-  const heroChallenge = buddyActive ? null : settled.find((item) => item.status === "active");
-  const rows = settled.filter((item) => item.id !== heroChallenge?.id);
-  const empty =
-    !buddyActive && !inviteIncoming && !inviteOutgoing && settled.length === 0 && sentInvites.length === 0;
-
-  if (empty) return <ChallengesEmpty props={props} />;
+  const { t, currentUserId, challengeCards } = props;
+  const board = useMemo(
+    () => buildDuelBoard(challengeCards, currentUserId),
+    [challengeCards, currentUserId],
+  );
+  const rivals = useMemo(
+    () => challengeFriendOptions(props.friends, challengeCards, currentUserId),
+    [challengeCards, currentUserId, props.friends],
+  );
+  const rivalStatuses = useMemo(
+    () =>
+      new Map(
+        rivals.map((rival) => [
+          rival.userId,
+          friendDuelStatus(rival.userId, challengeCards, currentUserId),
+        ]),
+      ),
+    [challengeCards, currentUserId, rivals],
+  );
+  const records = useMemo(() => duelRecordsByFriend(props.duelRecords), [props.duelRecords]);
+  const rematchable = useMemo(
+    () =>
+      rematchableDuelIds(
+        board.history,
+        currentUserId,
+        (friendId) => rivalStatuses.get(friendId) === "available",
+      ),
+    [board.history, currentUserId, rivalStatuses],
+  );
+  const { onRematchDuel } = props;
+  const rematch = useCallback(
+    (challenge: SocialChallengeDto) => {
+      const request = rematchRequest(challenge, currentUserId);
+      if (request) onRematchDuel(request);
+    },
+    [currentUserId, onRematchDuel],
+  );
+  const hasBuddy = props.buddy != null && props.buddy.status !== "none";
+  const empty = isDuelBoardEmpty(board) && !hasBuddy;
+  const arenaOpponent = board.arena ? duelParticipants(board.arena, currentUserId).opponent : null;
+  const arenaRecord = arenaOpponent ? records.get(arenaOpponent.user_id) : undefined;
+  const now = useNow();
 
   return (
-    <View style={styles.stack}>
-      {sentInvites.length > 0 ? (
-        <View style={styles.listCard}>
-          {sentInvites.map((challenge, index) => (
-            <FriendsDuelInviteRow key={challenge.id} challenge={challenge} actions={props} divided={index > 0} />
-          ))}
-        </View>
+    <View style={duelBoardStyles.board}>
+      {empty ? (
+        <DuelBoardEmpty
+          t={t}
+          rivals={rivals}
+          onStartDuel={props.onOpenChallengeCreate}
+          onAddFriend={props.onOpenAddFriend}
+        />
+      ) : (
+        <RivalsStrip
+          t={t}
+          rivals={rivals}
+          statuses={rivalStatuses}
+          records={records}
+          onNewDuel={props.onOpenChallengeCreate}
+          onChallenge={props.onChallengeFriend}
+        />
+      )}
+      {board.arena ? (
+        <DuelArenaCard
+          t={t}
+          challenge={board.arena}
+          currentUserId={currentUserId}
+          record={arenaRecord}
+          onOpen={props.onOpenChallenge}
+          onStartSession={props.onOpenSessionSetup}
+        />
       ) : null}
-      {inviteIncoming || inviteOutgoing ? <BuddyInviteRow props={props} /> : null}
-      {buddyActive ? (
+      {board.live.length > 0 ? (
+        <DuelBoardSection title={t("duelBoard.sectionLive")} count={board.live.length}>
+          {board.live.map((challenge, index) => (
+            <LiveDuelRow
+              key={challenge.id}
+              t={t}
+              challenge={challenge}
+              currentUserId={currentUserId}
+              divided={index > 0}
+              onOpen={props.onOpenChallenge}
+            />
+          ))}
+        </DuelBoardSection>
+      ) : null}
+      {board.waiting.length > 0 ? (
+        <DuelBoardSection title={t("duelBoard.sectionWaiting")} count={board.waiting.length}>
+          {board.waiting.map((challenge, index) => (
+            <WaitingDuelRow
+              key={challenge.id}
+              t={t}
+              challenge={challenge}
+              divided={index > 0}
+              now={now}
+              busy={props.busyActionKey === `withdraw_challenge_${challenge.id}`}
+              onWithdraw={props.onWithdrawChallengeInvite}
+            />
+          ))}
+        </DuelBoardSection>
+      ) : null}
+      <BuddySection props={props} />
+      {board.history.length > 0 ? (
+        <DuelBoardSection title={t("duelBoard.sectionHistory")}>
+          {board.history.map((challenge, index) => (
+            <HistoryDuelRow
+              key={challenge.id}
+              t={t}
+              challenge={challenge}
+              currentUserId={currentUserId}
+              divided={index > 0}
+              onOpen={props.onOpenChallenge}
+              onRematch={rematchable.has(challenge.id) ? rematch : undefined}
+            />
+          ))}
+        </DuelBoardSection>
+      ) : null}
+    </View>
+  );
+}
+
+function BuddySection({ props }: { props: FriendsTogetherProps }) {
+  const { t, buddy } = props;
+  const status = buddy?.status;
+  if (status === "active") {
+    return (
+      <DuelBoardSection title={t("duelBoard.sectionBuddy")} carded={false}>
         <FriendsBuddyDuelCard
           t={t}
           buddyName={buddy?.buddy_username ?? t("friendsScreen.challengeSomeone")}
@@ -42,42 +162,23 @@ export function FriendsChallengesBody({ props }: { props: FriendsTogetherProps }
           buddySessions={buddy?.buddy_week_sessions ?? 0}
           onCatchUp={props.onOpenSessionSetup}
         />
-      ) : null}
-      {heroChallenge ? <ChallengeHero challenge={heroChallenge} props={props} /> : null}
-      <View style={styles.listCard}>
-        {rows.map((challenge, index) => (
-          <ChallengeRow key={challenge.id} challenge={challenge} props={props} divided={index > 0} />
-        ))}
-        <QuietLink
-          divided={rows.length > 0}
-          label={t("friendsScreen.togetherStartChallenge")}
-          onPress={props.onOpenChallengeCreate}
-        />
-        {!buddyActive && !inviteIncoming && !inviteOutgoing ? (
-          <QuietLink
-            divided
-            label={t("friendsScreen.togetherPickBuddy")}
-            onPress={props.hasOtherFriends ? props.onOpenBuddyPicker : props.onOpenAddFriend}
-          />
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
-function ChallengesEmpty({ props }: { props: FriendsTogetherProps }) {
-  const { t } = props;
+      </DuelBoardSection>
+    );
+  }
+  if (status === "pending_incoming" || status === "pending_outgoing") {
+    return (
+      <DuelBoardSection title={t("duelBoard.sectionBuddy")} carded={false}>
+        <BuddyInviteRow props={props} />
+      </DuelBoardSection>
+    );
+  }
   return (
-    <View style={styles.emptyWrap}>
-      <Text style={styles.emptyTitle}>{t("friendsScreen.challengesEmptyTitle")}</Text>
-      <View style={styles.listCard}>
-        <QuietLink
-          label={t("friendsScreen.togetherPickBuddy")}
-          onPress={props.hasOtherFriends ? props.onOpenBuddyPicker : props.onOpenAddFriend}
-        />
-        <QuietLink divided label={t("friendsScreen.togetherStartChallenge")} onPress={props.onOpenChallengeCreate} />
-      </View>
-    </View>
+    <DuelBoardSection title={t("duelBoard.sectionBuddy")}>
+      <QuietLink
+        label={t("friendsScreen.togetherPickBuddy")}
+        onPress={props.hasOtherFriends ? props.onOpenBuddyPicker : props.onOpenAddFriend}
+      />
+    </DuelBoardSection>
   );
 }
 
@@ -93,14 +194,18 @@ function BuddyInviteRow({ props }: { props: FriendsTogetherProps }) {
           {name}
         </Text>
         <Text style={styles.rowMeta} numberOfLines={1}>
-          {t(incoming ? "friendsScreen.buddyInviteIncomingMeta" : "friendsScreen.buddyInviteOutgoingMeta")}
+          {t(
+            incoming
+              ? "friendsScreen.buddyInviteIncomingMeta"
+              : "friendsScreen.buddyInviteOutgoingMeta",
+          )}
         </Text>
       </View>
       {incoming && props.pendingBuddyInviteId != null ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("friendsScreen.acceptBuddyInvite")}
-          style={({ pressed }) => [styles.acceptBtn, pressed && { opacity: 0.55 }]}
+          style={({ pressed }) => [styles.acceptBtn, pressed && styles.actionPressed]}
           disabled={busy}
           onPress={() => props.onAcceptBuddyInvite(props.pendingBuddyInviteId!)}
         >
@@ -113,80 +218,7 @@ function BuddyInviteRow({ props }: { props: FriendsTogetherProps }) {
   );
 }
 
-function ChallengeHero({
-  challenge,
-  props,
-}: {
-  challenge: SocialChallengeDto;
-  props: FriendsTogetherProps;
-}) {
-  const sides = challengeSides(challenge, props.currentUserId, props.t("friendsScreen.buddyDuelYouLabel"));
-  const behind = sides.opponentScore > sides.youScore;
-  const quiet = sides.youScore === 0 && sides.opponentScore === 0;
-  const actionLabel =
-    challenge.status === "active" && (behind || quiet) ? props.t("friendsScreen.heroCtaStartSession") : null;
-  return (
-    <FriendsDuelScoreboard
-      t={props.t}
-      leftLabel={sides.youLabel}
-      leftScore={sides.youScore}
-      rightLabel={sides.opponentName}
-      rightScore={sides.opponentScore}
-      meta={props.t("friendsScreen.challengeDaysLeftShort", { count: challengeDayCount(challenge) })}
-      actionLabel={actionLabel}
-      onAction={actionLabel ? props.onOpenSessionSetup : undefined}
-      testID="friends-challenge-duel"
-    />
-  );
-}
-
-function ChallengeRow({
-  challenge,
-  props,
-  divided,
-}: {
-  challenge: SocialChallengeDto;
-  props: FriendsTogetherProps;
-  divided: boolean;
-}) {
-  const router = useRouter();
-  const sides = challengeSides(challenge, props.currentUserId, props.t("friendsScreen.buddyDuelYouLabel"));
-  const meta =
-    challenge.status === "completed"
-      ? completedLine(challenge, props)
-      : props.t("friendsScreen.challengeDaysLeftShort", { count: challengeDayCount(challenge) });
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={props.t("friendsScreen.challengeOpenDetailA11y", { title: challenge.title })}
-      style={({ pressed }) => [styles.challengeRow, pressed && styles.rowPressed]}
-      onPress={() => router.push(`/challenge/${challenge.id}` as Href)}
-    >
-      {divided ? <View style={styles.separator} /> : null}
-      <View style={styles.inviteCopy}>
-        <Text style={styles.rowTitle} numberOfLines={1}>
-          {challenge.title}
-        </Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>
-          {meta}
-        </Text>
-      </View>
-      <Text style={styles.rowScore}>
-        {sides.youScore}–{sides.opponentScore}
-      </Text>
-    </Pressable>
-  );
-}
-
-function QuietLink({
-  label,
-  onPress,
-  divided,
-}: {
-  label: string;
-  onPress: () => void;
-  divided?: boolean;
-}) {
+function QuietLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -194,39 +226,7 @@ function QuietLink({
       style={({ pressed }) => [styles.quietLink, pressed && styles.rowPressed]}
       onPress={onPress}
     >
-      {divided ? <View style={styles.separator} /> : null}
       <Text style={styles.quietLinkText}>{label}</Text>
     </Pressable>
   );
-}
-
-function challengeSides(challenge: SocialChallengeDto, currentUserId: number | undefined, youLabel: string) {
-  const you = challenge.members.find((member) => member.user_id === currentUserId);
-  const opponent = challenge.members
-    .filter((member) => member.user_id !== currentUserId)
-    .sort((left, right) => right.progress_sessions - left.progress_sessions)[0];
-  return {
-    youLabel,
-    youScore: you?.progress_sessions ?? 0,
-    opponentName: opponent?.username ?? youLabel,
-    opponentScore: opponent?.progress_sessions ?? 0,
-  };
-}
-
-function challengeDayCount(challenge: SocialChallengeDto) {
-  return (
-    challenge.days_remaining ??
-    challengeDaysLeft(challenge.week_start, challenge.duration_days) ??
-    challenge.duration_days ??
-    7
-  );
-}
-
-function completedLine(challenge: SocialChallengeDto, props: FriendsTogetherProps) {
-  if (challenge.is_tie) return props.t("friendsScreen.challengeEndedTie");
-  if (challenge.winner_user_id === props.currentUserId) return props.t("friendsScreen.challengeYouWon");
-  const winner =
-    challenge.members.find((member) => member.user_id === challenge.winner_user_id)?.username ??
-    props.t("friendsScreen.challengeSomeone");
-  return props.t("friendsScreen.challengeEndedWinner", { winner });
 }

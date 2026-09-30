@@ -7,6 +7,7 @@ import { EmptyState } from "../../../components/states/EmptyState";
 import { ErrorState } from "../../../components/states/ErrorState";
 import { LoadingState } from "../../../components/states/LoadingState";
 import { colors } from "../../../constants/theme";
+import { DuelBoardSkeleton } from "../../challenges/board/components/DuelBoardSkeleton";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 import type { FriendsScreenController } from "../hooks/useFriendsScreenController";
 import { FriendsActivitySection } from "./FriendsActivitySection";
@@ -24,7 +25,10 @@ function FriendsStatusMessages({ controller }: Props) {
   const { t, state, actions, load } = controller;
   return (
     <>
-      {!state.loading && !state.error && !actions.hasOtherFriends && state.sectionTab === "overview" ? (
+      {!state.loading &&
+      !state.error &&
+      !actions.hasOtherFriends &&
+      state.sectionTab === "overview" ? (
         <EmptyState
           iconNode={<UserPlus color={colors.primary} size={36} />}
           title={t("friendsScreen.feedEmptyTitle")}
@@ -42,7 +46,11 @@ function FriendsStatusMessages({ controller }: Props) {
         />
       ) : null}
       {state.loading && !state.refreshing && !state.error ? (
-        <LoadingState message={t("friendsScreen.loading")} />
+        state.sectionTab === "challenges" ? (
+          <DuelBoardSkeleton t={t} />
+        ) : (
+          <LoadingState message={t("friendsScreen.loading")} />
+        )
       ) : null}
     </>
   );
@@ -92,18 +100,21 @@ function FriendsLoadedSections({ controller }: Props) {
         <FriendsTogetherSection
           t={t}
           busyActionKey={state.busyActionKey}
-          onJoinSocialChallenge={actions.joinSocialChallengeById}
           onOpenChallengeCreate={controller.openChallengeCreate}
+          onChallengeFriend={controller.challengeFriend}
+          onRematchDuel={controller.rematchDuel}
+          onOpenChallenge={controller.openChallenge}
+          onWithdrawChallengeInvite={actions.withdrawChallengeInvite}
           onOpenSessionSetup={controller.openSessionSetup}
           buddy={state.buddy}
           hasOtherFriends={actions.hasOtherFriends}
           onOpenBuddyPicker={() => state.setBuddyPickerOpen(true)}
           onOpenAddFriend={() => state.setAddOpen(true)}
           onAcceptBuddyInvite={actions.acceptBuddyInvite}
-          onAcceptChallengeInvite={actions.acceptChallengeInvite}
-          onDeclineChallengeInvite={actions.declineChallengeInvite}
           pendingBuddyInviteId={actions.pendingBuddyInviteId}
+          friends={actions.entries}
           challengeCards={actions.challengeCards}
+          duelRecords={state.duelRecords}
           currentUserId={userId}
         />
       ) : null}

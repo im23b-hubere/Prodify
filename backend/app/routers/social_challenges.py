@@ -11,6 +11,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
 from app.contracts.social import (
+    DuelRecordPublic,
     SocialChallengeCreateBody,
     SocialChallengeJoinBody,
     SocialChallengePublic,
@@ -49,6 +50,7 @@ from app.services.social_challenge_queries import (
     ChallengeParticipantNotFriendError,
     TooManyChallengeParticipantsError,
 )
+from app.services.social_duel_record_service import duel_records
 from app.services.push_dispatch import schedule_push_to_user
 from app.services.push_links import push_data_duel_accepted, push_data_duel_invite
 
@@ -87,6 +89,14 @@ def join_challenge(
         current,
         body.challenge_id,
     )
+
+
+@router.get("/records", response_model=list[DuelRecordPublic])
+def list_duel_records(
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    return duel_records(db, current.id)
 
 
 @router.get("/{challenge_id}", response_model=SocialChallengePublic)

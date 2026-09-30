@@ -4,6 +4,7 @@ import type {
   BuddyStatusDto,
   CheckinStatusDto,
   CommitmentDto,
+  DuelRecordDto,
   FriendActivityDto,
   FriendIncomingDto,
   FriendLeaderboardDto,
@@ -31,6 +32,7 @@ function useFriendsDataState() {
   const [buddy, setBuddy] = useState<BuddyStatusDto | null>(null);
   const [checkin, setCheckin] = useState<CheckinStatusDto | null>(null);
   const [challenges, setChallenges] = useState<SocialChallengeDto[]>([]);
+  const [duelRecords, setDuelRecords] = useState<DuelRecordDto[]>([]);
   const [commitment, setCommitment] = useState<CommitmentDto | null>(null);
   const [recap, setRecap] = useState<SocialRecapDto | null>(null);
   const [entitlement, setEntitlement] = useState<EntitlementDto | null>(null);
@@ -67,6 +69,8 @@ function useFriendsDataState() {
     setCheckin,
     challenges,
     setChallenges,
+    duelRecords,
+    setDuelRecords,
     commitment,
     setCommitment,
     recap,

@@ -11,6 +11,7 @@ import {
   resolvedChallengeTitle,
   stepperBounds,
   weeklyPace,
+  type ChallengeGoal,
 } from "../challengeDraft";
 import type { ChallengeFriendOption } from "../challengeFriends";
 
@@ -20,6 +21,7 @@ type Options = {
   userId: number | undefined;
   yourName: string;
   initialFriendId?: number | null;
+  rematchGoal?: ChallengeGoal | null;
 };
 
 export function useChallengeDraft({
@@ -28,10 +30,11 @@ export function useChallengeDraft({
   userId,
   yourName,
   initialFriendId,
+  rematchGoal,
 }: Options) {
   const [draft, dispatch] = useReducer(
     challengeDraftReducer,
-    { friendId: initialFriendId ?? null },
+    { friendId: initialFriendId ?? null, rematchGoal: rematchGoal ?? null },
     createChallengeDraft,
   );
 

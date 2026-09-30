@@ -3,12 +3,12 @@ import { CalendarDays, Hourglass, Pencil, Target } from "lucide-react-native";
 import { type ReactNode, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
+import { Avatar } from "../../../components/ui/Avatar";
 import { colors } from "../../../constants/theme";
 import { CHALLENGE_LIMITS } from "../challengeDraft";
 import type { ChallengeFriendOption } from "../challengeFriends";
 import { challengeCreateStyles as styles } from "../challengeCreate.styles";
 import type { ChallengeDraftController } from "../hooks/useChallengeDraft";
-import { ChallengeAvatar } from "./ChallengeAvatar";
 
 const VS_AVATAR_SIZE = 84;
 
@@ -67,7 +67,7 @@ export function ReviewStep({ t, controller, you, friend, errorMessage }: Props) 
 function VsSide({ name, photoUri, highlighted }: ChallengeSide & { highlighted?: boolean }) {
   return (
     <View style={styles.vsSide}>
-      <ChallengeAvatar
+      <Avatar
         name={name}
         photoUri={photoUri}
         size={VS_AVATAR_SIZE}

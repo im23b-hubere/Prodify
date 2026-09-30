@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 import { memo } from "react";
 
-import { FriendsDuelScoreboard } from "./FriendsDuelScoreboard";
+import { DuelScoreboard } from "../../challenges/components/DuelScoreboard";
 
 type Props = {
   t: TFunction;
@@ -26,7 +26,7 @@ export const FriendsBuddyDuelCard = memo(function FriendsBuddyDuelCard({
       ? t("friendsScreen.heroCtaStartSession")
       : null;
   return (
-    <FriendsDuelScoreboard
+    <DuelScoreboard
       t={t}
       leftLabel={t("friendsScreen.buddyDuelYouLabel")}
       leftScore={yourSessions}

@@ -94,8 +94,18 @@ export type SocialChallengeDto = {
   your_rank?: number | null;
   invitee_user_id?: number | null;
   invitee_username?: string | null;
+  /** ISO timestamp; only set while the duel invite is pending. */
+  invite_expires_at?: string | null;
   premium_detail_locked?: boolean;
   members: SocialChallengeMemberDto[];
+};
+
+/** Lifetime head-to-head result against one opponent, counted over finished duels. */
+export type DuelRecordDto = {
+  friend_user_id: number;
+  wins: number;
+  losses: number;
+  ties: number;
 };
 
 export type CommitmentDto = {

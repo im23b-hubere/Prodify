@@ -5,12 +5,12 @@ import { memo, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
 import { EmptyState } from "../../../components/states/EmptyState";
+import { Avatar } from "../../../components/ui/Avatar";
 import { PressableScale } from "../../../components/ui/PressableScale";
 import { colors } from "../../../constants/theme";
 import type { FriendDuelStatus } from "../challengeDraft";
 import { type ChallengeFriendOption, matchesFriendSearch } from "../challengeFriends";
 import { challengeCreateStyles as styles } from "../challengeCreate.styles";
-import { ChallengeAvatar } from "./ChallengeAvatar";
 
 const SEARCH_THRESHOLD = 6;
 const AVATAR_SIZE = 68;
@@ -109,7 +109,7 @@ const FriendTile = memo(function FriendTile({ t, friend, status, selected, onSel
         }}
       >
         <View>
-          <ChallengeAvatar
+          <Avatar
             name={friend.username}
             photoUri={friend.photoUri}
             size={AVATAR_SIZE}

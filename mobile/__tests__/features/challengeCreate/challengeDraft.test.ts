@@ -5,6 +5,7 @@ import {
   createChallengeDraft,
   duelCreateRequest,
   friendDuelStatus,
+  parseRematchGoal,
   generatedChallengeTitle,
   matchingPresetId,
   resolvedChallengeTitle,
@@ -44,6 +45,38 @@ describe("createChallengeDraft", () => {
     const draft = createChallengeDraft({ friendId: 7 });
     expect(draft.step).toBe("goal");
     expect(draft.friendId).toBe(7);
+  });
+
+  it("opens a rematch on the review step with the previous goal", () => {
+    const draft = createChallengeDraft({
+      friendId: 7,
+      rematchGoal: { targetSessions: 8, durationDays: 14 },
+    });
+    expect(draft.step).toBe("review");
+    expect([draft.targetSessions, draft.durationDays]).toEqual([8, 14]);
+  });
+
+  it("clamps a rematch goal into the backend limits", () => {
+    const draft = createChallengeDraft({
+      friendId: 7,
+      rematchGoal: { targetSessions: 99, durationDays: 1 },
+    });
+    expect([draft.targetSessions, draft.durationDays]).toEqual([
+      CHALLENGE_LIMITS.maxTargetSessions,
+      CHALLENGE_LIMITS.minDurationDays,
+    ]);
+  });
+});
+
+describe("parseRematchGoal", () => {
+  it("reads both numbers from route params", () => {
+    expect(parseRematchGoal("8", "14")).toEqual({ targetSessions: 8, durationDays: 14 });
+  });
+
+  it("ignores missing or malformed params", () => {
+    expect(parseRematchGoal(undefined, "7")).toBeNull();
+    expect(parseRematchGoal("abc", "7")).toBeNull();
+    expect(parseRematchGoal("0", "7")).toBeNull();
   });
 });
 

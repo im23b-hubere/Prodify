@@ -28,9 +28,9 @@ jest.mock("react-native-reanimated", () => {
 });
 
 jest.mock("expo-haptics", () => ({
-  impactAsync: jest.fn(),
-  selectionAsync: jest.fn(),
-  notificationAsync: jest.fn(),
+  impactAsync: jest.fn().mockResolvedValue(undefined),
+  selectionAsync: jest.fn().mockResolvedValue(undefined),
+  notificationAsync: jest.fn().mockResolvedValue(undefined),
   ImpactFeedbackStyle: { Light: "Light", Medium: "Medium" },
   NotificationFeedbackType: { Success: "Success" },
 }));
@@ -72,7 +72,7 @@ const createFriendsActions = (overrides: Record<string, unknown> = {}) => ({
   completeTriggerAction: mockCompleteTriggerAction,
   sendRequest: jest.fn(),
   inviteBuddy: jest.fn(),
-  joinSocialChallengeById: jest.fn(),
+  withdrawChallengeInvite: jest.fn(),
   acceptBuddyInvite: jest.fn(),
   acceptChallengeInvite: jest.fn(),
   declineChallengeInvite: jest.fn(),
@@ -98,6 +98,7 @@ const createFriendsState = (overrides: Record<string, unknown> = {}) => ({
   actionBusy: null,
   buddy: null,
   challenges: [],
+  duelRecords: [],
   commitment: null,
   reactionUsersOpen: false,
   setReactionUsersOpen: jest.fn(),
@@ -292,6 +293,130 @@ describe("Friends Screen", () => {
     expect(queryByText("friendsScreen.togetherOr")).toBeNull();
     expect(queryByText("friendsScreen.challengeTapHint")).toBeNull();
     expect(queryByText("friendsScreen.challengeKindDuel")).toBeNull();
+  });
+
+  describe("duel board", () => {
+    const friends = [
+      { rank: 1, user_id: 2, username: "bob", current_streak_days: 5, sessions_in_period: 3 },
+      { rank: 2, user_id: 1, username: "alice", current_streak_days: 2, sessions_in_period: 1 },
+    ];
+    const activeDuel = {
+      id: 9,
+      owner_id: 1,
+      title: "alice vs bob",
+      challenge_kind: "duel",
+      week_start: "2026-09-28",
+      target_sessions: 5,
+      days_remaining: 3,
+      status: "active",
+      members: [
+        { user_id: 1, username: "alice", progress_sessions: 2 },
+        { user_id: 2, username: "bob", progress_sessions: 3 },
+      ],
+    };
+
+    function renderBoard(challengeCards: unknown[], stateOverrides: Record<string, unknown> = {}) {
+      const withdrawChallengeInvite = jest.fn();
+      mockUseFriendsScreenState.mockReturnValue(
+        createFriendsState({ loading: false, sectionTab: "challenges", ...stateOverrides }),
+      );
+      mockUseFriendsScreenActions.mockReturnValue(
+        createFriendsActions({
+          hasOtherFriends: true,
+          entries: friends,
+          challengeCards,
+          withdrawChallengeInvite,
+        }),
+      );
+      return { ...render(<FriendsScreen />), withdrawChallengeInvite };
+    }
+
+    it("shows the running duel as an arena that starts a session", () => {
+      const { getByTestId, getByText } = renderBoard([activeDuel]);
+      expect(getByTestId("duel-arena")).toBeTruthy();
+      expect(getByText("duelBoard.standingBehind")).toBeTruthy();
+      fireEvent.press(getByTestId("duel-arena-start"));
+      expect(mockPush).toHaveBeenCalledWith("/session/setup");
+    });
+
+    it("opens the duel detail from the arena", () => {
+      const { getByLabelText } = renderBoard([activeDuel]);
+      fireEvent.press(getByLabelText("duelBoard.arenaA11y"));
+      expect(mockPush).toHaveBeenCalledWith("/challenge/9");
+    });
+
+    it("lets the sender withdraw an unanswered invite", () => {
+      const invite = {
+        ...activeDuel,
+        id: 11,
+        status: "pending",
+        invitee_user_id: 2,
+        invitee_username: "bob",
+        members: [{ user_id: 1, username: "alice", progress_sessions: 0 }],
+      };
+      const { getByTestId, getByLabelText, withdrawChallengeInvite } = renderBoard([invite]);
+      expect(getByTestId("duel-waiting-11")).toBeTruthy();
+      fireEvent.press(getByLabelText("duelBoard.withdrawA11y"));
+      expect(withdrawChallengeInvite).toHaveBeenCalledWith(invite);
+    });
+
+    it("challenges a rival with them preselected", () => {
+      const { getByTestId } = renderBoard([activeDuel]);
+      fireEvent.press(getByTestId("duel-rival-2"));
+      expect(mockPush).toHaveBeenCalledWith({
+        pathname: "/challenge/new",
+        params: { friendId: "2" },
+      });
+    });
+
+    it("offers a rematch with the same goal after a finished duel", () => {
+      const finished = {
+        ...activeDuel,
+        id: 14,
+        status: "completed",
+        duration_days: 14,
+        winner_user_id: 2,
+      };
+      const { getByTestId } = renderBoard([finished]);
+      fireEvent.press(getByTestId("duel-rematch-14"));
+      expect(mockPush).toHaveBeenCalledWith({
+        pathname: "/challenge/new",
+        params: { friendId: "2", target: "5", days: "14" },
+      });
+    });
+
+    it("hides the rematch while an invite to that friend is still open", () => {
+      const finished = { ...activeDuel, id: 14, status: "completed", winner_user_id: 2 };
+      const openInvite = {
+        ...activeDuel,
+        id: 15,
+        status: "pending",
+        invitee_user_id: 2,
+        members: [{ user_id: 1, username: "alice", progress_sessions: 0 }],
+      };
+      const { queryByTestId, getByText } = renderBoard([finished, openInvite]);
+      expect(queryByTestId("duel-rematch-14")).toBeNull();
+      expect(getByText("duelBoard.outcomeLost")).toBeTruthy();
+    });
+
+    it("shows the all-time record against a rival", () => {
+      const { getByTestId } = renderBoard([activeDuel], {
+        duelRecords: [{ friend_user_id: 2, wins: 3, losses: 1, ties: 0 }],
+      });
+      expect(getByTestId("duel-rival-record-2")).toBeTruthy();
+      expect(getByTestId("duel-arena-record")).toBeTruthy();
+    });
+
+    it("invites to a first duel when the board is empty", () => {
+      const { getByTestId } = renderBoard([]);
+      fireEvent.press(getByTestId("duel-board-empty-cta"));
+      expect(mockPush).toHaveBeenCalledWith("/challenge/new");
+    });
+
+    it("shows a board-shaped skeleton while loading", () => {
+      const { getByTestId } = renderBoard([], { loading: true });
+      expect(getByTestId("duel-board-skeleton")).toBeTruthy();
+    });
   });
 
   it("shows an incoming duel invite on the overview tab so the invited friend can accept it", () => {

@@ -48,16 +48,37 @@ export type ChallengeDraftAction =
   | { type: "next" }
   | { type: "back" };
 
+export type ChallengeGoal = Pick<ChallengeDraft, "targetSessions" | "durationDays">;
+
+/** A rematch arrives with friend and goal known, so it opens straight on the review step. */
 export function createChallengeDraft({
   friendId = null,
-}: { friendId?: number | null } = {}): ChallengeDraft {
+  rematchGoal = null,
+}: { friendId?: number | null; rematchGoal?: ChallengeGoal | null } = {}): ChallengeDraft {
   return {
-    step: friendId == null ? "friend" : "goal",
+    step: initialStep(friendId, rematchGoal),
     friendId,
-    targetSessions: DEFAULT_PRESET.targetSessions,
-    durationDays: DEFAULT_PRESET.durationDays,
+    targetSessions: clampTarget(rematchGoal?.targetSessions ?? DEFAULT_PRESET.targetSessions),
+    durationDays: clampDuration(rematchGoal?.durationDays ?? DEFAULT_PRESET.durationDays),
     customTitle: null,
   };
+}
+
+/** Reads the rematch goal from route params; both numbers are required. */
+export function parseRematchGoal(
+  targetParam: string | undefined,
+  daysParam: string | undefined,
+): ChallengeGoal | null {
+  const targetSessions = Number(targetParam);
+  const durationDays = Number(daysParam);
+  if (!Number.isInteger(targetSessions) || !Number.isInteger(durationDays)) return null;
+  if (targetSessions <= 0 || durationDays <= 0) return null;
+  return { targetSessions, durationDays };
+}
+
+function initialStep(friendId: number | null, rematchGoal: ChallengeGoal | null): ChallengeStep {
+  if (friendId == null) return "friend";
+  return rematchGoal == null ? "goal" : "review";
 }
 
 export function challengeDraftReducer(

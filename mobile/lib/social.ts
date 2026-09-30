@@ -4,6 +4,7 @@ import type {
   BuddyStatusDto,
   CheckinStatusDto,
   CommitmentDto,
+  DuelRecordDto,
   IdentityStateDto,
   SocialCommentDto,
   SocialChallengeDto,
@@ -22,6 +23,10 @@ export async function fetchCheckinStatus(token: string): Promise<CheckinStatusDt
 
 export async function fetchChallenges(token: string): Promise<SocialChallengeDto[]> {
   return apiJson<SocialChallengeDto[]>("/social/challenges", { token });
+}
+
+export async function fetchDuelRecords(token: string): Promise<DuelRecordDto[]> {
+  return apiJson<DuelRecordDto[]>("/social/challenges/records", { token });
 }
 
 export async function fetchChallenge(

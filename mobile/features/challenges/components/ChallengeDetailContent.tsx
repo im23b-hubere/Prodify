@@ -5,8 +5,9 @@ import { AppCard } from "../../../components/ui/AppCard";
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { SecondaryButton } from "../../../components/ui/SecondaryButton";
 import { colors } from "../../../constants/theme";
-import { FriendsDuelScoreboard } from "../../friends/components/FriendsDuelScoreboard";
+import { DuelScoreboard } from "./DuelScoreboard";
 import { challengeDetailStyles as styles } from "../challengeDetail.styles";
+import { duelParticipants } from "../duelParticipants";
 import type { ChallengeDetailController } from "../hooks/useChallengeDetail";
 
 type Props = {
@@ -39,14 +40,11 @@ function ChallengeHero({ detail, currentUserId }: Props) {
   const { t } = useTranslation();
   const challenge = detail.challenge;
   if (!challenge) return null;
-  const you = challenge.members.find((member) => member.user_id === currentUserId);
-  const opponent = challenge.members
-    .filter((member) => member.user_id !== currentUserId)
-    .sort((left, right) => right.progress_sessions - left.progress_sessions)[0];
+  const { you, opponent } = duelParticipants(challenge, currentUserId);
   return (
     <View style={styles.heroCard}>
       <Text style={styles.heroTitle}>{challenge.title}</Text>
-      <FriendsDuelScoreboard
+      <DuelScoreboard
         t={t}
         leftLabel={t("friendsScreen.buddyDuelYouLabel")}
         leftScore={you?.progress_sessions ?? 0}
@@ -75,11 +73,7 @@ function ChallengeRoster({ detail, currentUserId }: Props) {
         return (
           <View
             key={member.user_id}
-            style={[
-              styles.memberRow,
-              styles.memberHeader,
-              index > 0 && styles.memberRowBorder,
-            ]}
+            style={[styles.memberRow, styles.memberHeader, index > 0 && styles.memberRowBorder]}
           >
             <Text style={[styles.memberName, isCurrentUser && styles.memberNameMe]}>
               {member.username}

@@ -71,6 +71,7 @@ const userASnapshot = {
       members: [],
     },
   ],
+  duelRecords: [],
   commitment: {
     week_start: "2026-01-01",
     target_sessions: 3,
@@ -116,19 +117,14 @@ const userBSnapshot = {
   buddy: null,
   checkin: null,
   challenges: [],
+  duelRecords: [],
   commitment: null,
   recap: null,
 } satisfies FriendsDashboardSnapshot;
 
 function renderFriendsDataHook(token: string | null, userId: number | null) {
   return renderHook(
-    ({
-      token: hookToken,
-      userId: hookUserId,
-    }: {
-      token: string | null;
-      userId: number | null;
-    }) => {
+    ({ token: hookToken, userId: hookUserId }: { token: string | null; userId: number | null }) => {
       const state = useFriendsScreenState();
       const data = useFriendsDashboardData({
         token: hookToken,
@@ -153,6 +149,7 @@ describe("resetFriendsAccountOwnedState", () => {
       setBuddy: jest.fn(),
       setCheckin: jest.fn(),
       setChallenges: jest.fn(),
+      setDuelRecords: jest.fn(),
       setCommitment: jest.fn(),
       setRecap: jest.fn(),
       setFeedMetricsBySession: jest.fn(),
@@ -414,6 +411,7 @@ describe("useFriendsDashboardData auth scope", () => {
       buddy: null,
       checkin: null,
       challenges: [],
+      duelRecords: [],
       commitment: null,
       recap: null,
     } satisfies FriendsDashboardSnapshot;

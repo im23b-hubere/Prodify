@@ -2,8 +2,6 @@ import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../../types/friends";
-import { FriendsActivitySection } from "./FriendsActivitySection";
-import { FriendsLeaderboardSection } from "./FriendsLeaderboardSection";
 
 export type FriendsTriggerCard = {
   key: string;
@@ -25,4 +23,3 @@ export type FriendsOverviewProps = {
   onCompleteTriggerAction: () => void;
   onAddFriendFromEmptyFeed: () => void;
 };
-

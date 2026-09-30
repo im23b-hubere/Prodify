@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
 import { subscribeChallengeCreated } from "../../challengeCreate/challengeCreatedSignal";
+import type { RematchRequest } from "../../challenges/board/duelBoard";
 import { useFriendsActivityRenderer } from "./useFriendsActivityRenderer";
 import { useFriendsDashboardData } from "./useFriendsDashboardData";
 import { useDuelInviteNotifications, useFriendsNotifications } from "./useFriendsNotifications";
@@ -69,6 +70,27 @@ export function useFriendsScreenController() {
     openStatsYourWeek,
   });
   const openChallengeCreate = useCallback(() => router.push("/challenge/new" as Href), [router]);
+  const challengeFriend = useCallback(
+    (friendId: number) =>
+      router.push({ pathname: "/challenge/new", params: { friendId: String(friendId) } } as Href),
+    [router],
+  );
+  const rematchDuel = useCallback(
+    ({ friendId, targetSessions, durationDays }: RematchRequest) =>
+      router.push({
+        pathname: "/challenge/new",
+        params: {
+          friendId: String(friendId),
+          target: String(targetSessions),
+          days: String(durationDays),
+        },
+      } as Href),
+    [router],
+  );
+  const openChallenge = useCallback(
+    (challengeId: number) => router.push(`/challenge/${challengeId}` as Href),
+    [router],
+  );
   useEffect(
     () => subscribeChallengeCreated(() => void load({ force: true }).catch(() => undefined)),
     [load],
@@ -85,6 +107,9 @@ export function useFriendsScreenController() {
     renderActivity,
     openSessionSetup,
     openChallengeCreate,
+    challengeFriend,
+    rematchDuel,
+    openChallenge,
   };
 }
 

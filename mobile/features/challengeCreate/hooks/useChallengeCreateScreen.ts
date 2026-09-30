@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
 import { parseProfileUserId, profilePictureUrl } from "../../profile/friendProfilePresentation";
+import { parseRematchGoal } from "../challengeDraft";
 import { useChallengeCreateData } from "./useChallengeCreateData";
 import { useChallengeDraft } from "./useChallengeDraft";
 import { useChallengeSubmit } from "./useChallengeSubmit";
@@ -14,7 +15,11 @@ export function useChallengeCreateScreen() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const router = useRouter();
-  const { friendId } = useLocalSearchParams<{ friendId?: string }>();
+  const { friendId, target, days } = useLocalSearchParams<{
+    friendId?: string;
+    target?: string;
+    days?: string;
+  }>();
   const data = useChallengeCreateData(token, user?.id);
   const you = {
     name: user?.username ?? t("challengeCreate.you"),
@@ -26,6 +31,7 @@ export function useChallengeCreateScreen() {
     userId: user?.id,
     yourName: you.name,
     initialFriendId: parseProfileUserId(friendId),
+    rematchGoal: parseRematchGoal(target, days),
   });
   const { submitState, submit } = useChallengeSubmit(token, user?.id);
 
