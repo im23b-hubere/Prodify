@@ -7,12 +7,15 @@ import { colors, radii, spacing } from "../../../constants/theme";
 
 const ACCENT_TINT = "rgba(255,61,0,0.12)";
 export const LIVE_AVATAR_SIZE = 56;
+const LIVE_PULSE_SCALE = 1.3;
+/** Room the ripple grows into beyond the avatar; the scroll view clips anything outside it. */
+const LIVE_PULSE_BLEED = Math.ceil((LIVE_AVATAR_SIZE * (LIVE_PULSE_SCALE - 1)) / 2) + 2;
 
 /** Slow outward ripple behind a live friend's avatar; a loop, so it runs as a CSS animation. */
 export const LIVE_PULSE_ANIMATION = {
   animationName: {
     from: { transform: [{ scale: 1 }], opacity: 0.7 },
-    to: { transform: [{ scale: 1.3 }], opacity: 0 },
+    to: { transform: [{ scale: LIVE_PULSE_SCALE }], opacity: 0 },
   },
   animationDuration: 1600,
   animationIterationCount: "infinite",
@@ -20,7 +23,12 @@ export const LIVE_PULSE_ANIMATION = {
 } as const satisfies CSSAnimationProperties;
 
 const activityStyles = StyleSheet.create({
-  liveContent: { gap: spacing.md, paddingRight: spacing.md },
+  liveStrip: { marginHorizontal: -spacing.md, marginVertical: -LIVE_PULSE_BLEED },
+  liveContent: {
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: LIVE_PULSE_BLEED,
+  },
   liveFriend: { width: 64, alignItems: "center", gap: 6 },
   liveAvatar: {
     width: LIVE_AVATAR_SIZE,

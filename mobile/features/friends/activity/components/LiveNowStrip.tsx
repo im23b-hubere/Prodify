@@ -37,6 +37,7 @@ export const LiveNowStrip = memo(function LiveNowStrip({ t, live, onOpenProfile 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.liveStrip}
         contentContainerStyle={styles.liveContent}
       >
         {live.map((item) => {
