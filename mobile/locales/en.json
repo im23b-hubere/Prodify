@@ -479,7 +479,6 @@
     "togetherViewInStats": "View progress in Stats",
     "createChallengeSimpleHint": "Pick a session target, length, and one friend to compete with.",
     "challengePickFriendLabel": "Compete with",
-    "challengePickFriendRequired": "Pick at least one friend for the challenge.",
     "heroCtaStartSession": "Start a session",
     "heroCtaCatchUp": "Catch up now",
     "heroCtaRaiseGoal": "Raise my target",
@@ -555,7 +554,6 @@
     "couldNotSetGoal": "Could not set goal",
     "couldNotAddGoal": "Could not add extra goal",
     "couldNotSendComment": "Could not send comment",
-    "couldNotCreateChallenge": "Could not create challenge",
     "couldNotUpdateChallenge": "Could not update challenge",
     "couldNotEndChallenge": "Could not end challenge",
     "couldNotLeaveChallenge": "Could not leave challenge",
@@ -570,7 +568,6 @@
     "toastMomentum": "You're building creative momentum.",
     "toastExtraGoal": "Extra goal added.",
     "toastSocialEngaged": "You're keeping your producer circle engaged.",
-    "toastChallengeLive": "Creative challenge is live.",
     "toastChallengeUpdated": "Challenge updated.",
     "toastChallengeEnded": "Challenge ended.",
     "toastChallengeLeft": "You left the challenge.",
@@ -586,7 +583,6 @@
     "checkinDoneToday": "Studio day logged",
     "shippedThisWeekNote": "Studio day logged manually.",
     "toastChallengeJoined": "You're in the challenge. Finish sessions to climb the board.",
-    "toastChallengeInvited": "Invite sent.",
     "challengeDecline": "Decline",
     "duelInvitesTitle_one": "Duel invite",
     "duelInvitesTitle_other": "Duel invites",
@@ -710,9 +706,7 @@
     "createChallengeHint": "Pick a name, session target, and length. Invite friends to compete.",
     "challengeTitleLabel": "Challenge name",
     "challengeTitlePlaceholder": "e.g. 7-day beat sprint",
-    "challengeTargetLabel": "Sessions to complete",
     "challengeTargetPlaceholder": "5",
-    "challengeDurationLabel": "Length in days",
     "challengeDurationPlaceholder": "7",
     "participantsLabel": "Participants",
     "creatingChallenge": "Creating...",
@@ -1323,7 +1317,81 @@
     "dayUnit_one": "day",
     "dayUnit_other": "days"
   },
+  "challengeCreate": {
+    "you": "You",
+    "loading": "Loading your friends…",
+    "loadErrorTitle": "Couldn't load duel setup",
+    "loadErrorMessage": "Check your connection and try again.",
+    "back": "Back",
+    "close": "Close",
+    "progressA11y": "Step {{step}} of {{total}}",
+    "continue": "Continue",
+    "send": "Send challenge",
+    "sendFailed": "Couldn't send the challenge. Try again.",
+    "done": "Done",
+    "steps": {
+      "friend": {
+        "title": "Who's up?",
+        "subtitle": "Pick a friend to challenge."
+      },
+      "goal": {
+        "title": "Set the stakes",
+        "subtitle": "First to hit the target wins."
+      },
+      "review": {
+        "title": "Ready to duel",
+        "subtitle": "Check the details and send it."
+      }
+    },
+    "noFriendsTitle": "No friends yet",
+    "noFriendsMessage": "Add a friend to start your first duel.",
+    "addFriend": "Add friend",
+    "searchPlaceholder": "Search friends",
+    "noSearchResults": "No friend matches \"{{query}}\".",
+    "statusInvitePending": "Invite open",
+    "statusInDuel": "In a duel",
+    "fineTune": "Fine-tune",
+    "sessionsLabel": "Sessions",
+    "daysLabel": "Days",
+    "fewerSessions": "Fewer sessions",
+    "moreSessions": "More sessions",
+    "fewerDays": "Fewer days",
+    "moreDays": "More days",
+    "pace_one": "About {{count}} session per week",
+    "pace_other": "About {{count}} sessions per week",
+    "presetMeta": "{{sessions}} sessions · {{days}} days",
+    "presets": {
+      "warmup": {
+        "title": "Warm-up",
+        "tagline": "Easy start"
+      },
+      "classic": {
+        "title": "Classic",
+        "tagline": "The sweet spot"
+      },
+      "grind": {
+        "title": "Grind",
+        "tagline": "For the committed"
+      }
+    },
+    "vsA11y": "You versus {{friend}}",
+    "sessionsChip_one": "{{count}} session",
+    "sessionsChip_other": "{{count}} sessions",
+    "daysChip_one": "{{count}} day",
+    "daysChip_other": "{{count}} days",
+    "expiryChip": "Invite expires in 48h",
+    "titleLabel": "Duel title",
+    "editTitle": "Edit title",
+    "useDefaultTitle": "Use default title",
+    "hintPickFriend": "Pick a friend to continue.",
+    "hintInvitePending": "You already have an open invite with {{friend}}.",
+    "hintTitleShort": "Title needs at least 3 characters.",
+    "hintTitleLong": "Title can be at most 120 characters.",
+    "sentTitle": "Challenge sent!",
+    "sentBody": "{{friend}} will get your invite right away."
+  },
   "friendProfile": {
+    "challengeCta": "Challenge {{name}}",
     "invalidProfile": "Invalid profile.",
     "loadError": "Could not load profile.",
     "loadingProfile": "Loading profile…",
@@ -1378,7 +1446,7 @@
       "night_owl": "Night owl"
     }
   },
-    "weeklyRecap": {
+  "weeklyRecap": {
     "title": "Weekly recap",
     "needSignInTitle": "Sign in to see your recap",
     "needSignInBody": "Weekly reviews use your account data after you log in.",

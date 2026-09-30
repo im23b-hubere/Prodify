@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
+import { subscribeChallengeCreated } from "../../challengeCreate/challengeCreatedSignal";
 import { useFriendsActivityRenderer } from "./useFriendsActivityRenderer";
 import { useFriendsDashboardData } from "./useFriendsDashboardData";
 import { useDuelInviteNotifications, useFriendsNotifications } from "./useFriendsNotifications";
@@ -67,29 +68,11 @@ export function useFriendsScreenController() {
     openSession,
     openStatsYourWeek,
   });
-  const {
-    setChallengeKind,
-    setChallengeTarget,
-    setChallengeDuration,
-    setChallengeTitle,
-    setSelectedMembers,
-    setChallengeCreateOpen,
-  } = state;
-  const openChallengeCreate = useCallback(() => {
-    setChallengeKind("duel");
-    setChallengeTarget("5");
-    setChallengeDuration("7");
-    setChallengeTitle("");
-    setSelectedMembers([]);
-    setChallengeCreateOpen(true);
-  }, [
-    setChallengeCreateOpen,
-    setChallengeDuration,
-    setChallengeKind,
-    setChallengeTarget,
-    setChallengeTitle,
-    setSelectedMembers,
-  ]);
+  const openChallengeCreate = useCallback(() => router.push("/challenge/new" as Href), [router]);
+  useEffect(
+    () => subscribeChallengeCreated(() => void load({ force: true }).catch(() => undefined)),
+    [load],
+  );
 
   return {
     t,

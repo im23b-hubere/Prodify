@@ -31,19 +31,12 @@ export function resetFriendsAccountOwnedState(
 
   state.setAddName("");
   state.setReactionUsers([]);
-  state.setSelectedMembers([]);
-  state.setChallengeTitle("");
-  state.setChallengeKind("duel");
-  state.setChallengeTarget("5");
-  state.setChallengeDuration("7");
   state.setAddOpen(false);
   state.setReactionUsersOpen(false);
-  state.setChallengeCreateOpen(false);
   state.setBuddyPickerOpen(false);
 
   state.setActionBusy(null);
   state.setAddBusy(false);
-  state.setChallengeCreateBusy(false);
   state.setBusyActionKey(null);
   state.setReactionUsersLoading(false);
   state.setReactionBusyBySession({});

@@ -85,12 +85,6 @@ function useFriendsModalState() {
   const [addName, setAddName] = useState("");
   const [reactionUsersOpen, setReactionUsersOpen] = useState(false);
   const [reactionUsers, setReactionUsers] = useState<SocialReactionUserDto[]>([]);
-  const [challengeCreateOpen, setChallengeCreateOpen] = useState(false);
-  const [challengeTitle, setChallengeTitle] = useState("");
-  const [challengeKind, setChallengeKind] = useState<"duel" | "team" | "group">("duel");
-  const [challengeTarget, setChallengeTarget] = useState("5");
-  const [challengeDuration, setChallengeDuration] = useState("7");
-  const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [buddyPickerOpen, setBuddyPickerOpen] = useState(false);
   const [sectionTab, setSectionTab] = useState<FriendsSectionTab>("overview");
 
@@ -103,18 +97,6 @@ function useFriendsModalState() {
     setReactionUsersOpen,
     reactionUsers,
     setReactionUsers,
-    challengeCreateOpen,
-    setChallengeCreateOpen,
-    challengeTitle,
-    setChallengeTitle,
-    challengeKind,
-    setChallengeKind,
-    challengeTarget,
-    setChallengeTarget,
-    challengeDuration,
-    setChallengeDuration,
-    selectedMembers,
-    setSelectedMembers,
     buddyPickerOpen,
     setBuddyPickerOpen,
     sectionTab,
@@ -126,7 +108,6 @@ function useFriendsFeedbackState() {
   const [addBusy, setAddBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [challengeCreateBusy, setChallengeCreateBusy] = useState(false);
   const [triggerIndex, setTriggerIndex] = useState(0);
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [reactionUsersLoading, setReactionUsersLoading] = useState(false);
@@ -157,8 +138,6 @@ function useFriendsFeedbackState() {
     toastMessage,
     setToastMessage,
     showToast,
-    challengeCreateBusy,
-    setChallengeCreateBusy,
     triggerIndex,
     setTriggerIndex,
     busyActionKey,

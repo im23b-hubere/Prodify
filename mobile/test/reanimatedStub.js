@@ -6,6 +6,7 @@ const enter = {
   delay: () => enter,
   springify: () => enter,
   damping: () => enter,
+  easing: () => enter,
 };
 
 module.exports = {
@@ -18,6 +19,9 @@ module.exports = {
   FadeOut: enter,
   FadeInUp: enter,
   FadeInDown: enter,
+  FadeInLeft: enter,
+  FadeInRight: enter,
+  ZoomIn: enter,
   SlideInDown: enter,
   SlideOutDown: enter,
   useSharedValue: (initial) => {
@@ -49,6 +53,7 @@ module.exports = {
     quad: identity,
     bezier: () => identity,
   },
+  cubicBezier: () => "ease-out",
   interpolate: () => 0,
   interpolateColor: (_value, _input, output) => output[0],
   Extrapolation: { CLAMP: "clamp" },

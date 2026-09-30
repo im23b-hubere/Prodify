@@ -26,9 +26,16 @@ type Props = {
   onBack: () => void;
   onOpenFriends: () => void;
   onOpenSession: (id: number, ownerName: string) => void;
+  onChallenge: (friendId: number) => void;
 };
 
-export function FriendProfileView({ state, onBack, onOpenFriends, onOpenSession }: Props) {
+export function FriendProfileView({
+  state,
+  onBack,
+  onOpenFriends,
+  onOpenSession,
+  onChallenge,
+}: Props) {
   const { t } = useTranslation();
   if (state.loadState === "loading" && !state.refreshing) {
     return (
@@ -67,6 +74,7 @@ export function FriendProfileView({ state, onBack, onOpenFriends, onOpenSession 
       onBack={onBack}
       onOpenFriends={onOpenFriends}
       onOpenSession={onOpenSession}
+      onChallenge={onChallenge}
     />
   );
 }
@@ -82,7 +90,7 @@ function ProfileShell({ children, onBack }: { children: React.ReactNode; onBack:
   );
 }
 
-function ReadyProfile({ state, onBack, onOpenFriends, onOpenSession }: Props) {
+function ReadyProfile({ state, onBack, onOpenFriends, onOpenSession, onChallenge }: Props) {
   const locked = state.status === "none" || state.status === "pending";
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -102,7 +110,7 @@ function ReadyProfile({ state, onBack, onOpenFriends, onOpenSession }: Props) {
       >
         {locked ? <LockedProfile state={state} onOpenFriends={onOpenFriends} /> : null}
         {!locked && state.profile && state.stats ? (
-          <VisibleProfile state={state} onOpenSession={onOpenSession} />
+          <VisibleProfile state={state} onOpenSession={onOpenSession} onChallenge={onChallenge} />
         ) : null}
       </ScrollView>
     </SafeAreaView>
@@ -141,9 +149,11 @@ function LockedProfile({
 function VisibleProfile({
   state,
   onOpenSession,
+  onChallenge,
 }: {
   state: FriendProfileState;
   onOpenSession: Props["onOpenSession"];
+  onChallenge: Props["onChallenge"];
 }) {
   const { t } = useTranslation();
   const { profile, stats } = state;
@@ -164,6 +174,15 @@ function VisibleProfile({
       {state.status !== "self" ? (
         <View style={styles.block}>
           <StreakComparison yourStreak={state.yourStreak} theirStreak={stats.current_streak} />
+        </View>
+      ) : null}
+      {state.status === "accepted" ? (
+        <View style={styles.block}>
+          <PrimaryButton
+            label={t("friendProfile.challengeCta", { name: profile.username })}
+            onPress={() => onChallenge(profile.id)}
+            testID="friend-profile-challenge"
+          />
         </View>
       ) : null}
       <ReliabilityCard profile={profile} t={t} />

@@ -27,5 +27,12 @@ export function useFriendProfileNavigation() {
     [router],
   );
 
-  return { userId, goBack, openFriends, openSession };
+  const openChallengeCreate = useCallback(
+    (friendId: number) => {
+      router.push({ pathname: "/challenge/new", params: { friendId: String(friendId) } } as Href);
+    },
+    [router],
+  );
+
+  return { userId, goBack, openFriends, openSession, openChallengeCreate };
 }

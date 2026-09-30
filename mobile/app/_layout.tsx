@@ -78,6 +78,16 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                name="challenge/new"
+                options={{
+                  presentation: "formSheet",
+                  sheetAllowedDetents: [0.92],
+                  sheetGrabberVisible: true,
+                  sheetCornerRadius: 28,
+                  contentStyle: { backgroundColor: colors.background },
+                }}
+              />
+              <Stack.Screen
                 name="challenge/[id]"
                 options={{
                   animation: "slide_from_right",

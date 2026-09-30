@@ -5,7 +5,6 @@ import { Alert } from "react-native";
 import { recordMomentumAction } from "../../../lib/momentum";
 import {
   acceptSocialChallenge,
-  createChallenge,
   declineSocialChallenge,
   joinSocialChallenge,
 } from "../../../lib/social";
@@ -83,74 +82,10 @@ export function useFriendChallengeActions({ token, userId, t, load, state }: Act
     [load, state, t, token],
   );
 
-  const resetChallengeModal = useCallback(() => {
-    state.setChallengeCreateOpen(false);
-    state.setChallengeTitle("");
-    state.setChallengeTarget("5");
-    state.setChallengeDuration("7");
-    state.setSelectedMembers([]);
-  }, [state]);
-
-  const submitCreateChallenge = useCallback(async () => {
-    if (!token) return;
-    const title = state.challengeTitle.trim();
-    const target = Number.parseInt(state.challengeTarget, 10);
-    const durationDays = Number.parseInt(state.challengeDuration, 10);
-    const memberIds = state.selectedMembers.filter((id) => id !== userId);
-
-    if (
-      title.length < 3 ||
-      !Number.isFinite(target) ||
-      target < 1 ||
-      !Number.isFinite(durationDays) ||
-      durationDays < 3
-    ) {
-      Alert.alert(
-        t("friendsScreen.invalidChallengeTitle"),
-        t("friendsScreen.invalidChallengeBody"),
-      );
-      return;
-    }
-
-    if (memberIds.length === 0) {
-      Alert.alert(
-        t("friendsScreen.invalidChallengeTitle"),
-        t("friendsScreen.challengePickFriendRequired"),
-      );
-      return;
-    }
-
-    state.setChallengeCreateBusy(true);
-    try {
-      const created = await createChallenge(token, {
-        challenge_kind: state.challengeKind,
-        title,
-        target_sessions: target,
-        duration_days: durationDays,
-        member_user_ids: memberIds,
-      });
-      resetChallengeModal();
-      await load({ force: true });
-      if (userId) {
-        await recordMomentumAction(userId, "challenge");
-      }
-      state.showToast(
-        t(created.status === "pending" ? "friendsScreen.toastChallengeInvited" : "friendsScreen.toastChallengeLive"),
-      );
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t("common.tryAgain");
-      Alert.alert(t("friendsScreen.couldNotCreateChallenge"), msg);
-    } finally {
-      state.setChallengeCreateBusy(false);
-    }
-  }, [load, resetChallengeModal, state, t, token, userId]);
-
   return {
     challengeCards,
     joinSocialChallengeById,
     acceptChallengeInvite,
     declineChallengeInvite,
-    submitCreateChallenge,
-    resetChallengeModal,
   };
 }

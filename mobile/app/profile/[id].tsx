@@ -20,6 +20,7 @@ function FriendProfileScreen() {
       onBack={navigation.goBack}
       onOpenFriends={navigation.openFriends}
       onOpenSession={navigation.openSession}
+      onChallenge={navigation.openChallengeCreate}
     />
   );
 }
