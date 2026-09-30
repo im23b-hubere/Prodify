@@ -8,15 +8,16 @@ import { friendsInboxStyles as styles } from "../../styles/friendsInbox.styles";
 
 const AVATAR_SIZE = 44;
 
+export type InboxPendingAction = "accept" | "decline" | null;
+
 type Props = {
   name: string;
   photoUri: string | null;
   meta: string;
   acceptLabel: string;
   declineLabel: string;
-  /** The accept button shows a spinner; both buttons are disabled while `busy`. */
-  accepting: boolean;
-  busy: boolean;
+  /** The answer being sent: that button shows a spinner, both stay disabled until it settles. */
+  pendingAction: InboxPendingAction;
   divided: boolean;
   onAccept: () => void;
   onDecline: () => void;
@@ -30,13 +31,15 @@ export function InboxRow({
   meta,
   acceptLabel,
   declineLabel,
-  accepting,
-  busy,
+  pendingAction,
   divided,
   onAccept,
   onDecline,
   testID,
 }: Props) {
+  const busy = pendingAction !== null;
+  const accepting = pendingAction === "accept";
+  const declining = pendingAction === "decline";
   return (
     <View style={[styles.row, styles.inboxRow]} testID={testID}>
       {divided ? <View style={styles.rowDivider} /> : null}
@@ -52,13 +55,22 @@ export function InboxRow({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${declineLabel}, ${name}`}
-        accessibilityState={{ disabled: busy }}
+        accessibilityState={{ disabled: busy, busy: declining }}
         style={({ pressed }) => [styles.declineBtn, pressed && styles.actionPressed]}
         disabled={busy}
         hitSlop={6}
         onPress={onDecline}
+        testID={`${testID}-decline`}
       >
-        <Text style={styles.declineText}>{declineLabel}</Text>
+        <Text style={[styles.declineText, declining && styles.labelHidden]}>{declineLabel}</Text>
+        {declining ? (
+          <ActivityIndicator
+            style={styles.declineSpinner}
+            size="small"
+            color={colors.textSecondary}
+            testID={`${testID}-decline-spinner`}
+          />
+        ) : null}
       </Pressable>
       <PressableScale
         accessibilityRole="button"
@@ -70,9 +82,14 @@ export function InboxRow({
           Haptics.selectionAsync().catch(() => undefined);
           onAccept();
         }}
+        testID={`${testID}-accept`}
       >
         {accepting ? (
-          <ActivityIndicator size="small" color={colors.textPrimary} />
+          <ActivityIndicator
+            size="small"
+            color={colors.textPrimary}
+            testID={`${testID}-accept-spinner`}
+          />
         ) : (
           <Text style={styles.acceptPillText}>{acceptLabel}</Text>
         )}

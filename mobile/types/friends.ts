@@ -121,6 +121,12 @@ export type CommitmentDto = {
   witness_usernames?: string[];
 };
 
+/** A friend's weekly commitment as they allow you to see it: progress only. */
+export type FriendCommitmentDto = Pick<
+  CommitmentDto,
+  "week_start" | "target_sessions" | "current_sessions" | "status"
+>;
+
 export type SocialReactionDto = {
   target_type: string;
   target_id: number;

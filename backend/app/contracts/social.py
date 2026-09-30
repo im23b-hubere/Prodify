@@ -216,6 +216,15 @@ class CommitmentPublic(BaseModel):
     witness_usernames: list[str] = Field(default_factory=list)
 
 
+class FriendCommitmentPublic(BaseModel):
+    """What a friend may see of someone's weekly commitment: progress, never witnesses or billing hints."""
+
+    week_start: str
+    target_sessions: int
+    current_sessions: int
+    status: Literal["on_track", "behind", "completed"]
+
+
 class StreakRescueBody(BaseModel):
     rescued_user_id: int = Field(gt=0)
 

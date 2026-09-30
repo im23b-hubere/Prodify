@@ -16,6 +16,9 @@ import type { EntitlementDto } from "../../../types/outcomes";
 
 export type FriendsSectionTab = "overview" | "challenges";
 
+/** Incoming friend requests being answered, keyed by request id, so only that button shows progress. */
+export type FriendRequestsInFlight = Record<number, "accept" | "decline">;
+
 type FeedMetrics = Record<
   number,
   { reactionsCount: number; commentsCount: number; viewerReaction: string | null }
@@ -110,7 +113,7 @@ function useFriendsModalState() {
 
 function useFriendsFeedbackState() {
   const [addBusy, setAddBusy] = useState(false);
-  const [actionBusy, setActionBusy] = useState<number | null>(null);
+  const [requestsInFlight, setRequestsInFlight] = useState<FriendRequestsInFlight>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [busyActionKey, setBusyActionKey] = useState<string | null>(null);
   const [reactionUsersLoading, setReactionUsersLoading] = useState(false);
@@ -136,8 +139,8 @@ function useFriendsFeedbackState() {
   return {
     addBusy,
     setAddBusy,
-    actionBusy,
-    setActionBusy,
+    requestsInFlight,
+    setRequestsInFlight,
     toastMessage,
     setToastMessage,
     showToast,

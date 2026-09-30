@@ -15,6 +15,7 @@ import { friendProfileStyles as styles } from "../friendProfile.styles";
 import type { FriendProfileState } from "../hooks/useFriendProfile";
 import {
   AchievementsCard,
+  CommitmentCard,
   OverviewCard,
   RecentSessionsCard,
   ReliabilityCard,
@@ -185,6 +186,7 @@ function VisibleProfile({
           />
         </View>
       ) : null}
+      {state.commitment ? <CommitmentCard commitment={state.commitment} t={t} /> : null}
       <ReliabilityCard profile={profile} t={t} />
       <OverviewCard
         profile={profile}

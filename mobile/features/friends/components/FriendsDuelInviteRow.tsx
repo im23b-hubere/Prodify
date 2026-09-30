@@ -12,6 +12,12 @@ export type DuelInviteActions = {
   onDeclineChallengeInvite: (challengeId: number) => void;
 };
 
+function duelInvitePendingAction(busyActionKey: string | null, challengeId: number) {
+  if (busyActionKey === `accept_challenge_${challengeId}`) return "accept";
+  if (busyActionKey === `decline_challenge_${challengeId}`) return "decline";
+  return null;
+}
+
 /** An invite someone sent to this user: sender, stakes and a clear accept. */
 export function FriendsDuelInviteRow({
   challenge,
@@ -24,7 +30,6 @@ export function FriendsDuelInviteRow({
 }) {
   const { t } = actions;
   const sender = challenge.members.find((member) => member.user_id === challenge.owner_id);
-  const accepting = actions.busyActionKey === `accept_challenge_${challenge.id}`;
   const stakes = t("duelBoard.inviteStakes", {
     sessions: challenge.target_sessions,
     days: challenge.duration_days ?? 7,
@@ -36,8 +41,7 @@ export function FriendsDuelInviteRow({
       meta={`${t("friendsScreen.challengeInviteIncomingMeta")} · ${stakes}`}
       acceptLabel={t("friendsScreen.accept")}
       declineLabel={t("friendsScreen.challengeDecline")}
-      accepting={accepting}
-      busy={accepting || actions.busyActionKey === `decline_challenge_${challenge.id}`}
+      pendingAction={duelInvitePendingAction(actions.busyActionKey, challenge.id)}
       divided={divided}
       onAccept={() => actions.onAcceptChallengeInvite(challenge.id)}
       onDecline={() => actions.onDeclineChallengeInvite(challenge.id)}

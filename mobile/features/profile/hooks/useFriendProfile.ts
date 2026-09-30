@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/AuthContext";
 import { apiJson } from "../../../lib/client";
 import { fetchBuddyStatus, fetchWeeklyRecap } from "../../../lib/social";
-import type { BuddyStatusDto, SocialRecapDto } from "../../../types/friends";
+import type { BuddyStatusDto, FriendCommitmentDto, SocialRecapDto } from "../../../types/friends";
 import type { StreakOverviewDto } from "../../../types/streak";
 
 export type FriendStatus = "self" | "none" | "pending" | "accepted";
@@ -64,12 +64,13 @@ async function loadFriendContext(token: string, userId: number) {
 }
 
 async function loadVisibleProfile(token: string, userId: number) {
-  const [profile, stats, sessions] = await Promise.all([
+  const [profile, stats, sessions, commitment] = await Promise.all([
     apiJson<FriendProfilePayload>(`/users/${userId}/profile`, { token }),
     apiJson<FriendStatsPayload>(`/users/${userId}/stats`, { token }),
     apiJson<FriendSessionItem[]>(`/users/${userId}/sessions?limit=10`, { token }),
+    apiJson<FriendCommitmentDto | null>(`/users/${userId}/commitment`, { token }).catch(() => null),
   ]);
-  return { profile, stats, sessions: Array.isArray(sessions) ? sessions : [] };
+  return { profile, stats, sessions: Array.isArray(sessions) ? sessions : [], commitment };
 }
 
 function useFriendProfileLifecycle(load: (options?: { silent?: boolean }) => Promise<void>) {
@@ -104,6 +105,7 @@ export function useFriendProfile(userId: number | null) {
   const [profile, setProfile] = useState<FriendProfilePayload | null>(null);
   const [stats, setStats] = useState<FriendStatsPayload | null>(null);
   const [sessions, setSessions] = useState<FriendSessionItem[]>([]);
+  const [commitment, setCommitment] = useState<FriendCommitmentDto | null>(null);
   const [yourStreak, setYourStreak] = useState(0);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +141,7 @@ export function useFriendProfile(userId: number | null) {
           setProfile(null);
           setStats(null);
           setSessions([]);
+          setCommitment(null);
           setLoadState("ready");
           return;
         }
@@ -146,6 +149,7 @@ export function useFriendProfile(userId: number | null) {
         setProfile(visibleProfile.profile);
         setStats(visibleProfile.stats);
         setSessions(visibleProfile.sessions);
+        setCommitment(visibleProfile.commitment);
         setLoadState("ready");
       } catch (loadError) {
         setLoadState("error");
@@ -165,6 +169,7 @@ export function useFriendProfile(userId: number | null) {
     profile,
     stats,
     sessions,
+    commitment,
     yourStreak,
     loadState,
     error,

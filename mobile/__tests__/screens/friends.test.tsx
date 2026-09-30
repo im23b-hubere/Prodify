@@ -92,7 +92,7 @@ const createFriendsState = (overrides: Record<string, unknown> = {}) => ({
   addName: "",
   setAddName: jest.fn(),
   addBusy: false,
-  actionBusy: null,
+  requestsInFlight: {},
   buddy: null,
   challenges: [],
   duelRecords: [],
@@ -598,6 +598,21 @@ describe("Friends Screen", () => {
       expect(supportStreakBreak).toHaveBeenCalledWith(streakBreak);
     });
 
+    it("opens the friend's profile to view their commitment", () => {
+      const commitment = {
+        session_id: 0,
+        user_id: 3,
+        username: "carol",
+        session_type: "commitment_published",
+        activity_at: new Date().toISOString(),
+        status: "commitment_published",
+        event_message: "carol published a commitment: 4 sessions this week",
+      };
+      const { getByText } = renderActivity([commitment]);
+      fireEvent.press(getByText("friendsScreen.commitmentViewCta"));
+      expect(mockPush).toHaveBeenCalledWith("/profile/3");
+    });
+
     it("shows ten entries until you ask for more", () => {
       const many = Array.from({ length: 12 }, (_, index) => ({
         ...finishedSession,
@@ -649,6 +664,31 @@ describe("Friends Screen", () => {
     const { getByText } = render(<FriendsScreen />);
     fireEvent.press(getByText("friendsScreen.accept"));
     expect(mockAcceptRequest).toHaveBeenCalledWith(42);
+  });
+
+  it.each([
+    ["accept", "decline"],
+    ["decline", "accept"],
+  ] as const)("shows progress only on the %s button while answering a request", (active, idle) => {
+    mockUseFriendsScreenState.mockReturnValue(
+      createFriendsState({
+        loading: false,
+        incoming: [{ id: 42, user_id: 3, username: "carol", created_at: "2026-07-01T10:00:00Z" }],
+        requestsInFlight: { 42: active },
+      }),
+    );
+    mockUseFriendsScreenActions.mockReturnValue(createFriendsActions({ hasOtherFriends: true }));
+    const { getByTestId, queryByTestId } = render(<FriendsScreen />);
+    expect(getByTestId(`friend-request-42-${active}-spinner`)).toBeTruthy();
+    expect(queryByTestId(`friend-request-42-${idle}-spinner`)).toBeNull();
+    expect(getByTestId(`friend-request-42-${active}`).props.accessibilityState).toMatchObject({
+      busy: true,
+      disabled: true,
+    });
+    expect(getByTestId(`friend-request-42-${idle}`).props.accessibilityState).toMatchObject({
+      busy: false,
+      disabled: true,
+    });
   });
 
   it("shows incoming friend requests above ranking and activity", () => {

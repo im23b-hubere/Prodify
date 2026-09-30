@@ -7,7 +7,7 @@ import type {
   FriendSessionItem,
   FriendStatsPayload,
 } from "../hooks/useFriendProfile";
-import type { BuddyStatusDto, SocialRecapDto } from "../../../types/friends";
+import type { BuddyStatusDto, FriendCommitmentDto, SocialRecapDto } from "../../../types/friends";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
 import { formatDurationWords, formatSessionListDate } from "../../../lib/sessionTime";
 import { friendProfileStyles as styles } from "../friendProfile.styles";
@@ -29,6 +29,52 @@ export function ReliabilityCard({ profile, t }: { profile: FriendProfilePayload;
           : t("friendProfile.reliabilityRankUnavailable")}
       </Text>
       <Text style={styles.line}>{t(trendKey)}</Text>
+    </View>
+  );
+}
+
+export function CommitmentCard({
+  commitment,
+  t,
+}: {
+  commitment: FriendCommitmentDto;
+  t: TFunction;
+}) {
+  const { current_sessions: current, target_sessions: target, status } = commitment;
+  const progress = t("friendProfile.commitmentProgress", { current, count: target });
+  const statusLabel = t(`friendProfile.commitmentStatus.${status}`);
+  const fillPercent =
+    `${Math.min(100, Math.round((current / Math.max(1, target)) * 100))}%` as const;
+  const isDone = status === "completed";
+  return (
+    <View
+      style={styles.statsCard}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={t("friendProfile.commitmentA11y", { progress, status: statusLabel })}
+      accessibilityValue={{ min: 0, max: target, now: Math.min(current, target) }}
+      testID="friend-profile-commitment"
+    >
+      <Text style={styles.cardTitle}>{t("friendProfile.commitmentTitle")}</Text>
+      <Text style={styles.commitmentCount}>{progress}</Text>
+      <View style={styles.commitmentTrack}>
+        <View
+          style={[
+            styles.commitmentFill,
+            { width: fillPercent },
+            isDone && styles.commitmentFillDone,
+          ]}
+        />
+      </View>
+      <Text
+        style={[
+          styles.commitmentStatus,
+          status === "behind" && styles.commitmentStatusBehind,
+          isDone && styles.commitmentStatusDone,
+        ]}
+      >
+        {statusLabel}
+      </Text>
     </View>
   );
 }

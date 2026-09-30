@@ -36,7 +36,7 @@ export function resetFriendsAccountOwnedState(
   state.setReactionUsersOpen(false);
   state.setBuddyPickerOpen(false);
 
-  state.setActionBusy(null);
+  state.setRequestsInFlight({});
   state.setAddBusy(false);
   state.setBusyActionKey(null);
   state.setReactionUsersLoading(false);

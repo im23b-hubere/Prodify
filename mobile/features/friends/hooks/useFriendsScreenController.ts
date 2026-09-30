@@ -33,9 +33,10 @@ export function useFriendsScreenController() {
     state,
   });
 
-  const openStatsYourWeek = useCallback(() => {
-    router.push({ pathname: "/(tabs)/stats", params: { focus: "yourWeek" } } as Href);
-  }, [router]);
+  const openProfile = useCallback(
+    (profileUserId: number) => router.push(`/profile/${profileUserId}` as Href),
+    [router],
+  );
   const openSession = useCallback(
     (sessionId: number, ownerName: string) => {
       router.push({
@@ -68,7 +69,7 @@ export function useFriendsScreenController() {
     userId: user?.id,
     t,
     openSession,
-    openStatsYourWeek,
+    openProfile,
   });
   const openChallengeCreate = useCallback(() => router.push("/challenge/new" as Href), [router]);
   const challengeFriend = useCallback(
@@ -86,10 +87,6 @@ export function useFriendsScreenController() {
           days: String(durationDays),
         },
       } as Href),
-    [router],
-  );
-  const openProfile = useCallback(
-    (profileUserId: number) => router.push(`/profile/${profileUserId}` as Href),
     [router],
   );
   const openChallenge = useCallback(

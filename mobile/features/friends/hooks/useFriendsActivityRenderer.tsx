@@ -14,7 +14,7 @@ type ActivityRendererOptions = {
   userId?: number;
   t: TFunction;
   openSession: (sessionId: number, ownerName: string) => void;
-  openStatsYourWeek: () => void;
+  openProfile: (userId: number) => void;
 };
 
 export type RenderActivity = (item: FriendActivityDto, divided: boolean) => ReactNode;
@@ -25,7 +25,7 @@ export function useFriendsActivityRenderer({
   userId,
   t,
   openSession,
-  openStatsYourWeek,
+  openProfile,
 }: ActivityRendererOptions): RenderActivity {
   const { busyActionKey, feedMetricsBySession, reactionBusyBySession } = state;
   const { toggleThumbReaction, openReactionUsers, supportStreakBreak } = actions;
@@ -52,6 +52,10 @@ export function useFriendsActivityRenderer({
     (item: FriendActivityDto) => void supportStreakBreak(item),
     [supportStreakBreak],
   );
+  const viewCommitment = useCallback(
+    (item: FriendActivityDto) => openProfile(item.user_id),
+    [openProfile],
+  );
 
   return useCallback(
     (item: FriendActivityDto, divided: boolean) => {
@@ -67,7 +71,7 @@ export function useFriendsActivityRenderer({
             canAct={!isOwnStreakBreak}
             actionBusy={kind === "streak_broken" && busyActionKey === "streak_support"}
             onSupportStreakBreak={supportFriend}
-            onViewCommitment={openStatsYourWeek}
+            onViewCommitment={viewCommitment}
           />
         );
       }
@@ -91,13 +95,13 @@ export function useFriendsActivityRenderer({
       busyActionKey,
       feedMetricsBySession,
       openActivitySession,
-      openStatsYourWeek,
       reactionBusyBySession,
       showReactionUsers,
       supportFriend,
       t,
       toggleThumb,
       userId,
+      viewCommitment,
     ],
   );
 }

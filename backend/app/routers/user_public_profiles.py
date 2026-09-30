@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.contracts.insights import HeatmapDayPublic
+from app.contracts.social import FriendCommitmentPublic
 from app.models import Friendship, FriendshipStatus, ProductionSession, Streak, User, UserAchievement, utcnow
 from app.schemas import (
     AchievementUnlockedPublic,
@@ -19,6 +20,7 @@ from app.schemas import (
     UserFriendStatsPublic,
     UserPublicSessionItem,
 )
+from app.services.commitment_service import get_friend_commitment
 from app.services.identity_tags import profile_identity_tags
 from app.services.reliability_service import ReliabilityScoreService
 from app.services.streak_reconcile_service import compute_streak_counts_for_display
@@ -201,6 +203,16 @@ def get_user_stats(
         heatmap_days=_heatmap_days(db, user_id),
         achievements=achievements,
     )
+
+
+@router.get("/{user_id}/commitment", response_model=FriendCommitmentPublic | None)
+def get_user_commitment(
+    user_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> FriendCommitmentPublic | None:
+    owner = _require_friend_profile(db, current, user_id)
+    return get_friend_commitment(db, current.id, owner)
 
 
 @router.get("/{user_id}/sessions", response_model=list[UserPublicSessionItem])

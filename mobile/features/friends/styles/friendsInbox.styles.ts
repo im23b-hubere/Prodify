@@ -14,6 +14,8 @@ const inboxStyles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
   },
+  labelHidden: { opacity: 0 },
+  declineSpinner: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
   actionPressed: { opacity: 0.55 },
   acceptPill: {
     minHeight: 36,

@@ -16,7 +16,7 @@ type Props = {
   canAct: boolean;
   actionBusy: boolean;
   onSupportStreakBreak: (item: FriendActivityDto) => void;
-  onViewCommitment: () => void;
+  onViewCommitment: (item: FriendActivityDto) => void;
 };
 
 /** Quieter than a session row: an icon instead of a face, the message instead of stats. */
@@ -73,7 +73,7 @@ export const ActivityEventRow = memo(function ActivityEventRow({
           accessibilityState={{ busy: actionBusy }}
           disabled={actionBusy}
           style={({ pressed }) => [styles.textAction, pressed && styles.textActionPressed]}
-          onPress={isStreak ? () => onSupportStreakBreak(item) : onViewCommitment}
+          onPress={() => (isStreak ? onSupportStreakBreak(item) : onViewCommitment(item))}
         >
           {actionBusy ? (
             <ActivityIndicator size="small" color={colors.primary} />

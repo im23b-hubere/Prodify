@@ -1484,6 +1484,15 @@
     "teamSessionsLine": "Team sessions this week: {{sessions}} · WoW {{sign}}{{wow}}",
     "comparisonHint": "Complete more sessions together to unlock better comparisons.",
     "sharedMomentumFriendHint": "Weekly team numbers are from your recap (your whole circle), not only this friend.",
+    "commitmentTitle": "This week’s commitment",
+    "commitmentProgress_one": "{{current}} of {{count}} session",
+    "commitmentProgress_other": "{{current}} of {{count}} sessions",
+    "commitmentStatus": {
+      "on_track": "On track",
+      "behind": "Behind — a nudge helps",
+      "completed": "Completed"
+    },
+    "commitmentA11y": "This week’s commitment: {{progress}}. {{status}}",
     "reliabilityTitle": "Consistency",
     "reliabilityRank": "Top {{rank}}% producer reliability",
     "reliabilityRankUnavailable": "Ranking unlocks once more producers are active.",

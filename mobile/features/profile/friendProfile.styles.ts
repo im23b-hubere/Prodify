@@ -58,6 +58,23 @@ export const friendProfileStyles = StyleSheet.create({
   lineMuted: { color: colors.textSecondary, ...typography.body },
   lineStrong: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
   muted: { color: colors.textSecondary, ...typography.caption },
+  commitmentCount: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.cardTitle,
+  },
+  commitmentTrack: {
+    height: 6,
+    borderRadius: radii.round,
+    backgroundColor: colors.border,
+    overflow: "hidden",
+    marginVertical: spacing.xs,
+  },
+  commitmentFill: { height: "100%", borderRadius: radii.round, backgroundColor: colors.primary },
+  commitmentFillDone: { backgroundColor: colors.success },
+  commitmentStatus: { color: colors.textSecondary, ...typography.caption },
+  commitmentStatusBehind: { color: colors.primary },
+  commitmentStatusDone: { color: colors.success },
   ach: { color: colors.textPrimary, ...typography.body, flex: 1 },
   achRow: { marginBottom: spacing.xs },
   sessRow: {

@@ -162,7 +162,7 @@ describe("resetFriendsAccountOwnedState", () => {
       setAddOpen: jest.fn(),
       setReactionUsersOpen: jest.fn(),
       setBuddyPickerOpen: jest.fn(),
-      setActionBusy: jest.fn(),
+      setRequestsInFlight: jest.fn(),
       setAddBusy: jest.fn(),
       setBusyActionKey: jest.fn(),
       setReactionUsersLoading: jest.fn(),

@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { Alert } from "react-native";
 
 import { apiJson } from "../../../lib/client";
@@ -41,10 +41,28 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
     }
   }, [load, state, t, token]);
 
+  const answeringIds = useRef(new Set<number>());
+  const { setRequestsInFlight } = state;
+  const beginAnswer = useCallback(
+    (id: number, action: "accept" | "decline") => {
+      if (answeringIds.current.has(id)) return false;
+      answeringIds.current.add(id);
+      setRequestsInFlight((current) => ({ ...current, [id]: action }));
+      return true;
+    },
+    [setRequestsInFlight],
+  );
+  const endAnswer = useCallback(
+    (id: number) => {
+      answeringIds.current.delete(id);
+      setRequestsInFlight(({ [id]: _settled, ...rest }) => rest);
+    },
+    [setRequestsInFlight],
+  );
+
   const acceptRequest = useCallback(
     async (id: number) => {
-      if (!token) return;
-      state.setActionBusy(id);
+      if (!token || !beginAnswer(id, "accept")) return;
       try {
         await apiJson(`/friends/${id}/accept`, { token, method: "POST" });
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -67,16 +85,15 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
           e instanceof Error ? e.message : t("friendsScreen.acceptFailed"),
         );
       } finally {
-        state.setActionBusy(null);
+        endAnswer(id);
       }
     },
-    [load, state, t, token],
+    [beginAnswer, endAnswer, load, t, token],
   );
 
   const declineRequest = useCallback(
     async (id: number) => {
-      if (!token) return;
-      state.setActionBusy(id);
+      if (!token || !beginAnswer(id, "decline")) return;
       try {
         await apiJson(`/friends/${id}`, { token, method: "DELETE" });
         await load({ force: true });
@@ -86,10 +103,10 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
           e instanceof Error ? e.message : t("friendsScreen.declineFailed"),
         );
       } finally {
-        state.setActionBusy(null);
+        endAnswer(id);
       }
     },
-    [load, state, t, token],
+    [beginAnswer, endAnswer, load, t, token],
   );
 
   return { sendRequest, acceptRequest, declineRequest };

@@ -4,8 +4,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.dependencies_subscription import user_has_premium_access
-from app.models import SocialCommitment, User, utcnow
-from app.contracts.social import CommitmentBody, CommitmentPublic
+from app.models import BuddyStatus, SocialCommitment, User, utcnow
+from app.contracts.social import CommitmentBody, CommitmentPublic, FriendCommitmentPublic
+from app.services.buddy_service import current_buddy_relationship
 from app.services.commitment_witness_service import (
     notify_witnesses,
     save_witness_config,
@@ -63,6 +64,23 @@ def get_current_commitment(
 ) -> CommitmentPublic | None:
     commitment = _find_commitment(db, user.id, current_week_start(), commitment_key)
     return _to_public(db, user, commitment) if commitment else None
+
+
+def get_friend_commitment(db: Session, viewer_id: int, owner: User) -> FriendCommitmentPublic | None:
+    """The owner's current sessions commitment, if its visibility lets the viewer see it.
+
+    The caller must already have checked that viewer and owner are friends.
+    """
+    commitment = _find_commitment(db, owner.id, current_week_start(), "sessions")
+    if commitment is None or not _is_visible_to(db, commitment, viewer_id):
+        return None
+    completed_sessions = session_count(db, owner.id, commitment.week_start)
+    return FriendCommitmentPublic(
+        week_start=commitment.week_start,
+        target_sessions=commitment.target_sessions,
+        current_sessions=completed_sessions,
+        status=_progress_status(completed_sessions, commitment.target_sessions),
+    )
 
 
 def list_current_commitments(db: Session, user: User) -> list[CommitmentPublic]:
@@ -168,6 +186,19 @@ def _to_public(db: Session, user: User, commitment: SocialCommitment) -> Commitm
         upsell_hint=None if user_has_premium_access(db, user) else "Track more goals with Premium.",
         witness_user_ids=selected_witness_ids,
         witness_usernames=witness_usernames(db, selected_witness_ids),
+    )
+
+
+def _is_visible_to(db: Session, commitment: SocialCommitment, viewer_id: int) -> bool:
+    if viewer_id == commitment.user_id or commitment.visibility == "friends":
+        return True
+    if commitment.visibility != "buddy":
+        return False
+    relationship = current_buddy_relationship(db, commitment.user_id)
+    return (
+        relationship is not None
+        and relationship.status == BuddyStatus.active
+        and viewer_id in (relationship.requester_id, relationship.addressee_id)
     )
 
 

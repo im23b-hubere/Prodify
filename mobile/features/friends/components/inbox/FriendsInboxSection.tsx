@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { ListSection } from "../../../../components/ui/list/ListSection";
 import type { FriendIncomingDto, SocialChallengeDto } from "../../../../types/friends";
 import { profilePictureUrl } from "../../../profile/friendProfilePresentation";
+import type { FriendRequestsInFlight } from "../../hooks/useFriendsScreenState";
 import { friendsInboxStyles as styles } from "../../styles/friendsInbox.styles";
 import { isIncomingDuelInvite } from "../../utils/duelInvites";
 import { type DuelInviteActions, FriendsDuelInviteRow } from "../FriendsDuelInviteRow";
@@ -13,7 +14,7 @@ type Props = {
   t: TFunction;
   incoming: FriendIncomingDto[];
   challenges: SocialChallengeDto[];
-  requestBusyId: number | null;
+  requestsInFlight: FriendRequestsInFlight;
   onAcceptRequest: (id: number) => void;
   onDeclineRequest: (id: number) => void;
   duelActions: DuelInviteActions;
@@ -24,7 +25,7 @@ export function FriendsInboxSection({
   t,
   incoming,
   challenges,
-  requestBusyId,
+  requestsInFlight,
   onAcceptRequest,
   onDeclineRequest,
   duelActions,
@@ -53,8 +54,7 @@ export function FriendsInboxSection({
             meta={t("friendsOverview.requestMeta")}
             acceptLabel={t("friendsScreen.accept")}
             declineLabel={t("friendsScreen.decline")}
-            accepting={false}
-            busy={requestBusyId === request.id}
+            pendingAction={requestsInFlight[request.id] ?? null}
             divided={duelInvites.length + index > 0}
             onAccept={() => onAcceptRequest(request.id)}
             onDecline={() => onDeclineRequest(request.id)}

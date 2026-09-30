@@ -223,6 +223,73 @@ def _befriend(client, token_a: str, token_b: str, username_b: str) -> None:
     assert acc.status_code == 200
 
 
+def _publish_commitment(client, token: str, target_sessions: int = 4) -> None:
+    response = client.post(
+        "/social/commitment",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"target_sessions": target_sessions, "visibility": "friends", "commitment_key": "sessions"},
+    )
+    assert response.status_code == 200, response.text
+
+
+def test_friend_sees_commitment_progress_without_witnesses(client):
+    t_a = _register(client, "s@example.com", "sara")
+    t_b = _register(client, "t@example.com", "timo")
+    _befriend(client, t_a, t_b, "timo")
+    _publish_commitment(client, t_a, target_sessions=5)
+
+    response = client.get("/users/1/commitment", headers={"Authorization": f"Bearer {t_b}"})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["target_sessions"] == 5
+    assert body["current_sessions"] == 0
+    assert body["status"] in ("on_track", "behind")
+    assert set(body) == {"week_start", "target_sessions", "current_sessions", "status"}
+
+
+def test_friend_commitment_is_null_when_nothing_is_published(client):
+    t_a = _register(client, "u@example.com", "ugo")
+    t_b = _register(client, "v@example.com", "vera")
+    _befriend(client, t_a, t_b, "vera")
+
+    response = client.get("/users/1/commitment", headers={"Authorization": f"Bearer {t_b}"})
+
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+def test_commitment_is_forbidden_for_non_friends(client):
+    t_a = _register(client, "w@example.com", "wanda")
+    t_b = _register(client, "x@example.com", "xaver")
+    _publish_commitment(client, t_a)
+
+    response = client.get("/users/1/commitment", headers={"Authorization": f"Bearer {t_b}"})
+
+    assert response.status_code == 403
+
+
+def test_buddy_only_commitment_is_hidden_from_other_friends(client):
+    t_a = _register(client, "y@example.com", "yara")
+    t_b = _register(client, "z@example.com", "zeno")
+    _befriend(client, t_a, t_b, "zeno")
+    _publish_commitment(client, t_a)
+
+    from app.database import SessionLocal
+    from app.models import SocialCommitment
+
+    with SessionLocal() as db:
+        commitment = db.query(SocialCommitment).filter(SocialCommitment.user_id == 1).one()
+        commitment.visibility = "buddy"
+        db.commit()
+
+    friend_view = client.get("/users/1/commitment", headers={"Authorization": f"Bearer {t_b}"})
+    own_view = client.get("/users/1/commitment", headers={"Authorization": f"Bearer {t_a}"})
+
+    assert friend_view.json() is None
+    assert own_view.json()["target_sessions"] == 4
+
+
 def test_activity_lists_a_friends_running_session_as_live(client):
     t_a = _register(client, "m@example.com", "mira")
     t_b = _register(client, "n@example.com", "nico")

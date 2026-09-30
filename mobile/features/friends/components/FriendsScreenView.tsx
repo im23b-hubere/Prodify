@@ -84,7 +84,7 @@ function FriendsLoadedSections({ controller }: Props) {
         t={t}
         incoming={state.incoming}
         challenges={state.challenges}
-        requestBusyId={state.actionBusy}
+        requestsInFlight={state.requestsInFlight}
         onAcceptRequest={actions.acceptRequest}
         onDeclineRequest={actions.declineRequest}
         duelActions={{
