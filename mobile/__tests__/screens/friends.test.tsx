@@ -137,10 +137,11 @@ describe("Friends Screen", () => {
     mockUseFriendsScreenActions.mockReturnValue(createFriendsActions());
   });
 
-  it("shows loading state while data is fetching", () => {
+  it("shows an overview-shaped skeleton while data is fetching", () => {
     mockUseFriendsScreenState.mockReturnValue(createFriendsState({ loading: true }));
-    const { getByText } = render(<FriendsScreen />);
-    expect(getByText("friendsScreen.loading")).toBeTruthy();
+    const { getByTestId, getByLabelText } = render(<FriendsScreen />);
+    expect(getByTestId("friends-overview-skeleton")).toBeTruthy();
+    expect(getByLabelText("friendsScreen.loading")).toBeTruthy();
   });
 
   it("shows empty state when user has no friends on the activity tab", () => {
@@ -200,8 +201,10 @@ describe("Friends Screen", () => {
         ],
       }),
     );
-    const { getAllByText, getByText, queryByText } = render(<FriendsScreen />);
+    const { getAllByText, getByTestId, getByText, queryByText } = render(<FriendsScreen />);
+    expect(getByTestId("friends-refresh-error")).toBeTruthy();
     expect(getByText("Network down")).toBeTruthy();
+    expect(queryByText("common.oops")).toBeNull();
     expect(getByText("carol")).toBeTruthy();
     expect(getAllByText("bob").length).toBeGreaterThan(0);
     expect(queryByText("friendsScreen.feedEmptyTitle")).toBeNull();
@@ -544,6 +547,12 @@ describe("Friends Screen", () => {
       const { getByTestId, queryByTestId } = renderActivity([liveSession, finishedSession]);
       expect(queryByTestId("friends-activity-201")).toBeNull();
       expect(getByTestId("friends-activity-101")).toBeTruthy();
+    });
+
+    it("invites you to start a session when friends have no activity yet", () => {
+      const { getByTestId } = renderActivity([]);
+      fireEvent.press(getByTestId("friends-activity-empty-cta"));
+      expect(mockPush).toHaveBeenCalledWith("/session/setup");
     });
 
     it("hides the live strip when nobody is producing", () => {

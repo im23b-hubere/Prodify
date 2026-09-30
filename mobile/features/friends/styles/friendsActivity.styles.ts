@@ -107,6 +107,20 @@ const activityStyles = StyleSheet.create({
     justifyContent: "center",
   },
   showMore: { alignSelf: "center" },
+  empty: {
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyMessage: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+  },
 });
 
 export const friendsActivityStyles = { ...listStyles, ...activityStyles };

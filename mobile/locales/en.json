@@ -1328,7 +1328,9 @@
     "showMoreActivity_other": "Show {{count}} more",
     "reactAction": "Give a thumbs up",
     "unreactAction": "Remove thumbs up",
-    "showReactionsAction": "See who reacted"
+    "showReactionsAction": "See who reacted",
+    "activityEmptyCta": "Start a session",
+    "refreshFailed": "Couldn’t refresh. Showing your last update."
   },
   "duelBoard": {
     "newDuel": "New",

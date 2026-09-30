@@ -5,7 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmptyState } from "../../../components/states/EmptyState";
 import { ErrorState } from "../../../components/states/ErrorState";
-import { LoadingState } from "../../../components/states/LoadingState";
 import { colors } from "../../../constants/theme";
 import { DuelBoardSkeleton } from "../../challenges/board/components/DuelBoardSkeleton";
 import { ActivitySection } from "../activity/components/ActivitySection";
@@ -16,13 +15,21 @@ import { FriendsStandingSection } from "../ranking/components/FriendsStandingSec
 import { FriendsInboxSection } from "./inbox/FriendsInboxSection";
 import { FriendsModals } from "./FriendsModals";
 import type { FriendsOverviewProps } from "./FriendsOverviewSection";
+import { FriendsOverviewSkeleton } from "./FriendsOverviewSkeleton";
+import { FriendsRefreshErrorBanner } from "./FriendsRefreshErrorBanner";
 import { FriendsScreenHeader } from "./FriendsScreenHeader";
 import { FriendsTogetherSection } from "./FriendsTogetherSection";
 
 type Props = { controller: FriendsScreenController };
 
+/** A leaderboard means at least one load succeeded, so there is data worth keeping on screen. */
+function hasLoadedSnapshot(controller: FriendsScreenController) {
+  return controller.state.leaderboard != null;
+}
+
 function FriendsStatusMessages({ controller }: Props) {
   const { t, state, actions, load } = controller;
+  const retry = () => load({ force: true }).catch(() => undefined);
   return (
     <>
       {!state.loading &&
@@ -37,19 +44,22 @@ function FriendsStatusMessages({ controller }: Props) {
           onAction={() => state.setAddOpen(true)}
         />
       ) : null}
-      {state.error ? (
+      {state.error && hasLoadedSnapshot(controller) ? (
+        <FriendsRefreshErrorBanner t={t} message={state.error} onRetry={retry} />
+      ) : null}
+      {state.error && !hasLoadedSnapshot(controller) ? (
         <ErrorState
           title={t("common.oops")}
           message={state.error}
           retryLabel={t("common.tryAgain")}
-          onRetry={() => load({ force: true }).catch(() => undefined)}
+          onRetry={retry}
         />
       ) : null}
       {state.loading && !state.refreshing && !state.error ? (
         state.sectionTab === "challenges" ? (
           <DuelBoardSkeleton t={t} />
         ) : (
-          <LoadingState message={t("friendsScreen.loading")} />
+          <FriendsOverviewSkeleton t={t} />
         )
       ) : null}
     </>
@@ -69,7 +79,7 @@ function FriendsLoadedSections({ controller }: Props) {
     onOpenProfile: controller.openProfile,
   };
   return (
-    <>
+    <Animated.View entering={FadeIn.duration(240)}>
       <FriendsInboxSection
         t={t}
         incoming={state.incoming}
@@ -97,6 +107,7 @@ function FriendsLoadedSections({ controller }: Props) {
             t={t}
             activity={controller.feedActivity}
             renderActivity={controller.renderActivity}
+            onStartSession={controller.openSessionSetup}
           />
         </View>
       ) : null}
@@ -122,7 +133,7 @@ function FriendsLoadedSections({ controller }: Props) {
           currentUserId={userId}
         />
       ) : null}
-    </>
+    </Animated.View>
   );
 }
 
@@ -145,9 +156,8 @@ export function FriendsScreenView({ controller }: Props) {
   // Keep last known good Friends data visible when a refresh fails.
   // Hide content only while the initial load is in flight, or when there is
   // an error with no previously successful snapshot.
-  const hasLoadedSnapshot = state.leaderboard != null;
   const showLoadedSections =
-    !(state.loading && !state.refreshing) && (hasLoadedSnapshot || !state.error);
+    !(state.loading && !state.refreshing) && (hasLoadedSnapshot(controller) || !state.error);
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="friends-screen">
       <ScrollView

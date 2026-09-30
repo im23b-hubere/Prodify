@@ -2,7 +2,6 @@ import type { TFunction } from "i18next";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { EmptyState } from "../../../../components/states/EmptyState";
 import { ListSection } from "../../../../components/ui/list/ListSection";
 import { useNow } from "../../../../hooks/useNow";
 import type { FriendActivityDto } from "../../../../types/friends";
@@ -15,9 +14,10 @@ type Props = {
   t: TFunction;
   activity: FriendActivityDto[];
   renderActivity: RenderActivity;
+  onStartSession: () => void;
 };
 
-export function ActivitySection({ t, activity, renderActivity }: Props) {
+export function ActivitySection({ t, activity, renderActivity, onStartSession }: Props) {
   const now = useNow();
   const [expanded, setExpanded] = useState(false);
   const { items, hiddenCount } = useMemo(
@@ -33,11 +33,18 @@ export function ActivitySection({ t, activity, renderActivity }: Props) {
       testID="friends-activity"
     >
       {days.length === 0 ? (
-        <EmptyState
-          compact
-          title={t("friendsScreen.activityFeedEmptyTitle")}
-          message={t("friendsScreen.activityFeedEmptyMessage")}
-        />
+        <View style={[styles.card, styles.empty]} testID="friends-activity-empty">
+          <Text style={styles.rowTitle}>{t("friendsScreen.activityFeedEmptyTitle")}</Text>
+          <Text style={styles.emptyMessage}>{t("friendsScreen.activityFeedEmptyMessage")}</Text>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.textAction, pressed && styles.textActionPressed]}
+            onPress={onStartSession}
+            testID="friends-activity-empty-cta"
+          >
+            <Text style={styles.textActionLabel}>{t("friendsOverview.activityEmptyCta")}</Text>
+          </Pressable>
+        </View>
       ) : (
         <View style={styles.days}>
           {days.map((day) => (
