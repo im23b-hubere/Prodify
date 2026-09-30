@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { ListSection } from "../../../components/ui/list/ListSection";
 import { useNow } from "../../../hooks/useNow";
 import type { SocialChallengeDto } from "../../../types/friends";
 import { friendDuelStatus } from "../../challengeCreate/challengeDraft";
@@ -12,7 +13,6 @@ import {
   LiveDuelRow,
   WaitingDuelRow,
 } from "../../challenges/board/components/DuelBoardRows";
-import { DuelBoardSection } from "../../challenges/board/components/DuelBoardSection";
 import { RivalsStrip } from "../../challenges/board/components/RivalsStrip";
 import {
   buildDuelBoard,
@@ -101,7 +101,7 @@ export function FriendsChallengesBody({ props }: { props: FriendsTogetherProps }
         />
       ) : null}
       {board.live.length > 0 ? (
-        <DuelBoardSection title={t("duelBoard.sectionLive")} count={board.live.length}>
+        <ListSection title={t("duelBoard.sectionLive")} count={board.live.length}>
           {board.live.map((challenge, index) => (
             <LiveDuelRow
               key={challenge.id}
@@ -112,10 +112,10 @@ export function FriendsChallengesBody({ props }: { props: FriendsTogetherProps }
               onOpen={props.onOpenChallenge}
             />
           ))}
-        </DuelBoardSection>
+        </ListSection>
       ) : null}
       {board.waiting.length > 0 ? (
-        <DuelBoardSection title={t("duelBoard.sectionWaiting")} count={board.waiting.length}>
+        <ListSection title={t("duelBoard.sectionWaiting")} count={board.waiting.length}>
           {board.waiting.map((challenge, index) => (
             <WaitingDuelRow
               key={challenge.id}
@@ -127,11 +127,11 @@ export function FriendsChallengesBody({ props }: { props: FriendsTogetherProps }
               onWithdraw={props.onWithdrawChallengeInvite}
             />
           ))}
-        </DuelBoardSection>
+        </ListSection>
       ) : null}
       <BuddySection props={props} />
       {board.history.length > 0 ? (
-        <DuelBoardSection title={t("duelBoard.sectionHistory")}>
+        <ListSection title={t("duelBoard.sectionHistory")}>
           {board.history.map((challenge, index) => (
             <HistoryDuelRow
               key={challenge.id}
@@ -143,7 +143,7 @@ export function FriendsChallengesBody({ props }: { props: FriendsTogetherProps }
               onRematch={rematchable.has(challenge.id) ? rematch : undefined}
             />
           ))}
-        </DuelBoardSection>
+        </ListSection>
       ) : null}
     </View>
   );
@@ -154,7 +154,7 @@ function BuddySection({ props }: { props: FriendsTogetherProps }) {
   const status = buddy?.status;
   if (status === "active") {
     return (
-      <DuelBoardSection title={t("duelBoard.sectionBuddy")} carded={false}>
+      <ListSection title={t("duelBoard.sectionBuddy")} carded={false}>
         <FriendsBuddyDuelCard
           t={t}
           buddyName={buddy?.buddy_username ?? t("friendsScreen.challengeSomeone")}
@@ -162,23 +162,23 @@ function BuddySection({ props }: { props: FriendsTogetherProps }) {
           buddySessions={buddy?.buddy_week_sessions ?? 0}
           onCatchUp={props.onOpenSessionSetup}
         />
-      </DuelBoardSection>
+      </ListSection>
     );
   }
   if (status === "pending_incoming" || status === "pending_outgoing") {
     return (
-      <DuelBoardSection title={t("duelBoard.sectionBuddy")} carded={false}>
+      <ListSection title={t("duelBoard.sectionBuddy")} carded={false}>
         <BuddyInviteRow props={props} />
-      </DuelBoardSection>
+      </ListSection>
     );
   }
   return (
-    <DuelBoardSection title={t("duelBoard.sectionBuddy")}>
+    <ListSection title={t("duelBoard.sectionBuddy")}>
       <QuietLink
         label={t("friendsScreen.togetherPickBuddy")}
         onPress={props.hasOtherFriends ? props.onOpenBuddyPicker : props.onOpenAddFriend}
       />
-    </DuelBoardSection>
+    </ListSection>
   );
 }
 

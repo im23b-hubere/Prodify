@@ -10,10 +10,9 @@ import { colors } from "../../../constants/theme";
 import { DuelBoardSkeleton } from "../../challenges/board/components/DuelBoardSkeleton";
 import { friendsScreenStyles as styles } from "../styles/friendsScreen.styles";
 import type { FriendsScreenController } from "../hooks/useFriendsScreenController";
+import { FriendsStandingSection } from "../ranking/components/FriendsStandingSection";
 import { FriendsActivitySection } from "./FriendsActivitySection";
-import { FriendsDuelInvitesSection } from "./FriendsDuelInvitesSection";
-import { FriendsIncomingSection } from "./FriendsIncomingSection";
-import { FriendsLeaderboardSection } from "./FriendsLeaderboardSection";
+import { FriendsInboxSection } from "./inbox/FriendsInboxSection";
 import { FriendsModals } from "./FriendsModals";
 import type { FriendsOverviewProps } from "./FriendsOverviewSection";
 import { FriendsScreenHeader } from "./FriendsScreenHeader";
@@ -70,19 +69,19 @@ function FriendsLoadedSections({ controller }: Props) {
     activeTriggerCard: actions.activeTriggerCard,
     onCompleteTriggerAction: actions.completeTriggerAction,
     onAddFriendFromEmptyFeed: () => state.setAddOpen(true),
+    onStartSession: controller.openSessionSetup,
+    onOpenProfile: controller.openProfile,
   };
   return (
     <>
-      <FriendsIncomingSection
+      <FriendsInboxSection
         t={t}
         incoming={state.incoming}
-        actionBusy={state.actionBusy}
-        onAccept={actions.acceptRequest}
-        onDecline={actions.declineRequest}
-      />
-      <FriendsDuelInvitesSection
         challenges={state.challenges}
-        actions={{
+        requestBusyId={state.actionBusy}
+        onAcceptRequest={actions.acceptRequest}
+        onDeclineRequest={actions.declineRequest}
+        duelActions={{
           t,
           currentUserId: userId,
           busyActionKey: state.busyActionKey,
@@ -91,7 +90,7 @@ function FriendsLoadedSections({ controller }: Props) {
         }}
       />
       {state.sectionTab === "overview" && actions.hasOtherFriends ? (
-        <FriendsLeaderboardSection props={sectionProps} />
+        <FriendsStandingSection props={sectionProps} />
       ) : null}
       {state.sectionTab === "overview" && actions.hasOtherFriends ? (
         <FriendsActivitySection props={sectionProps} />

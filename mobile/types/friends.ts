@@ -2,6 +2,7 @@ export type FriendIncomingDto = {
   id: number;
   user_id: number;
   username: string;
+  profile_picture_url?: string | null;
   created_at: string;
 };
 

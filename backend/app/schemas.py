@@ -114,6 +114,7 @@ class FriendIncomingPublic(BaseModel):
     id: int
     user_id: int
     username: str
+    profile_picture_url: str | None = None
     created_at: datetime
 
 

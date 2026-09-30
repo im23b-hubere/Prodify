@@ -26,6 +26,7 @@ def test_friend_request_accept_and_leaderboard(client):
     assert inc.status_code == 200
     assert len(inc.json()) == 1
     assert inc.json()[0]["username"] == "alice"
+    assert "profile_picture_url" in inc.json()[0]
 
     dup = client.post(
         "/friends/request",

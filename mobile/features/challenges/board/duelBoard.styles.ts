@@ -1,36 +1,13 @@
 import { StyleSheet } from "react-native";
 
+import { listStyles } from "../../../components/ui/list/listStyles";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
 
-const HAIRLINE = "rgba(255,255,255,0.08)";
 const ACCENT_TINT = "rgba(255,61,0,0.12)";
-const PRESSED = "rgba(255,255,255,0.05)";
 
-export const duelBoardStyles = StyleSheet.create({
+const boardStyles = StyleSheet.create({
   board: { gap: spacing.lg, marginBottom: spacing.xl },
-  section: { gap: spacing.sm },
-  sectionHeader: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.heading,
-    fontSize: 20,
-    lineHeight: 24,
-    letterSpacing: -0.4,
-  },
-  sectionCount: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-  },
-
-  card: {
-    borderRadius: radii.xl,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: HAIRLINE,
-    overflow: "hidden",
-  },
 
   rivalsContent: { gap: spacing.md, paddingRight: spacing.md },
   rival: { width: 64, alignItems: "center", gap: 6 },
@@ -158,32 +135,6 @@ export const duelBoardStyles = StyleSheet.create({
   },
   arenaAction: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
 
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    minHeight: 68,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  rowPressed: { backgroundColor: PRESSED },
-  rowDivider: {
-    position: "absolute",
-    top: 0,
-    left: 72,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(255,255,255,0.12)",
-  },
-  rowCopy: { flex: 1, minWidth: 0, gap: 2 },
-  rowTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 16,
-    lineHeight: 21,
-  },
-  rowMeta: { color: colors.textSecondary, fontFamily: fontFamily.body, ...typography.meta },
-
   pill: {
     paddingVertical: 4,
     paddingHorizontal: spacing.sm + 2,
@@ -212,16 +163,6 @@ export const duelBoardStyles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  textAction: { minHeight: 44, justifyContent: "center", paddingHorizontal: spacing.xs },
-  textActionLabel: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  textActionMuted: { color: colors.textSecondary },
-  textActionPressed: { opacity: 0.6 },
-
   empty: { padding: spacing.lg, gap: spacing.md, alignItems: "center" },
   emptyAvatars: { flexDirection: "row", marginBottom: spacing.xs },
   emptyAvatarOverlap: { marginLeft: -14 },
@@ -249,3 +190,5 @@ export const duelBoardStyles = StyleSheet.create({
   skeletonRivals: { flexDirection: "row", gap: spacing.md },
   skeletonCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surface },
 });
+
+export const duelBoardStyles = { ...listStyles, ...boardStyles };

@@ -22,4 +22,6 @@ export type FriendsOverviewProps = {
   activeTriggerCard: FriendsTriggerCard | null;
   onCompleteTriggerAction: () => void;
   onAddFriendFromEmptyFeed: () => void;
+  onStartSession: () => void;
+  onOpenProfile: (userId: number) => void;
 };

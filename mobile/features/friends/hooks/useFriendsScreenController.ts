@@ -87,6 +87,10 @@ export function useFriendsScreenController() {
       } as Href),
     [router],
   );
+  const openProfile = useCallback(
+    (profileUserId: number) => router.push(`/profile/${profileUserId}` as Href),
+    [router],
+  );
   const openChallenge = useCallback(
     (challengeId: number) => router.push(`/challenge/${challengeId}` as Href),
     [router],
@@ -109,6 +113,7 @@ export function useFriendsScreenController() {
     openChallengeCreate,
     challengeFriend,
     rematchDuel,
+    openProfile,
     openChallenge,
   };
 }

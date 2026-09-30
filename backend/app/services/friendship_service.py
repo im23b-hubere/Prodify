@@ -110,6 +110,7 @@ def list_incoming_requests(db: Session, user_id: int) -> list[FriendIncomingPubl
                     id=friendship.id,
                     user_id=friendship.user_id,
                     username=requester.username,
+                    profile_picture_url=requester.profile_picture_url,
                     created_at=friendship.created_at,
                 )
             )

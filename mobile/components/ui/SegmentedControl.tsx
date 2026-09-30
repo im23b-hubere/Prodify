@@ -23,10 +23,17 @@ type Props<T extends string> = {
   options: readonly Option<T>[];
   value: T;
   onChange: (value: T) => void;
+  /** Slimmer segments for switches that sit inside a section header. */
+  compact?: boolean;
 };
 
 /** Pill-shaped switch whose highlighted thumb springs to the selected option. */
-export function SegmentedControl<T extends string>({ options, value, onChange }: Props<T>) {
+export function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+  compact = false,
+}: Props<T>) {
   const index = Math.max(
     options.findIndex((option) => option.value === value),
     0,
@@ -59,6 +66,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
           label={option.label}
           index={optionIndex}
           selected={optionIndex === index}
+          compact={compact}
           progress={progress}
           onPress={() => {
             if (optionIndex === index) return;
@@ -75,12 +83,14 @@ function Segment({
   label,
   index,
   selected,
+  compact,
   progress,
   onPress,
 }: {
   label: string;
   index: number;
   selected: boolean;
+  compact: boolean;
   progress: SharedValue<number>;
   onPress: () => void;
 }) {
@@ -94,7 +104,7 @@ function Segment({
   return (
     <Pressable
       onPress={onPress}
-      style={styles.segment}
+      style={[styles.segment, compact && styles.segmentCompact]}
       accessibilityRole="tab"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
@@ -131,6 +141,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  segmentCompact: { paddingVertical: 6 },
   label: {
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,

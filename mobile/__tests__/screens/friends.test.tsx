@@ -245,7 +245,60 @@ describe("Friends Screen", () => {
     expect(queryByText("friendsScreen.feedOpenSessionCta")).toBeNull();
     expect(getByTestId("friends-ranking")).toBeTruthy();
     expect(getByText("friendsScreen.sectionActivityTitle")).toBeTruthy();
-    expect(getByText("friendsScreen.leaderGapBehind")).toBeTruthy();
+  });
+
+  describe("overview standing", () => {
+    const ranking = [
+      { rank: 1, user_id: 2, username: "bob", current_streak_days: 5, sessions_in_period: 3 },
+      { rank: 2, user_id: 1, username: "alice", current_streak_days: 2, sessions_in_period: 1 },
+    ];
+
+    function renderOverview() {
+      mockUseFriendsScreenState.mockReturnValue(createFriendsState({ loading: false }));
+      mockUseFriendsScreenActions.mockReturnValue(
+        createFriendsActions({ hasOtherFriends: true, entries: ranking }),
+      );
+      return render(<FriendsScreen />);
+    }
+
+    it("shows your weekly position and who you are chasing", () => {
+      const { getByTestId, getByText } = renderOverview();
+      expect(getByTestId("friends-week-hero")).toBeTruthy();
+      expect(getByText("#2")).toBeTruthy();
+      expect(getByText("friendsOverview.chaseBehind")).toBeTruthy();
+    });
+
+    it("starts a session from the weekly hero", () => {
+      const { getByTestId } = renderOverview();
+      fireEvent.press(getByTestId("friends-week-hero-start"));
+      expect(mockPush).toHaveBeenCalledWith("/session/setup");
+    });
+
+    it("opens a friend's profile from their ranking row", () => {
+      const { getByTestId } = renderOverview();
+      fireEvent.press(getByTestId("friends-rank-2"));
+      expect(mockPush).toHaveBeenCalledWith("/profile/2");
+    });
+
+    it("collapses a long ranking to the top five plus you", () => {
+      const crowd = Array.from({ length: 7 }, (_, index) => ({
+        rank: index + 1,
+        user_id: index + 10,
+        username: `friend${index}`,
+        current_streak_days: 0,
+        sessions_in_period: 10 - index,
+      }));
+      const entries = [...crowd, { ...ranking[1], rank: 8, sessions_in_period: 0 }];
+      mockUseFriendsScreenState.mockReturnValue(createFriendsState({ loading: false }));
+      mockUseFriendsScreenActions.mockReturnValue(
+        createFriendsActions({ hasOtherFriends: true, entries }),
+      );
+      const { getByTestId, queryByTestId } = render(<FriendsScreen />);
+      expect(queryByTestId("friends-rank-15")).toBeNull();
+      expect(getByTestId("friends-rank-1")).toBeTruthy();
+      fireEvent.press(getByTestId("friends-ranking-toggle"));
+      expect(getByTestId("friends-rank-15")).toBeTruthy();
+    });
   });
 
   it("renders the buddy duel on the challenges page without the crew HUD", () => {
@@ -450,6 +503,47 @@ describe("Friends Screen", () => {
     expect(acceptChallengeInvite).toHaveBeenCalledWith(12);
   });
 
+  it("collects friend requests and duel invites in one inbox", () => {
+    mockUseFriendsScreenState.mockReturnValue(
+      createFriendsState({
+        loading: false,
+        incoming: [{ id: 42, user_id: 3, username: "carol", created_at: "2026-07-01T10:00:00Z" }],
+        challenges: [
+          {
+            id: 12,
+            owner_id: 2,
+            title: "You vs bob",
+            challenge_kind: "duel",
+            week_start: "2026-06-30",
+            target_sessions: 5,
+            status: "pending",
+            invitee_user_id: 1,
+            members: [{ user_id: 2, username: "bob", progress_sessions: 0 }],
+          },
+        ],
+      }),
+    );
+    mockUseFriendsScreenActions.mockReturnValue(createFriendsActions({ hasOtherFriends: true }));
+    const { getByTestId, getByText } = render(<FriendsScreen />);
+    expect(getByTestId("friends-inbox")).toBeTruthy();
+    expect(getByText("friendsOverview.inboxTitle")).toBeTruthy();
+    expect(getByTestId("duel-invite-12")).toBeTruthy();
+    expect(getByTestId("friend-request-42")).toBeTruthy();
+  });
+
+  it("accepts a friend request from the inbox", () => {
+    mockUseFriendsScreenState.mockReturnValue(
+      createFriendsState({
+        loading: false,
+        incoming: [{ id: 42, user_id: 3, username: "carol", created_at: "2026-07-01T10:00:00Z" }],
+      }),
+    );
+    mockUseFriendsScreenActions.mockReturnValue(createFriendsActions({ hasOtherFriends: true }));
+    const { getByText } = render(<FriendsScreen />);
+    fireEvent.press(getByText("friendsScreen.accept"));
+    expect(mockAcceptRequest).toHaveBeenCalledWith(42);
+  });
+
   it("shows incoming friend requests above ranking and activity", () => {
     mockUseFriendsScreenState.mockReturnValue(
       createFriendsState({
@@ -462,7 +556,7 @@ describe("Friends Screen", () => {
     expect(getByText("carol")).toBeTruthy();
     expect(queryByText("friendsScreen.subtitle")).toBeNull();
     expect(queryByText("friendsScreen.incomingSectionSub")).toBeNull();
-    expect(getByText("friendsScreen.sectionLeaderboardTitle")).toBeTruthy();
+    expect(getByText("friendsOverview.rankingTitle")).toBeTruthy();
     expect(getByText("friendsScreen.sectionActivityTitle")).toBeTruthy();
     expect(getByText("friendsScreen.tabOverview")).toBeTruthy();
     expect(getByText("friendsScreen.tabChallenges")).toBeTruthy();
