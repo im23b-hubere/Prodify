@@ -1,7 +1,10 @@
+import { focusesForBranch } from "../../../constants/skills";
 import {
   NEGLECTED_AFTER_DAYS,
   buildSkillTreeModel,
+  highlightedNodeIds,
   neglectedFocus,
+  startingNodeId,
   strongestBranches,
 } from "../../../features/skills/skillTreePresentation";
 import type { SkillProfileDto } from "../../../types/skillProfile";
@@ -91,5 +94,38 @@ describe("neglectedFocus", () => {
     };
 
     expect(neglectedFocus(buildSkillTreeModel(recent), NOW)).toBeNull();
+  });
+});
+
+describe("startingNodeId", () => {
+  it("opens on the area the user came from", () => {
+    expect(startingNodeId(buildSkillTreeModel(profile), "mastering")).toBe("mastering");
+  });
+
+  it("otherwise opens on the most recently trained area", () => {
+    expect(startingNodeId(buildSkillTreeModel(profile), undefined)).toBe("mixing");
+  });
+
+  it("opens on you before anything was trained", () => {
+    expect(startingNodeId(buildSkillTreeModel(null), "not-an-area")).toBe("center");
+  });
+});
+
+describe("highlightedNodeIds", () => {
+  it("keeps the path from you to a selected skill lit", () => {
+    expect(highlightedNodeIds("mixing.eq")).toEqual(new Set(["center", "mixing", "mixing.eq"]));
+  });
+
+  it("keeps a selected area and all of its skills lit", () => {
+    const lit = highlightedNodeIds("mastering");
+
+    expect(lit?.has("center")).toBe(true);
+    expect(focusesForBranch("mastering").every(({ id }) => lit?.has(id))).toBe(true);
+    expect(lit?.has("mixing")).toBe(false);
+  });
+
+  it("dims nothing without a selection or when you are selected", () => {
+    expect(highlightedNodeIds(null)).toBeNull();
+    expect(highlightedNodeIds("center")).toBeNull();
   });
 });

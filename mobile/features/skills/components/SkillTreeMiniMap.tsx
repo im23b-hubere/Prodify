@@ -30,7 +30,7 @@ export const SkillTreeMiniMap = memo(function SkillTreeMiniMap({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <SkillTreeEdges layout={SKILL_TREE_LAYOUT} model={model} isDetailed={false} renderSize={size} />
+      <SkillTreeEdges layout={SKILL_TREE_LAYOUT} model={model} renderSize={size} />
       <Svg
         width={size}
         height={size}

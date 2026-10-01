@@ -28,6 +28,14 @@ describe("buildSkillTreeLayout", () => {
     expect(new Set(targets).size).toBe(targets.length);
   });
 
+  it("measures every edge at least as long as the straight line it spans", () => {
+    for (const edge of layout.edges) {
+      const straight = Math.hypot(edge.to.x - edge.from.x, edge.to.y - edge.from.y);
+      expect(edge.length).toBeGreaterThanOrEqual(straight - 0.01);
+      expect(edge.length).toBeLessThan(straight * 1.5);
+    }
+  });
+
   it("keeps enough room between nodes that labels and rings never collide", () => {
     const nodes = layout.nodes;
     for (let i = 0; i < nodes.length; i += 1) {

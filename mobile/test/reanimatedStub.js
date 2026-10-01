@@ -38,6 +38,8 @@ module.exports = {
   withRepeat: identity,
   withTiming: identity,
   withSpring: identity,
+  withDecay: () => 0,
+  ReduceMotion: { System: "system", Always: "always", Never: "never" },
   withSequence: identity,
   withDelay: (_delay, value) => value,
   runOnJS: identity,

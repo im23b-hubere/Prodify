@@ -29,7 +29,11 @@ export type SkillTreeEdgeLayout = {
   branch: SkillBranch;
   /** The node whose unlock lights this edge up. */
   toId: SkillBranch | SkillFocusId;
+  from: TreePoint;
+  to: TreePoint;
   path: string;
+  /** Drawn length, so the edge can be traced in from its start. */
+  length: number;
 };
 
 export type SkillTreeLayout = {
@@ -69,11 +73,15 @@ export function buildSkillTreeLayout(): SkillTreeLayout {
     const branchAngle = slotAngle(slot + (focuses.length - 1) / 2);
     const branchPoint = pointAt(branchAngle, BRANCH_RING_RADIUS);
     nodes.push({ kind: "branch", id: branch, branch, ...branchPoint, size: BRANCH_NODE_SIZE });
+    const centerPoint = { x: center, y: center };
     edges.push({
       id: `center-${branch}`,
       branch,
       toId: branch,
+      from: centerPoint,
+      to: branchPoint,
       path: `M ${center} ${center} L ${branchPoint.x} ${branchPoint.y}`,
+      length: Math.hypot(branchPoint.x - center, branchPoint.y - center),
     });
 
     focuses.forEach(({ id }, index) => {
@@ -86,7 +94,10 @@ export function buildSkillTreeLayout(): SkillTreeLayout {
         id: `${branch}-${id}`,
         branch,
         toId: id,
+        from: branchPoint,
+        to: focusPoint,
         path: `M ${branchPoint.x} ${branchPoint.y} Q ${control.x} ${control.y} ${focusPoint.x} ${focusPoint.y}`,
+        length: quadraticCurveLength(branchPoint, control, focusPoint),
       });
     });
     slot += focuses.length + GAP_SLOTS_PER_BRANCH;
@@ -98,6 +109,21 @@ export function buildSkillTreeLayout(): SkillTreeLayout {
     nodes,
     edges,
   };
+}
+
+function quadraticCurveLength(start: TreePoint, control: TreePoint, end: TreePoint, steps = 24) {
+  let length = 0;
+  let previous = start;
+  for (let step = 1; step <= steps; step += 1) {
+    const t = step / steps;
+    const point = {
+      x: (1 - t) ** 2 * start.x + 2 * (1 - t) * t * control.x + t ** 2 * end.x,
+      y: (1 - t) ** 2 * start.y + 2 * (1 - t) * t * control.y + t ** 2 * end.y,
+    };
+    length += Math.hypot(point.x - previous.x, point.y - previous.y);
+    previous = point;
+  }
+  return length;
 }
 
 export const SKILL_TREE_LAYOUT = buildSkillTreeLayout();

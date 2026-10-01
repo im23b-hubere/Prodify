@@ -1,7 +1,13 @@
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
-import Animated from "react-native-reanimated";
+import Animated, {
+  Easing,
+  ReduceMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 import { sessionTypeAccent } from "../../../components/session/SkillFocusChips";
 import { SKILL_BRANCH_ICONS, SKILL_FOCUS_ICONS } from "../../../constants/skillIcons";
@@ -11,12 +17,35 @@ import { skillFocusText } from "../../../lib/skillI18n";
 import type { SkillTreeScreenState } from "../hooks/useSkillTreeScreen";
 import { styles } from "../skillTree.styles";
 import { SKILL_TREE_LAYOUT, type SkillTreeNodeLayout } from "../skillTreeLayout";
-import { SkillTreeEdges } from "./SkillTreeEdges";
+import { SkillTreeLinks } from "./SkillTreeLinks";
 import { SkillTreeNode } from "./SkillTreeNode";
 
+const REVEAL_TIMING = {
+  duration: 900,
+  easing: Easing.bezier(0.77, 0, 0.175, 1),
+  reduceMotion: ReduceMotion.System,
+};
+const ENTER_BASE_DELAY = 40;
+const ENTER_DELAY_PER_POINT = 0.75;
+
+/** Traces the unlocked edges in once the profile has arrived. */
+function useTreeReveal(isReady: boolean) {
+  const reveal = useSharedValue(0);
+  useEffect(() => {
+    if (isReady) reveal.set(withTiming(1, REVEAL_TIMING));
+  }, [isReady, reveal]);
+  return reveal;
+}
+
+function enterDelayFor(node: SkillTreeNodeLayout) {
+  const center = SKILL_TREE_LAYOUT.size / 2;
+  return ENTER_BASE_DELAY + Math.hypot(node.x - center, node.y - center) * ENTER_DELAY_PER_POINT;
+}
+
 export function SkillTreeCanvas({ screen }: { screen: SkillTreeScreenState }) {
-  const { viewport, model } = screen;
+  const { viewport, model, highlighted, isReady } = screen;
   const { size } = SKILL_TREE_LAYOUT;
+  const reveal = useTreeReveal(isReady);
   return (
     <GestureDetector gesture={viewport.gesture}>
       <View
@@ -33,7 +62,12 @@ export function SkillTreeCanvas({ screen }: { screen: SkillTreeScreenState }) {
               viewport.canvasStyle,
             ]}
           >
-            <SkillTreeEdges layout={SKILL_TREE_LAYOUT} model={model} />
+            <SkillTreeLinks
+              layout={SKILL_TREE_LAYOUT}
+              model={model}
+              reveal={reveal}
+              highlighted={highlighted}
+            />
             {SKILL_TREE_LAYOUT.nodes.map((node) => (
               <TreeNode key={node.id} node={node} screen={screen} />
             ))}
@@ -46,7 +80,7 @@ export function SkillTreeCanvas({ screen }: { screen: SkillTreeScreenState }) {
 
 function TreeNode({ node, screen }: { node: SkillTreeNodeLayout; screen: SkillTreeScreenState }) {
   const { t } = useTranslation();
-  const { model, selectedId, selectNode, viewport } = screen;
+  const { model, selectedId, selectNode, viewport, highlighted } = screen;
   const shared = {
     id: node.id,
     kind: node.kind,
@@ -54,6 +88,8 @@ function TreeNode({ node, screen }: { node: SkillTreeNodeLayout; screen: SkillTr
     y: node.y,
     size: node.size,
     isSelected: selectedId === node.id,
+    isDimmed: highlighted !== null && !highlighted.has(node.id),
+    enterDelay: enterDelayFor(node),
     scale: viewport.scale,
     onPress: selectNode as (id: string) => void,
   };

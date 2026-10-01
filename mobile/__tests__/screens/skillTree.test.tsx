@@ -1,3 +1,5 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
@@ -40,6 +42,8 @@ jest.mock("react-native-safe-area-context", () => ({
 
 jest.mock("expo-haptics", () => ({
   selectionAsync: jest.fn().mockResolvedValue(undefined),
+  notificationAsync: jest.fn().mockResolvedValue(undefined),
+  NotificationFeedbackType: { Success: "success" },
 }));
 
 jest.mock("react-i18next", () => ({
@@ -163,6 +167,33 @@ describe("SkillTreeScreen", () => {
 
     expect(await screen.findByTestId("skill-tree-detail")).toBeTruthy();
     expect(screen.queryByTestId("skill-tree-list")).toBeNull();
+  });
+
+  it("celebrates skills unlocked since the last visit and shows them", async () => {
+    await AsyncStorage.clear();
+    await renderMeasuredTree();
+
+    fireEvent.press(await screen.findByTestId("skill-tree-new-unlocks"));
+
+    expect(await screen.findByTestId("skill-tree-detail")).toBeTruthy();
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith("success");
+  });
+
+  it("does not celebrate skills that were already seen", async () => {
+    await AsyncStorage.setItem("prodify_skill_tree_seen_v1_7", JSON.stringify(["mixing.eq"]));
+    await renderMeasuredTree();
+    await screen.findByTestId("skill-tree-overview");
+
+    expect(screen.queryByTestId("skill-tree-new-unlocks")).toBeNull();
+  });
+
+  it("zooms out to the whole tree from the overview map", async () => {
+    await renderMeasuredTree();
+    fireEvent.press(await screen.findByTestId("skill-tree-node-mixing"));
+
+    fireEvent.press(await screen.findByTestId("skill-tree-overview"));
+
+    expect(screen.queryByTestId("skill-tree-detail")).toBeNull();
   });
 
   it("goes back", async () => {

@@ -1,4 +1,4 @@
-import { ChevronLeft, List, Moon, Network } from "lucide-react-native";
+import { ChevronLeft, List, Moon, Network, Sparkles } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
@@ -13,6 +13,7 @@ import { styles } from "../skillTree.styles";
 import { SkillNodeDetailCard } from "./SkillNodeDetailCard";
 import { SkillTreeCanvas } from "./SkillTreeCanvas";
 import { SkillTreeList } from "./SkillTreeList";
+import { SkillTreeOverviewMap } from "./SkillTreeOverviewMap";
 
 const HEADER_HEIGHT = 60;
 
@@ -52,7 +53,16 @@ export function SkillTreeScreenView({ screen, onBack }: SkillTreeScreenViewProps
       )}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]} pointerEvents="box-none">
         <Header screen={screen} onBack={onBack} />
-        {screen.viewMode === "tree" ? <TreeStatus screen={screen} /> : null}
+        {screen.viewMode === "tree" ? (
+          <View style={styles.headerAccessories} pointerEvents="box-none">
+            <TreeStatus screen={screen} />
+            {screen.isReady ? (
+              <Animated.View entering={FadeIn.duration(motion.standard).delay(700)}>
+                <SkillTreeOverviewMap screen={screen} />
+              </Animated.View>
+            ) : null}
+          </View>
+        ) : null}
       </View>
       {screen.viewMode === "tree" ? (
         <View
@@ -122,26 +132,45 @@ function TreeStatus({ screen }: { screen: SkillTreeScreenState }) {
       </View>
     );
   }
-  const { neglected } = screen;
-  if (!neglected) return null;
+  const { neglected, showFirstNewUnlock, newlyUnlocked } = screen;
   return (
-    <Animated.View entering={FadeIn.duration(motion.standard).delay(600)}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityHint={t("skillTree.neglectedHint")}
-        onPress={() => screen.showFocus(neglected.id)}
-        style={({ pressed }) => [styles.neglectedChip, pressed && styles.pressed]}
-        testID="skill-tree-neglected"
-      >
-        <Moon size={14} color={colors.textSecondary} />
-        <Text style={styles.neglectedChipText}>
-          {t("skillTree.neglected", {
-            count: neglected.days,
-            focus: skillFocusText(neglected.id, "short", t),
-          })}
-        </Text>
-      </Pressable>
-    </Animated.View>
+    <View style={styles.statusChips} pointerEvents="box-none">
+      {showFirstNewUnlock ? (
+        <Animated.View entering={FadeIn.duration(motion.standard).delay(400)}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint={t("skillTree.newUnlocksHint")}
+            onPress={showFirstNewUnlock}
+            style={({ pressed }) => [styles.neglectedChip, styles.newUnlockChip, pressed && styles.pressed]}
+            testID="skill-tree-new-unlocks"
+          >
+            <Sparkles size={14} color={colors.primary} />
+            <Text style={styles.neglectedChipText}>
+              {t("skillTree.newUnlocks", { count: newlyUnlocked.size })}
+            </Text>
+          </Pressable>
+        </Animated.View>
+      ) : null}
+      {neglected ? (
+        <Animated.View entering={FadeIn.duration(motion.standard).delay(600)}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint={t("skillTree.neglectedHint")}
+            onPress={() => screen.showFocus(neglected.id)}
+            style={({ pressed }) => [styles.neglectedChip, pressed && styles.pressed]}
+            testID="skill-tree-neglected"
+          >
+            <Moon size={14} color={colors.textSecondary} />
+            <Text style={styles.neglectedChipText}>
+              {t("skillTree.neglected", {
+                count: neglected.days,
+                focus: skillFocusText(neglected.id, "short", t),
+              })}
+            </Text>
+          </Pressable>
+        </Animated.View>
+      ) : null}
+    </View>
   );
 }
 

@@ -1,6 +1,9 @@
 import {
   SKILL_BRANCHES,
   SKILL_FOCUSES,
+  branchOfFocus,
+  focusesForBranch,
+  isSkillBranch,
   type SkillBranch,
   type SkillFocusId,
 } from "../../constants/skills";
@@ -10,6 +13,8 @@ import { levelFraction } from "../sessions/skillProgressPresentation";
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** A focus counts as neglected once it has rested this long. */
 export const NEGLECTED_AFTER_DAYS = 14;
+
+export type SkillTreeNodeId = "center" | SkillBranch | SkillFocusId;
 
 export type SkillNodeState = {
   isUnlocked: boolean;
@@ -100,6 +105,45 @@ export function neglectedFocus(
   return oldest;
 }
 
+/** An edge lights up once the node it leads to is unlocked. */
+export function isEdgeUnlocked(model: SkillTreeModel, toId: SkillBranch | SkillFocusId): boolean {
+  return isSkillBranch(toId) ? model.branches[toId].isUnlocked : model.focuses[toId].isUnlocked;
+}
+
 export function unlockedFocusIds(model: SkillTreeModel): SkillFocusId[] {
   return SKILL_FOCUSES.map(({ id }) => id).filter((id) => model.focuses[id].isUnlocked);
+}
+
+/** Where the tree opens: the requested area, else the one trained most recently, else you. */
+export function startingNodeId(
+  model: SkillTreeModel,
+  requestedBranch: string | undefined,
+): "center" | SkillBranch {
+  if (isSkillBranch(requestedBranch)) return requestedBranch;
+  let latest: { branch: SkillBranch; trainedAt: number } | null = null;
+  for (const branch of SKILL_BRANCHES) {
+    const { lastTrainedAt } = model.branches[branch];
+    if (!lastTrainedAt) continue;
+    const trainedAt = new Date(lastTrainedAt).getTime();
+    if (!latest || trainedAt > latest.trainedAt) latest = { branch, trainedAt };
+  }
+  return latest?.branch ?? "center";
+}
+
+/**
+ * Nodes that stay lit while one is selected: the path from you to it, plus an area's skills.
+ * Null means nothing is dimmed.
+ */
+export function highlightedNodeIds(
+  selectedId: SkillTreeNodeId | null,
+): ReadonlySet<SkillTreeNodeId> | null {
+  if (!selectedId || selectedId === "center") return null;
+  if (isSkillBranch(selectedId)) {
+    return new Set<SkillTreeNodeId>([
+      "center",
+      selectedId,
+      ...focusesForBranch(selectedId).map(({ id }) => id),
+    ]);
+  }
+  return new Set<SkillTreeNodeId>(["center", branchOfFocus(selectedId), selectedId]);
 }
