@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import type { TFunction } from "i18next";
 import { Check, ChevronRight } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
@@ -32,6 +33,7 @@ export function SessionCompleteFocusCard({ session, sessionType }: SessionComple
       <FocusCardHeader reflection={reflection} accent={accent} />
       <SkillFocusReflectionPicker
         selection={reflection.selection}
+        durationSeconds={session.duration_seconds ?? 0}
         progressBySkill={reflection.progressBySkill}
       />
       {reflection.saveStatus === "error" ? <SaveErrorRow onRetry={reflection.retrySave} /> : null}
@@ -80,13 +82,16 @@ function FocusCardHeader({
         </Text>
         <SaveStatusIndicator status={reflection.saveStatus} />
       </View>
-      <Text style={styles.focusCardHint}>
-        {reflection.hasPlannedFocus
-          ? t("sessionComplete.focusHintPlanned")
-          : t("sessionComplete.focusHint")}
-      </Text>
+      <Text style={styles.focusCardHint}>{focusHint(reflection, t)}</Text>
     </>
   );
+}
+
+function focusHint(reflection: SessionFocusReflection, t: TFunction): string {
+  if (reflection.selection.isProduction) return t("sessionComplete.focusHintProduction");
+  return reflection.hasPlannedFocus
+    ? t("sessionComplete.focusHintPlanned")
+    : t("sessionComplete.focusHint");
 }
 
 function SaveStatusIndicator({ status }: { status: FocusSaveStatus }) {
@@ -103,7 +108,9 @@ function SaveStatusIndicator({ status }: { status: FocusSaveStatus }) {
         >
           {status === "saved" ? <Check size={14} color={colors.success} strokeWidth={3} /> : null}
           <Text style={[styles.focusStatusText, status === "saved" && styles.focusStatusSaved]}>
-            {status === "saved" ? t("sessionComplete.focusSaved") : t("sessionComplete.focusSaving")}
+            {status === "saved"
+              ? t("sessionComplete.focusSaved")
+              : t("sessionComplete.focusSaving")}
           </Text>
         </Animated.View>
       ) : null}

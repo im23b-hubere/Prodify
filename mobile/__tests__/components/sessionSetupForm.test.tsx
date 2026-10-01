@@ -245,6 +245,22 @@ describe("SessionSetupForm skill focus", () => {
     await waitForSessionStart();
     expect(startBody().skill_focus_ids).toEqual(["recording.room"]);
   });
+
+  it("submits production intentions from different areas", async () => {
+    const { getByTestId, getByText } = render(
+      <SessionSetupForm initialSessionType="production" onStarted={jest.fn()} />,
+    );
+
+    fireEvent.press(getByTestId("practice-branch-beat_making"));
+    fireEvent.press(getByTestId("skill-focus-beat_making.groove"));
+    fireEvent.press(getByTestId("practice-branch-mixing"));
+    fireEvent.press(getByTestId("skill-focus-mixing.eq"));
+    fireEvent.press(getByText("sessionSetup.startCta"));
+
+    await waitForSessionStart();
+    expect(startBody().session_type).toBe("production");
+    expect(startBody().skill_focus_ids).toEqual(["beat_making.groove", "mixing.eq"]);
+  });
 });
 
 describe("SessionSetupForm focus suggestions", () => {

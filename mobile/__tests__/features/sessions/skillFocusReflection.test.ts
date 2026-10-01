@@ -9,7 +9,7 @@ import {
   type FocusReflection,
 } from "../../../features/sessions/skillFocusReflection";
 
-const none: FocusReflection = { focusIds: [], primaryFocusId: null };
+const none: FocusReflection = { focusIds: [], primaryFocusId: null, areaWeights: {} };
 const mixingIds = focusesForBranch("mixing").map(({ id }) => id);
 
 describe("toggleTouchedFocus", () => {
@@ -29,6 +29,7 @@ describe("toggleTouchedFocus", () => {
 describe("toggleMainFocus", () => {
   it("marks an untouched focus as touched and main", () => {
     expect(toggleMainFocus(none, "mixing.eq")).toEqual({
+      ...none,
       focusIds: ["mixing.eq"],
       primaryFocusId: "mixing.eq",
     });
@@ -44,6 +45,7 @@ describe("toggleMainFocus", () => {
     const starred = toggleMainFocus(none, "mixing.eq");
 
     expect(toggleMainFocus(starred, "mixing.eq")).toEqual({
+      ...none,
       focusIds: ["mixing.eq"],
       primaryFocusId: null,
     });
@@ -76,15 +78,17 @@ describe("toggleFullPass", () => {
 });
 
 describe("restrictToBranches", () => {
-  it("hides focuses and the star from other branches", () => {
+  it("hides focuses, area weights and the star from other branches", () => {
     const reflection: FocusReflection = {
       focusIds: ["mixing.eq", "recording.room"],
       primaryFocusId: "recording.room",
+      areaWeights: { mixing: 3, recording: 1 },
     };
 
     expect(restrictToBranches(reflection, ["mixing"])).toEqual({
       focusIds: ["mixing.eq"],
       primaryFocusId: null,
+      areaWeights: { mixing: 3 },
     });
   });
 });
@@ -93,8 +97,8 @@ describe("isSameReflection", () => {
   it("ignores the order of focuses", () => {
     expect(
       isSameReflection(
-        { focusIds: ["mixing.eq", "mixing.space"], primaryFocusId: null },
-        { focusIds: ["mixing.space", "mixing.eq"], primaryFocusId: null },
+        { ...none, focusIds: ["mixing.eq", "mixing.space"] },
+        { ...none, focusIds: ["mixing.space", "mixing.eq"] },
       ),
     ).toBe(true);
   });
@@ -102,8 +106,17 @@ describe("isSameReflection", () => {
   it("treats a different main focus as a change", () => {
     expect(
       isSameReflection(
-        { focusIds: ["mixing.eq"], primaryFocusId: "mixing.eq" },
-        { focusIds: ["mixing.eq"], primaryFocusId: null },
+        { ...none, focusIds: ["mixing.eq"], primaryFocusId: "mixing.eq" },
+        { ...none, focusIds: ["mixing.eq"] },
+      ),
+    ).toBe(false);
+  });
+
+  it("treats a different area weight as a change", () => {
+    expect(
+      isSameReflection(
+        { ...none, areaWeights: { mixing: 3 } },
+        { ...none, areaWeights: { mixing: 1 } },
       ),
     ).toBe(false);
   });

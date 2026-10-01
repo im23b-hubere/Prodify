@@ -13,6 +13,7 @@ _SESSION_TYPE_LABELS: dict[str, str] = {
     "arrangement": "Arrangement",
     "vocal_production": "Vocal Production",
     "learning": "Learning / Practice",
+    "production": "Production",
 }
 
 

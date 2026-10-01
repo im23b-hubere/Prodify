@@ -25,6 +25,7 @@ class SessionType(str, enum.Enum):
     arrangement = "arrangement"
     vocal_production = "vocal_production"
     learning = "learning"
+    production = "production"
 
 
 class User(Base):
@@ -106,10 +107,20 @@ class ProductionSession(Base):
         lazy="selectin",
         order_by="SessionSkillFocus.id",
     )
+    area_weights: Mapped[list["SessionAreaWeight"]] = relationship(
+        "SessionAreaWeight",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="SessionAreaWeight.id",
+    )
 
     @property
     def skill_focus_ids(self) -> list[str]:
         return [focus.skill_id for focus in self.skill_focuses]
+
+    @property
+    def weight_by_area(self) -> dict[str, int]:
+        return {row.branch: row.weight for row in self.area_weights}
 
     @property
     def primary_skill_focus_id(self) -> Optional[str]:
@@ -135,6 +146,18 @@ class SessionSkillFocus(Base):
     # At most one focus per session is the main focus; it earns the larger share of the time.
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SessionAreaWeight(Base):
+    """How much of a production session went into one area (see app/skill_catalog.py)."""
+
+    __tablename__ = "session_area_weights"
+    __table_args__ = (UniqueConstraint("session_id", "branch", name="uq_session_area_weight"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
+    branch: Mapped[str] = mapped_column(String(32), nullable=False)
+    weight: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class Streak(Base):

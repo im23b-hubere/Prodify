@@ -390,6 +390,59 @@ describe("SessionCompleteScreen focus reflection", () => {
     expect(mockPush).toHaveBeenCalledWith("/skill-tree?branch=beat_making");
   });
 
+  it("lets a production session add the areas it went into", async () => {
+    mockBackend({ session_type: "production", skill_focus_ids: ["beat_making.groove"] });
+    const { findByTestId, getByTestId } = render(<SessionCompleteScreen />);
+
+    fireEvent.press(await findByTestId("worked-area-mixing"));
+    fireEvent.press(getByTestId("skill-focus-mixing.eq"));
+
+    await waitFor(() =>
+      expect(lastPatchBody()).toEqual({
+        skill_focus_ids: ["beat_making.groove", "mixing.eq"],
+        primary_skill_focus_id: null,
+        area_weights: [
+          { branch: "beat_making", weight: 2 },
+          { branch: "mixing", weight: 2 },
+        ],
+      }),
+    );
+  });
+
+  it("saves how much of the session went into an area", async () => {
+    mockBackend({ session_type: "production", skill_focus_ids: ["mixing.eq"] });
+    const { findByTestId } = render(<SessionCompleteScreen />);
+
+    fireEvent.press(await findByTestId("area-weight-mixing-3"));
+
+    await waitFor(() =>
+      expect(lastPatchBody()?.area_weights).toEqual([{ branch: "mixing", weight: 3 }]),
+    );
+  });
+
+  it("previews how the session time splits across the weighted areas", async () => {
+    mockBackend({
+      session_type: "production",
+      area_weights: [
+        { branch: "beat_making", weight: 3 },
+        { branch: "mixing", weight: 2 },
+      ],
+    });
+    const { findByTestId } = render(<SessionCompleteScreen />);
+
+    expect((await findByTestId("area-time-preview")).props.children).toBe(
+      "sessionComplete.areaTimeShare · sessionComplete.areaTimeShare",
+    );
+  });
+
+  it("asks a production session for its areas before showing any focus", async () => {
+    mockBackend({ session_type: "production" });
+    const { findByText, queryByTestId } = render(<SessionCompleteScreen />);
+
+    expect(await findByText("sessionComplete.areasEmpty")).toBeTruthy();
+    expect(queryByTestId("skill-focus-beat_making.drums")).toBeNull();
+  });
+
   it("explains when skill progress cannot be loaded", async () => {
     mockBackend({ skill_focus_ids: ["beat_making.drums"] });
     progressResponder = () => Promise.reject(new Error("offline"));

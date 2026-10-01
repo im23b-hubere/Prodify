@@ -25,3 +25,29 @@ describe("tryParseSessionDto skill focuses", () => {
     expect(tryParseSessionDto(baseSession)?.skill_focus_ids).toEqual([]);
   });
 });
+
+describe("tryParseSessionDto area weights", () => {
+  it("keeps the weights of known areas", () => {
+    const session = tryParseSessionDto({
+      ...baseSession,
+      session_type: "production",
+      area_weights: [{ branch: "mixing", weight: 3 }],
+    });
+
+    expect(session?.area_weights).toEqual([{ branch: "mixing", weight: 3 }]);
+  });
+
+  it("drops unknown areas and weights outside a little to a lot", () => {
+    const session = tryParseSessionDto({
+      ...baseSession,
+      session_type: "production",
+      area_weights: [
+        { branch: "mixing", weight: 4 },
+        { branch: "future_area", weight: 2 },
+        { branch: "recording", weight: 1 },
+      ],
+    });
+
+    expect(session?.area_weights).toEqual([{ branch: "recording", weight: 1 }]);
+  });
+});

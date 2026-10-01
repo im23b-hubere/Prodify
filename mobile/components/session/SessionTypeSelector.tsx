@@ -4,6 +4,7 @@ import {
   BookOpen,
   Disc,
   Drum,
+  Headphones,
   Layers,
   Mic,
   Mic2,
@@ -27,6 +28,7 @@ const UI_BY_TYPE: Record<
   SessionType,
   { Icon: LucideIcon; gradient: readonly [string, string, string]; pattern: PatternKind }
 > = {
+  production: { Icon: Headphones, gradient: ["#1c1c1f", "#3a3a40", "#6b6b74"], pattern: "beat" },
   beat_making: { Icon: Drum, gradient: ["#c41e3a", "#ff6a3d", "#ff914d"], pattern: "beat" },
   mixing: { Icon: SlidersHorizontal, gradient: ["#3d2a6b", "#6b4dc4", "#a259ff"], pattern: "mix" },
   mastering: { Icon: Disc, gradient: ["#003d26", "#00aa6c", "#00ff88"], pattern: "mix" },

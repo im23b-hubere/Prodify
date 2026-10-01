@@ -3,6 +3,7 @@
  * copy is localized via `sessionTypes.*` in locales/en.json.
  */
 export const SESSION_TYPES = [
+  { id: "production", label: "Production", icon: "🎧", color: "#f2f2f2" },
   { id: "beat_making", label: "Beat Making", icon: "🎹", color: "#FF3D00" },
   { id: "mixing", label: "Mixing", icon: "🎛️", color: "#a259ff" },
   { id: "mastering", label: "Mastering", icon: "💿", color: "#00ff88" },

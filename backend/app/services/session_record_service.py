@@ -8,7 +8,9 @@ from app.models import ProductionSession, utcnow
 from app.services.friend_graph import friend_user_ids
 from app.services.kpi_tracker import track_event_deduped
 from app.services.session_skill_focus_service import (
+    drop_area_weights_unless_production,
     drop_incompatible_skill_focuses,
+    replace_area_weights,
     replace_skill_focuses,
     set_primary_skill_focus,
 )
@@ -154,8 +156,10 @@ def _can_view_session(db: Session, viewer_id: int, session: ProductionSession) -
     return session.user_id in friend_user_ids(db, viewer_id)
 
 
-def _focus_snapshot(session: ProductionSession) -> tuple[frozenset[str], str | None]:
-    return frozenset(session.skill_focus_ids), session.primary_skill_focus_id
+def _focus_snapshot(
+    session: ProductionSession,
+) -> tuple[frozenset[str], str | None, dict[str, int]]:
+    return frozenset(session.skill_focus_ids), session.primary_skill_focus_id, session.weight_by_area
 
 
 def _track_focus_reflection(
@@ -172,6 +176,7 @@ def _track_focus_reflection(
             "session_type": session.session_type,
             "focus_count": len(session.skill_focus_ids),
             "has_main_focus": session.primary_skill_focus_id is not None,
+            "area_count": len(session.area_weights),
             "had_planned_focus": had_planned_focus,
         },
     )
@@ -197,6 +202,11 @@ def _apply_updates(session: ProductionSession, updates: dict) -> None:
         drop_incompatible_skill_focuses(session)
         if "primary_skill_focus_id" in updates:
             set_primary_skill_focus(session, updates["primary_skill_focus_id"])
+    if "area_weights" in updates:
+        weights = updates["area_weights"] or []
+        replace_area_weights(session, {item["branch"]: item["weight"] for item in weights})
+    else:
+        drop_area_weights_unless_production(session)
     for field in ("notes", "mood_level"):
         if field in updates:
             setattr(session, field, updates[field])

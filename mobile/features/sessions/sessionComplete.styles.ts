@@ -177,7 +177,11 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     minHeight: 44,
   },
-  skillTreeLinkText: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
+  skillTreeLinkText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   branchSection: { marginTop: spacing.lg, gap: spacing.sm },
   branchHeader: {
     flexDirection: "row",
@@ -210,6 +214,33 @@ export const styles = StyleSheet.create({
     ...typography.meta,
   },
   fullPassTextActive: { color: colors.textPrimary },
+  areaTimePreview: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.meta,
+  },
+  weightControl: {
+    flexDirection: "row",
+    gap: 6,
+    padding: 4,
+    borderRadius: radii.round,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  weightSegment: {
+    flex: 1,
+    minHeight: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  weightSegmentText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
+  weightSegmentTextActive: { color: colors.textPrimary },
   tileRow: { flexDirection: "row", gap: spacing.sm },
   tileSpacer: { flex: 1 },
   tile: {

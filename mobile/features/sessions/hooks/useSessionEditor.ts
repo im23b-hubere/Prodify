@@ -3,11 +3,16 @@ import type { TFunction } from "i18next";
 import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 
-import { skillBranchesForSessionType } from "../../../constants/skills";
 import { apiJson } from "../../../lib/client";
 import { tryParseSessionDto } from "../../../lib/sessionDto";
 import { DEFAULT_SESSION_TYPE, type SessionDto, type SessionType } from "../../../types/session";
-import { isSameReflection, restrictToBranches, type FocusReflection } from "../skillFocusReflection";
+import { focusReflectionPayload } from "../focusReflectionPayload";
+import {
+  fitReflectionToSessionType,
+  isSameReflection,
+  storedFocusReflection,
+  type FocusReflection,
+} from "../skillFocusReflection";
 import { useFocusReflectionSelection } from "./useFocusReflectionSelection";
 
 type UseSessionEditorOptions = {
@@ -21,14 +26,11 @@ type UseSessionEditorOptions = {
   onError: (message: string) => void;
 };
 
-const NO_REFLECTION: FocusReflection = { focusIds: [], primaryFocusId: null };
+const NO_REFLECTION: FocusReflection = { focusIds: [], primaryFocusId: null, areaWeights: {} };
 
+/** Unfitted on purpose: switching the type back in the editor restores what was stored. */
 function storedReflection(session: SessionDto | null): FocusReflection {
-  if (!session) return NO_REFLECTION;
-  return {
-    focusIds: session.skill_focus_ids ?? [],
-    primaryFocusId: session.primary_skill_focus_id ?? null,
-  };
+  return session ? storedFocusReflection(session) : NO_REFLECTION;
 }
 
 function useSessionDraft(session: SessionDto | null, currentUserId?: number | null) {
@@ -55,7 +57,7 @@ function useSessionDraft(session: SessionDto | null, currentUserId?: number | nu
     canEditFocuses &&
     !isSameReflection(
       focusSelection.committedReflection,
-      restrictToBranches(savedReflection, skillBranchesForSessionType(selectedType)),
+      fitReflectionToSessionType(savedReflection, selectedType),
     );
   const isDirty =
     isOwnSession &&
@@ -96,7 +98,7 @@ export function useSessionEditor({
     isDirty,
   } = useSessionDraft(session, currentUserId);
   const [busy, setBusy] = useState(false);
-  const { focusIds, primaryFocusId } = focusSelection.committedReflection;
+  const { committedReflection } = focusSelection;
 
   const save = useCallback(async () => {
     if (!token || !sessionId) return;
@@ -104,7 +106,7 @@ export function useSessionEditor({
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
       const focusFields = hasFocusChanges
-        ? { skill_focus_ids: focusIds, primary_skill_focus_id: primaryFocusId }
+        ? focusReflectionPayload(committedReflection, selectedType)
         : {};
       const response = await apiJson<unknown>(`/sessions/item/${sessionId}`, {
         token,
@@ -128,13 +130,12 @@ export function useSessionEditor({
       setBusy(false);
     }
   }, [
-    focusIds,
+    committedReflection,
     hasFocusChanges,
     note,
     onClose,
     onError,
     onSessionUpdated,
-    primaryFocusId,
     selectedType,
     sessionId,
     t,

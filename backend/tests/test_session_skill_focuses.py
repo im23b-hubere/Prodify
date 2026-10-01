@@ -413,6 +413,7 @@ def test_reflecting_a_finished_session_is_tracked_once(client):
             "session_type": "mixing",
             "focus_count": 2,
             "has_main_focus": True,
+            "area_count": 0,
             "had_planned_focus": True,
         }
     ]

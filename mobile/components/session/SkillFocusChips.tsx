@@ -14,6 +14,7 @@ import {
 } from "../../constants/skills";
 import { colors, motion } from "../../constants/theme";
 import type { SkillFocusFields } from "../../features/sessions/hooks/useSkillFocusFields";
+import { browsesAreas, focusesInBranch } from "../../features/sessions/skillFocusSelection";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { skillFocusText } from "../../lib/skillI18n";
 import { sessionSetupStyles as styles } from "./sessionSetup.styles";
@@ -30,14 +31,16 @@ export function sessionTypeAccent(sessionType: SessionType): string {
   return SESSION_TYPES.find((type) => type.id === sessionType)?.color ?? colors.primary;
 }
 
-/** Focus chips for a session type; learning sessions pick a practice area first. */
+/** Focus chips for a session type; learning and production sessions browse one area at a time. */
 export function SkillFocusChips({
   sessionType,
   fields,
   showPracticePrompts = false,
 }: SkillFocusChipsProps) {
-  const isLearning = sessionType === "learning";
-  const branches = isLearning
+  const { t } = useTranslation();
+  const isBrowsingAreas = browsesAreas(sessionType);
+  const isProduction = sessionType === "production";
+  const branches = isBrowsingAreas
     ? fields.practiceBranch
       ? [fields.practiceBranch]
       : []
@@ -45,21 +48,28 @@ export function SkillFocusChips({
 
   return (
     <>
-      {isLearning ? (
-        <PracticeBranchChips
-          practiceBranch={fields.practiceBranch}
-          onSelect={fields.selectPracticeBranch}
+      {isBrowsingAreas ? (
+        <AreaChips
+          prompt={
+            isProduction
+              ? t("sessionSetup.productionAreaPrompt")
+              : t("sessionSetup.practiceAreaPrompt")
+          }
+          role="radio"
+          isSelected={(branch) => fields.practiceBranch === branch}
+          onPress={fields.selectPracticeBranch}
+          pickCount={
+            isProduction ? (branch) => focusesInBranch(fields.focusIds, branch).length : undefined
+          }
+          testIDPrefix="practice-branch"
         />
       ) : null}
       {branches.map((branch) => (
-        <FocusGroup
-          key={branch}
-          branch={branch}
-          showTitle={branches.length > 1}
-          fields={fields}
-        />
+        <FocusGroup key={branch} branch={branch} showTitle={branches.length > 1} fields={fields} />
       ))}
-      {isLearning && showPracticePrompts ? <PracticePrompts focusIds={fields.focusIds} /> : null}
+      {sessionType === "learning" && showPracticePrompts ? (
+        <PracticePrompts focusIds={fields.focusIds} />
+      ) : null}
     </>
   );
 }
@@ -73,20 +83,58 @@ export function PracticeBranchChips({
 }) {
   const { t } = useTranslation();
   return (
+    <AreaChips
+      prompt={t("sessionSetup.practiceAreaPrompt")}
+      role="radio"
+      isSelected={(branch) => practiceBranch === branch}
+      onPress={onSelect}
+      testIDPrefix="practice-branch"
+    />
+  );
+}
+
+type AreaChipsProps = {
+  prompt: string;
+  role: "checkbox" | "radio";
+  isSelected: (branch: SkillBranch) => boolean;
+  onPress: (branch: SkillBranch) => void;
+  /** Shows how many focuses are picked in each area, for selections spanning areas. */
+  pickCount?: (branch: SkillBranch) => number;
+  testIDPrefix: string;
+};
+
+export function AreaChips({
+  prompt,
+  role,
+  isSelected,
+  onPress,
+  pickCount,
+  testIDPrefix,
+}: AreaChipsProps) {
+  const { t } = useTranslation();
+  return (
     <View style={styles.focusGroup}>
-      <Text style={styles.focusGroupTitle}>{t("sessionSetup.practiceAreaPrompt")}</Text>
-      <View style={styles.focusChipRow} accessibilityRole="radiogroup">
-        {SKILL_BRANCHES.map((branch) => (
-          <Chip
-            key={branch}
-            role="radio"
-            label={sessionTypeLabel(branch, t)}
-            accent={sessionTypeAccent(branch)}
-            selected={practiceBranch === branch}
-            onPress={() => onSelect(branch)}
-            testID={`practice-branch-${branch}`}
-          />
-        ))}
+      <Text style={styles.focusGroupTitle}>{prompt}</Text>
+      <View
+        style={styles.focusChipRow}
+        accessibilityRole={role === "radio" ? "radiogroup" : undefined}
+      >
+        {SKILL_BRANCHES.map((branch) => {
+          const area = sessionTypeLabel(branch, t);
+          const count = pickCount?.(branch) ?? 0;
+          return (
+            <Chip
+              key={branch}
+              role={role}
+              label={count > 0 ? `${area} · ${count}` : area}
+              accessibilityLabel={count > 0 ? t("sessionSetup.areaPicked", { area, count }) : area}
+              accent={sessionTypeAccent(branch)}
+              selected={isSelected(branch)}
+              onPress={() => onPress(branch)}
+              testID={`${testIDPrefix}-${branch}`}
+            />
+          );
+        })}
       </View>
     </View>
   );

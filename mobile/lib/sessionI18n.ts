@@ -51,6 +51,8 @@ export function sessionTypeLabel(type: string, tr: TFunction): string {
       return tr("sessionTypes.vocalProduction");
     case "learning":
       return tr("sessionTypes.learning");
+    case "production":
+      return tr("sessionTypes.production");
     default:
       return type;
   }

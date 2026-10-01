@@ -7,6 +7,16 @@ import {
   type SkillFocusId,
 } from "../../constants/skills";
 
+/** Session types whose focuses span every area, so the picker shows one area at a time. */
+export function browsesAreas(type: SessionType | null): boolean {
+  return type === "learning" || type === "production";
+}
+
+/** Learning sessions practice a single area; production sessions may mix areas. */
+export function limitsToOneArea(type: SessionType | null): boolean {
+  return type === "learning";
+}
+
 /** Focuses that are valid for the session type, in selection order. */
 export function focusesAllowedForSessionType(
   focusIds: readonly SkillFocusId[],

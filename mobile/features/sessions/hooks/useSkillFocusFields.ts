@@ -3,9 +3,11 @@ import { useState } from "react";
 import type { SessionType } from "../../../constants/sessionTypes";
 import { branchOfFocus, type SkillBranch, type SkillFocusId } from "../../../constants/skills";
 import {
+  browsesAreas,
   focusesAllowedForSessionType,
   focusesInBranch,
   isFocusSelectionFull,
+  limitsToOneArea,
   toggleFocus,
 } from "../skillFocusSelection";
 
@@ -13,27 +15,30 @@ import {
  * Optional skill focuses planned at session start. Picks that do not fit the current session
  * type or the browsed learning area stay stored (switching back restores them) but are never
  * exposed, so browsing is non-destructive. The next toggle commits the visible selection.
+ * Production sessions browse areas too, but their picks may come from several areas.
  */
 export function useSkillFocusFields(selectedType: SessionType | null) {
   const [pickedFocusIds, setPickedFocusIds] = useState<SkillFocusId[]>([]);
   const [browsedPracticeBranch, setBrowsedPracticeBranch] = useState<SkillBranch | null>(null);
 
-  const isLearning = selectedType === "learning";
+  const isOneAreaAtATime = limitsToOneArea(selectedType);
   const focusIdsForType = selectedType
     ? focusesAllowedForSessionType(pickedFocusIds, selectedType)
     : [];
   const firstFocus = focusIdsForType[0];
   const practiceBranch = browsedPracticeBranch ?? (firstFocus ? branchOfFocus(firstFocus) : null);
-  const focusIds = exposedFocusIds(focusIdsForType, selectedType, practiceBranch);
+  const focusIds = isOneAreaAtATime
+    ? focusesInArea(focusIdsForType, practiceBranch)
+    : focusIdsForType;
 
   /** Learning sessions pick within one area, so a suggestion competes with that area's picks. */
   const selectionAround = (id: SkillFocusId) =>
-    isLearning ? focusesInBranch(focusIdsForType, branchOfFocus(id)) : focusIds;
+    isOneAreaAtATime ? focusesInBranch(focusIdsForType, branchOfFocus(id)) : focusIds;
 
   const applySuggestion = (id: SkillFocusId) => {
     const selection = selectionAround(id);
-    const opensOtherArea = isLearning && branchOfFocus(id) !== practiceBranch;
-    if (isLearning) setBrowsedPracticeBranch(branchOfFocus(id));
+    const opensOtherArea = isOneAreaAtATime && branchOfFocus(id) !== practiceBranch;
+    if (browsesAreas(selectedType)) setBrowsedPracticeBranch(branchOfFocus(id));
     if (opensOtherArea && selection.includes(id)) return;
     setPickedFocusIds(toggleFocus(selection, id));
   };
@@ -54,13 +59,11 @@ export function useSkillFocusFields(selectedType: SessionType | null) {
   };
 }
 
-function exposedFocusIds(
-  focusIdsForType: SkillFocusId[],
-  selectedType: SessionType | null,
+function focusesInArea(
+  focusIds: SkillFocusId[],
   practiceBranch: SkillBranch | null,
 ): SkillFocusId[] {
-  if (selectedType !== "learning") return focusIdsForType;
-  return practiceBranch ? focusesInBranch(focusIdsForType, practiceBranch) : [];
+  return practiceBranch ? focusesInBranch(focusIds, practiceBranch) : [];
 }
 
 export type SkillFocusFields = ReturnType<typeof useSkillFocusFields>;

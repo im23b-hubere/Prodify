@@ -1,4 +1,4 @@
-import { isSkillFocusId } from "../constants/skills";
+import { isAreaWeight, isSkillBranch, isSkillFocusId } from "../constants/skills";
 import type { SessionDto } from "../types/session";
 
 /**
@@ -80,6 +80,9 @@ export function tryParseSessionDto(value: unknown): SessionDto | null {
     isSkillFocusId(v.primary_skill_focus_id) && skill_focus_ids.includes(v.primary_skill_focus_id)
       ? v.primary_skill_focus_id
       : null;
+  const area_weights = Array.isArray(v.area_weights)
+    ? v.area_weights.filter(isKnownAreaWeight)
+    : [];
 
   return {
     id,
@@ -98,7 +101,16 @@ export function tryParseSessionDto(value: unknown): SessionDto | null {
     track_title,
     skill_focus_ids,
     primary_skill_focus_id,
+    area_weights,
   };
+}
+
+function isKnownAreaWeight(
+  value: unknown,
+): value is NonNullable<SessionDto["area_weights"]>[number] {
+  if (!value || typeof value !== "object") return false;
+  const { branch, weight } = value as Record<string, unknown>;
+  return isSkillBranch(branch) && isAreaWeight(weight);
 }
 
 /** Coerce list endpoint payloads to DTOs; drops invalid rows instead of crashing the list. */

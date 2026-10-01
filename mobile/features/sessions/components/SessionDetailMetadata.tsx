@@ -105,8 +105,15 @@ function SkillFocusSection({
         <Text style={styles.sectionTitle} accessibilityRole="header">
           {t("sessionDetail.skillFocus")}
         </Text>
-        <Text style={styles.sectionHint}>{t("sessionComplete.focusHint")}</Text>
-        <SkillFocusReflectionPicker selection={focusSelection} />
+        <Text style={styles.sectionHint}>
+          {focusSelection.isProduction
+            ? t("sessionComplete.focusHintProduction")
+            : t("sessionComplete.focusHint")}
+        </Text>
+        <SkillFocusReflectionPicker
+          selection={focusSelection}
+          durationSeconds={session.duration_seconds ?? 0}
+        />
       </View>
     );
   }
@@ -114,7 +121,9 @@ function SkillFocusSection({
   const focusIds = focusesAllowedForSessionType(session.skill_focus_ids ?? [], selectedType);
   if (focusIds.length === 0) return null;
   const mainFocusId = session.primary_skill_focus_id ?? null;
-  const orderedIds = [...focusIds].sort((a, b) => Number(b === mainFocusId) - Number(a === mainFocusId));
+  const orderedIds = [...focusIds].sort(
+    (a, b) => Number(b === mainFocusId) - Number(a === mainFocusId),
+  );
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{t("sessionDetail.skillFocus")}</Text>

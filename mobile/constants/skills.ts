@@ -5,7 +5,7 @@
  */
 import type { SessionType } from "./sessionTypes";
 
-export type SkillBranch = Exclude<SessionType, "mix_and_master" | "learning">;
+export type SkillBranch = Exclude<SessionType, "mix_and_master" | "learning" | "production">;
 
 export const SKILL_BRANCHES: readonly SkillBranch[] = [
   "beat_making",
@@ -82,6 +82,15 @@ export type SkillFocusId = SkillFocus["id"];
 /** Planning is an intention, so it stays small; reflecting afterwards may list everything touched. */
 export const MAX_PLANNED_FOCUSES_PER_SESSION = 2;
 
+/** How much of a production session went into an area: a little, some or a lot. */
+export const AREA_WEIGHTS = [1, 2, 3] as const;
+export type AreaWeight = (typeof AREA_WEIGHTS)[number];
+export const DEFAULT_AREA_WEIGHT: AreaWeight = 2;
+
+export function isAreaWeight(value: unknown): value is AreaWeight {
+  return (AREA_WEIGHTS as readonly unknown[]).includes(value);
+}
+
 const SKILL_FOCUS_ID_SET: ReadonlySet<string> = new Set(SKILL_FOCUSES.map((focus) => focus.id));
 
 export function isSkillFocusId(value: unknown): value is SkillFocusId {
@@ -103,6 +112,6 @@ export function focusesForBranch(branch: SkillBranch): SkillFocus[] {
 /** Branches whose focuses a session of this type can pick from. */
 export function skillBranchesForSessionType(type: SessionType): readonly SkillBranch[] {
   if (type === "mix_and_master") return ["mixing", "mastering"];
-  if (type === "learning") return SKILL_BRANCHES;
+  if (type === "learning" || type === "production") return SKILL_BRANCHES;
   return [type];
 }

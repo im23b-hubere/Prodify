@@ -6,7 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.models import SessionType
 from app.skill_catalog import (
+    AREA_WEIGHTS,
     MAX_PLANNED_FOCUSES_PER_SESSION,
+    SKILL_BRANCHES,
     SKILL_FOCUS_IDS,
     incompatible_focus_ids,
     normalize_focus_ids,
@@ -94,6 +96,27 @@ class SessionStop(BaseModel):
     session_id: int = Field(gt=0)
 
 
+class AreaWeight(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    branch: str
+    weight: int
+
+    @field_validator("branch")
+    @classmethod
+    def require_known_area(cls, value: str) -> str:
+        if value not in SKILL_BRANCHES:
+            raise ValueError(f"unknown area {value}")
+        return value
+
+    @field_validator("weight")
+    @classmethod
+    def require_known_weight(cls, value: int) -> int:
+        if value not in AREA_WEIGHTS:
+            raise ValueError(f"area weight must be one of {', '.join(map(str, AREA_WEIGHTS))}")
+        return value
+
+
 class SessionUpdate(BaseModel):
     session_type: SessionType | None = None
     notes: str | None = Field(default=None, max_length=2000)
@@ -105,6 +128,7 @@ class SessionUpdate(BaseModel):
     # main focus are checked in the service, because the stored session is only known there.
     skill_focus_ids: list[str] | None = None
     primary_skill_focus_id: str | None = None
+    area_weights: list[AreaWeight] | None = None
 
     @field_validator("notes")
     @classmethod
@@ -120,6 +144,14 @@ class SessionUpdate(BaseModel):
     @classmethod
     def normalize_skill_focus_ids(cls, value: object) -> list[str]:
         return [] if value is None else normalize_focus_ids(value)
+
+    @field_validator("area_weights")
+    @classmethod
+    def require_each_area_once(cls, value: list[AreaWeight] | None) -> list[AreaWeight] | None:
+        branches = [item.branch for item in value or []]
+        if len(branches) != len(set(branches)):
+            raise ValueError("each area may be weighted only once")
+        return value
 
     @field_validator("track_title")
     @classmethod
@@ -146,6 +178,7 @@ class SessionPublic(BaseModel):
     track_title: str | None = None
     skill_focus_ids: list[str] = Field(default_factory=list)
     primary_skill_focus_id: str | None = None
+    area_weights: list[AreaWeight] = Field(default_factory=list)
 
     @field_validator("tags", mode="before")
     @classmethod

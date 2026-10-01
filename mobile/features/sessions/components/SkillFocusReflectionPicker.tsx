@@ -15,6 +15,7 @@ import type { SkillProgressDto } from "../../../types/skillProgress";
 import type { FocusReflectionSelection } from "../hooks/useFocusReflectionSelection";
 import { styles } from "../sessionComplete.styles";
 import { isFullPass } from "../skillFocusReflection";
+import { AreaWeightControl, WorkedAreas } from "./ProductionAreaControls";
 import { SkillFocusTile } from "./SkillFocusTile";
 
 const PILL_HIT_SLOP = 6;
@@ -23,12 +24,18 @@ type ProgressBySkill = Partial<Record<SkillFocusId, SkillProgressDto>>;
 
 type SkillFocusReflectionPickerProps = {
   selection: FocusReflectionSelection;
+  /** Session length, for the production time split preview. */
+  durationSeconds?: number;
   progressBySkill?: ProgressBySkill;
 };
 
-/** Focus tiles per area with a full-pass toggle; learning sessions pick an area first. */
+/**
+ * Focus tiles per area with a full-pass toggle. Learning sessions pick an area first;
+ * production sessions pick and weigh every area they went into.
+ */
 export function SkillFocusReflectionPicker({
   selection,
+  durationSeconds = 0,
   progressBySkill = {},
 }: SkillFocusReflectionPickerProps) {
   return (
@@ -41,11 +48,14 @@ export function SkillFocusReflectionPicker({
           />
         </View>
       ) : null}
+      {selection.isProduction ? (
+        <WorkedAreas selection={selection} durationSeconds={durationSeconds} />
+      ) : null}
       {selection.visibleBranches.map((branch) => (
         <BranchSection
           key={branch}
           branch={branch}
-          showTitle={selection.visibleBranches.length > 1}
+          showTitle={selection.isProduction || selection.visibleBranches.length > 1}
           selection={selection}
           progressBySkill={progressBySkill}
         />
@@ -76,6 +86,7 @@ function BranchSection({
         isActive={isFullPass(focusIds, branch)}
         onToggle={() => selection.toggleFullPass(branch)}
       />
+      {selection.isProduction ? <AreaWeightControl branch={branch} selection={selection} /> : null}
       {pairsOf(focusesForBranch(branch).map(({ id }) => id)).map((pair) => (
         <View key={pair[0]} style={styles.tileRow}>
           {pair.map((id) => (
@@ -114,7 +125,11 @@ function BranchHeader({
   const area = sessionTypeLabel(branch, t);
   return (
     <View style={styles.branchHeader}>
-      {showTitle ? <Text style={styles.branchTitle}>{area}</Text> : null}
+      {showTitle ? (
+        <Text style={styles.branchTitle} accessibilityRole="header">
+          {area}
+        </Text>
+      ) : null}
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: isActive }}

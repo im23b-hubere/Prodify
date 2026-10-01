@@ -16,7 +16,11 @@ export function useSessionFocusReflection(session: SessionDto, sessionType: Sess
   const { token } = useAuth();
   const [savedReflection] = useState(() => savedFocusReflection(session, sessionType));
   const progress = useSkillProgress(token, session.id, savedReflection.focusIds.length > 0);
-  const sync = useSkillFocusSync(token, session.id, savedReflection, progress.refresh);
+  const sync = useSkillFocusSync(
+    { token, sessionId: session.id, sessionType },
+    savedReflection,
+    progress.refresh,
+  );
   const selection = useFocusReflectionSelection(sessionType, savedReflection, sync.save);
 
   return {

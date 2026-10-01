@@ -4,7 +4,7 @@ import {
   SESSION_TYPES,
   type SessionType,
 } from "../constants/sessionTypes";
-import type { SkillFocusId } from "../constants/skills";
+import type { AreaWeight, SkillBranch, SkillFocusId } from "../constants/skills";
 
 export type { SessionType };
 export { DEFAULT_SESSION_TYPE, SESSION_TYPE_IDS, SESSION_TYPES };
@@ -26,6 +26,7 @@ export type SessionDto = {
   track_title?: string | null;
   skill_focus_ids?: SkillFocusId[];
   primary_skill_focus_id?: SkillFocusId | null;
+  area_weights?: { branch: SkillBranch; weight: AreaWeight }[];
 };
 
 export type SessionStatsDto = {

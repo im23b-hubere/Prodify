@@ -1,7 +1,8 @@
 """A user's whole skill tree: time and level per branch and per focus, derived from sessions.
 
 Branches earn the full time of sessions of their type, so history from before skill focuses
-existed still counts. Focuses earn only the share their sessions allocate to them.
+existed still counts; multi-area sessions split their time. Focuses earn only the share their
+sessions allocate to them.
 """
 
 from dataclasses import dataclass
@@ -18,7 +19,9 @@ from app.services.skill_progress_service import (
     SkillLevel,
     counted_session_seconds,
     counted_skill_seconds,
+    effective_area_weights,
     skill_level_for,
+    split_by_area_weight,
 )
 
 # A branch collects every session of its type, so it needs a longer road than a single focus.
@@ -56,9 +59,13 @@ class _Tally:
 
 
 def branch_seconds_for_session(
-    session_type: str, duration_seconds: int, focus_ids: list[str]
+    session_type: str,
+    duration_seconds: int,
+    focus_ids: list[str],
+    weight_by_area: dict[str, int] | None = None,
 ) -> dict[str, int]:
-    """Mix & master counts half for each side; learning counts for the areas it practiced."""
+    """Mix & master counts half for each side; learning counts for the areas it practiced;
+    production splits by area weight."""
     duration_seconds = counted_session_seconds(duration_seconds)
     if not duration_seconds:
         return {}
@@ -67,6 +74,10 @@ def branch_seconds_for_session(
     if session_type == SessionType.mix_and_master.value:
         half = round(duration_seconds / 2)
         return {SessionType.mixing.value: half, SessionType.mastering.value: half}
+    if session_type == SessionType.production.value:
+        return split_by_area_weight(
+            duration_seconds, effective_area_weights(focus_ids, weight_by_area or {})
+        )
     if session_type == SessionType.learning.value:
         practiced = list(dict.fromkeys(branch_of_focus(focus_id) for focus_id in focus_ids))
         if not practiced:
@@ -79,7 +90,10 @@ def branch_seconds_for_session(
 def build_skill_profile(db: Session, user_id: int) -> SkillProfile:
     sessions = db.scalars(
         select(ProductionSession)
-        .options(selectinload(ProductionSession.skill_focuses))
+        .options(
+            selectinload(ProductionSession.skill_focuses),
+            selectinload(ProductionSession.area_weights),
+        )
         .where(
             ProductionSession.user_id == user_id,
             ProductionSession.stopped_at.is_not(None),
@@ -97,7 +111,10 @@ def build_skill_profile(db: Session, user_id: int) -> SkillProfile:
     total_seconds = 0
     for session in sessions:
         branch_seconds = branch_seconds_for_session(
-            session.session_type, session.duration_seconds or 0, session.skill_focus_ids
+            session.session_type,
+            session.duration_seconds or 0,
+            session.skill_focus_ids,
+            session.weight_by_area,
         )
         if branch_seconds:
             total_seconds += counted_session_seconds(session.duration_seconds or 0)

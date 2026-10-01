@@ -9,8 +9,9 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import ProductionSession, SessionSkillFocus
+from app.models import ProductionSession, SessionSkillFocus, SessionType
 from app.services.progression_service import SESSION_XP_MINUTES_FLOOR
+from app.skill_catalog import DEFAULT_AREA_WEIGHT, branch_of_focus
 
 MIN_COUNTED_SESSION_SECONDS = SESSION_XP_MINUTES_FLOOR * 60
 # A timer left running overnight must not push a skill several levels at once.
@@ -53,15 +54,51 @@ def allocate_session_seconds(
     primary_focus_id: str | None,
 ) -> dict[str, int]:
     """Split a session's time across its focuses; the main focus earns half when shared."""
-    duration_seconds = counted_session_seconds(duration_seconds)
-    if not focus_ids or not duration_seconds:
+    return _share_among_focuses(counted_session_seconds(duration_seconds), focus_ids, primary_focus_id)
+
+
+def allocate_production_seconds(
+    duration_seconds: int,
+    focus_ids: list[str],
+    primary_focus_id: str | None,
+    weight_by_area: dict[str, int],
+) -> dict[str, int]:
+    """Split a production session by area weight first, then each area among its own focuses."""
+    area_seconds = split_by_area_weight(
+        counted_session_seconds(duration_seconds), effective_area_weights(focus_ids, weight_by_area)
+    )
+    allocation: dict[str, int] = {}
+    for area, seconds in area_seconds.items():
+        focuses_in_area = [focus_id for focus_id in focus_ids if branch_of_focus(focus_id) == area]
+        allocation |= _share_among_focuses(seconds, focuses_in_area, primary_focus_id)
+    return allocation
+
+
+def effective_area_weights(focus_ids: list[str], weight_by_area: dict[str, int]) -> dict[str, int]:
+    """Weighted areas plus the areas of reflected focuses, which count as "some" unless weighted."""
+    focus_areas = dict.fromkeys(
+        (branch_of_focus(focus_id) for focus_id in focus_ids), DEFAULT_AREA_WEIGHT
+    )
+    return focus_areas | weight_by_area
+
+
+def split_by_area_weight(seconds: int, weight_by_area: dict[str, int]) -> dict[str, int]:
+    total_weight = sum(weight_by_area.values())
+    if not seconds or not total_weight:
+        return {}
+    return {area: round(seconds * weight / total_weight) for area, weight in weight_by_area.items()}
+
+
+def _share_among_focuses(
+    seconds: int, focus_ids: list[str], primary_focus_id: str | None
+) -> dict[str, int]:
+    if not focus_ids or not seconds:
         return {}
     secondary_ids = [focus_id for focus_id in focus_ids if focus_id != primary_focus_id]
     if primary_focus_id not in focus_ids or not secondary_ids:
-        even_share = round(duration_seconds / len(focus_ids))
-        return dict.fromkeys(focus_ids, even_share)
-    primary_seconds = round(duration_seconds * PRIMARY_FOCUS_SHARE)
-    secondary_share = round((duration_seconds - primary_seconds) / len(secondary_ids))
+        return dict.fromkeys(focus_ids, round(seconds / len(focus_ids)))
+    primary_seconds = round(seconds * PRIMARY_FOCUS_SHARE)
+    secondary_share = round((seconds - primary_seconds) / len(secondary_ids))
     return {primary_focus_id: primary_seconds, **dict.fromkeys(secondary_ids, secondary_share)}
 
 
@@ -112,6 +149,13 @@ def session_skill_progress(db: Session, session: ProductionSession) -> list[Skil
 def _counted_allocation(session: ProductionSession) -> dict[str, int]:
     if session.stopped_at is None or session.deleted_at is not None:
         return {}
+    if session.session_type == SessionType.production.value:
+        return allocate_production_seconds(
+            session.duration_seconds or 0,
+            session.skill_focus_ids,
+            session.primary_skill_focus_id,
+            session.weight_by_area,
+        )
     return allocate_session_seconds(
         session.duration_seconds or 0,
         session.skill_focus_ids,

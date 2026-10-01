@@ -45,12 +45,20 @@ SKILL_FOCUS_IDS: frozenset[str] = frozenset(
 # Planning is an intention, so it stays small; reflecting afterwards may list everything touched.
 MAX_PLANNED_FOCUSES_PER_SESSION = 2
 
+# How much of a production session went into an area: a little, some or a lot.
+AREA_WEIGHTS: tuple[int, ...] = (1, 2, 3)
+DEFAULT_AREA_WEIGHT = 2
+
+MULTI_AREA_SESSION_TYPES: frozenset[str] = frozenset(
+    {SessionType.learning.value, SessionType.production.value}
+)
+
 
 def skill_branches_for_session_type(session_type: str) -> tuple[str, ...]:
     """Branches whose focuses a session of this type can pick from."""
     if session_type == SessionType.mix_and_master.value:
         return (SessionType.mixing.value, SessionType.mastering.value)
-    if session_type == SessionType.learning.value:
+    if session_type in MULTI_AREA_SESSION_TYPES:
         return SKILL_BRANCHES
     if session_type in SKILL_BRANCHES:
         return (session_type,)

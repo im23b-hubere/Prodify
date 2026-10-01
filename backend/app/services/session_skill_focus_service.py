@@ -1,6 +1,12 @@
-"""Keep a session's skill focuses in sync with the catalog and its session type."""
+"""Keep a session's skill focuses and area weights in sync with the catalog and its session type."""
 
-from app.models import ProductionSession, SessionSkillFocus, SkillFocusSource
+from app.models import (
+    ProductionSession,
+    SessionAreaWeight,
+    SessionSkillFocus,
+    SessionType,
+    SkillFocusSource,
+)
 from app.skill_catalog import (
     MAX_PLANNED_FOCUSES_PER_SESSION,
     incompatible_focus_ids,
@@ -29,6 +35,11 @@ class TooManyPlannedFocusesError(SkillFocusValidationError):
 class PrimaryFocusNotSelectedError(SkillFocusValidationError):
     def __init__(self, focus_id: str) -> None:
         super().__init__(f"main focus {focus_id} must be one of the session's focuses")
+
+
+class AreaWeightsRequireProductionError(SkillFocusValidationError):
+    def __init__(self, session_type: str) -> None:
+        super().__init__(f"area weights only apply to production sessions, not {session_type}")
 
 
 def replace_skill_focuses(
@@ -65,6 +76,31 @@ def drop_incompatible_skill_focuses(session: ProductionSession) -> None:
         for focus in session.skill_focuses
         if is_focus_allowed_for_session_type(focus.skill_id, session.session_type)
     ]
+
+
+def replace_area_weights(session: ProductionSession, weight_by_area: dict[str, int]) -> None:
+    if weight_by_area and not _is_production(session):
+        raise AreaWeightsRequireProductionError(session.session_type)
+    kept = {row.branch: row for row in session.area_weights if row.branch in weight_by_area}
+    session.area_weights = [
+        _weighted_row(kept.get(branch), branch, weight) for branch, weight in weight_by_area.items()
+    ]
+
+
+def drop_area_weights_unless_production(session: ProductionSession) -> None:
+    if not _is_production(session):
+        session.area_weights = []
+
+
+def _weighted_row(row: SessionAreaWeight | None, branch: str, weight: int) -> SessionAreaWeight:
+    if row is None:
+        return SessionAreaWeight(branch=branch, weight=weight)
+    row.weight = weight
+    return row
+
+
+def _is_production(session: ProductionSession) -> bool:
+    return session.session_type == SessionType.production.value
 
 
 def _source_for(session: ProductionSession) -> str:

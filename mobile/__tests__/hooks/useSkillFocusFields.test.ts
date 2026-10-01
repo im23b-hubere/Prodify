@@ -43,6 +43,37 @@ describe("useSkillFocusFields suggestions", () => {
     expect(result.current.canApplySuggestion("mixing.eq")).toBe(true);
   });
 
+  it("keeps production intentions from different areas while browsing", () => {
+    const { result } = renderHook(() => useSkillFocusFields("production"));
+
+    act(() => result.current.selectPracticeBranch("beat_making"));
+    act(() => result.current.toggleFocus("beat_making.groove"));
+    act(() => result.current.selectPracticeBranch("mixing"));
+    act(() => result.current.toggleFocus("mixing.eq"));
+
+    expect(result.current.focusIds).toEqual(["beat_making.groove", "mixing.eq"]);
+  });
+
+  it("opens the area of a production suggestion without dropping other intentions", () => {
+    const { result } = renderHook(() => useSkillFocusFields("production"));
+
+    act(() => result.current.selectPracticeBranch("beat_making"));
+    act(() => result.current.toggleFocus("beat_making.groove"));
+    act(() => result.current.applySuggestion("mixing.eq"));
+
+    expect(result.current.practiceBranch).toBe("mixing");
+    expect(result.current.focusIds).toEqual(["beat_making.groove", "mixing.eq"]);
+  });
+
+  it("limits production intentions to two across all areas", () => {
+    const { result } = renderHook(() => useSkillFocusFields("production"));
+
+    act(() => result.current.applySuggestion("beat_making.groove"));
+    act(() => result.current.applySuggestion("mixing.eq"));
+
+    expect(result.current.canApplySuggestion("recording.room")).toBe(false);
+  });
+
   it("still allows a suggestion from another learning area when the current one is full", () => {
     const { result } = renderHook(() => useSkillFocusFields("learning"));
 
