@@ -1,5 +1,6 @@
 import type { SessionType } from "../../constants/sessionTypes";
 import {
+  DEFAULT_AREA_WEIGHT,
   branchOfFocus,
   focusesForBranch,
   skillBranchesForSessionType,
@@ -57,13 +58,22 @@ export function fitReflectionToSessionType(
 
 /** Everything stored for a session, whatever its current type allows. */
 export function storedFocusReflection(session: SessionDto): FocusReflection {
+  const focusIds = session.skill_focus_ids ?? [];
   return {
-    focusIds: session.skill_focus_ids ?? [],
+    focusIds,
     primaryFocusId: session.primary_skill_focus_id ?? null,
-    areaWeights: Object.fromEntries(
-      (session.area_weights ?? []).map(({ branch, weight }) => [branch, weight]),
-    ),
+    areaWeights: storedAreaWeights(focusIds, session.area_weights ?? []),
   };
+}
+
+/** Areas reached only through a focus count as "some", as they do on the server. */
+function storedAreaWeights(
+  focusIds: SkillFocusId[],
+  weights: NonNullable<SessionDto["area_weights"]>,
+): AreaWeights {
+  const focusAreas = focusIds.map((id) => [branchOfFocus(id), DEFAULT_AREA_WEIGHT] as const);
+  const weighted = weights.map(({ branch, weight }) => [branch, weight] as const);
+  return Object.fromEntries([...focusAreas, ...weighted]);
 }
 
 /** The stored reflection of a session, limited to what fits its session type. */

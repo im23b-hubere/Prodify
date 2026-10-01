@@ -8,7 +8,7 @@ import {
   type SkillBranch,
   type SkillFocusId,
 } from "../../../constants/skills";
-import { reflectedAreas, setAreaWeight, toggleArea } from "../areaWeights";
+import { reflectedAreas, setAreaWeight, toggleArea, withExplicitAreaWeights } from "../areaWeights";
 import {
   fitReflectionToSessionType,
   restrictToBranches,
@@ -49,7 +49,7 @@ export function useFocusReflectionSelection(
   const reflection = restrictToBranches(committedReflection, visibleBranches);
 
   const commit = (change: (current: FocusReflection) => FocusReflection) => {
-    const next = change(reflection);
+    const next = change(isProduction ? withExplicitAreaWeights(reflection) : reflection);
     setPickedReflection(next);
     onCommit?.(next);
   };

@@ -3,14 +3,41 @@ import {
   isFullPass,
   isSameReflection,
   restrictToBranches,
+  savedFocusReflection,
   toggleFullPass,
   toggleMainFocus,
   toggleTouchedFocus,
   type FocusReflection,
 } from "../../../features/sessions/skillFocusReflection";
+import type { SessionDto } from "../../../types/session";
 
 const none: FocusReflection = { focusIds: [], primaryFocusId: null, areaWeights: {} };
 const mixingIds = focusesForBranch("mixing").map(({ id }) => id);
+
+describe("savedFocusReflection", () => {
+  const session: SessionDto = {
+    id: 1,
+    user_id: 1,
+    started_at: "2026-10-01T10:00:00Z",
+    stopped_at: "2026-10-01T12:00:00Z",
+    duration_seconds: 7200,
+    notes: null,
+    session_type: "production",
+    skill_focus_ids: ["beat_making.groove", "mixing.eq"],
+    area_weights: [{ branch: "mixing", weight: 3 }],
+  };
+
+  it("counts areas reached only through a focus as some, like the server", () => {
+    expect(savedFocusReflection(session, "production").areaWeights).toEqual({
+      beat_making: 2,
+      mixing: 3,
+    });
+  });
+
+  it("drops area weights for session types that do not weigh areas", () => {
+    expect(savedFocusReflection(session, "learning").areaWeights).toEqual({});
+  });
+});
 
 describe("toggleTouchedFocus", () => {
   it("adds any number of touched focuses", () => {

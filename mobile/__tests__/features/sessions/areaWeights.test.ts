@@ -76,6 +76,16 @@ describe("areaTimeSplit", () => {
   it("is empty until an area is chosen", () => {
     expect(areaTimeSplit(2 * HOUR, none)).toEqual([]);
   });
+
+  it("is empty for a session too short to earn skill time", () => {
+    expect(areaTimeSplit(4 * 60, { ...none, areaWeights: { mixing: 2 } })).toEqual([]);
+  });
+
+  it("caps a session left running overnight like the skill tree does", () => {
+    expect(areaTimeSplit(20 * HOUR, { ...none, areaWeights: { mixing: 2 } })).toEqual([
+      { branch: "mixing", seconds: 12 * HOUR },
+    ]);
+  });
 });
 
 describe("areaWeightsPayload", () => {

@@ -40,6 +40,15 @@ describe("useFocusReflectionSelection for production sessions", () => {
     ]);
   });
 
+  it("keeps a planned area when its last focus is deselected", () => {
+    const { result } = renderHook(() => useFocusReflectionSelection("production", planned));
+
+    act(() => result.current.toggleFocus("beat_making.groove"));
+
+    expect(result.current.visibleBranches).toEqual(["beat_making"]);
+    expect(result.current.committedReflection.areaWeights).toEqual({ beat_making: 2 });
+  });
+
   it("removes an area together with its focuses", () => {
     const { result } = renderHook(() => useFocusReflectionSelection("production", planned));
 
