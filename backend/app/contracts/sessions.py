@@ -7,9 +7,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.models import SessionType
 from app.skill_catalog import (
     MAX_PLANNED_FOCUSES_PER_SESSION,
+    SKILL_FOCUS_IDS,
     incompatible_focus_ids,
     normalize_focus_ids,
 )
+
+MAX_SUGGESTED_FOCUSES = 2
 
 
 def _clean_optional_text(value: str | None) -> str | None:
@@ -46,6 +49,8 @@ class SessionStart(BaseModel):
     mood_level: int | None = Field(default=None, ge=1, le=5)
     tags: list[str] | None = None
     skill_focus_ids: list[str] = Field(default_factory=list)
+    # Only measured, never stored on the session, so unknown ids are dropped instead of rejected.
+    suggested_skill_focus_ids: list[str] = Field(default_factory=list)
 
     @field_validator("notes")
     @classmethod
@@ -63,6 +68,16 @@ class SessionStart(BaseModel):
         if value is None:
             return []
         return normalize_focus_ids(value, max_count=MAX_PLANNED_FOCUSES_PER_SESSION)
+
+    @field_validator("suggested_skill_focus_ids", mode="before")
+    @classmethod
+    def keep_known_suggestions(cls, value: object) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        known = (str(item).strip() for item in value)
+        return list(dict.fromkeys(item for item in known if item in SKILL_FOCUS_IDS))[
+            :MAX_SUGGESTED_FOCUSES
+        ]
 
     @model_validator(mode="after")
     def require_focuses_matching_session_type(self) -> "SessionStart":

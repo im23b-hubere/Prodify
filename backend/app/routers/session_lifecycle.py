@@ -39,6 +39,7 @@ def start_session(
             mood_level=body.mood_level,
             tags=body.tags,
             skill_focus_ids=body.skill_focus_ids,
+            suggested_skill_focus_ids=body.suggested_skill_focus_ids,
         )
     except ActiveSessionExistsError as error:
         _raise_active_conflict(error.session_id)

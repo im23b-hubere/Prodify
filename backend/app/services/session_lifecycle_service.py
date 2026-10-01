@@ -51,6 +51,7 @@ def create_session(
     mood_level: int | None = None,
     tags: list[str] | None = None,
     skill_focus_ids: list[str] | None = None,
+    suggested_skill_focus_ids: list[str] | None = None,
 ) -> ProductionSession:
     session = ProductionSession(
         user_id=user_id,
@@ -66,6 +67,7 @@ def create_session(
     replace_skill_focuses(session, focus_ids, primary_focus_id=single_planned_focus)
     db.add(session)
     db.flush()
+    suggested = suggested_skill_focus_ids or []
     track_event(
         db,
         "session_started",
@@ -74,6 +76,10 @@ def create_session(
             "session_id": session.id,
             "session_type": session.session_type,
             "skill_focus_ids": session.skill_focus_ids,
+            "suggested_focus_ids": suggested,
+            "accepted_suggestion_ids": [
+                focus_id for focus_id in suggested if focus_id in session.skill_focus_ids
+            ],
         },
     )
     db.commit()

@@ -35,6 +35,13 @@ jest.mock("react-i18next", () => ({
   }),
 }));
 
+jest.mock("expo-router", () => {
+  const React = require("react");
+  return {
+    useFocusEffect: (effect: () => void | (() => void)) => React.useEffect(effect, [effect]),
+  };
+});
+
 jest.mock("../../context/AuthContext", () => ({
   useAuth: () => ({ token: "token-123", hydrated: true }),
 }));
@@ -65,6 +72,11 @@ jest.mock("../../components/ui/PrimaryButton", () => {
 });
 
 describe("SessionSetupForm tag validation", () => {
+  beforeEach(() => {
+    mockApiJson.mockReset();
+    mockApiJson.mockRejectedValue(new Error("offline"));
+  });
+
   it("shows validation hints for too-long and duplicate tags", async () => {
     const { getByText, getByPlaceholderText } = render(
       <SessionSetupForm initialSessionType="beat_making" onStarted={jest.fn()} />,
@@ -114,16 +126,34 @@ describe("SessionSetupForm tag validation", () => {
   });
 });
 
+const STARTED_SESSION = { id: 7, started_at: "2026-09-30T10:00:00Z" };
+
+function respondWith(skillProfile: unknown) {
+  mockApiJson.mockImplementation(async (path: string) => {
+    if (path !== "/skills/profile") return STARTED_SESSION;
+    if (skillProfile instanceof Error) throw skillProfile;
+    return skillProfile;
+  });
+}
+
+function startBody() {
+  const call = mockApiJson.mock.calls.find(([path]) => path === "/sessions/start");
+  return (call?.[1] as { body: Record<string, unknown> }).body;
+}
+
+async function waitForSessionStart() {
+  await waitFor(() =>
+    expect(mockApiJson.mock.calls.some(([path]) => path === "/sessions/start")).toBe(true),
+  );
+}
+
+const EMPTY_SKILL_PROFILE = { total_seconds: 0, branches: [], focuses: [] };
+
 describe("SessionSetupForm skill focus", () => {
   beforeEach(() => {
     mockApiJson.mockReset();
-    mockApiJson.mockResolvedValue({ id: 7, started_at: "2026-09-30T10:00:00Z" });
+    respondWith(new Error("offline"));
   });
-
-  function startBody() {
-    const [, options] = mockApiJson.mock.calls[0] as [string, { body: Record<string, unknown> }];
-    return options.body;
-  }
 
   it("starts without skill focuses when none are picked", async () => {
     const { getByText } = render(
@@ -132,7 +162,7 @@ describe("SessionSetupForm skill focus", () => {
 
     fireEvent.press(getByText("sessionSetup.startCta"));
 
-    await waitFor(() => expect(mockApiJson).toHaveBeenCalled());
+    await waitForSessionStart();
     expect(startBody().skill_focus_ids).toBeUndefined();
   });
 
@@ -145,7 +175,7 @@ describe("SessionSetupForm skill focus", () => {
     fireEvent.press(getByTestId("skill-focus-mixing.eq"));
     fireEvent.press(getByText("sessionSetup.startCta"));
 
-    await waitFor(() => expect(mockApiJson).toHaveBeenCalled());
+    await waitForSessionStart();
     expect(startBody().skill_focus_ids).toEqual(["mixing.dynamics", "mixing.eq"]);
   });
 
@@ -174,7 +204,7 @@ describe("SessionSetupForm skill focus", () => {
     fireEvent.press(getByTestId("session-type-beat_making"));
     fireEvent.press(getByText("sessionSetup.startCta"));
 
-    await waitFor(() => expect(mockApiJson).toHaveBeenCalled());
+    await waitForSessionStart();
     expect(startBody().session_type).toBe("beat_making");
     expect(startBody().skill_focus_ids).toBeUndefined();
   });
@@ -212,7 +242,77 @@ describe("SessionSetupForm skill focus", () => {
     fireEvent.press(getByTestId("skill-focus-recording.room"));
     fireEvent.press(getByText("sessionSetup.startCta"));
 
-    await waitFor(() => expect(mockApiJson).toHaveBeenCalled());
+    await waitForSessionStart();
     expect(startBody().skill_focus_ids).toEqual(["recording.room"]);
+  });
+});
+
+describe("SessionSetupForm focus suggestions", () => {
+  const nearlyLevelledEq = {
+    skill_id: "mixing.eq",
+    branch: "mixing",
+    total_seconds: 3000,
+    level: 1,
+    level_start_seconds: 0,
+    next_level_seconds: 3600,
+    session_count: 2,
+    last_trained_at: "2026-09-20T10:00:00Z",
+  };
+
+  beforeEach(() => {
+    mockApiJson.mockReset();
+    respondWith({ ...EMPTY_SKILL_PROFILE, total_seconds: 3000, focuses: [nearlyLevelledEq] });
+  });
+
+  it("suggests skills for the chosen session type once the skill profile loads", async () => {
+    const { findByTestId, getByTestId } = render(
+      <SessionSetupForm initialSessionType="mixing" onStarted={jest.fn()} />,
+    );
+
+    expect(await findByTestId("focus-suggestion-mixing.eq")).toBeTruthy();
+    expect(getByTestId("focus-suggestion-mixing.eq").props.accessibilityState).toEqual(
+      expect.objectContaining({ checked: false, disabled: false }),
+    );
+  });
+
+  it("selects the suggested skill together with its chip", async () => {
+    const { findByTestId, getByTestId } = render(
+      <SessionSetupForm initialSessionType="mixing" onStarted={jest.fn()} />,
+    );
+
+    fireEvent.press(await findByTestId("focus-suggestion-mixing.eq"));
+
+    expect(getByTestId("skill-focus-mixing.eq").props.accessibilityState).toEqual(
+      expect.objectContaining({ checked: true }),
+    );
+  });
+
+  it("reports which skills were suggested when the session starts", async () => {
+    const { findByTestId, getByText } = render(
+      <SessionSetupForm initialSessionType="mixing" onStarted={jest.fn()} />,
+    );
+
+    fireEvent.press(await findByTestId("focus-suggestion-mixing.eq"));
+    fireEvent.press(getByText("sessionSetup.startCta"));
+
+    await waitForSessionStart();
+    expect(startBody().skill_focus_ids).toEqual(["mixing.eq"]);
+    expect(startBody().suggested_skill_focus_ids).toEqual(["mixing.eq", "mixing.balance"]);
+  });
+
+  it("hides suggestions when the skill profile cannot be loaded", async () => {
+    respondWith(new Error("offline"));
+    const { queryByTestId, getByText } = render(
+      <SessionSetupForm initialSessionType="mixing" onStarted={jest.fn()} />,
+    );
+
+    await waitFor(() =>
+      expect(mockApiJson).toHaveBeenCalledWith("/skills/profile", expect.anything()),
+    );
+    expect(queryByTestId("focus-suggestions")).toBeNull();
+
+    fireEvent.press(getByText("sessionSetup.startCta"));
+    await waitForSessionStart();
+    expect(startBody().suggested_skill_focus_ids).toBeUndefined();
   });
 });

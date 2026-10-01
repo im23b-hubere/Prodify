@@ -5,6 +5,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { MAX_PLANNED_FOCUSES_PER_SESSION } from "../../constants/skills";
 import { motion } from "../../constants/theme";
 import type { SessionSetupFormState } from "../../features/sessions/hooks/useSessionSetupForm";
+import { FocusSuggestions } from "./FocusSuggestions";
 import { SkillFocusChips } from "./SkillFocusChips";
 import { sessionSetupStyles as styles } from "./sessionSetup.styles";
 
@@ -24,6 +25,7 @@ export function SessionFocusPicker({ form }: { form: SessionSetupFormState }) {
             : t("sessionSetup.focusHint", { max: MAX_PLANNED_FOCUSES_PER_SESSION })}
         </Text>
       </View>
+      <FocusSuggestions suggestions={form.focusSuggestions} fields={form} />
       <SkillFocusChips sessionType={form.selectedType} fields={form} showPracticePrompts />
     </Animated.View>
   );

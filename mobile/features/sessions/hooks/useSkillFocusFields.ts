@@ -18,6 +18,7 @@ export function useSkillFocusFields(selectedType: SessionType | null) {
   const [pickedFocusIds, setPickedFocusIds] = useState<SkillFocusId[]>([]);
   const [browsedPracticeBranch, setBrowsedPracticeBranch] = useState<SkillBranch | null>(null);
 
+  const isLearning = selectedType === "learning";
   const focusIdsForType = selectedType
     ? focusesAllowedForSessionType(pickedFocusIds, selectedType)
     : [];
@@ -25,10 +26,29 @@ export function useSkillFocusFields(selectedType: SessionType | null) {
   const practiceBranch = browsedPracticeBranch ?? (firstFocus ? branchOfFocus(firstFocus) : null);
   const focusIds = exposedFocusIds(focusIdsForType, selectedType, practiceBranch);
 
+  /** Learning sessions pick within one area, so a suggestion competes with that area's picks. */
+  const selectionAround = (id: SkillFocusId) =>
+    isLearning ? focusesInBranch(focusIdsForType, branchOfFocus(id)) : focusIds;
+
+  const applySuggestion = (id: SkillFocusId) => {
+    const selection = selectionAround(id);
+    const opensOtherArea = isLearning && branchOfFocus(id) !== practiceBranch;
+    if (isLearning) setBrowsedPracticeBranch(branchOfFocus(id));
+    if (opensOtherArea && selection.includes(id)) return;
+    setPickedFocusIds(toggleFocus(selection, id));
+  };
+
+  const canApplySuggestion = (id: SkillFocusId) => {
+    const selection = selectionAround(id);
+    return selection.includes(id) || !isFocusSelectionFull(selection);
+  };
+
   return {
     focusIds,
     isFocusSelectionFull: isFocusSelectionFull(focusIds),
     toggleFocus: (id: SkillFocusId) => setPickedFocusIds(toggleFocus(focusIds, id)),
+    applySuggestion,
+    canApplySuggestion,
     practiceBranch,
     selectPracticeBranch: setBrowsedPracticeBranch,
   };

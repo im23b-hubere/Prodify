@@ -349,6 +349,55 @@ def _focus_reflection_events(session_id: int) -> list[dict]:
         return [item for item in props if item["session_id"] == session_id]
 
 
+def _session_started_event(session_id: int) -> dict:
+    with SessionLocal() as db:
+        rows = db.scalars(
+            select(GrowthEvent).where(GrowthEvent.event_name == "session_started")
+        ).all()
+        props = [json.loads(row.event_props_json) for row in rows]
+        return next(item for item in props if item["session_id"] == session_id)
+
+
+def test_session_start_records_which_suggestions_were_taken(client):
+    headers = _auth_headers(client, "focus-suggested@example.com", "focus-suggested")
+
+    session_id = _start(
+        client,
+        headers,
+        session_type="mixing",
+        skill_focus_ids=["mixing.eq"],
+        suggested_skill_focus_ids=["mixing.eq", "mixing.space"],
+    ).json()["id"]
+
+    event = _session_started_event(session_id)
+    assert event["suggested_focus_ids"] == ["mixing.eq", "mixing.space"]
+    assert event["accepted_suggestion_ids"] == ["mixing.eq"]
+
+
+def test_session_start_without_suggestions_records_none(client):
+    headers = _auth_headers(client, "focus-unsuggested@example.com", "focus-unsuggested")
+
+    session_id = _start(client, headers, session_type="mixing").json()["id"]
+
+    event = _session_started_event(session_id)
+    assert (event["suggested_focus_ids"], event["accepted_suggestion_ids"]) == ([], [])
+
+
+def test_unknown_suggestions_never_block_a_session_start(client):
+    headers = _auth_headers(client, "focus-odd-suggestion@example.com", "focus-odd-suggestion")
+
+    response = _start(
+        client,
+        headers,
+        session_type="mixing",
+        suggested_skill_focus_ids=["mixing.future_skill", "mixing.eq", "mixing.eq", "mixing.space"],
+    )
+
+    assert response.status_code == 201
+    event = _session_started_event(response.json()["id"])
+    assert event["suggested_focus_ids"] == ["mixing.eq", "mixing.space"]
+
+
 def test_reflecting_a_finished_session_is_tracked_once(client):
     headers = _auth_headers(client, "focus-track@example.com", "focus-track")
     session_id = _finished_session(

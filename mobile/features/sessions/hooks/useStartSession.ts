@@ -19,6 +19,7 @@ type Args = {
   mood: number | null;
   tags: string[];
   skillFocusIds: SkillFocusId[];
+  suggestedFocusIds: SkillFocusId[];
   t: TFunction;
   onStarted: (session: SessionDto) => void;
   onConflict?: (id?: number) => void;
@@ -104,6 +105,7 @@ async function requestSession(token: string, args: Args): Promise<SessionDto> {
       mood_level: args.mood ?? undefined,
       tags: args.tags.length ? args.tags : undefined,
       skill_focus_ids: args.skillFocusIds.length ? args.skillFocusIds : undefined,
+      suggested_skill_focus_ids: args.suggestedFocusIds.length ? args.suggestedFocusIds : undefined,
     },
   });
   const session = tryParseSessionDto(raw);
