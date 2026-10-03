@@ -7,7 +7,7 @@ import SkillTreeRoute from "../../app/skill-tree";
 
 const mockApiJson = jest.fn();
 const mockBack = jest.fn();
-const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 const mockCanGoBack = jest.fn(() => true);
 
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
@@ -18,7 +18,7 @@ jest.mock("expo-router", () => {
     useRouter: () => ({
       back: mockBack,
       canGoBack: mockCanGoBack,
-      replace: mockReplace,
+      dismissTo: mockDismissTo,
       push: jest.fn(),
     }),
     useLocalSearchParams: () => ({}),
@@ -224,6 +224,7 @@ describe("SkillTreeScreen", () => {
 
     fireEvent.press(await screen.findByTestId("skill-tree-back"));
 
-    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/stats");
+    expect(mockDismissTo).toHaveBeenCalledWith("/(tabs)/stats");
+    expect(mockBack).not.toHaveBeenCalled();
   });
 });

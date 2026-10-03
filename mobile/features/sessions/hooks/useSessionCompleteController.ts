@@ -6,6 +6,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { buildWeeklyForecast } from "../../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../../lib/goalPace";
 import { buildSessionFeedback } from "../../../lib/sessionFeedbackEngine";
+import { returnTo } from "../../../lib/stackNavigation";
 import { useSessionCompleteData } from "./useSessionCompleteData";
 import {
   estimateSessionXpGain,
@@ -56,7 +57,7 @@ export function useSessionCompleteController() {
     xpGainEstimate: estimateSessionXpGain(durationSeconds),
     focusReflectionType: data.session ? focusReflectionSessionType(data.session) : null,
     openDetails: () => router.replace(`/session/${id}` as never),
-    openDashboard: () => router.replace("/(tabs)/dashboard"),
+    openDashboard: () => returnTo(router, "/(tabs)/dashboard"),
   };
 }
 

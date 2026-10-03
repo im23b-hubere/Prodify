@@ -2,6 +2,7 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback } from "react";
 
+import { dismissToTab } from "../../../lib/stackNavigation";
 import { parseProfileUserId } from "../friendProfilePresentation";
 
 export function useFriendProfileNavigation() {
@@ -14,7 +15,7 @@ export function useFriendProfileNavigation() {
     router.back();
   }, [router]);
 
-  const openFriends = useCallback(() => router.push("/(tabs)/friends"), [router]);
+  const openFriends = useCallback(() => dismissToTab(router, "/(tabs)/friends"), [router]);
 
   const openSession = useCallback(
     (sessionId: number, ownerName: string) => {

@@ -11,6 +11,7 @@ import {
   withTiming,
 } from "react-native-reanimated";
 
+import { returnTo } from "../../../lib/stackNavigation";
 import { useActiveSession } from "./useActiveSession";
 
 export function useActiveSessionController() {
@@ -33,9 +34,7 @@ export function useActiveSessionController() {
 
   const minimize = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    if (router.canDismiss()) return router.dismiss();
-    if (router.canGoBack()) return router.back();
-    router.replace("/(tabs)/dashboard");
+    returnTo(router, "/(tabs)/dashboard", { modal: true });
   }, [router]);
   const finishDrag = useCallback(
     (translationY: number, velocityY: number) => {
@@ -64,7 +63,7 @@ export function useActiveSessionController() {
     pulseStyle: useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] })),
     dismissDragStyle: useAnimatedStyle(() => ({ transform: [{ translateY: dismissDragY.value }] })),
     swipeDownGesture,
-    openDashboard: () => router.replace("/(tabs)/dashboard"),
+    openDashboard: () => returnTo(router, "/(tabs)/dashboard", { modal: true }),
   };
 }
 

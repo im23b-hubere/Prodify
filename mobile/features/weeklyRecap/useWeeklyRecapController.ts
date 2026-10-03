@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../context/AuthContext";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
+import { dismissToTab } from "../../lib/stackNavigation";
 import { buildWrappedSlides } from "./wrappedSlides";
 import { useWeeklyRecapData } from "./useWeeklyRecapData";
 import { formatWeekRangeLabel } from "./weeklyRecapPresentation";
@@ -66,7 +67,7 @@ export function useWeeklyRecapController() {
     signIn: () => router.replace("/(auth)/login"),
     setGoals: () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-      router.push("/(tabs)/stats");
+      dismissToTab(router, "/(tabs)/stats");
     },
     startSession: () => router.push("/session/setup"),
   };

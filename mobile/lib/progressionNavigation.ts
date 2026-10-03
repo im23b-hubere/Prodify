@@ -1,10 +1,6 @@
 import type { Href } from "expo-router";
 
-type AppRouter = {
-  back: () => void;
-  canGoBack: () => boolean;
-  replace: (href: Href) => void;
-};
+import { returnTo, type ReturnRouter } from "./stackNavigation";
 
 export type ProgressionOverviewFrom = "dashboard" | "stats" | "friends" | "profile";
 
@@ -29,10 +25,6 @@ export function progressionOverviewHref(from: ProgressionOverviewFrom): Href {
   return { pathname: "/progression-overview", params: { from } };
 }
 
-export function leaveProgressionOverview(router: AppRouter, from: ProgressionOverviewFrom): void {
-  if (router.canGoBack()) {
-    router.back();
-    return;
-  }
-  router.replace(FALLBACK_ROUTES[from]);
+export function leaveProgressionOverview(router: ReturnRouter, from: ProgressionOverviewFrom): void {
+  returnTo(router, FALLBACK_ROUTES[from]);
 }

@@ -11,6 +11,7 @@ import { pastActivity } from "../../features/friends/activity/friendsActivityFee
 import { AppCard } from "../ui/AppCard";
 import { TextButton } from "../ui/TextButton";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
+import { openTab } from "../../lib/stackNavigation";
 import { formatTimeAgo } from "../../lib/timeAgo";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../types/friends";
 import { styles } from "./FriendsActivityWidget.styles";
@@ -64,7 +65,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
         collapsible={collapsible}
         collapsed={collapsible && !expanded}
         onToggle={toggleExpanded}
-        onAddFriends={() => navigate(router, "/(tabs)/friends?addFriend=1" as Href)}
+        onAddFriends={() => openTab(router, "/(tabs)/friends?addFriend=1" as Href)}
       />
     );
   }
@@ -77,7 +78,7 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
         collapsed={collapsed}
         hasPrimaryAction={Boolean(primaryAction)}
         onToggle={toggleExpanded}
-        onViewAll={collapsed ? undefined : () => navigate(router, "/(tabs)/friends")}
+        onViewAll={collapsed ? undefined : () => openTab(router, "/(tabs)/friends")}
       />
       {!collapsed ? (
         <WidgetContent

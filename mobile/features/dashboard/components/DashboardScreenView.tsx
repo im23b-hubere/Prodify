@@ -21,6 +21,7 @@ import { ErrorState } from "../../../components/states/ErrorState";
 import { TutorialOverlay } from "../../../components/TutorialOverlay";
 import { colors, spacing } from "../../../constants/theme";
 import { progressionOverviewHref } from "../../../lib/progressionNavigation";
+import { openTab } from "../../../lib/stackNavigation";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
 import type { SessionDto } from "../../../types/session";
 import { styles } from "../dashboardScreen.styles";
@@ -180,7 +181,7 @@ function StudioSection({ controller }: { controller: DashboardScreenController }
       onOpenStreakHistory={() => controller.router.push("/streak/history")}
       onOpenSessionHistory={() => controller.router.push("/session/history")}
       onOpenRank={() => controller.router.push(progressionOverviewHref("dashboard"))}
-      onOpenStats={() => controller.router.push("/(tabs)/stats")}
+      onOpenStats={() => openTab(controller.router, "/(tabs)/stats")}
     />
   );
 }

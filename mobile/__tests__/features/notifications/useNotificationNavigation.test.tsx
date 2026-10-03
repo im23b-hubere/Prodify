@@ -5,6 +5,7 @@ import { useNotificationNavigation } from "../../../features/notifications/useNo
 const mockBack = jest.fn();
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 let mockCanGoBack = false;
 let mockSource: string | undefined;
 
@@ -15,6 +16,7 @@ jest.mock("expo-router", () => ({
     canGoBack: () => mockCanGoBack,
     push: mockPush,
     replace: mockReplace,
+    dismissTo: mockDismissTo,
   }),
 }));
 
@@ -28,14 +30,16 @@ describe("useNotificationNavigation", () => {
   it("uses a stable dashboard fallback when no history exists", () => {
     const { result } = renderHook(() => useNotificationNavigation("token"));
     act(() => result.current.goBack());
-    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
+    expect(mockDismissTo).toHaveBeenCalledWith("/(tabs)/dashboard");
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it("returns to profile for notifications opened there", () => {
     mockSource = "profile";
     const { result } = renderHook(() => useNotificationNavigation("token"));
     act(() => result.current.goBack());
-    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/profile");
+    expect(mockDismissTo).toHaveBeenCalledWith("/(tabs)/profile");
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it("blocks untrusted action routes", () => {

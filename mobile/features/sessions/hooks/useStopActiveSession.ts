@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 
+import { sessionSummaryHref } from "../../../lib/stackNavigation";
 import { formatDurationWords } from "../../../lib/sessionTime";
 import type { SessionDto } from "../../../types/session";
 import { stopActiveSession } from "../services/activeSessionApi";
@@ -33,7 +34,7 @@ export function useStopActiveSession(options: StopSessionOptions) {
           () => undefined,
         );
         await stopActiveSession(token, sessionId);
-        router.replace({ pathname: "/session/complete", params: { id: String(sessionId) } });
+        router.replace(sessionSummaryHref(sessionId));
       } catch (stopError) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
           () => undefined,

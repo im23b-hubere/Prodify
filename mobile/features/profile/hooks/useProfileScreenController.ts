@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
 import { progressionOverviewHref } from "../../../lib/progressionNavigation";
+import { openTab } from "../../../lib/stackNavigation";
 import { useProfileAccountActions } from "./useProfileAccountActions";
 import { useProfileData } from "./useProfileData";
 import { useProfilePictureUpload } from "./useProfilePictureUpload";
@@ -31,7 +32,7 @@ export function useProfileScreenController() {
     profilePicture,
     navigation: {
       openPublicProfile,
-      openStats: () => router.push("/(tabs)/stats"),
+      openStats: () => openTab(router, "/(tabs)/stats"),
       openProgression: () => router.push(progressionOverviewHref("profile")),
       openNotifications: () =>
         router.push({ pathname: "/notifications", params: { source: "profile" } }),

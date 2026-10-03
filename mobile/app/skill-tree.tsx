@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { AppAccessGate } from "../features/navigation/AppAccessGate";
+import { returnTo } from "../lib/stackNavigation";
 import { SkillTreeScreenView } from "../features/skills/components/SkillTreeScreenView";
 import { useSkillTreeScreen } from "../features/skills/hooks/useSkillTreeScreen";
 
@@ -13,12 +14,9 @@ export default function SkillTreeRoute() {
 }
 
 function SkillTreeScreen() {
-  const { back, canGoBack, replace } = useRouter();
+  const router = useRouter();
   const { branch } = useLocalSearchParams<{ branch?: string }>();
   const screen = useSkillTreeScreen(typeof branch === "string" ? branch : undefined);
-  const leave = () => {
-    if (canGoBack()) back();
-    else replace("/(tabs)/stats");
-  };
+  const leave = () => returnTo(router, "/(tabs)/stats");
   return <SkillTreeScreenView screen={screen} onBack={leave} />;
 }

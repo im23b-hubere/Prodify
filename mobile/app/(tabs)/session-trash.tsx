@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { useSessionTrash } from "../../features/sessions/hooks/useSessionTrash";
+import { returnTo } from "../../lib/stackNavigation";
 import { styles } from "../../features/sessions/sessionTrash.styles";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { EmptyState } from "../../components/states/EmptyState";
@@ -148,11 +149,7 @@ export default function SessionTrashScreen() {
   });
   const goBack = () => {
     Haptics.selectionAsync().catch(() => undefined);
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace("/(tabs)/dashboard");
+    returnTo(router, "/(tabs)/dashboard");
   };
 
   return (

@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { Alert } from "react-native";
 
 import { apiJson } from "../../../lib/client";
+import { sessionSummaryHref } from "../../../lib/stackNavigation";
 import { debugLog } from "../../../lib/debugLog";
 import { setWeeklyGoal } from "../../../lib/goals";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../../lib/sessionTime";
@@ -158,7 +159,7 @@ function useSessionCompletionActions(options: Options, router: Router) {
         debugLog("session", "stop_success", { sessionId: session.id });
         setActive(null);
         invalidateDashboard();
-        router.replace({ pathname: "/session/complete", params: { id: String(session.id) } });
+        router.push(sessionSummaryHref(session.id));
       } catch (error) {
         ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
         const message = error instanceof Error ? error.message : t("dashboard.stopFailed");

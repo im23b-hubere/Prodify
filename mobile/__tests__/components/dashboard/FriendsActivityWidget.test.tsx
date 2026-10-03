@@ -4,9 +4,10 @@ import { FriendsActivityWidget } from "../../../components/dashboard/FriendsActi
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../../types/friends";
 
 const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, navigate: mockNavigate }),
 }));
 
 jest.mock("expo-haptics", () => ({
@@ -47,7 +48,10 @@ function activityBy(userId: number, username: string): FriendActivityDto {
 }
 
 describe("FriendsActivityWidget", () => {
-  beforeEach(() => mockPush.mockClear());
+  beforeEach(() => {
+    mockPush.mockClear();
+    mockNavigate.mockClear();
+  });
 
   it("shows the no-friends state when expanded, even with your own session in the feed", () => {
     const { getByTestId, getByText } = render(
@@ -69,7 +73,8 @@ describe("FriendsActivityWidget", () => {
     expect(getByText("friendsWidget.emptySub")).toBeTruthy();
 
     fireEvent.press(getByText("friendsWidget.addFriends"));
-    expect(mockPush).toHaveBeenCalledWith("/(tabs)/friends?addFriend=1");
+    expect(mockNavigate).toHaveBeenCalledWith("/(tabs)/friends?addFriend=1");
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("shows friends' activity but not your own", () => {

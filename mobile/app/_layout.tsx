@@ -73,6 +73,7 @@ export default function RootLayout() {
                 name="progression-overview"
                 options={{
                   animation: "slide_from_right",
+                  animationTypeForReplace: "pop",
                   gestureEnabled: true,
                   gestureDirection: "horizontal",
                 }}
@@ -81,9 +82,14 @@ export default function RootLayout() {
                 name="skill-tree"
                 options={{
                   animation: "slide_from_right",
+                  animationTypeForReplace: "pop",
                   gestureEnabled: false,
                 }}
               />
+              <Stack.Screen name="paywall" options={{ animationTypeForReplace: "pop" }} />
+              <Stack.Screen name="notifications" options={{ animationTypeForReplace: "pop" }} />
+              <Stack.Screen name="weekly-recap" options={{ animationTypeForReplace: "pop" }} />
+              <Stack.Screen name="legal" options={{ animationTypeForReplace: "pop" }} />
               <Stack.Screen
                 name="challenge/new"
                 options={{

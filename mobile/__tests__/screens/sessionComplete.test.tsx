@@ -5,6 +5,7 @@ import SessionCompleteScreen from "../../app/session/complete";
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
+const mockBack = jest.fn();
 const mockApiJson = jest.fn();
 const translate = (key: string, options?: Record<string, unknown>) => {
   if (options && Object.keys(options).length > 0) return key;
@@ -28,7 +29,13 @@ jest.mock("expo-linear-gradient", () => {
 });
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace, push: mockPush }),
+  useRouter: () => ({
+    replace: mockReplace,
+    push: mockPush,
+    back: mockBack,
+    canGoBack: () => true,
+    dismissTo: jest.fn(),
+  }),
   useLocalSearchParams: () => ({ id: "12" }),
 }));
 
@@ -204,7 +211,8 @@ describe("SessionCompleteScreen", () => {
     expect(mockReplace).toHaveBeenCalledWith("/session/12");
 
     fireEvent.press(await findByText("sessionComplete.backToDashboard"));
-    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockReplace).not.toHaveBeenCalledWith("/(tabs)/dashboard");
   });
 });
 

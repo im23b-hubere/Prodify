@@ -4,12 +4,14 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import SessionActiveScreen from "../../app/session/active";
 
 const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 const mockApiJson = jest.fn();
 const mockRouter = {
   replace: mockReplace,
   back: jest.fn(),
   push: jest.fn(),
   dismiss: jest.fn(),
+  dismissTo: mockDismissTo,
   canDismiss: () => false,
   canGoBack: () => false,
 };
@@ -125,6 +127,7 @@ describe("SessionActiveScreen error recovery", () => {
       expect(getByText("common.back")).toBeTruthy();
     });
     fireEvent.press(getByText("common.back"));
-    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
+    expect(mockDismissTo).toHaveBeenCalledWith("/(tabs)/dashboard");
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 });

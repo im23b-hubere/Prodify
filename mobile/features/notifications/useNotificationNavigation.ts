@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { useCallback } from "react";
 
 import { debugNav } from "../../lib/debugLog";
+import { returnTo } from "../../lib/stackNavigation";
 import {
   deepLinkRequiresAuth,
   isAllowedDeepLinkPath,
@@ -15,11 +16,7 @@ export function useNotificationNavigation(token?: string | null) {
 
   const goBack = useCallback(() => {
     Haptics.selectionAsync().catch(() => undefined);
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace(params.source === "profile" ? "/(tabs)/profile" : "/(tabs)/dashboard");
+    returnTo(router, params.source === "profile" ? "/(tabs)/profile" : "/(tabs)/dashboard");
   }, [params.source, router]);
 
   const openAction = useCallback(

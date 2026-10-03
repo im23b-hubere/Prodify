@@ -3,7 +3,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import SessionTrashScreen from "../../app/(tabs)/session-trash";
 
-const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 const mockBack = jest.fn();
 const mockCanGoBack = jest.fn(() => true);
 const mockApiJson = jest.fn();
@@ -16,7 +16,7 @@ jest.mock("expo-haptics", () => ({
 }));
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace, back: mockBack, canGoBack: mockCanGoBack }),
+  useRouter: () => ({ dismissTo: mockDismissTo, back: mockBack, canGoBack: mockCanGoBack }),
   useFocusEffect: () => undefined,
 }));
 
@@ -172,14 +172,14 @@ describe("SessionTrashScreen", () => {
     const { findByLabelText } = render(<SessionTrashScreen />);
     fireEvent.press(await findByLabelText("common.goBack"));
     expect(mockBack).toHaveBeenCalledTimes(1);
-    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockDismissTo).not.toHaveBeenCalled();
   });
 
-  it("replaces to dashboard from the header arrow when there is no history", async () => {
+  it("returns to the dashboard from the header arrow when there is no history", async () => {
     mockCanGoBack.mockReturnValue(false);
     const { findByLabelText } = render(<SessionTrashScreen />);
     fireEvent.press(await findByLabelText("common.goBack"));
-    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
+    expect(mockDismissTo).toHaveBeenCalledWith("/(tabs)/dashboard");
     expect(mockBack).not.toHaveBeenCalled();
   });
 });

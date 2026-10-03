@@ -12,11 +12,15 @@ import {
 import { Alert } from "react-native";
 
 import type { MomentumAction } from "../../../lib/momentum";
+import { openTab } from "../../../lib/stackNavigation";
 import { rescueBuddyStreak } from "../../../lib/social";
 import type { BuddyRiskDto, IdentityStateDto } from "../../../types/friends";
 import type { DashboardPrimaryNudge } from "./useDashboardSocialNudges";
 
-export type DashboardSocialRouter = { push: (href: Href) => void };
+export type DashboardSocialRouter = {
+  push: (href: Href) => void;
+  navigate: (href: Href) => void;
+};
 
 type Params = {
   token: string | null;
@@ -46,7 +50,7 @@ export function useDashboardSocialActions(params: Params) {
     if (!nudge) return;
     if (nudge.actionKey === "rescue") return void runRescueNow();
     if (nudge.actionKey === "start_session") return void runStartSessionNow(nudge.category);
-    params.router.push("/(tabs)/friends");
+    openTab(params.router, "/(tabs)/friends");
   }, [params.primaryNudge, params.router, runRescueNow, runStartSessionNow]);
 
   return { socialToast, runRescueNow, runStartSessionNow, runPrimaryAction };
@@ -175,7 +179,7 @@ function useStartSessionAction(
 function showRescueSuccess(t: TFunction, router: DashboardSocialRouter) {
   Alert.alert(t("dashboard.rescueSuccessTitle"), t("dashboard.rescueSuccessBody"), [
     { text: t("dashboard.later"), style: "cancel" },
-    { text: t("dashboard.inviteProducer"), onPress: () => router.push("/(tabs)/friends") },
+    { text: t("dashboard.inviteProducer"), onPress: () => openTab(router, "/(tabs)/friends") },
   ]);
 }
 

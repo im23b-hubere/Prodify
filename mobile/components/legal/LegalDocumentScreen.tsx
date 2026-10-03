@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fontFamily } from "../../constants/fonts";
+import { returnTo } from "../../lib/stackNavigation";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { ScreenTopBar } from "../ui/ScreenTopBar";
 
@@ -30,13 +31,7 @@ export function LegalDocumentScreen({ doc }: { doc: LegalDoc }) {
     [t, prefix],
   );
 
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace("/(tabs)/profile");
-  };
+  const goBack = () => returnTo(router, "/(tabs)/profile");
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>

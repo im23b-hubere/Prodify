@@ -5,10 +5,11 @@ import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionSetupForm } from "../../components/session/SessionSetupForm";
+import { CrashBoundary } from "../../components/ui/CrashBoundary";
 import { ScreenTopBar } from "../../components/ui/ScreenTopBar";
 import { SESSION_TYPE_IDS, type SessionType } from "../../constants/sessionTypes";
-import { CrashBoundary } from "../../components/ui/CrashBoundary";
 import { colors, spacing, ui } from "../../constants/theme";
+import { returnTo } from "../../lib/stackNavigation";
 
 export default function SessionSetupScreen() {
   const router = useRouter();
@@ -26,13 +27,7 @@ export default function SessionSetupScreen() {
   }, [params.source]);
   const planningMode = source === "plan_next";
 
-  const closeSetup = () => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace("/(tabs)/dashboard");
-  };
+  const closeSetup = () => returnTo(router, "/(tabs)/dashboard", { modal: true });
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -55,7 +50,7 @@ export default function SessionSetupScreen() {
             submitLabel={
               planningMode ? t("sessionSetup.startWhenReadyCta") : t("sessionSetup.startCta")
             }
-            onStarted={() => router.replace("/(tabs)/dashboard")}
+            onStarted={closeSetup}
             onRequestClose={closeSetup}
           />
         </>
