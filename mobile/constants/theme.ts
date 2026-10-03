@@ -69,6 +69,8 @@ export const ui = {
   cardRadius: radii.md,
   cardBorderWidth: 1,
   buttonHeight: 56,
+  /** Room the floating tab bar takes above the home indicator; tab screens pad their scroll by this. */
+  tabBarClearance: 76,
 } as const;
 
 export const motion = {

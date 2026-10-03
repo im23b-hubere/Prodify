@@ -7,7 +7,6 @@ import { progressionOverviewHref } from "../../../lib/progressionNavigation";
 import { openTab } from "../../../lib/stackNavigation";
 import { useProfileData } from "./useProfileData";
 import { useProfilePictureUpload } from "./useProfilePictureUpload";
-import { useProfilePushTest } from "./useProfilePushTest";
 
 export function useProfileScreenController() {
   const { t } = useTranslation();
@@ -15,7 +14,6 @@ export function useProfileScreenController() {
   const router = useRouter();
   const userId = user?.id;
   const data = useProfileData(token, userId);
-  const pushTest = useProfilePushTest(token);
   const profilePicture = useProfilePictureUpload({ token, applyAuthenticatedUser });
   const openPublicProfile = useCallback(() => {
     if (userId) router.push(`/profile/${userId}`);
@@ -25,7 +23,6 @@ export function useProfileScreenController() {
     t,
     user,
     data,
-    pushTest,
     profilePicture,
     navigation: {
       openPublicProfile,

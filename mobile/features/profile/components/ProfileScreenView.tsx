@@ -9,18 +9,17 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppFlame, glyphRowStyle } from "../../../components/icons/ProdifyGlyphs";
 import { RankCard } from "../../../components/progression/RankCard";
 import { ErrorState } from "../../../components/states/ErrorState";
 import { AppCard } from "../../../components/ui/AppCard";
 import { BadgeIcon } from "../../../components/ui/BadgeIcon";
-import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { StatCard } from "../../../components/ui/StatCard";
 import { TextButton } from "../../../components/ui/TextButton";
 import { API_BASE_URL } from "../../../constants/api";
-import { colors } from "../../../constants/theme";
+import { colors, ui } from "../../../constants/theme";
 import { StatsHeatmapSection } from "../../stats/components/StatsHeatmapSection";
 import { profileScreenStyles as styles } from "../profileScreen.styles";
 import type { ProfileScreenController } from "../hooks/useProfileScreenController";
@@ -214,46 +213,6 @@ function MilestonesSection({ controller }: Props) {
   );
 }
 
-const PUSH_TEMPLATES = [
-  { id: "test" as const, labelKey: "profile.pingTemplateTest" as const },
-  { id: "session_demo" as const, labelKey: "profile.pingTemplateSession" as const },
-  { id: "streak_demo" as const, labelKey: "profile.pingTemplateStreak" as const },
-];
-
-function PushTestSection({ controller }: Props) {
-  if (!__DEV__) return null;
-  const { t, pushTest } = controller;
-  return (
-    <>
-      <Text style={styles.sectionTitle}>{t("profile.pushSectionTitle")}</Text>
-      <Text style={styles.pushHint}>{t("profile.pushHint")}</Text>
-      <View style={styles.pingChips}>
-        {PUSH_TEMPLATES.map((template) => (
-          <Pressable
-            key={template.id}
-            style={[styles.pingChip, pushTest.template === template.id && styles.pingChipOn]}
-            onPress={() => pushTest.selectTemplate(template.id)}
-          >
-            <Text
-              style={[
-                styles.pingChipTxt,
-                pushTest.template === template.id && styles.pingChipTxtOn,
-              ]}
-            >
-              {t(template.labelKey)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <PrimaryButton
-        label={pushTest.busy ? t("profile.pingSending") : t("profile.pingSend")}
-        onPress={pushTest.send}
-        loading={pushTest.busy}
-      />
-    </>
-  );
-}
-
 function ProfileDataContent({ controller }: Props) {
   const { t, data } = controller;
   const summary = data.stats?.summary;
@@ -287,6 +246,7 @@ function ProfileDataContent({ controller }: Props) {
 
 export function ProfileScreenView({ controller }: Props) {
   const { t, data } = controller;
+  const insets = useSafeAreaInsets();
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="profile-screen">
       {/* Same warm glow as Home, so the profile opens with a heading rather than a card. */}
@@ -297,7 +257,11 @@ export function ProfileScreenView({ controller }: Props) {
         style={styles.ambient}
       />
       <ScrollView
-        contentContainerStyle={styles.content}
+        // The floating tab bar covers the bottom of the screen; keep the last section above it.
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + ui.tabBarClearance },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={data.refreshing}
@@ -309,7 +273,6 @@ export function ProfileScreenView({ controller }: Props) {
         <ProfileIdentity controller={controller} />
         <ProfileQuickActions controller={controller} />
         <ProfileDataContent controller={controller} />
-        <PushTestSection controller={controller} />
       </ScrollView>
     </SafeAreaView>
   );

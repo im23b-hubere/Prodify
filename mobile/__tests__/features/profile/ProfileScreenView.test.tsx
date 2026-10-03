@@ -34,6 +34,7 @@ jest.mock("react-native-safe-area-context", () => {
     SafeAreaView: ({ children, ...props }: { children: React.ReactNode }) => (
       <View {...props}>{children}</View>
     ),
+    useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
   };
 });
 
@@ -76,12 +77,6 @@ function createController(
       load: action,
       refresh: action,
       ...dataOverrides,
-    },
-    pushTest: {
-      busy: false,
-      template: "test",
-      selectTemplate: action,
-      send: action,
     },
     profilePicture: {
       busy: false,

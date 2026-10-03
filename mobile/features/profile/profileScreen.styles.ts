@@ -157,28 +157,6 @@ export const profileScreenStyles = StyleSheet.create({
     ...typography.caption,
     marginBottom: spacing.sm,
   },
-  pushHint: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    lineHeight: 20,
-    marginBottom: spacing.md,
-  },
-  pingChips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.md },
-  pingChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  pingChipOn: { borderColor: colors.primary, backgroundColor: "rgba(255,61,0,0.12)" },
-  pingChipTxt: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
-  pingChipTxtOn: { color: colors.textPrimary },
   muted: { color: colors.textSecondary, ...typography.caption, marginBottom: spacing.sm },
   badgesRow: {
     gap: spacing.sm,
