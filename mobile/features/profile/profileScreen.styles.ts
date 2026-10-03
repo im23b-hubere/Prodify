@@ -43,10 +43,13 @@ export const profileScreenStyles = StyleSheet.create({
     borderColor: colors.border,
   },
   settingsTopBar: { marginBottom: spacing.md },
-  identityCard: {
+  ambient: { position: "absolute", top: 0, left: 0, right: 0, height: 320 },
+  topRow: { flexDirection: "row", justifyContent: "flex-end" },
+  identityHeader: {
     alignItems: "center",
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
+    marginTop: -spacing.lg,
+    marginBottom: spacing.xl,
+    gap: spacing.xs,
   },
   quickActions: {
     marginBottom: spacing.lg,
@@ -62,21 +65,21 @@ export const profileScreenStyles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.body,
   },
-  avatarPressable: { marginBottom: spacing.xs },
+  avatarPressable: { marginBottom: spacing.sm },
   avatar: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    backgroundColor: "#2b2140",
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: "rgba(255,61,0,0.14)",
     borderWidth: 2,
-    borderColor: colors.secondary,
+    borderColor: "rgba(255,61,0,0.6)",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarImage: {
     width: "100%",
     height: "100%",
-    borderRadius: 44,
+    borderRadius: 50,
   },
   avatarText: {
     color: colors.textPrimary,
@@ -98,7 +101,7 @@ export const profileScreenStyles = StyleSheet.create({
   },
   avatarBusyOverlay: {
     ...StyleSheet.absoluteFill,
-    borderRadius: 46,
+    borderRadius: 52,
     backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
@@ -106,16 +109,12 @@ export const profileScreenStyles = StyleSheet.create({
   username: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.subheadline,
+    ...typography.screenTitle,
+    textAlign: "center",
   },
   email: {
     alignSelf: "stretch",
     textAlign: "center",
-    color: colors.textSecondary,
-    fontFamily: fontFamily.body,
-    ...typography.caption,
-  },
-  roleLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
     ...typography.caption,

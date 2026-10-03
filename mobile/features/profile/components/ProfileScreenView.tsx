@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppFlame, glyphRowStyle } from "../../../components/icons/ProdifyGlyphs";
@@ -16,7 +17,6 @@ import { ErrorState } from "../../../components/states/ErrorState";
 import { AppCard } from "../../../components/ui/AppCard";
 import { BadgeIcon } from "../../../components/ui/BadgeIcon";
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
-import { ScreenHeader } from "../../../components/ui/ScreenHeader";
 import { StatCard } from "../../../components/ui/StatCard";
 import { TextButton } from "../../../components/ui/TextButton";
 import { API_BASE_URL } from "../../../constants/api";
@@ -75,7 +75,7 @@ function ProfileIdentity({ controller }: Props) {
   const { t, navigation, profilePicture } = controller;
   const identity = identityPresentation(controller);
   return (
-    <AppCard style={styles.identityCard} testID="profile-identity-card">
+    <View style={styles.identityHeader} testID="profile-identity-card">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={
@@ -117,7 +117,6 @@ function ProfileIdentity({ controller }: Props) {
           {identity.email}
         </Text>
       ) : null}
-      <Text style={styles.roleLabel}>{t("profile.roleProducer")}</Text>
       {identity.hasPublicProfile ? (
         <TextButton
           label={t("profile.viewPublicProfile")}
@@ -127,7 +126,7 @@ function ProfileIdentity({ controller }: Props) {
           accent
         />
       ) : null}
-    </AppCard>
+    </View>
   );
 }
 
@@ -279,6 +278,13 @@ export function ProfileScreenView({ controller }: Props) {
   const { t, data } = controller;
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="profile-screen">
+      {/* Same warm glow as Home, so the profile opens with a heading rather than a card. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(255,61,0,0.18)", "rgba(255,61,0,0.05)", "rgba(10,10,10,0)"]}
+        locations={[0, 0.42, 1]}
+        style={styles.ambient}
+      />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
@@ -289,21 +295,18 @@ export function ProfileScreenView({ controller }: Props) {
           />
         }
       >
-        <ScreenHeader
-          title={t("tabs.profile")}
-          actionNode={
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("profile.openSettingsA11y")}
-              hitSlop={8}
-              onPress={controller.navigation.openSettings}
-              style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}
-              testID="profile-open-settings"
-            >
-              <Settings color={colors.textPrimary} size={19} strokeWidth={2.2} />
-            </Pressable>
-          }
-        />
+        <View style={styles.topRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("profile.openSettingsA11y")}
+            hitSlop={8}
+            onPress={controller.navigation.openSettings}
+            style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}
+            testID="profile-open-settings"
+          >
+            <Settings color={colors.textPrimary} size={19} strokeWidth={2.2} />
+          </Pressable>
+        </View>
         <ProfileIdentity controller={controller} />
         <ProfileQuickActions controller={controller} />
         <ProfileDataContent controller={controller} />
