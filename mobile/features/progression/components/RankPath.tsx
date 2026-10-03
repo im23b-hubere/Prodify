@@ -13,6 +13,9 @@ import { pointAlongSegment, type RankPathLayout, type RankPathSegment } from "..
 import { type RankNodeState, RankPathNode } from "./RankPathNode";
 import { RankPathScenery } from "./RankPathScenery";
 
+/** XP reads in the app's language (English only), not the device locale. */
+const xpFormatter = new Intl.NumberFormat("en-US");
+
 type Props = {
   layout: RankPathLayout;
   currentLevel: number;
@@ -52,11 +55,11 @@ export function RankPath({
         return t("progression.path.clearedLine", { level });
       case "current":
         return level >= maxLevel
-          ? t("progression.path.maxLine", { xp: xpTotal.toLocaleString() })
+          ? t("progression.path.maxLine", { xp: xpFormatter.format(xpTotal) })
           : t("progression.path.currentLine", {
-              xp: xpTotal.toLocaleString(),
-              target: (xpTotal + xpToNext).toLocaleString(),
-              toGo: xpToNext.toLocaleString(),
+              xp: xpFormatter.format(xpTotal),
+              target: xpFormatter.format(xpTotal + xpToNext),
+              toGo: xpFormatter.format(xpToNext),
             });
       case "next":
         return t("progression.path.nextLine", { level });
@@ -64,7 +67,7 @@ export function RankPath({
         const xpStart = xpStartByLevel.get(level);
         return xpStart == null
           ? t("progression.xpHudLevelShort", { level })
-          : t("progression.path.lockedLine", { level, xp: xpStart.toLocaleString() });
+          : t("progression.path.lockedLine", { level, xp: xpFormatter.format(xpStart) });
       }
     }
   };
