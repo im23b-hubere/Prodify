@@ -1,6 +1,8 @@
 import "./lib/i18n";
 
-jest.mock("react-native-worklets", () => ({}));
+jest.mock("react-native-worklets", () => ({
+  scheduleOnRN: (callback: (...args: unknown[]) => void, ...args: unknown[]) => callback(...args),
+}));
 jest.mock("react-native-reanimated", () => require("./test/reanimatedStub"));
 jest.mock("react-native-reanimated/mock", () => require("./test/reanimatedStub"));
 jest.mock("expo-audio", () => {

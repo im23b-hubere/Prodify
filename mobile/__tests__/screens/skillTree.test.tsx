@@ -84,6 +84,13 @@ const trainedProfile = {
   focuses: [{ skill_id: "mixing.eq", branch: "mixing", ...node(1800, 1) }],
 };
 
+/** What VoiceOver and TalkBack send when a node is double-tapped. */
+async function activateNode(id: string) {
+  fireEvent(await screen.findByTestId(`skill-tree-node-${id}`), "accessibilityAction", {
+    nativeEvent: { actionName: "activate" },
+  });
+}
+
 async function renderMeasuredTree() {
   render(<SkillTreeRoute />);
   fireEvent(await screen.findByTestId("skill-tree-viewport"), "layout", {
@@ -100,9 +107,7 @@ describe("SkillTreeScreen", () => {
   it("lights up trained skills and keeps the rest locked", async () => {
     await renderMeasuredTree();
 
-    expect(
-      await screen.findByLabelText("skillTree.nodeAccessibility:1"),
-    ).toBeTruthy();
+    expect(await screen.findByLabelText("skillTree.nodeAccessibility:1")).toBeTruthy();
     expect(screen.getByTestId("skill-tree-node-mixing.eq").props.accessibilityLabel).toBe(
       "skillTree.nodeAccessibility:1",
     );
@@ -117,23 +122,32 @@ describe("SkillTreeScreen", () => {
   it("shows level and progress of a tapped skill", async () => {
     await renderMeasuredTree();
 
-    fireEvent.press(await screen.findByTestId("skill-tree-node-mixing"));
+    await activateNode("mixing");
 
     expect(await screen.findByTestId("skill-tree-detail")).toBeTruthy();
     expect(screen.getByText("skillTree.levelLong:2")).toBeTruthy();
   });
 
+  it("keeps the selected skill open when it is activated again", async () => {
+    await renderMeasuredTree();
+    await activateNode("mixing");
+
+    await activateNode("mixing");
+
+    expect(screen.getByTestId("skill-tree-detail")).toBeTruthy();
+  });
+
   it("explains how to unlock a locked skill", async () => {
     await renderMeasuredTree();
 
-    fireEvent.press(await screen.findByTestId("skill-tree-node-mixing.saturation"));
+    await activateNode("mixing.saturation");
 
     expect(await screen.findByText("skillTree.lockedFocusHint")).toBeTruthy();
   });
 
   it("closes the detail card", async () => {
     await renderMeasuredTree();
-    fireEvent.press(await screen.findByTestId("skill-tree-node-mixing"));
+    await activateNode("mixing");
 
     fireEvent.press(await screen.findByTestId("skill-tree-detail-close"));
 
@@ -189,7 +203,7 @@ describe("SkillTreeScreen", () => {
 
   it("zooms out to the whole tree from the overview map", async () => {
     await renderMeasuredTree();
-    fireEvent.press(await screen.findByTestId("skill-tree-node-mixing"));
+    await activateNode("mixing");
 
     fireEvent.press(await screen.findByTestId("skill-tree-overview"));
 

@@ -28,15 +28,20 @@ export function useSkillTreeScreen(initialBranch: string | undefined) {
   const { token, user } = useAuth();
   const skillProfile = useSkillProfile(token);
   const model = useMemo(() => buildSkillTreeModel(skillProfile.profile), [skillProfile.profile]);
-  const viewport = useSkillTreeViewport(SKILL_TREE_LAYOUT.size);
   const [selectedId, setSelectedId] = useState<SkillTreeNodeId | null>(null);
+  const showDetailsOf = useCallback((id: SkillTreeNodeId | null) => {
+    if (id) Haptics.selectionAsync().catch(() => undefined);
+    setSelectedId(id);
+  }, []);
+  const viewport = useSkillTreeViewport(SKILL_TREE_LAYOUT.size, {
+    nodes: SKILL_TREE_LAYOUT.nodes,
+    selectionLift: DETAIL_CARD_LIFT,
+    onTap: showDetailsOf,
+  });
   const [viewMode, setViewMode] = useState<SkillTreeViewMode>("tree");
   const highlighted = useMemo(() => highlightedNodeIds(selectedId), [selectedId]);
   const isReady = skillProfile.profile !== null;
-  const newlyUnlocked = useNewlyUnlockedSkills(
-    user?.id,
-    isReady ? unlockedFocusIds(model) : null,
-  );
+  const newlyUnlocked = useNewlyUnlockedSkills(user?.id, isReady ? unlockedFocusIds(model) : null);
 
   const { focusOn, introduce, isMeasured } = viewport;
   const startId = startingNodeId(model, initialBranch);
@@ -60,12 +65,11 @@ export function useSkillTreeScreen(initialBranch: string | undefined) {
 
   const selectNode = useCallback(
     (id: SkillTreeNodeId) => {
-      Haptics.selectionAsync().catch(() => undefined);
-      setSelectedId((current) => (current === id ? null : id));
+      showDetailsOf(id);
       const node = NODE_POSITIONS.get(id);
       if (node && id !== "center") focusOn(node, DETAIL_CARD_LIFT);
     },
-    [focusOn],
+    [focusOn, showDetailsOf],
   );
 
   const showFocus = (id: SkillFocusId) => {

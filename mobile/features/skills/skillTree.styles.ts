@@ -129,11 +129,6 @@ export const styles = StyleSheet.create({
 
   node: { position: "absolute", alignItems: "center" },
   nodeBody: { alignItems: "center" },
-  nodeScaler: {
-    transitionProperty: "transform",
-    transitionDuration: 140,
-    transitionTimingFunction: "ease-out",
-  },
   dimmable: { transitionProperty: "opacity", transitionDuration: 220 },
   nodeRing: { position: "absolute" },
   nodeCircle: {

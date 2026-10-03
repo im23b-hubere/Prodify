@@ -91,7 +91,8 @@ function TreeNode({ node, screen }: { node: SkillTreeNodeLayout; screen: SkillTr
     isDimmed: highlighted !== null && !highlighted.has(node.id),
     enterDelay: enterDelayFor(node),
     scale: viewport.scale,
-    onPress: selectNode as (id: string) => void,
+    pressedNodeId: viewport.pressedNodeId,
+    onActivate: selectNode as (id: string) => void,
   };
 
   if (node.kind === "center") {

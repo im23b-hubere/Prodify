@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import { useCallback, useRef, useState } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
@@ -7,9 +8,12 @@ import {
   useSharedValue,
   withDecay,
   withSpring,
+  type SharedValue,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
-import type { TreePoint } from "../skillTreeLayout";
+import { nodeAtPoint, type SkillTreeCamera } from "../skillTreeHitTest";
+import type { SkillTreeNodeLayout, TreePoint } from "../skillTreeLayout";
 
 /** Opening zoom: focus nodes and their names are readable straight away. */
 const START_SCALE = 0.8;
@@ -23,11 +27,27 @@ const EDGE_SLACK = 80;
 /** Lets the outermost skills reach the centre of the screen. */
 const NODE_REACH_RATIO = 0.45;
 const OVERSTRETCH_RESISTANCE = 0.3;
+/** Movement a tap tolerates; beyond it the finger is panning instead. */
+const TAP_SLOP = 8;
+const DOUBLE_TAP_MS = 280;
+const DOUBLE_TAP_DISTANCE = 32;
 
 const CAMERA_SPRING = { duration: 650, dampingRatio: 1, reduceMotion: ReduceMotion.System };
 const SETTLE_SPRING = { duration: 400, dampingRatio: 0.85, reduceMotion: ReduceMotion.System };
 
 type ViewportSize = { width: number; height: number };
+type CameraTarget = { scale: number; x: number; y: number };
+type TapRecord = { time: number; x: number; y: number };
+
+const NO_TAP: TapRecord = { time: 0, x: 0, y: 0 };
+
+type ViewportOptions = {
+  nodes: readonly SkillTreeNodeLayout[];
+  /** Keeps a tapped node clear of the detail card that slides up from the bottom. */
+  selectionLift: number;
+  /** The tapped node, or null when the tap landed on empty canvas. */
+  onTap: (id: SkillTreeNodeLayout["id"] | null) => void;
+};
 
 function clamp(value: number, min: number, max: number) {
   "worklet";
@@ -49,10 +69,13 @@ function dragAxis(position: number, change: number, reach: number) {
   return position + (isPullingOutward ? change * OVERSTRETCH_RESISTANCE : change);
 }
 
-type CameraTarget = { scale: number; x: number; y: number };
-
 /** Camera position that shows `point` in the viewport centre, lifted by `liftBy`. */
-function cameraTarget(point: TreePoint, scale: number, canvasSize: number, liftBy: number): CameraTarget {
+function cameraTarget(
+  point: TreePoint,
+  scale: number,
+  canvasSize: number,
+  liftBy: number,
+): CameraTarget {
   "worklet";
   return {
     scale,
@@ -61,17 +84,53 @@ function cameraTarget(point: TreePoint, scale: number, canvasSize: number, liftB
   };
 }
 
+function springCameraTo(
+  scale: SharedValue<number>,
+  translateX: SharedValue<number>,
+  translateY: SharedValue<number>,
+  target: CameraTarget,
+) {
+  "worklet";
+  scale.set(withSpring(target.scale, CAMERA_SPRING));
+  translateX.set(withSpring(target.x, CAMERA_SPRING));
+  translateY.set(withSpring(target.y, CAMERA_SPRING));
+}
+
+function tapRecordAt(point: TreePoint): TapRecord {
+  "worklet";
+  return { time: Date.now(), x: point.x, y: point.y };
+}
+
+function isQuickSecondTap(previous: TapRecord, current: TapRecord) {
+  "worklet";
+  return (
+    current.time - previous.time < DOUBLE_TAP_MS &&
+    Math.hypot(current.x - previous.x, current.y - previous.y) < DOUBLE_TAP_DISTANCE
+  );
+}
+
+/** A light knock when the zoom hits a limit or a double-tap snaps the camera. */
+function playCameraHaptic() {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+}
+
 /**
- * Camera for a square canvas centred in the viewport: pinch, pan with momentum and double-tap,
- * all on the UI thread. Zooming keeps the point under the fingers still.
+ * Camera for a square canvas centred in the viewport: pinch, pan with momentum, tap and
+ * double-tap, all on the UI thread. Zooming keeps the point under the fingers still.
  */
-export function useSkillTreeViewport(canvasSize: number) {
+export function useSkillTreeViewport(
+  canvasSize: number,
+  { nodes, selectionLift, onTap }: ViewportOptions,
+) {
   const [viewport, setViewport] = useState<ViewportSize | null>(null);
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const pinchStartScale = useSharedValue(1);
   const wasPinched = useSharedValue(false);
+  const isPastZoomLimit = useSharedValue(false);
+  const lastTap = useSharedValue<TapRecord>(NO_TAP);
+  const pressedNodeId = useSharedValue<string | null>(null);
   const width = viewport?.width ?? 0;
   const height = viewport?.height ?? 0;
   const fitScale = viewport ? (Math.min(width, height) / canvasSize) * FIT_MARGIN : 1;
@@ -101,6 +160,18 @@ export function useSkillTreeViewport(canvasSize: number) {
       Math.max(0, (canvasSize * atScale - axisSize) / 2) + EDGE_SLACK,
       canvasSize * NODE_REACH_RATIO * atScale,
     );
+  };
+
+  const currentCamera = (): SkillTreeCamera => {
+    "worklet";
+    return {
+      scale: scale.get(),
+      translateX: translateX.get(),
+      translateY: translateY.get(),
+      viewportWidth: width,
+      viewportHeight: height,
+      canvasSize,
+    };
   };
 
   /** Springs scale and position back inside their limits after a gesture overshot them. */
@@ -140,19 +211,48 @@ export function useSkillTreeViewport(canvasSize: number) {
     scale.set(nextScale);
   };
 
+  /** Zooms out to the whole tree when zoomed in, otherwise in on the tapped point. */
+  const toggleZoomAt = (point: TreePoint) => {
+    "worklet";
+    const isZoomedIn = scale.get() > fitScale * 1.3;
+    const tappedPoint = {
+      x: canvasSize / 2 + (point.x - width / 2 - translateX.get()) / scale.get(),
+      y: canvasSize / 2 + (point.y - height / 2 - translateY.get()) / scale.get(),
+    };
+    springCameraTo(
+      scale,
+      translateX,
+      translateY,
+      isZoomedIn
+        ? cameraTarget({ x: canvasSize / 2, y: canvasSize / 2 }, fitScale, canvasSize, 0)
+        : cameraTarget(tappedPoint, FOCUS_SCALE, canvasSize, 0),
+    );
+  };
+
+  const focusTarget = (point: TreePoint, liftBy: number) => {
+    "worklet";
+    const nextScale = clamp(Math.max(FOCUS_SCALE, scale.get()), minScale, MAX_SCALE);
+    return cameraTarget(point, nextScale, canvasSize, liftBy);
+  };
+
   const pinch = Gesture.Pinch()
     .onStart(() => {
       wasPinched.set(true);
+      isPastZoomLimit.set(false);
       pinchStartScale.set(scale.get());
     })
     .onUpdate((event) => {
-      const nextScale = resist(pinchStartScale.get() * event.scale, minScale, MAX_SCALE);
-      zoomAround(event.focalX, event.focalY, nextScale);
+      const requestedScale = pinchStartScale.get() * event.scale;
+      const isPastLimit = requestedScale < minScale || requestedScale > MAX_SCALE;
+      if (isPastLimit && !isPastZoomLimit.get()) scheduleOnRN(playCameraHaptic);
+      isPastZoomLimit.set(isPastLimit);
+      zoomAround(event.focalX, event.focalY, resist(requestedScale, minScale, MAX_SCALE));
     })
     .onEnd(settle);
 
   const pan = Gesture.Pan()
     .averageTouches(true)
+    .minDistance(TAP_SLOP)
     .onBegin(() => {
       wasPinched.set(false);
     })
@@ -169,31 +269,45 @@ export function useSkillTreeViewport(canvasSize: number) {
       translateY.set(glideFrom(translateY.get(), event.velocityY, reachAt(scale.get(), height)));
     });
 
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .onEnd((event) => {
-      const isZoomedIn = scale.get() > fitScale * 1.3;
-      const tappedPoint = {
-        x: canvasSize / 2 + (event.x - width / 2 - translateX.get()) / scale.get(),
-        y: canvasSize / 2 + (event.y - height / 2 - translateY.get()) / scale.get(),
-      };
-      const target = isZoomedIn
-        ? cameraTarget({ x: canvasSize / 2, y: canvasSize / 2 }, fitScale, canvasSize, 0)
-        : cameraTarget(tappedPoint, FOCUS_SCALE, canvasSize, 0);
-      scale.set(withSpring(target.scale, CAMERA_SPRING));
-      translateX.set(withSpring(target.x, CAMERA_SPRING));
-      translateY.set(withSpring(target.y, CAMERA_SPRING));
+  // A second tap in quick succession zooms; single taps act at once instead of waiting for a
+  // double-tap recognizer to give up.
+  const tap = Gesture.Tap()
+    .maxDistance(TAP_SLOP)
+    .onBegin((event) => {
+      pressedNodeId.set(nodeAtPoint(event, currentCamera(), nodes));
+    })
+    .onEnd((event, success) => {
+      if (!success) return;
+      const current = tapRecordAt(event);
+      if (isQuickSecondTap(lastTap.get(), current)) {
+        lastTap.set(NO_TAP);
+        toggleZoomAt(event);
+        scheduleOnRN(playCameraHaptic);
+        return;
+      }
+      lastTap.set(current);
+      const tappedId = nodeAtPoint(event, currentCamera(), nodes);
+      const tappedNode = nodes.find((node) => node.id === tappedId);
+      if (tappedNode && tappedNode.kind !== "center") {
+        springCameraTo(scale, translateX, translateY, focusTarget(tappedNode, selectionLift));
+      }
+      scheduleOnRN(onTap, tappedId);
+    })
+    .onFinalize(() => {
+      pressedNodeId.set(null);
     });
 
-  const gesture = Gesture.Simultaneous(pinch, pan, doubleTap);
+  const gesture = Gesture.Simultaneous(pinch, pan, tap);
 
   const flyTo = useCallback(
     (point: TreePoint, targetScale: number, liftBy = 0) => {
       const nextScale = clamp(targetScale, minScale, MAX_SCALE);
-      const target = cameraTarget(point, nextScale, canvasSize, liftBy);
-      scale.set(withSpring(target.scale, CAMERA_SPRING));
-      translateX.set(withSpring(target.x, CAMERA_SPRING));
-      translateY.set(withSpring(target.y, CAMERA_SPRING));
+      springCameraTo(
+        scale,
+        translateX,
+        translateY,
+        cameraTarget(point, nextScale, canvasSize, liftBy),
+      );
     },
     [canvasSize, minScale, scale, translateX, translateY],
   );
@@ -230,6 +344,8 @@ export function useSkillTreeViewport(canvasSize: number) {
     scale,
     translateX,
     translateY,
+    /** The node under a finger that is still down, for press feedback. */
+    pressedNodeId,
     focusOn,
     introduce,
     showWholeTree,
