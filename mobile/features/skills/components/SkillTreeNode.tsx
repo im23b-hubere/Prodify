@@ -31,6 +31,8 @@ const SEGMENT_GAP_DEGREES = 9;
 const RING_GAP = 5;
 const RING_WIDTH = 3;
 const LABEL_WIDTH = 104;
+/** Area names stay on one line ("Vocal Production" would otherwise wrap). */
+const BRANCH_LABEL_WIDTH = 150;
 const PULSE_REPEATS = 2;
 /** Names fade in once the tree is zoomed in far enough to read them; area names stay longer. */
 const FOCUS_LABEL_FADE_SCALES = [0.5, 0.68];
@@ -163,6 +165,7 @@ export const SkillTreeNode = memo(function SkillTreeNode({
     if (event.nativeEvent.actionName === "activate") onActivate(id);
   };
   const showsLevel = isUnlocked && kind !== "center";
+  const labelWidth = kind === "branch" ? BRANCH_LABEL_WIDTH : LABEL_WIDTH;
   const surface = isUnlocked
     ? unlockedSurface(accent, size, level, isSelected)
     : { ...LOCKED_SURFACE, borderColor: isSelected ? "#8a8a8a" : LOCKED_NODE_BORDER };
@@ -217,14 +220,14 @@ export const SkillTreeNode = memo(function SkillTreeNode({
               styles.nodeLabelWrap,
               {
                 top: size + RING_GAP + RING_WIDTH + 6,
-                left: (size - LABEL_WIDTH) / 2,
-                width: LABEL_WIDTH,
+                left: (size - labelWidth) / 2,
+                width: labelWidth,
               },
               labelStyle,
             ]}
           >
             <Text
-              numberOfLines={2}
+              numberOfLines={kind === "branch" ? 1 : 2}
               style={[
                 styles.nodeLabel,
                 kind === "branch" && styles.branchLabel,
