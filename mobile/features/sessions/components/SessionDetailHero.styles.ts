@@ -17,20 +17,6 @@ export const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.xs,
   },
-  friendBadge: {
-    borderRadius: radii.round,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    backgroundColor: "rgba(162,89,255,0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(162,89,255,0.35)",
-  },
-  friendBadgeText: {
-    color: colors.secondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    fontSize: 11,
-  },
   ownBadge: {
     borderRadius: radii.round,
     paddingHorizontal: spacing.sm,
@@ -81,7 +67,7 @@ export const styles = StyleSheet.create({
     gap: 2,
   },
   trackLabel: {
-    color: colors.secondary,
+    color: colors.primary,
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
   },
@@ -93,32 +79,42 @@ export const styles = StyleSheet.create({
   activeWrap: {
     marginTop: spacing.sm,
   },
-  producerLink: {
+  authorRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    marginTop: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.md,
+    paddingBottom: spacing.sm,
+    marginBottom: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.1)",
+  },
+  authorAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,61,0,0.18)",
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    borderColor: "rgba(255,61,0,0.4)",
   },
-  producerCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  producerName: {
+  authorInitials: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
+    fontSize: 13,
   },
-  producerCta: {
-    color: colors.secondary,
+  authorCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  authorName: {
+    color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    fontSize: 11,
+    ...typography.body,
+  },
+  authorMeta: {
+    color: colors.textSecondary,
+    ...typography.meta,
   },
   actionRow: {
     flexDirection: "row",

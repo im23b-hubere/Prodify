@@ -60,7 +60,9 @@ function NotesSection({
   onNoteChange,
 }: Pick<SessionDetailMetadataProps, "isOwnSession" | "note" | "onNoteChange">) {
   const { t } = useTranslation();
-  let content = <Text style={styles.mutedNote}>{t("sessionDetail.noNotes")}</Text>;
+  // Your own notes stay editable even when empty; a friend's empty notes are simply not shown.
+  if (!isOwnSession && !note.trim()) return null;
+  let content = <Text style={styles.noteReadOnly}>{note}</Text>;
   if (isOwnSession) {
     content = (
       <>
@@ -78,8 +80,6 @@ function NotesSection({
         </Text>
       </>
     );
-  } else if (note.trim()) {
-    content = <Text style={styles.noteReadOnly}>{note}</Text>;
   }
   return (
     <View style={styles.section}>
@@ -170,6 +170,22 @@ function TagsSection({ tags }: { tags: string[] }) {
   );
 }
 
+/** Mood and pauses side by side; a fact without data is left out instead of showing a dash. */
+function FactsRow({ cells }: { cells: ({ label: string; value: string } | null)[] }) {
+  const shown = cells.filter((cell): cell is { label: string; value: string } => cell != null);
+  if (shown.length === 0) return null;
+  return (
+    <View style={styles.grid}>
+      {shown.map((cell) => (
+        <View key={cell.label} style={styles.gridCell}>
+          <Text style={styles.gridLabel}>{cell.label}</Text>
+          <Text style={styles.gridValue}>{cell.value}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function SessionDetailMetadata({
   session,
   presentation,
@@ -184,32 +200,31 @@ export function SessionDetailMetadata({
   const { t } = useTranslation();
   return (
     <>
-      <View style={styles.grid}>
-        <View style={styles.gridCell}>
-          <Text style={styles.gridLabel}>{t("sessionDetail.mood")}</Text>
-          <Text style={styles.gridValue}>
-            {session.mood_level ? sessionMoodLabel(session.mood_level, t) : "—"}
-          </Text>
-        </View>
-        <View style={styles.gridCell}>
-          <Text style={styles.gridLabel}>{t("sessionDetail.pauses")}</Text>
-          <Text style={styles.gridValue}>
-            {presentation.hasMeaningfulPause
-              ? t("sessionDetail.pauseSummary", {
+      <FactsRow
+        cells={[
+          session.mood_level
+            ? { label: t("sessionDetail.mood"), value: sessionMoodLabel(session.mood_level, t) }
+            : null,
+          presentation.hasMeaningfulPause
+            ? {
+                label: t("sessionDetail.pauses"),
+                value: t("sessionDetail.pauseSummary", {
                   count: presentation.pauseCount,
                   m: Math.round(presentation.pauseSeconds / 60),
-                })
-              : "—"}
-          </Text>
-        </View>
-      </View>
-
-      <SessionTypeSection
-        session={session}
-        isOwnSession={isOwnSession}
-        selectedType={selectedType}
-        onTypeChange={onTypeChange}
+                }),
+              }
+            : null,
+        ]}
       />
+      {/* For a friend the type is already the header's title; only your own is editable here. */}
+      {isOwnSession ? (
+        <SessionTypeSection
+          session={session}
+          isOwnSession={isOwnSession}
+          selectedType={selectedType}
+          onTypeChange={onTypeChange}
+        />
+      ) : null}
       <SkillFocusSection
         session={session}
         selectedType={selectedType}
@@ -223,9 +238,9 @@ export function SessionDetailMetadata({
 }
 
 const styles = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  grid: { flexDirection: "row", gap: spacing.sm },
   gridCell: {
-    width: "47%",
+    flex: 1,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -290,7 +305,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: radii.round,
-    backgroundColor: "rgba(162,89,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   mainFocusTag: { backgroundColor: "rgba(162,89,255,0.4)" },
   tagText: { color: colors.textPrimary, ...typography.caption },

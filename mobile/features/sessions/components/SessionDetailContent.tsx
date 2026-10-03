@@ -1,7 +1,7 @@
 import { Text } from "react-native";
 
 import { SessionDetailMetadata } from "./SessionDetailMetadata";
-import { SessionSocialSections } from "./SessionSocialSections";
+import { SessionCommentsSection } from "./SessionCommentsSection";
 import { SessionDeleteAction } from "./SessionEditActions";
 import type { SessionDetailController } from "../hooks/useSessionDetailController";
 import { sessionDetailStyles as styles } from "../sessionDetail.styles";
@@ -23,22 +23,11 @@ export function SessionDetailContent({ controller }: { controller: SessionDetail
         focusSelection={controller.focusSelection}
         canEditFocuses={controller.canEditFocuses}
       />
-      <SessionSocialSections
+      <SessionCommentsSection
         comments={controller.comments}
-        commentInput={controller.commentInput}
-        commentsLoading={controller.commentsLoading}
-        commentsError={controller.commentsError}
-        commentSending={controller.commentSending}
-        reactions={controller.reactions}
-        reactionsLoading={controller.reactionsLoading}
-        reactionsError={controller.reactionsError}
-        reactionBusyEmoji={controller.reactionBusyEmoji}
+        loading={controller.commentsLoading}
+        error={controller.commentsError}
         highlightedCommentId={controller.newCommentId}
-        commentSentPulse={controller.commentSentPulse}
-        onCommentInputChange={controller.setCommentInput}
-        onCommentSubmit={() => void controller.submitComment()}
-        onReactionToggle={(emoji) => void controller.toggleReaction(emoji)}
-        onCommentFocus={controller.focusComment}
       />
       {controller.error ? <Text style={styles.errorText}>{controller.error}</Text> : null}
       {controller.isOwnSession && !controller.isDirty ? (

@@ -38,10 +38,10 @@ export function useFriendsScreenController() {
     [router],
   );
   const openSession = useCallback(
-    (sessionId: number, ownerName: string) => {
+    (sessionId: number, ownerName: string, focus?: "comments") => {
       router.push({
         pathname: "/session/[id]",
-        params: { id: String(sessionId), ownerName },
+        params: { id: String(sessionId), ownerName, ...(focus ? { focus } : {}) },
       } as Href);
     },
     [router],

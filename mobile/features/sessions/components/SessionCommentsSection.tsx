@@ -1,7 +1,6 @@
-import { Check } from "lucide-react-native";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Image, Pressable, Text, TextInput, View } from "react-native";
+import { Image, Text, View } from "react-native";
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -11,50 +10,33 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { API_BASE_URL } from "../../../constants/api";
-import { colors } from "../../../constants/theme";
 import { formatTimeAgo } from "../../../lib/timeAgo";
 import type { SocialCommentDto } from "../../../types/friends";
 import { styles } from "./SessionCommentsSection.styles";
 
 type Props = {
   comments: SocialCommentDto[];
-  input: string;
   loading: boolean;
   error: string | null;
-  sending: boolean;
   highlightedCommentId: number | null;
-  sentPulse: boolean;
-  onInputChange: (value: string) => void;
-  onSubmit: () => void;
-  onFocus: () => void;
 };
 
+/** The comment thread. Writing happens in SessionCommentComposer, pinned to the screen bottom. */
 export function SessionCommentsSection(props: Props) {
   const { t } = useTranslation();
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{t("friendsScreen.commentsTitle")}</Text>
+    <View style={styles.section} testID="session-comments">
+      <Text style={styles.sectionTitle}>
+        {t("friendsScreen.commentsTitle")}
+        {props.comments.length > 0 ? (
+          <Text style={styles.sectionCount}> · {props.comments.length}</Text>
+        ) : null}
+      </Text>
       <CommentsList
         comments={props.comments}
         loading={props.loading}
         highlightedCommentId={props.highlightedCommentId}
       />
-      <View style={styles.commentComposerRow}>
-        <TextInput
-          value={props.input}
-          onChangeText={props.onInputChange}
-          placeholder={t("friendsScreen.commentPlaceholder")}
-          placeholderTextColor={colors.textSecondary}
-          style={styles.commentInput}
-          maxLength={400}
-          onFocus={props.onFocus}
-        />
-        <CommentSubmitButton
-          sending={props.sending}
-          sentPulse={props.sentPulse}
-          onSubmit={props.onSubmit}
-        />
-      </View>
       {props.error ? <Text style={styles.errorText}>{props.error}</Text> : null}
     </View>
   );
@@ -79,35 +61,6 @@ function CommentsList({
   ));
 }
 
-function CommentSubmitButton({
-  sending,
-  sentPulse,
-  onSubmit,
-}: Pick<Props, "sending" | "sentPulse" | "onSubmit">) {
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.commentSendButton,
-        sentPulse && styles.commentSendButtonSuccess,
-        pressed && styles.pressed,
-      ]}
-      disabled={sending}
-      onPress={onSubmit}
-    >
-      <CommentSubmitContent sending={sending} sentPulse={sentPulse} />
-    </Pressable>
-  );
-}
-
-function CommentSubmitContent({ sending, sentPulse }: Pick<Props, "sending" | "sentPulse">) {
-  const { t } = useTranslation();
-  if (sending) {
-    return <Text style={styles.commentSendText}>{t("friendsScreen.commentSendingShort")}</Text>;
-  }
-  if (sentPulse) return <Check size={16} color="#22c55e" strokeWidth={2.4} />;
-  return <Text style={styles.commentSendText}>{t("friendsScreen.commentSend")}</Text>;
-}
-
 function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highlighted: boolean }) {
   const { t } = useTranslation();
   const pulse = useSharedValue(highlighted ? 1 : 0);
@@ -125,9 +78,8 @@ function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highl
     backgroundColor: interpolateColor(
       pulse.value,
       [0, 1],
-      ["rgba(255,255,255,0.03)", "rgba(255,61,0,0.16)"],
+      ["rgba(255,61,0,0)", "rgba(255,61,0,0.16)"],
     ),
-    borderColor: interpolateColor(pulse.value, [0, 1], [colors.border, "rgba(255,61,0,0.5)"]),
   }));
   const avatarUri = resolveAvatarUri(comment.author_profile_picture_url);
   return (
@@ -142,10 +94,10 @@ function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highl
         </View>
       )}
       <View style={styles.commentContent}>
-        <View style={styles.commentHeaderRow}>
+        <Text style={styles.commentHeader}>
           <Text style={styles.commentAuthor}>{comment.author_username}</Text>
-          <Text style={styles.commentTime}>{formatCommentTime(comment.created_at, t)}</Text>
-        </View>
+          <Text style={styles.commentTime}> · {formatCommentTime(comment.created_at, t)}</Text>
+        </Text>
         <Text style={styles.commentBody}>{comment.body}</Text>
       </View>
     </Animated.View>

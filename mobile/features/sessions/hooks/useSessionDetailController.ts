@@ -18,7 +18,11 @@ export function useSessionDetailController() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[]; ownerName?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    ownerName?: string | string[];
+    focus?: string | string[];
+  }>();
   const { sessionId, ownerName } = resolveSessionDetailParams(
     params.id,
     params.ownerName,
@@ -34,6 +38,11 @@ export function useSessionDetailController() {
   });
   const [shareOpen, setShareOpen] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
+  // Opened from a comment button: keep the comments in view while the page and comments load,
+  // until the user scrolls on their own.
+  const followComments = useRef(
+    (Array.isArray(params.focus) ? params.focus[0] : params.focus) === "comments",
+  );
   const closeShare = useCallback(() => setShareOpen(false), [setShareOpen]);
   useAuthScopedReset(token, user?.id, closeShare);
   const editor = useSessionEditor({
@@ -80,6 +89,12 @@ export function useSessionDetailController() {
       router.push(`/profile/${data.session.user_id}`);
     },
     focusComment: () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120),
+    onContentSizeChange: () => {
+      if (followComments.current) scrollRef.current?.scrollToEnd({ animated: true });
+    },
+    stopFollowingComments: () => {
+      followComments.current = false;
+    },
   };
 }
 

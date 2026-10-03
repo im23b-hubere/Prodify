@@ -1,6 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { UserCheck } from "lucide-react-native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
@@ -19,6 +20,8 @@ type Props = {
   profilePictureUrl?: string | null;
   onAddFriend?: () => void;
 };
+
+const FRIEND_GREEN = "#86efac";
 
 function initials(name: string): string {
   const p = name.trim().split(/\s+/).filter(Boolean);
@@ -43,11 +46,11 @@ function FriendshipBadge({ status, onAddFriend }: Pick<Props, "status" | "onAddF
       </View>
     );
   }
+  // Friends get a small mark next to their name instead of a pill (see ProfileHeader).
+  if (status === "accepted") return null;
   return (
     <View style={styles.followingPill}>
-      <Text style={styles.followingTxt}>
-        {t(status === "accepted" ? "profileHeader.friendsBadge" : "profileHeader.you")}
-      </Text>
+      <Text style={styles.followingTxt}>{t("profileHeader.you")}</Text>
     </View>
   );
 }
@@ -78,6 +81,11 @@ export const ProfileHeader = memo(function ProfileHeader({
         </View>
         <View style={styles.nameRow}>
           <Text style={styles.username}>{username}</Text>
+          {status === "accepted" ? (
+            <View accessible accessibilityLabel={t("profileHeader.friendsBadge")}>
+              <UserCheck color={FRIEND_GREEN} size={20} strokeWidth={2.4} />
+            </View>
+          ) : null}
         </View>
         {identityTags.length > 0 ? (
           <View style={styles.identityRow}>
@@ -212,5 +220,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(34,197,94,0.35)",
   },
-  followingTxt: { color: "#86efac", fontFamily: fontFamily.bodyBold, ...typography.caption },
+  followingTxt: { color: FRIEND_GREEN, fontFamily: fontFamily.bodyBold, ...typography.caption },
 });

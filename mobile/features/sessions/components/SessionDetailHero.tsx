@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Share2, UserRound } from "lucide-react-native";
+import { ChevronRight, Share2 } from "lucide-react-native";
 import type { TFunction } from "i18next";
 import { Pressable, Share, Text, View } from "react-native";
 
@@ -31,11 +31,11 @@ function HeroBadges({
 }: Pick<Props, "t" | "isOwnSession" | "focusScore">) {
   return (
     <View style={styles.badgeRow}>
-      <View style={isOwnSession ? styles.ownBadge : styles.friendBadge}>
-        <Text style={isOwnSession ? styles.ownBadgeText : styles.friendBadgeText}>
-          {t(isOwnSession ? "sessionDetail.yourSessionBadge" : "sessionDetail.friendSessionBadge")}
-        </Text>
-      </View>
+      {isOwnSession ? (
+        <View style={styles.ownBadge}>
+          <Text style={styles.ownBadgeText}>{t("sessionDetail.yourSessionBadge")}</Text>
+        </View>
+      ) : null}
       {focusScore != null && focusScore > 0 ? (
         <View style={styles.focusBadge}>
           <Text style={styles.focusBadgeText}>
@@ -58,25 +58,34 @@ function TrackOutcome({ session, label }: { session: SessionDto; label: string |
   );
 }
 
-function ProducerLink({
+/** Who made this session, like the author line of a post. Taps through to their profile. */
+function AuthorRow({
   t,
   producerDisplayName,
+  dateLine,
   onOpenProfile,
-}: Pick<Props, "t" | "producerDisplayName" | "onOpenProfile">) {
+}: Pick<Props, "t" | "producerDisplayName" | "dateLine" | "onOpenProfile">) {
+  const initials = producerDisplayName.trim().slice(0, 2).toUpperCase() || "?";
   return (
     <Pressable
       accessibilityRole="link"
       accessibilityLabel={t("sessionDetail.viewProfileA11y", { name: producerDisplayName })}
-      style={({ pressed }) => [styles.producerLink, pressed && { opacity: 0.88 }]}
+      hitSlop={6}
+      style={({ pressed }) => [styles.authorRow, pressed && { opacity: 0.8 }]}
       onPress={onOpenProfile}
     >
-      <UserRound color={colors.secondary} size={16} />
-      <View style={styles.producerCopy}>
-        <Text style={styles.producerName}>
-          {t("sessionDetail.byProducer", { name: producerDisplayName })}
-        </Text>
-        <Text style={styles.producerCta}>{t("sessionDetail.viewProfile")}</Text>
+      <View style={styles.authorAvatar}>
+        <Text style={styles.authorInitials}>{initials}</Text>
       </View>
+      <View style={styles.authorCopy}>
+        <Text style={styles.authorName} numberOfLines={1}>
+          {producerDisplayName}
+        </Text>
+        <Text style={styles.authorMeta} numberOfLines={1}>
+          {dateLine}
+        </Text>
+      </View>
+      <ChevronRight color={colors.textSecondary} size={18} />
     </Pressable>
   );
 }
@@ -146,11 +155,20 @@ export function SessionDetailHero(props: Props) {
       style={styles.card}
       testID="session-detail-hero"
     >
+      {!isOwnSession ? (
+        <AuthorRow
+          t={t}
+          producerDisplayName={producerDisplayName}
+          dateLine={dateLine}
+          onOpenProfile={onOpenProfile}
+        />
+      ) : null}
       <HeroBadges t={t} isOwnSession={isOwnSession} focusScore={focusScore} />
 
       <Text style={styles.typeLabel}>{typeLabel}</Text>
       <Text style={styles.duration}>{durationLabel}</Text>
-      <Text style={styles.meta}>{dateLine}</Text>
+      {/* A friend's session already shows the date under their name. */}
+      {isOwnSession ? <Text style={styles.meta}>{dateLine}</Text> : null}
 
       <TrackOutcome session={session} label={trackOutcomeLabel} />
 
@@ -158,14 +176,6 @@ export function SessionDetailHero(props: Props) {
         <View style={styles.activeWrap} testID="session-detail-return-active">
           <PrimaryButton label={t("sessionDetail.returnToActive")} onPress={onResumeActive} />
         </View>
-      ) : null}
-
-      {!isOwnSession ? (
-        <ProducerLink
-          t={t}
-          producerDisplayName={producerDisplayName}
-          onOpenProfile={onOpenProfile}
-        />
       ) : null}
 
       {!isActiveSession ? (

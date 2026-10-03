@@ -6,17 +6,19 @@ import { BackButton } from "../../../components/ui/BackButton";
 import { colors } from "../../../constants/theme";
 import type { SessionDetailController } from "../hooks/useSessionDetailController";
 import { sessionDetailStyles as styles } from "../sessionDetail.styles";
+import { SessionCommentComposer } from "./SessionCommentComposer";
 import { SessionDetailContent } from "./SessionDetailContent";
 import { SessionEditFooter } from "./SessionEditActions";
 import { SessionDetailHero } from "./SessionDetailHero";
 import { SessionDetailLoading } from "./SessionDetailStates";
+import { SessionReactionBar } from "./SessionReactionBar";
 
 export function SessionDetailView({ controller }: { controller: SessionDetailController }) {
   if (!controller.session) return <SessionDetailLoading controller={controller} />;
   const { session, presentation } = controller;
   if (!presentation) return null;
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <SessionShareImageModal
         visible={controller.shareOpen}
         onClose={controller.closeShare}
@@ -32,6 +34,8 @@ export function SessionDetailView({ controller }: { controller: SessionDetailCon
       >
         <ScrollView
           ref={controller.scrollRef}
+          onContentSizeChange={controller.onContentSizeChange}
+          onScrollBeginDrag={controller.stopFollowingComments}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
           refreshControl={
@@ -57,6 +61,13 @@ export function SessionDetailView({ controller }: { controller: SessionDetailCon
             onResumeActive={controller.resumeActive}
             onOpenProfile={controller.openProfile}
           />
+          <SessionReactionBar
+            reactions={controller.reactions}
+            loading={controller.reactionsLoading}
+            error={controller.reactionsError}
+            busyEmoji={controller.reactionBusyEmoji}
+            onToggle={(emoji) => void controller.toggleReaction(emoji)}
+          />
           <SessionDetailContent controller={controller} />
         </ScrollView>
         {controller.isOwnSession && controller.isDirty ? (
@@ -65,7 +76,16 @@ export function SessionDetailView({ controller }: { controller: SessionDetailCon
             onSave={() => void controller.save()}
             onDelete={controller.confirmDelete}
           />
-        ) : null}
+        ) : (
+          <SessionCommentComposer
+            value={controller.commentInput}
+            sending={controller.commentSending}
+            sentPulse={controller.commentSentPulse}
+            onChange={controller.setCommentInput}
+            onSubmit={() => void controller.submitComment()}
+            onFocus={controller.focusComment}
+          />
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
