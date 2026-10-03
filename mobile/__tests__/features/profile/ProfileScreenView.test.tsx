@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 
 import { ProfileScreenView } from "../../../features/profile/components/ProfileScreenView";
 import type { ProfileScreenController } from "../../../features/profile/hooks/useProfileScreenController";
@@ -12,6 +12,7 @@ jest.mock("lucide-react-native", () => ({
   ChevronRight: () => null,
   FileText: () => null,
   LogOut: () => null,
+  Settings: () => null,
   Shield: () => null,
   Trash2: () => null,
   Trophy: () => null,
@@ -76,10 +77,6 @@ function createController(
       refresh: action,
       ...dataOverrides,
     },
-    accountActions: {
-      confirmSignOut: action,
-      confirmDeleteAccount: action,
-    },
     pushTest: {
       busy: false,
       template: "test",
@@ -94,29 +91,35 @@ function createController(
       openPublicProfile: action,
       openStats: action,
       openProgression: action,
-      openNotifications: action,
-      openPrivacy: action,
-      openTerms: action,
+      openSettings: action,
     },
   };
 }
 
 describe("ProfileScreenView", () => {
-  it("keeps account settings available while profile data initially loads", () => {
-    const screen = render(<ProfileScreenView controller={createController()} />);
+  it("opens settings from the gear while profile data initially loads", () => {
+    const controller = createController();
+    const screen = render(<ProfileScreenView controller={controller} />);
 
     expect(screen.getByTestId("profile-identity-card")).toBeTruthy();
     expect(screen.getByTestId("profile-quick-actions")).toBeTruthy();
-    expect(screen.getByLabelText("profile.manageNotifications")).toBeTruthy();
-    expect(screen.getByLabelText("profile.signOut")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("profile.openSettingsA11y"));
+    expect(controller.navigation.openSettings).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps milestones and account settings visible after a total data error", () => {
+  it("keeps settings out of the page itself", () => {
+    const screen = render(<ProfileScreenView controller={createController()} />);
+
+    expect(screen.queryByLabelText("profile.signOut")).toBeNull();
+    expect(screen.queryByLabelText("legal.deleteAccount.button")).toBeNull();
+  });
+
+  it("keeps milestones and the settings gear available after a total data error", () => {
     const controller = createController({ loading: false, error: "offline" });
     const screen = render(<ProfileScreenView controller={controller} />);
 
     expect(screen.getByText("profile.milestonesUnavailable")).toBeTruthy();
-    expect(screen.getByLabelText("legal.deleteAccount.button")).toBeTruthy();
+    expect(screen.getByLabelText("profile.openSettingsA11y")).toBeTruthy();
   });
 
   it("shows activity heatmap in the producer snapshot", () => {

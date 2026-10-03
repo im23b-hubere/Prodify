@@ -11,9 +11,16 @@ import { Pressable, Text, View } from "react-native";
 
 import { colors } from "../../../constants/theme";
 import { profileScreenStyles as styles } from "../profileScreen.styles";
-import type { ProfileScreenController } from "../hooks/useProfileScreenController";
+import type { SettingsScreenController } from "../hooks/useSettingsScreenController";
 
-type Props = { controller: ProfileScreenController };
+type Props = {
+  controller: Pick<SettingsScreenController, "t" | "accountActions"> & {
+    navigation: Pick<
+      SettingsScreenController["navigation"],
+      "openNotifications" | "openPrivacy" | "openTerms"
+    >;
+  };
+};
 
 function SettingsLink({
   label,
@@ -52,7 +59,6 @@ export function ProfileSettingsSection({ controller }: Props) {
   const { t, navigation, accountActions } = controller;
   return (
     <>
-      <Text style={styles.sectionTitle}>{t("profile.settingsTitle")}</Text>
       <View style={styles.settingsCard}>
         <SettingsLink
           label={t("profile.manageNotifications")}

@@ -20,6 +20,7 @@ const ALLOWED_PATH_PATTERNS: RegExp[] = [
   /^session-trash$/,
   /^profile$/,
   /^notifications$/,
+  /^settings$/,
   /^paywall$/,
   /^weekly-recap$/,
   /^progression-overview$/,

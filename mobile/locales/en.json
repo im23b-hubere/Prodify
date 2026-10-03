@@ -301,6 +301,7 @@
     "pingResultTitle": "Push",
     "pingDelivered": "Delivered: {{ok}} / {{attempted}}",
     "settingsTitle": "Settings",
+    "openSettingsA11y": "Open settings",
     "manageNotifications": "Notifications",
     "signOut": "Sign out",
     "defaultDisplayName": "Prodify user",

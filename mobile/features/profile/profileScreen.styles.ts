@@ -32,6 +32,17 @@ export const profileScreenStyles = StyleSheet.create({
     borderRadius: radii.round,
     backgroundColor: "rgba(255,255,255,0.08)",
   },
+  settingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  settingsTopBar: { marginBottom: spacing.md },
   identityCard: {
     alignItems: "center",
     marginBottom: spacing.lg,

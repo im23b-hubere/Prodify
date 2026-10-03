@@ -88,6 +88,14 @@ export default function RootLayout() {
               />
               <Stack.Screen name="paywall" options={{ animationTypeForReplace: "pop" }} />
               <Stack.Screen name="notifications" options={{ animationTypeForReplace: "pop" }} />
+              <Stack.Screen
+                name="settings"
+                options={{
+                  animation: "slide_from_right",
+                  gestureEnabled: true,
+                  gestureDirection: "horizontal",
+                }}
+              />
               <Stack.Screen name="weekly-recap" options={{ animationTypeForReplace: "pop" }} />
               <Stack.Screen name="legal" options={{ animationTypeForReplace: "pop" }} />
               <Stack.Screen

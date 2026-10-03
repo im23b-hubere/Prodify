@@ -5,18 +5,16 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/AuthContext";
 import { progressionOverviewHref } from "../../../lib/progressionNavigation";
 import { openTab } from "../../../lib/stackNavigation";
-import { useProfileAccountActions } from "./useProfileAccountActions";
 import { useProfileData } from "./useProfileData";
 import { useProfilePictureUpload } from "./useProfilePictureUpload";
 import { useProfilePushTest } from "./useProfilePushTest";
 
 export function useProfileScreenController() {
   const { t } = useTranslation();
-  const { user, signOut, deleteAccount, token, applyAuthenticatedUser } = useAuth();
+  const { user, token, applyAuthenticatedUser } = useAuth();
   const router = useRouter();
   const userId = user?.id;
   const data = useProfileData(token, userId);
-  const accountActions = useProfileAccountActions({ signOut, deleteAccount });
   const pushTest = useProfilePushTest(token);
   const profilePicture = useProfilePictureUpload({ token, applyAuthenticatedUser });
   const openPublicProfile = useCallback(() => {
@@ -27,17 +25,13 @@ export function useProfileScreenController() {
     t,
     user,
     data,
-    accountActions,
     pushTest,
     profilePicture,
     navigation: {
       openPublicProfile,
       openStats: () => openTab(router, "/(tabs)/stats"),
       openProgression: () => router.push(progressionOverviewHref("profile")),
-      openNotifications: () =>
-        router.push({ pathname: "/notifications", params: { source: "profile" } }),
-      openPrivacy: () => router.push("/legal/privacy" as never),
-      openTerms: () => router.push("/legal/terms" as never),
+      openSettings: () => router.push("/settings"),
     },
   };
 }

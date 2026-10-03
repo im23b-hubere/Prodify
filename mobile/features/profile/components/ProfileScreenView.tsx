@@ -1,4 +1,4 @@
-import { BarChart3, Camera, ChevronRight } from "lucide-react-native";
+import { BarChart3, Camera, ChevronRight, Settings } from "lucide-react-native";
 import {
   ActivityIndicator,
   Image,
@@ -24,7 +24,6 @@ import { colors } from "../../../constants/theme";
 import { StatsHeatmapSection } from "../../stats/components/StatsHeatmapSection";
 import { profileScreenStyles as styles } from "../profileScreen.styles";
 import type { ProfileScreenController } from "../hooks/useProfileScreenController";
-import { ProfileSettingsSection } from "./ProfileSettingsSection";
 
 type Props = { controller: ProfileScreenController };
 
@@ -290,12 +289,25 @@ export function ProfileScreenView({ controller }: Props) {
           />
         }
       >
-        <ScreenHeader title={t("tabs.profile")} />
+        <ScreenHeader
+          title={t("tabs.profile")}
+          actionNode={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("profile.openSettingsA11y")}
+              hitSlop={8}
+              onPress={controller.navigation.openSettings}
+              style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}
+              testID="profile-open-settings"
+            >
+              <Settings color={colors.textPrimary} size={19} strokeWidth={2.2} />
+            </Pressable>
+          }
+        />
         <ProfileIdentity controller={controller} />
         <ProfileQuickActions controller={controller} />
         <ProfileDataContent controller={controller} />
         <PushTestSection controller={controller} />
-        <ProfileSettingsSection controller={controller} />
       </ScrollView>
     </SafeAreaView>
   );
