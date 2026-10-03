@@ -26,18 +26,22 @@ export function ReviewStep({ t, controller, you, friend, errorMessage }: Props) 
   const { draft } = controller;
   return (
     <>
-      <View
-        style={styles.vsCard}
-        accessible
-        accessibilityLabel={t("challengeCreate.vsA11y", { friend: friend.username })}
-      >
-        <View style={styles.vsSlash} />
-        <View style={styles.vsRow}>
-          <VsSide name={you.name} photoUri={you.photoUri} highlighted />
-          <View style={styles.vsDisc}>
-            <Text style={styles.vsText}>VS</Text>
+      <View style={styles.vsCard}>
+        {/* The duel's name heads its own card instead of sitting in a separate form field. */}
+        <TitleEditor t={t} controller={controller} />
+        <View
+          style={styles.vsArena}
+          accessible
+          accessibilityLabel={t("challengeCreate.vsA11y", { friend: friend.username })}
+        >
+          <View style={styles.vsSlash} />
+          <View style={styles.vsRow}>
+            <VsSide name={you.name} photoUri={you.photoUri} highlighted />
+            <View style={styles.vsDisc}>
+              <Text style={styles.vsText}>VS</Text>
+            </View>
+            <VsSide name={friend.username} photoUri={friend.photoUri} />
           </View>
-          <VsSide name={friend.username} photoUri={friend.photoUri} />
         </View>
       </View>
 
@@ -52,8 +56,6 @@ export function ReviewStep({ t, controller, you, friend, errorMessage }: Props) 
           {t("challengeCreate.expiryChip")}
         </Chip>
       </View>
-
-      <TitleEditor t={t} controller={controller} />
 
       {errorMessage != null ? (
         <View style={styles.errorBanner} accessibilityRole="alert" accessibilityLiveRegion="polite">
@@ -97,8 +99,7 @@ function TitleEditor({ t, controller }: { t: TFunction; controller: ChallengeDra
     if (!draft.customTitle?.trim()) dispatch({ type: "useGeneratedTitle" });
   };
   return (
-    <View style={styles.titleCard}>
-      <Text style={styles.sectionLabel}>{t("challengeCreate.titleLabel")}</Text>
+    <View style={styles.titleBlock}>
       <View style={styles.titleRow}>
         {editing ? (
           <TextInput
@@ -114,7 +115,13 @@ function TitleEditor({ t, controller }: { t: TFunction; controller: ChallengeDra
             style={styles.titleInput}
           />
         ) : (
-          <Text style={styles.titleText} numberOfLines={2}>
+          <Text
+            style={styles.titleText}
+            numberOfLines={2}
+            onPress={() => setEditing(true)}
+            accessibilityRole="button"
+            accessibilityHint={t("challengeCreate.editTitle")}
+          >
             {title}
           </Text>
         )}
@@ -125,7 +132,7 @@ function TitleEditor({ t, controller }: { t: TFunction; controller: ChallengeDra
             hitSlop={12}
             onPress={() => setEditing(true)}
           >
-            <Pencil size={18} color={colors.textSecondary} />
+            <Pencil size={15} color={colors.textSecondary} />
           </Pressable>
         ) : null}
       </View>
