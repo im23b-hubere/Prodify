@@ -1861,7 +1861,6 @@
     "loadErrorTitle": "Couldn't load duel setup",
     "loadErrorMessage": "Check your connection and try again.",
     "back": "Back",
-    "close": "Close",
     "progressA11y": "Step {{step}} of {{total}}",
     "continue": "Continue",
     "send": "Send challenge",

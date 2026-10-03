@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { ChevronLeft, X } from "lucide-react-native";
+import { ChevronLeft } from "lucide-react-native";
 import { Text, View } from "react-native";
 
 import { PressableScale } from "../../../components/ui/PressableScale";
@@ -11,13 +11,15 @@ type Props = {
   t: TFunction;
   step: ChallengeStep;
   onBack: (() => void) | null;
-  onClose: () => void;
 };
 
-export function ChallengeSheetHeader({ t, step, onBack, onClose }: Props) {
+/** Steps, title and back arrow. Closing is the sheet's own swipe down, so there is no close button. */
+export function ChallengeSheetHeader({ t, step, onBack }: Props) {
   const stepIndex = CHALLENGE_STEPS.indexOf(step);
   return (
     <View style={styles.header}>
+      {/* The page sheet has no native grabber; this one hints at pulling down to close. */}
+      <View style={styles.grabber} accessibilityElementsHidden importantForAccessibility="no" />
       <View style={styles.headerBar}>
         {onBack ? (
           <PressableScale
@@ -47,14 +49,8 @@ export function ChallengeSheetHeader({ t, step, onBack, onClose }: Props) {
             />
           ))}
         </View>
-        <PressableScale
-          style={styles.iconButton}
-          accessibilityRole="button"
-          accessibilityLabel={t("challengeCreate.close")}
-          onPress={onClose}
-        >
-          <X size={18} color={colors.textPrimary} />
-        </PressableScale>
+        {/* Mirrors the back button's slot so the step dashes stay centred. */}
+        <View style={styles.iconButtonPlaceholder} />
       </View>
       <View>
         <Text style={styles.heading} accessibilityRole="header">

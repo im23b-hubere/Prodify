@@ -16,7 +16,15 @@ export const challengeCreateStyles = StyleSheet.create({
     gap: spacing.md,
   },
 
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.lg },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.lg },
+  grabber: {
+    alignSelf: "center",
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    marginBottom: -spacing.xs,
+  },
   headerBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   iconButton: {
     width: 40,

@@ -101,10 +101,9 @@ export default function RootLayout() {
               <Stack.Screen
                 name="challenge/new"
                 options={{
-                  presentation: "formSheet",
-                  sheetAllowedDetents: [0.92],
-                  sheetGrabberVisible: true,
-                  sheetCornerRadius: 28,
+                  // The standard iOS page sheet: a custom-height form sheet shifted its content
+                  // under the title on a small upward swipe. Pull down to close.
+                  presentation: "modal",
                   contentStyle: { backgroundColor: colors.background },
                 }}
               />

@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
-import { useCallback } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Keyboard, ScrollView, Text, View } from "react-native";
 import Animated, { Easing, FadeInLeft, FadeInRight } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -45,7 +45,6 @@ export function ChallengeCreateSheet({ screen }: { screen: ChallengeCreateScreen
         t={t}
         step={draft.draft.step}
         onBack={draft.draft.step === CHALLENGE_STEPS[0] ? null : screen.goBack}
-        onClose={screen.close}
       />
       {data.loadState === "loading" ? (
         <LoadingState message={t("challengeCreate.loading")} />
@@ -77,6 +76,12 @@ function ReadySheet({ screen }: { screen: ChallengeCreateScreen }) {
     (friendId: number) => dispatch({ type: "selectFriend", friendId }),
     [dispatch],
   );
+  // Short steps must not move under a swipe; only steps longer than the sheet scroll, plus any
+  // step while the keyboard covers part of it.
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+  const keyboardOpen = useKeyboardOpen();
+  const canScroll = keyboardOpen || contentHeight > viewportHeight + 1;
 
   return (
     <>
@@ -86,6 +91,16 @@ function ReadySheet({ screen }: { screen: ChallengeCreateScreen }) {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
+        // No rubber band: short steps stay put, and a pull at the top goes to the sheet's own
+        // swipe-to-close instead of fighting it.
+        bounces={false}
+        overScrollMode="never"
+        scrollEnabled={canScroll}
+        // Inside a sheet, iOS insets would shift the content while the sheet is dragged and can
+        // leave it sitting under the title.
+        contentInsetAdjustmentBehavior="never"
+        onLayout={(event) => setViewportHeight(event.nativeEvent.layout.height)}
+        onContentSizeChange={(_, height) => setContentHeight(height)}
       >
         <Animated.View key={step} entering={entering} style={styles.stepContent}>
           {step === "friend" ? (
@@ -134,6 +149,19 @@ function ReadySheet({ screen }: { screen: ChallengeCreateScreen }) {
       ) : null}
     </>
   );
+}
+
+function useKeyboardOpen() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const shown = Keyboard.addListener("keyboardWillShow", () => setOpen(true));
+    const hidden = Keyboard.addListener("keyboardWillHide", () => setOpen(false));
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
+  return open;
 }
 
 function issueHint(
