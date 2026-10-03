@@ -76,6 +76,17 @@ function ProfileIdentity({ controller }: Props) {
   const identity = identityPresentation(controller);
   return (
     <View style={styles.identityHeader} testID="profile-identity-card">
+      {/* Pinned inside the heading and drawn last, so no other view can take its taps. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("profile.openSettingsA11y")}
+        hitSlop={6}
+        onPress={navigation.openSettings}
+        style={({ pressed }) => [styles.settingsButton, pressed && styles.settingsButtonPressed]}
+        testID="profile-open-settings"
+      >
+        <Settings color={colors.textPrimary} size={22} strokeWidth={2} />
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={
@@ -295,18 +306,6 @@ export function ProfileScreenView({ controller }: Props) {
           />
         }
       >
-        <View style={styles.topRow}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("profile.openSettingsA11y")}
-            hitSlop={8}
-            onPress={controller.navigation.openSettings}
-            style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}
-            testID="profile-open-settings"
-          >
-            <Settings color={colors.textPrimary} size={19} strokeWidth={2.2} />
-          </Pressable>
-        </View>
         <ProfileIdentity controller={controller} />
         <ProfileQuickActions controller={controller} />
         <ProfileDataContent controller={controller} />

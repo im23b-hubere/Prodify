@@ -109,7 +109,10 @@ function Segment({
       accessibilityState={{ selected }}
       accessibilityLabel={label}
     >
-      <Animated.Text style={[styles.label, labelStyle]} numberOfLines={1}>
+      <Animated.Text
+        style={[styles.label, compact && styles.labelCompact, labelStyle]}
+        numberOfLines={1}
+      >
         {label}
       </Animated.Text>
     </Pressable>
@@ -141,9 +144,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  segmentCompact: { paddingVertical: 6 },
+  segmentCompact: { paddingVertical: 5, paddingHorizontal: spacing.xs },
   label: {
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
   },
+  /** Header switches sit beside a section title, so their labels stay a size smaller. */
+  labelCompact: { fontSize: 12, lineHeight: 16 },
 });
