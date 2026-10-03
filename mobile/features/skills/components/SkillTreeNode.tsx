@@ -24,6 +24,7 @@ import {
   LOCKED_NODE_FILL,
   styles,
 } from "../skillTree.styles";
+import { labelCounterScale } from "../skillTreeLabelScale";
 
 const LEVEL_COUNT = 7;
 const SEGMENT_GAP_DEGREES = 9;
@@ -151,6 +152,7 @@ export const SkillTreeNode = memo(function SkillTreeNode({
   const labelFadeScales = kind === "focus" ? FOCUS_LABEL_FADE_SCALES : BRANCH_LABEL_FADE_SCALES;
   const labelStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scale.get(), labelFadeScales, [0, 1], Extrapolation.CLAMP),
+    transform: [{ scale: labelCounterScale(scale.get()) }],
   }));
   const pressStyle = useAnimatedStyle(() => {
     const restingScale = isSelected ? SELECTED_SCALE : 1;

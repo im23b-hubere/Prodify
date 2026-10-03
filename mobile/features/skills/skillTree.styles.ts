@@ -152,7 +152,7 @@ export const styles = StyleSheet.create({
     borderColor: colors.background,
   },
   levelBadgeText: { color: colors.background, fontFamily: fontFamily.bodyBold, fontSize: 11 },
-  nodeLabelWrap: { position: "absolute", alignItems: "center" },
+  nodeLabelWrap: { position: "absolute", alignItems: "center", transformOrigin: "center top" },
   nodeLabel: {
     textAlign: "center",
     fontFamily: fontFamily.bodyMedium,
