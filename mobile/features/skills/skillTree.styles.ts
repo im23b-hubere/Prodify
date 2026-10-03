@@ -200,6 +200,14 @@ export const styles = StyleSheet.create({
 
   sectionBody: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   sectionBranches: { flex: 1, gap: spacing.sm + 2 },
+  sectionBranchesLabel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
   sectionBranchRow: { gap: 6 },
   sectionBranchTop: { flexDirection: "row", alignItems: "center", gap: spacing.xs + 2 },
   sectionBranchName: { flex: 1, color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, ...typography.meta },
@@ -208,15 +216,6 @@ export const styles = StyleSheet.create({
   sectionPlaceholderBar: { height: 10, borderRadius: radii.round, backgroundColor: colors.border },
   thinTrack: { height: 4, borderRadius: radii.round, backgroundColor: "rgba(255,255,255,0.06)", overflow: "hidden" },
   thinFill: { height: 4, borderRadius: radii.round },
-  sectionCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  sectionCtaText: { color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.caption },
   sectionError: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   sectionRetry: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
 });

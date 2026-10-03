@@ -1,11 +1,8 @@
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
-import { ChevronRight } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 
 import { sessionTypeAccent } from "../../../components/session/SkillFocusChips";
-import { colors } from "../../../constants/theme";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
 import { StatsSection } from "../../stats/components/StatsSection";
 import type { SkillProfileState } from "../hooks/useSkillProfile";
@@ -18,7 +15,7 @@ import {
 import { SkillTreeMiniMap } from "./SkillTreeMiniMap";
 import { ThinBar } from "./SkillTreeList";
 
-const MINI_MAP_SIZE = 124;
+const MINI_MAP_SIZE = 112;
 const STRONGEST_BRANCH_COUNT = 3;
 
 export function SkillTreeSection({ skillProfile }: { skillProfile: SkillProfileState }) {
@@ -39,6 +36,16 @@ export function SkillTreeSection({ skillProfile }: { skillProfile: SkillProfileS
           : null
       }
       testID="stats-skill-tree"
+      pressable={
+        !isReady && skillProfile.loadState === "error"
+          ? undefined
+          : {
+              accessibilityLabel: t("skillTree.openTree"),
+              accessibilityHint: t("skillTree.openTreeHint"),
+              testID: "stats-skill-tree-open",
+              onPress: () => push("/skill-tree"),
+            }
+      }
     >
       {!isReady && skillProfile.loadState === "error" ? (
         <View style={styles.sectionError} accessibilityLiveRegion="polite">
@@ -48,26 +55,10 @@ export function SkillTreeSection({ skillProfile }: { skillProfile: SkillProfileS
           </Pressable>
         </View>
       ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("skillTree.openTree")}
-          accessibilityHint={t("skillTree.openTreeHint")}
-          onPress={() => {
-            Haptics.selectionAsync().catch(() => undefined);
-            push("/skill-tree");
-          }}
-          style={({ pressed }) => [{ gap: 16 }, pressed && styles.pressed]}
-          testID="stats-skill-tree-open"
-        >
-          <View style={styles.sectionBody}>
-            <SkillTreeMiniMap model={model} size={MINI_MAP_SIZE} />
-            <SectionBranches model={model} isReady={isReady} />
-          </View>
-          <View style={styles.sectionCta}>
-            <Text style={styles.sectionCtaText}>{t("skillTree.openTree")}</Text>
-            <ChevronRight size={18} color={colors.textSecondary} />
-          </View>
-        </Pressable>
+        <View style={styles.sectionBody}>
+          <SkillTreeMiniMap model={model} size={MINI_MAP_SIZE} />
+          <SectionBranches model={model} isReady={isReady} />
+        </View>
       )}
     </StatsSection>
   );
@@ -90,6 +81,7 @@ function SectionBranches({ model, isReady }: { model: SkillTreeModel; isReady: b
   }
   return (
     <View style={styles.sectionBranches}>
+      <Text style={styles.sectionBranchesLabel}>{t("skillTree.topAreas")}</Text>
       {branches.map((branch) => {
         const state = model.branches[branch];
         const accent = sessionTypeAccent(branch);

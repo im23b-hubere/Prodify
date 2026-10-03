@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react-native";
 import { type ReactNode, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -15,6 +15,13 @@ type Props = {
   defaultExpanded?: boolean;
   collapsedHint?: string | null;
   collapsedPreview?: ReactNode;
+  /** Makes the whole card one tap target (header included) with a chevron in the header. */
+  pressable?: {
+    onPress: () => void;
+    accessibilityLabel: string;
+    accessibilityHint?: string;
+    testID?: string;
+  };
   children: ReactNode;
 };
 
@@ -26,11 +33,39 @@ export function StatsSection({
   defaultExpanded = true,
   collapsedHint,
   collapsedPreview,
+  pressable,
   children,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const showBody = !collapsible || expanded;
   const headerSubtitle = collapsible && !expanded && collapsedHint ? collapsedHint : subtitle;
+
+  if (pressable && !collapsible) {
+    return (
+      <AppCard style={styles.shell} testID={testID}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={pressable.accessibilityLabel}
+          accessibilityHint={pressable.accessibilityHint}
+          testID={pressable.testID}
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => undefined);
+            pressable.onPress();
+          }}
+          style={({ pressed }) => [styles.pressableCard, pressed && { opacity: 0.88 }]}
+        >
+          <View style={styles.header}>
+            <View style={styles.headerCopy}>
+              <Text style={styles.title}>{title}</Text>
+              {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            </View>
+            <ChevronRight color={colors.textSecondary} size={20} style={styles.headerChevron} />
+          </View>
+          <View style={styles.body}>{children}</View>
+        </Pressable>
+      </AppCard>
+    );
+  }
 
   return (
     <AppCard style={styles.shell} testID={testID}>
@@ -101,6 +136,12 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     ...typography.caption,
     lineHeight: 18,
+  },
+  pressableCard: {
+    gap: spacing.md,
+  },
+  headerChevron: {
+    marginTop: 4,
   },
   collapsedPreview: {
     marginTop: -spacing.xs,

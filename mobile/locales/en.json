@@ -1182,6 +1182,7 @@
     "sectionSubtitle": "{{unlocked}} of {{total}} skills unlocked · all time",
     "openTree": "Open skill tree",
     "openTreeHint": "Shows your full skill tree",
+    "topAreas": "Top areas",
     "emptyTitle": "Your tree is still asleep",
     "emptyBody": "Finish a session to unlock your first area, then mark what you worked on to light up skills.",
     "loadError": "Your skill tree couldn't load.",
