@@ -4,7 +4,7 @@ import { type DimensionValue, StyleSheet, Text, View } from "react-native";
 import { EmptyState } from "../../../components/states/EmptyState";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, spacing, typography } from "../../../constants/theme";
-import type { BarPoint } from "../types";
+import type { BarPoint, StatsPeriod } from "../types";
 import { SessionsPerDayChart } from "./SessionsPerDayChart";
 import { StatsSection } from "./StatsSection";
 
@@ -19,13 +19,14 @@ type Props = {
   t: TFunction;
   chartData: BarPoint[];
   breakdownData: BreakdownItem[];
+  period: StatsPeriod;
 };
 
 function barWidth(value: number): DimensionValue {
   return `${Math.max(0, Math.min(100, value))}%`;
 }
 
-export function StatsTrendsSection({ t, chartData, breakdownData }: Props) {
+export function StatsTrendsSection({ t, chartData, breakdownData, period }: Props) {
   return (
     <StatsSection
       title={t("stats.trendsSectionTitle")}
@@ -36,7 +37,7 @@ export function StatsTrendsSection({ t, chartData, breakdownData }: Props) {
         <EmptyState compact title={t("stats.perDayEmptyTitle")} message={t("stats.perDayEmpty")} />
       ) : (
         <View style={styles.chartInner}>
-          <SessionsPerDayChart data={chartData} />
+          <SessionsPerDayChart data={chartData} period={period} />
         </View>
       )}
       {breakdownData.length > 0 ? (

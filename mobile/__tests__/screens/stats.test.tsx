@@ -26,11 +26,7 @@ jest.mock("react-native-safe-area-context", () => {
   };
 });
 
-jest.mock("react-native-reanimated", () => {
-  const Reanimated = require("react-native-reanimated/mock");
-  Reanimated.useSharedValue = (value: number) => ({ value });
-  return Reanimated;
-});
+jest.mock("react-native-reanimated", () => require("../../test/reanimatedStub"));
 
 jest.mock("expo-haptics", () => ({
   impactAsync: jest.fn().mockResolvedValue(undefined),

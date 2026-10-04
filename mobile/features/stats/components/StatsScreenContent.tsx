@@ -26,6 +26,7 @@ export function StatsScreenContent({ controller }: { controller: StatsScreenCont
         t={t}
         chartData={controller.chartData}
         breakdownData={controller.breakdownData}
+        period={controller.filter.period}
       />
       <StatsSessionLogSection
         t={t}
