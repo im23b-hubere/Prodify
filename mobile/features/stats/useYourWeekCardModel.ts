@@ -2,8 +2,8 @@ import { useMemo } from "react";
 
 import { WEEKDAY_LETTERS, currentWeekDateKeys, localDateKey } from "../../lib/weekCalendar";
 import type { YourWeekCardProps } from "../../components/stats/YourWeekCard";
+import { studioWeekFill } from "./utils/studioWeek";
 import {
-  activeHeatmapDayKeys,
   forecastRiskTranslationKey,
   goalProgressPercent,
   yourWeekNextStep,
@@ -14,7 +14,11 @@ import type { YourWeekGoalEditorState } from "./useYourWeekGoalEditor";
 export function useYourWeekCardModel(props: YourWeekCardProps, editor: YourWeekGoalEditorState) {
   const status = yourWeekStatus(props.goal, props.forecast, props.configured);
   const weekKeys = useMemo(() => currentWeekDateKeys(), []);
-  const activeDayKeys = useMemo(() => activeHeatmapDayKeys(props.heatmapDays), [props.heatmapDays]);
+  const weekFill = useMemo(
+    () => studioWeekFill(props.heatmapDays, weekKeys),
+    [props.heatmapDays, weekKeys],
+  );
+  const activeDayKeys = weekFill.filledKeys;
   const todayKey = useMemo(() => localDateKey(new Date()), []);
   const nextStep = useMemo(
     () => yourWeekNextStep(props.goal, props.forecast, props.configured, status, props.t),
@@ -38,6 +42,7 @@ export function useYourWeekCardModel(props: YourWeekCardProps, editor: YourWeekG
     weekKeys,
     weekdayLetters: WEEKDAY_LETTERS,
     activeDayKeys,
+    isFullWeek: weekFill.isComplete,
     todayKey,
     nextStep,
     primaryLabel,

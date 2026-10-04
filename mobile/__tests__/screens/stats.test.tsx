@@ -31,7 +31,9 @@ jest.mock("react-native-reanimated", () => require("../../test/reanimatedStub"))
 jest.mock("expo-haptics", () => ({
   impactAsync: jest.fn().mockResolvedValue(undefined),
   selectionAsync: jest.fn().mockResolvedValue(undefined),
+  notificationAsync: jest.fn().mockResolvedValue(undefined),
   ImpactFeedbackStyle: { Light: "Light" },
+  NotificationFeedbackType: { Success: "success" },
 }));
 
 jest.mock("expo-linear-gradient", () => {

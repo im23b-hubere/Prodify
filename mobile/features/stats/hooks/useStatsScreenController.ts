@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
 import { useSkillProfile } from "../../skills/hooks/useSkillProfile";
+import { useFullWeekCelebrate } from "./useFullWeekCelebrate";
 import { useStatsScreenData } from "./useStatsScreenData";
 import { useStatsScreenLifecycle } from "./useStatsScreenLifecycle";
 import { useStatsFilters, useStatsPresentation } from "./useStatsPresentation";
@@ -18,6 +19,7 @@ export function useStatsScreenController() {
   const [filterIdx, setFilterIdx] = useState(0);
   const { filters, filter, periodParam } = useStatsFilters(t, filterIdx);
   const data = useStatsScreenData(token, user?.id, periodParam, t);
+  useFullWeekCelebrate(user?.id, data.heatmapDays);
   const skillProfile = useSkillProfile(token);
   const { reload: reloadSkillProfile } = skillProfile;
   const presentation = useStatsPresentation(data.stats, data.records, filter.period, t);

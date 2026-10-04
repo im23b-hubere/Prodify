@@ -164,6 +164,9 @@ export const yourWeekStyles = StyleSheet.create({
     ...typography.caption,
     marginTop: spacing.xs,
   },
+  studioLabelFull: {
+    color: colors.success,
+  },
   dayRow: {
     flexDirection: "row",
     justifyContent: "space-between",

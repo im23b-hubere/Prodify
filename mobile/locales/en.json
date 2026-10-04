@@ -1559,6 +1559,7 @@
       "statusBehind": "Behind pace",
       "statusCompleted": "Goal reached",
       "studioDays": "Studio days",
+      "fullWeek": "Full week",
       "sharedWith": "Shared with {{names}}",
       "sharedWithFriends": "Shared with friends",
       "setTargetCta": "Set weekly target",

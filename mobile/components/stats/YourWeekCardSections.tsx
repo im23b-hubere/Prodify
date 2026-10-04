@@ -110,7 +110,7 @@ export function YourWeekProgress({ props, editor, model }: SectionProps) {
           })}
         </Text>
       ) : null}
-      {!hero ? <StudioDays model={model} t={t} /> : null}
+      <StudioDays model={model} t={t} />
       {!hero && commitment ? <CommitmentLine commitment={commitment} t={t} /> : null}
       <PrimaryButton
         label={busy ? t("stats.yourWeek.saving") : model.primaryLabel}
@@ -128,13 +128,19 @@ export function YourWeekProgress({ props, editor, model }: SectionProps) {
 
 function StudioDays({ model, t }: { model: YourWeekCardModel; t: YourWeekCardProps["t"] }) {
   return (
-    <>
-      <Text style={styles.studioLabel}>{t("stats.yourWeek.studioDays")}</Text>
+    <View testID="stats-studio-days">
+      <Text style={[styles.studioLabel, model.isFullWeek && styles.studioLabelFull]}>
+        {t(model.isFullWeek ? "stats.yourWeek.fullWeek" : "stats.yourWeek.studioDays")}
+      </Text>
       <View style={styles.dayRow}>
         {model.weekKeys.map((key, index) => {
           const active = model.activeDayKeys.has(key);
           return (
-            <View key={key} style={styles.dayCell}>
+            <View
+              key={key}
+              style={styles.dayCell}
+              testID={active ? `stats-studio-day-filled-${index}` : `stats-studio-day-empty-${index}`}
+            >
               <View
                 style={[
                   styles.dayDot,
@@ -149,7 +155,7 @@ function StudioDays({ model, t }: { model: YourWeekCardModel; t: YourWeekCardPro
           );
         })}
       </View>
-    </>
+    </View>
   );
 }
 
