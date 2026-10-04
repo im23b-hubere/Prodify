@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { Animated, Easing, type LayoutChangeEvent, type ScrollView } from "react-native";
 
 import { spacing } from "../../../constants/theme";
+import { subscribeSuccessfulMutations } from "../../../lib/client";
+import { affectsCountedSessions } from "../../sessions/sessionMutations";
 
 type LoadStats = (options?: { force?: boolean }) => Promise<void>;
 
@@ -47,6 +49,14 @@ export function useStatsScreenLifecycle({
       loadStats().catch(() => undefined);
     }, [focusParam, loadStats]),
   );
+
+  useEffect(() => {
+    return subscribeSuccessfulMutations((mutation) => {
+      if (affectsCountedSessions(mutation)) {
+        loadStats({ force: true }).catch(() => undefined);
+      }
+    });
+  }, [loadStats]);
 
   useEffect(() => {
     if (lastPeriod.current === null) {

@@ -1542,7 +1542,7 @@
     "consistency": "Consistency",
     "consistencySub": "{{active}} of {{total}} days",
     "trendsSectionTitle": "Studio activity",
-    "trendsSectionSubtitle": "Sessions per day",
+    "trendsSectionSubtitle": "Hours over time",
     "aiInsightLabel": "Studio read",
     "forecastRiskOnTrack": "On track",
     "forecastRiskAtRisk": "At risk",

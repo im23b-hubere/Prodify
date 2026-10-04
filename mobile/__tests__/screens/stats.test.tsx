@@ -64,6 +64,7 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 }));
 
 jest.mock("../../lib/client", () => ({
+  subscribeSuccessfulMutations: jest.fn(() => () => undefined),
   apiJson: jest.fn().mockImplementation((path: string) => {
     if (path.includes("/sessions/stats")) {
       return Promise.resolve({

@@ -1,4 +1,5 @@
 import { type SuccessfulMutation, subscribeSuccessfulMutations } from "../../../lib/client";
+import { affectsCountedSessions } from "../../sessions/sessionMutations";
 
 /**
  * `changed`: something moved a challenge (session stopped or deleted, invite answered, push arrived).
@@ -9,12 +10,7 @@ type Listener = (reason: ChallengeSyncReason) => void;
 
 const listeners = new Set<Listener>();
 
-const CHALLENGE_AFFECTING_WRITES: { method: string | null; path: RegExp }[] = [
-  { method: "POST", path: /^\/sessions\/stop$/ },
-  { method: "DELETE", path: /^\/sessions\/item\/\d+$/ },
-  { method: "POST", path: /^\/sessions\/item\/\d+\/restore$/ },
-  { method: null, path: /^\/social\/challenges(\/|$)/ },
-];
+const CHALLENGE_WRITES = /^\/social\/challenges(\/|$)/;
 
 /** Screens that show challenges refetch through this, so every place agrees on the score. */
 export function subscribeChallengeSync(listener: Listener): () => void {
@@ -28,11 +24,9 @@ export function requestChallengeSync(reason: ChallengeSyncReason = "changed"): v
   for (const listener of listeners) listener(reason);
 }
 
-export function affectsChallenges({ path, method }: SuccessfulMutation): boolean {
-  const route = path.split("?")[0];
-  return CHALLENGE_AFFECTING_WRITES.some(
-    (write) => (write.method == null || write.method === method) && write.path.test(route),
-  );
+export function affectsChallenges(mutation: SuccessfulMutation): boolean {
+  const route = mutation.path.split("?")[0];
+  return affectsCountedSessions(mutation) || CHALLENGE_WRITES.test(route);
 }
 
 export function isChallengePushKind(kind: unknown): boolean {

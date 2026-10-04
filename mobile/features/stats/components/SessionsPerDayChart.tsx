@@ -5,6 +5,7 @@ import { fontFamily } from "../../../constants/fonts";
 import { colors, spacing } from "../../../constants/theme";
 import { STATS_BAR_CHART_HEIGHT } from "../constants";
 import type { BarPoint } from "../types";
+import { formatChartHours, localStatsDateKey } from "../utils/format";
 
 type Props = {
   data: BarPoint[];
@@ -15,7 +16,7 @@ const WEEK_FIT_COUNT = 7;
 export function SessionsPerDayChart({ data }: Props) {
   if (data.length === 0) return null;
   const maxY = Math.max(1, ...data.map((point) => point.y));
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = localStatsDateKey(new Date());
   const columns = data.map((point) => (
     <ChartColumn key={point.label} point={point} maxY={maxY} todayIso={todayIso} fit />
   ));
@@ -63,7 +64,9 @@ function ChartColumn({
       <Text style={styles.axisLabel} numberOfLines={1}>
         {point.x}
       </Text>
-      <Text style={[styles.count, point.y > 0 && styles.countActive]}>{point.y}</Text>
+      <Text style={[styles.count, point.y > 0 && styles.countActive]}>
+        {formatChartHours(point.y)}
+      </Text>
     </View>
   );
 }

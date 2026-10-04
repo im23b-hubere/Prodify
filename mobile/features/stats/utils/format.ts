@@ -5,6 +5,16 @@ export function localStatsDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+export function hoursFromSeconds(seconds: number): number {
+  if (!Number.isFinite(seconds) || seconds <= 0) return 0;
+  return Math.round((seconds / 3600) * 10) / 10;
+}
+
+export function formatChartHours(hours: number): string {
+  if (!Number.isFinite(hours) || hours <= 0) return "0";
+  return `${Math.round(hours * 10) / 10}h`;
+}
+
 /** Compact session length for KPI cells (e.g. `45m`, `1h 20m`). */
 export function formatAvgSessionLength(totalSeconds: number): string {
   if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return "0m";

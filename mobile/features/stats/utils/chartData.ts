@@ -1,7 +1,7 @@
 import { formatIsoDateShortLocal, weekdayLetterFromIsoDay } from "../../../lib/sessionTime";
 import type { SessionStatsDto } from "../../../types/session";
 import type { BarPoint, StatsPeriod, StatsSummaryView } from "../types";
-import { formatAvgSessionLength, localStatsDateKey } from "./format";
+import { formatAvgSessionLength, hoursFromSeconds, localStatsDateKey } from "./format";
 
 function consistencyFromChart(chart: BarPoint[], period: StatsPeriod) {
   const totalDays = period === "week" ? 7 : chart.length;
@@ -53,14 +53,9 @@ export function buildStatsSummary(
 export function buildChartData(stats: SessionStatsDto | null, period: StatsPeriod): BarPoint[] {
   const points = stats?.trend ?? [];
   if (period === "week") {
-    const sessionsByDay = new Map<string, number>();
+    const hoursByDay = new Map<string, number>();
     for (const point of points) {
-      if (point?.label) {
-        sessionsByDay.set(
-          point.label,
-          Number.isFinite(point.sessions) && point.sessions >= 0 ? point.sessions : 0,
-        );
-      }
+      if (point?.label) hoursByDay.set(point.label, hoursFromSeconds(point.seconds));
     }
     return Array.from({ length: 7 }, (_, index) => {
       const date = new Date();
@@ -69,15 +64,15 @@ export function buildChartData(stats: SessionStatsDto | null, period: StatsPerio
       const isoLabel = localStatsDateKey(date);
       return {
         x: weekdayLetterFromIsoDay(isoLabel),
-        y: sessionsByDay.get(isoLabel) ?? 0,
+        y: hoursByDay.get(isoLabel) ?? 0,
         label: isoLabel,
       };
     });
   }
   if (points.length === 0) return [];
-  return points.map((p) => ({
-    x: formatIsoDateShortLocal(p.label),
-    y: Number.isFinite(p.sessions) && p.sessions >= 0 ? p.sessions : 0,
-    label: p.label,
+  return points.map((point) => ({
+    x: formatIsoDateShortLocal(point.label),
+    y: hoursFromSeconds(point.seconds),
+    label: point.label,
   }));
 }

@@ -6,6 +6,8 @@ import {
   hasRecentHeatmapActivity,
 } from "../../../features/stats/utils/heatmap";
 import { decorateRecords } from "../../../features/stats/utils/records";
+import { formatChartHours, localStatsDateKey } from "../../../features/stats/utils/format";
+import type { SessionStatsDto } from "../../../types/session";
 
 describe("stats heatmap utils", () => {
   const days = [
@@ -135,28 +137,78 @@ describe("stats summary utils", () => {
     ).toBe("1h 30m");
   });
 
-  it("builds week chart data with seven points", () => {
+  it("plots hours for the last seven local days, not session counts", () => {
+    const today = localDayKey(0);
+    const yesterday = localDayKey(-1);
     const chart = buildChartData(
-      {
-        period: "week",
-        summary: {
-          total_seconds: 0,
-          total_sessions: 0,
-          avg_session_seconds: 0,
-          current_streak_days: 0,
-          best_streak_days: 0,
-          hours_delta_vs_prior_period: null,
-        },
-        trend: [{ label: new Date().toISOString().slice(0, 10), sessions: 2, seconds: 7200 }],
-        breakdown: [],
-        recent_sessions: [],
-        productivity_hint: null,
-      },
+      emptyStats({
+        trend: [
+          { label: yesterday, sessions: 4, seconds: 5400 },
+          { label: today, sessions: 1, seconds: 7200 },
+        ],
+      }),
       "week",
     );
+
     expect(chart).toHaveLength(7);
+    expect(chart.find((point) => point.label === yesterday)?.y).toBe(1.5);
+    expect(chart.find((point) => point.label === today)?.y).toBe(2);
+    expect(chart.filter((point) => point.y === 0)).toHaveLength(5);
+  });
+
+  it("keeps lifetime week buckets from the server and still plots hours", () => {
+    const chart = buildChartData(
+      emptyStats({
+        period: "all",
+        trend: [
+          { label: "2026-01-05", sessions: 6, seconds: 10800 },
+          { label: "2026-01-12", sessions: 1, seconds: 1800 },
+        ],
+      }),
+      "all",
+    );
+
+    expect(chart.map((point) => ({ label: point.label, y: point.y }))).toEqual([
+      { label: "2026-01-05", y: 3 },
+      { label: "2026-01-12", y: 0.5 },
+    ]);
   });
 });
+
+describe("chart hour captions", () => {
+  it("prints compact hours so bar labels stay readable", () => {
+    expect(formatChartHours(0)).toBe("0");
+    expect(formatChartHours(0.5)).toBe("0.5h");
+    expect(formatChartHours(2)).toBe("2h");
+    expect(formatChartHours(1.25)).toBe("1.3h");
+  });
+});
+
+function localDayKey(offsetFromToday: number): string {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + offsetFromToday);
+  return localStatsDateKey(date);
+}
+
+function emptyStats(overrides: Partial<SessionStatsDto> = {}): SessionStatsDto {
+  return {
+    period: "week",
+    summary: {
+      total_seconds: 0,
+      total_sessions: 0,
+      avg_session_seconds: 0,
+      current_streak_days: 0,
+      best_streak_days: 0,
+      hours_delta_vs_prior_period: null,
+    },
+    trend: [],
+    breakdown: [],
+    recent_sessions: [],
+    productivity_hint: null,
+    ...overrides,
+  };
+}
 
 describe("stats records utils", () => {
   it("keeps personal bests and drops current streak", () => {

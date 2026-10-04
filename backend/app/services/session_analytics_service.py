@@ -39,7 +39,7 @@ def build_session_stats(db: Session, user_id: int, requested_period: str) -> Ses
             current_streak_days=compute_current_streak(streak_days, calendar.today),
             hours_delta_vs_prior_period=_hours_delta(db, user_id, period, period_start, total_seconds),
         ),
-        trend=_session_trend(sessions, calendar),
+        trend=session_trend(sessions, calendar, period),
         breakdown=_type_breakdown(sessions),
         recent_sessions=[SessionPublic.model_validate(row) for row in reversed(sessions[-10:])],
         productivity_hint=None,
@@ -95,19 +95,26 @@ def _hours_delta(
     return round((current_seconds - previous_seconds) / 3600, 1)
 
 
-def _session_trend(
+def session_trend(
     sessions: list[ProductionSession],
     calendar: StreakCalendar,
+    period: StatsPeriod,
 ) -> list[SessionStatsTrendPoint]:
     totals: dict[str, tuple[int, int]] = {}
     for session in sessions:
-        day = calendar.day_key_of(session.started_at)
-        count, seconds = totals.get(day, (0, 0))
-        totals[day] = count + 1, seconds + _bounded_duration(session)
+        bucket = _trend_bucket_key(session.started_at, calendar, period)
+        count, seconds = totals.get(bucket, (0, 0))
+        totals[bucket] = count + 1, seconds + _bounded_duration(session)
     return [
         SessionStatsTrendPoint(label=day, sessions=count, seconds=seconds)
         for day, (count, seconds) in sorted(totals.items())
     ]
+
+
+def _trend_bucket_key(started_at: datetime, calendar: StreakCalendar, period: StatsPeriod) -> str:
+    if period.label == "all":
+        return calendar.week_start_key_of(started_at)
+    return calendar.day_key_of(started_at)
 
 
 def _type_breakdown(sessions: list[ProductionSession]) -> list[SessionStatsTypeBreakdownItem]:
