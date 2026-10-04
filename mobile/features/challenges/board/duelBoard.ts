@@ -1,9 +1,11 @@
 import type { DuelRecordDto, SocialChallengeDto } from "../../../types/friends";
 import { challengeDaysLeft } from "../../friends/utils/friendsScreenFormat";
+import { isChallengeParticipant, isJoinableFriendChallenge } from "../challengeParticipation";
 import { duelParticipants } from "../duelParticipants";
 
 const HISTORY_LIMIT = 5;
 const HOUR_MS = 60 * 60 * 1000;
+const FINISHED_STATUSES = new Set(["completed", "cancelled"]);
 
 export type DuelBoard = {
   /** The active duel closest to its end, shown as the big arena card. */
@@ -11,7 +13,10 @@ export type DuelBoard = {
   live: SocialChallengeDto[];
   /** Invites this user sent that the friend has not answered yet. */
   waiting: SocialChallengeDto[];
+  /** Results and called-off duels, newest first. */
   history: SocialChallengeDto[];
+  /** Friends' running group challenges the user can still join. */
+  fromFriends: SocialChallengeDto[];
 };
 
 /** Groups challenges into board sections; incoming invites are handled above the tabs. */
@@ -19,19 +24,20 @@ export function buildDuelBoard(
   challenges: SocialChallengeDto[],
   userId: number | undefined,
 ): DuelBoard {
-  const active = challenges
+  const own = challenges.filter((challenge) => isChallengeParticipant(challenge, userId));
+  const active = own
     .filter((challenge) => challenge.status === "active")
     .sort((left, right) => duelDaysLeft(left) - duelDaysLeft(right));
   return {
     arena: active[0] ?? null,
     live: active.slice(1),
-    waiting: challenges.filter(
-      (challenge) =>
-        challenge.status === "pending" && userId != null && challenge.owner_id === userId,
+    waiting: own.filter(
+      (challenge) => challenge.status === "pending" && challenge.owner_id === userId,
     ),
-    history: challenges
-      .filter((challenge) => challenge.status === "completed")
+    history: own
+      .filter((challenge) => FINISHED_STATUSES.has(challenge.status))
       .slice(0, HISTORY_LIMIT),
+    fromFriends: challenges.filter((challenge) => isJoinableFriendChallenge(challenge, userId)),
   };
 }
 
@@ -40,7 +46,8 @@ export function isDuelBoardEmpty(board: DuelBoard) {
     board.arena == null &&
     board.live.length === 0 &&
     board.waiting.length === 0 &&
-    board.history.length === 0
+    board.history.length === 0 &&
+    board.fromFriends.length === 0
   );
 }
 
@@ -70,12 +77,16 @@ export function duelStanding(yourScore: number, opponentScore: number): DuelStan
 export type DuelOutcome =
   | { kind: "won" }
   | { kind: "tie" }
-  | { kind: "lost"; winnerName: string | null };
+  | { kind: "lost"; winnerName: string | null }
+  | { kind: "cancelled"; reason: string };
 
 export function duelOutcome(
   challenge: SocialChallengeDto,
   userId: number | undefined,
 ): DuelOutcome {
+  if (challenge.status === "cancelled") {
+    return { kind: "cancelled", reason: challenge.completion_reason ?? "cancelled" };
+  }
   if (challenge.is_tie) return { kind: "tie" };
   if (challenge.winner_user_id != null && challenge.winner_user_id === userId)
     return { kind: "won" };
@@ -122,6 +133,7 @@ export function rematchableDuelIds(
   const seenOpponents = new Set<number>();
   const rematchable = new Set<number>();
   for (const challenge of history) {
+    if (challenge.status !== "completed") continue;
     const request = rematchRequest(challenge, userId);
     if (request == null || seenOpponents.has(request.friendId)) continue;
     seenOpponents.add(request.friendId);

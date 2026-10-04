@@ -108,4 +108,26 @@ describe("friends dashboard state", () => {
     expect(writer.setIncoming).toHaveBeenCalledWith([]);
     expect(writer.setFeedMetricsBySession).toHaveBeenCalledWith({});
   });
+
+  it("keeps the last known challenges, records and buddy when those requests failed", () => {
+    const writer = dashboardWriter();
+    const partialSnapshot = {
+      leaderboard: { period: "week", entries: [] },
+      activity: [],
+      incoming: [],
+      buddy: undefined,
+      checkin: null,
+      challenges: undefined,
+      duelRecords: undefined,
+      commitment: null,
+      recap: null,
+    } as FriendsDashboardSnapshot;
+
+    applyFriendsDashboardSnapshot(writer, partialSnapshot);
+
+    expect(writer.setChallenges).not.toHaveBeenCalled();
+    expect(writer.setDuelRecords).not.toHaveBeenCalled();
+    expect(writer.setBuddy).not.toHaveBeenCalled();
+    expect(writer.setCheckin).toHaveBeenCalledWith(null);
+  });
 });

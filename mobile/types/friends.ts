@@ -101,6 +101,28 @@ export type SocialChallengeDto = {
   members: SocialChallengeMemberDto[];
 };
 
+export type SessionCreditSkipReason =
+  | "not_started"
+  | "too_short"
+  | "before_start"
+  | "after_end"
+  | "already_finished"
+  | "session_deleted";
+
+/** How one finished session affected one of the user's challenges. */
+export type SessionChallengeCreditDto = {
+  challenge_id: number;
+  challenge_kind: string;
+  title: string;
+  status: string;
+  credited: boolean;
+  reason: SessionCreditSkipReason | null;
+  progress_sessions: number;
+  target_sessions: number;
+  winner_user_id: number | null;
+  is_tie: boolean;
+};
+
 /** Lifetime head-to-head result against one opponent, counted over finished duels. */
 export type DuelRecordDto = {
   friend_user_id: number;

@@ -583,12 +583,10 @@ def test_social_challenge_owner_can_update_and_cancel(client):
     updated = client.patch(
         f"/social/challenges/{challenge_id}",
         headers=a,
-        json={"title": "Renamed Duel", "target_sessions": 6},
+        json={"title": "Renamed Duel"},
     )
     assert updated.status_code == 200
-    body = updated.json()
-    assert body["title"] == "Renamed Duel"
-    assert body["target_sessions"] == 6
+    assert updated.json()["title"] == "Renamed Duel"
 
     forbidden = client.patch(
         f"/social/challenges/{challenge_id}",
@@ -599,9 +597,9 @@ def test_social_challenge_owner_can_update_and_cancel(client):
 
     cancelled = client.delete(f"/social/challenges/{challenge_id}", headers=a)
     assert cancelled.status_code == 204
-    listed = client.get("/social/challenges", headers=a)
-    assert listed.status_code == 200
-    assert all(item["id"] != challenge_id for item in listed.json())
+    ended = _challenge_for_user(client, b, challenge_id)
+    assert ended["status"] == "cancelled"
+    assert ended["completion_reason"] == "cancelled"
 
 
 def test_social_challenge_target_cannot_drop_below_progress(client):
@@ -613,7 +611,7 @@ def test_social_challenge_target_cannot_drop_below_progress(client):
         "/social/challenges",
         headers=a,
         json={
-            "challenge_kind": "duel",
+            "challenge_kind": "team",
             "title": "Floor Test",
             "target_sessions": 5,
             "duration_days": 7,
@@ -622,7 +620,6 @@ def test_social_challenge_target_cannot_drop_below_progress(client):
     )
     assert created.status_code == 200
     challenge_id = created.json()["id"]
-    _accept_challenge(client, b, challenge_id)
     _complete_long_session(client, a, minutes=12)
     _complete_long_session(client, a, minutes=12)
 
@@ -660,9 +657,9 @@ def test_social_challenge_member_can_leave_and_owner_cannot(client):
     member_leave = client.post(f"/social/challenges/{challenge_id}/leave", headers=b)
     assert member_leave.status_code == 204
 
-    listed = client.get("/social/challenges", headers=a)
-    assert listed.status_code == 200
-    assert all(item["id"] != challenge_id for item in listed.json())
+    ended = _challenge_for_user(client, a, challenge_id)
+    assert ended["status"] == "cancelled"
+    assert ended["completion_reason"] == "member_left"
 
 
 def _duel(client, headers: dict[str, str], *, title: str, friend_id: int = 2) -> dict:
@@ -864,8 +861,8 @@ def test_duel_invite_can_be_declined_or_withdrawn_and_not_duplicated(client):
 
     declined = client.post(f"/social/challenges/{first['id']}/decline", headers=b)
     assert declined.status_code == 204
-    listed = client.get("/social/challenges", headers=a)
-    assert all(item["id"] != first["id"] for item in listed.json())
+    assert _challenge_for_user(client, a, first["id"])["completion_reason"] == "declined"
+    assert all(item["id"] != first["id"] for item in client.get("/social/challenges", headers=b).json())
 
     second = _duel(client, a, title="Withdraw Me")
     withdrawn = client.delete(f"/social/challenges/{second['id']}", headers=a)

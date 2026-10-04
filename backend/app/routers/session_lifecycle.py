@@ -18,6 +18,7 @@ from app.services.session_lifecycle_service import (
     pause_active_session,
     resume_active_session,
 )
+from app.services.social_challenge_notifications import PushChallengeEvents
 from app.services.social_consequence import maybe_notify_streak_break_on_transition
 
 router = APIRouter()
@@ -74,6 +75,9 @@ def stop_session(
         current.id,
     )
     _schedule_completion_push(current.id, completion.session)
+    challenge_events = PushChallengeEvents(db, settings)
+    for challenge_id in completion.finished_challenge_ids:
+        challenge_events.challenge_finished(challenge_id)
     logger.info(
         "session_stopped user_id=%s session_id=%s duration_s=%s",
         current.id,

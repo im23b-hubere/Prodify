@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.jobs.send_streak_reminders import run_streak_reminder_job
+from app.jobs.settle_social_challenges import run_social_challenge_job
 from app.contracts.outcomes import SeedScreenshotAccountBody
 from app.services.screenshot_seed_scenario import seed_screenshot_account
+from app.services.social_challenge_notifications import PushChallengeEvents
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 _log = logging.getLogger(__name__)
@@ -43,6 +45,15 @@ def http_run_streak_reminders(
 ) -> dict:
     _require_internal_job_key(x_internal_job_key)
     return run_streak_reminder_job(db, settings)
+
+
+@router.post("/social-challenges")
+def http_settle_social_challenges(
+    db: Annotated[Session, Depends(get_db)],
+    x_internal_job_key: Annotated[str | None, Header(alias="X-Internal-Job-Key")] = None,
+) -> dict:
+    _require_internal_job_key(x_internal_job_key)
+    return run_social_challenge_job(db, PushChallengeEvents(db, settings))
 
 
 @router.post("/seed-screenshot-account")

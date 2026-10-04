@@ -11,6 +11,7 @@ import type {
   SocialReactionDto,
   SocialReactionUserDto,
   SocialRecapDto,
+  SessionChallengeCreditDto,
 } from "../types/friends";
 
 export async function fetchBuddyStatus(token: string): Promise<BuddyStatusDto> {
@@ -27,6 +28,15 @@ export async function fetchChallenges(token: string): Promise<SocialChallengeDto
 
 export async function fetchDuelRecords(token: string): Promise<DuelRecordDto[]> {
   return apiJson<DuelRecordDto[]>("/social/challenges/records", { token });
+}
+
+export async function fetchSessionChallengeCredits(
+  token: string,
+  sessionId: number | string,
+): Promise<SessionChallengeCreditDto[]> {
+  return apiJson<SessionChallengeCreditDto[]>(`/social/challenges/sessions/${sessionId}/credits`, {
+    token,
+  });
 }
 
 export async function fetchChallenge(

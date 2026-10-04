@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 
 import { apiJson } from "../../../lib/client";
@@ -18,7 +18,10 @@ import type {
   IdentityStateDto,
   SocialChallengeDto,
 } from "../../../types/friends";
+import { subscribeChallengeSync } from "../../challenges/sync/challengeSync";
 import { useDashboardAuthReset } from "./dashboardAuthReset";
+
+type LoadSocialOptions = { silent?: boolean };
 
 export function useDashboardSocialData(
   token: string | null,
@@ -51,30 +54,37 @@ export function useDashboardSocialData(
 
   useDashboardAuthReset(token, userId, resetSocialState);
 
-  const loadSocial = useCallback(async () => {
-    if (!token) return;
-    const sequence = ++loadSequence.current;
-    setSocialLoading(true);
-    setSocialError(null);
-    try {
-      const snapshot = await fetchSocialSnapshot(token);
-      if (sequence !== loadSequence.current) return;
-      setFriendLeaderboard(snapshot.friendLeaderboard);
-      setFriendActivity(snapshot.friendActivity);
-      setBuddyRisk(snapshot.buddyRisk);
-      setCheckinStatus(snapshot.checkinStatus);
-      setCommitmentStatus(snapshot.commitmentStatus);
-      setSocialChallenges(snapshot.socialChallenges);
-      setIdentityState(snapshot.identityState);
-    } catch {
-      if (sequence !== loadSequence.current) return;
-      setSocialError(t("dashboard.socialLoadFailed"));
-    } finally {
-      if (sequence === loadSequence.current) {
-        setSocialLoading(false);
+  const loadSocial = useCallback(
+    async ({ silent = false }: LoadSocialOptions = {}) => {
+      if (!token) return;
+      const sequence = ++loadSequence.current;
+      if (!silent) {
+        setSocialLoading(true);
+        setSocialError(null);
       }
-    }
-  }, [token, t]);
+      try {
+        const snapshot = await fetchSocialSnapshot(token);
+        if (sequence !== loadSequence.current) return;
+        setFriendLeaderboard(snapshot.friendLeaderboard);
+        setFriendActivity(snapshot.friendActivity);
+        applyIfLoaded(snapshot.buddyRisk, setBuddyRisk);
+        applyIfLoaded(snapshot.checkinStatus, setCheckinStatus);
+        applyIfLoaded(snapshot.commitmentStatus, setCommitmentStatus);
+        applyIfLoaded(snapshot.socialChallenges, setSocialChallenges);
+        applyIfLoaded(snapshot.identityState, setIdentityState);
+      } catch {
+        if (sequence !== loadSequence.current || silent) return;
+        setSocialError(t("dashboard.socialLoadFailed"));
+      } finally {
+        if (sequence === loadSequence.current) {
+          setSocialLoading(false);
+        }
+      }
+    },
+    [token, t],
+  );
+
+  useEffect(() => subscribeChallengeSync(() => void loadSocial({ silent: true })), [loadSocial]);
 
   return {
     socialError,
@@ -91,6 +101,15 @@ export function useDashboardSocialData(
   };
 }
 
+function applyIfLoaded<T>(value: T | undefined, setter: (next: T) => void) {
+  if (value !== undefined) setter(value);
+}
+
+/** Optional parts resolve to `undefined` on failure so the dashboard keeps its last good value. */
+function unlessFailed<T>(request: Promise<T>): Promise<T | undefined> {
+  return request.catch(() => undefined);
+}
+
 async function fetchSocialSnapshot(token: string) {
   const [
     leaderboard,
@@ -103,11 +122,11 @@ async function fetchSocialSnapshot(token: string) {
   ] = await Promise.all([
     apiJson<unknown>("/friends/leaderboard?period=week", { token }),
     apiJson<unknown>("/friends/activity?limit=8", { token }),
-    fetchBuddyRisk(token).catch(() => null),
-    fetchCheckinStatus(token).catch(() => null),
-    fetchCommitment(token).catch(() => null),
-    fetchChallenges(token).catch(() => []),
-    fetchIdentityState(token).catch(() => null),
+    unlessFailed(fetchBuddyRisk(token)),
+    unlessFailed(fetchCheckinStatus(token)),
+    unlessFailed(fetchCommitment(token)),
+    unlessFailed(fetchChallenges(token)),
+    unlessFailed(fetchIdentityState(token)),
   ]);
 
   return {
@@ -116,7 +135,7 @@ async function fetchSocialSnapshot(token: string) {
     buddyRisk,
     checkinStatus,
     commitmentStatus,
-    socialChallenges: Array.isArray(challenges) ? challenges : [],
+    socialChallenges: challenges === undefined || Array.isArray(challenges) ? challenges : [],
     identityState,
   };
 }

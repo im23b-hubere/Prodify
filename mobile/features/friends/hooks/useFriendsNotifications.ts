@@ -3,8 +3,7 @@ import { useEffect } from "react";
 
 import { prependNotification } from "../../../lib/notificationInbox";
 import { sendLocalSocialNotification } from "../../../lib/socialNotifications";
-import type { FriendActivityDto, FriendIncomingDto, SocialChallengeDto } from "../../../types/friends";
-import { duelInviteSenderName, isIncomingDuelInvite } from "../utils/duelInvites";
+import type { FriendActivityDto, FriendIncomingDto } from "../../../types/friends";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -78,45 +77,4 @@ export function useFriendsNotifications(
         .catch(() => undefined);
     }
   }, [activity, currentUserId, t]);
-}
-
-export function useDuelInviteNotifications(
-  challenges: SocialChallengeDto[],
-  currentUserId: number | undefined,
-  t: TFunction,
-) {
-  useEffect(() => {
-    for (const challenge of challenges) {
-      if (!isIncomingDuelInvite(challenge, currentUserId)) continue;
-
-      const title = t("notificationsUi.duelInviteTitle");
-      const body = t("notificationsUi.duelInviteBody", {
-        username: duelInviteSenderName(challenge) ?? t("friendsScreen.challengeSomeone"),
-      });
-      prependNotification({
-        id: `duel-invite-${challenge.id}`,
-        category: "social",
-        priority: "high",
-        title,
-        body,
-        actionLabel: t("notificationsUi.openFriends"),
-        actionRoute: "/(tabs)/friends",
-        ttlMs: 2 * DAY_MS,
-        dedupeWindowMs: 5 * 60 * 1000,
-        bypassFirstWeekQuietMode: true,
-      })
-        .then((inserted) =>
-          inserted
-            ? sendLocalSocialNotification({
-                title,
-                body,
-                path: "/(tabs)/friends",
-                throttleKey: `duel-invite-${challenge.id}`,
-                throttleMs: 30_000,
-              })
-            : undefined,
-        )
-        .catch(() => undefined);
-    }
-  }, [challenges, currentUserId, t]);
 }

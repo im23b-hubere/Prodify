@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
@@ -21,6 +22,7 @@ from app.services.session_record_service import (
     update_session_record,
 )
 from app.services.session_skill_focus_service import SkillFocusValidationError
+from app.services.social_challenge_notifications import PushChallengeEvents
 from app.services.skill_progress_service import session_skill_progress
 
 router = APIRouter()
@@ -110,7 +112,7 @@ def restore_session(
     db: Annotated[Session, Depends(get_db)],
 ):
     try:
-        return restore_session_record(db, session_id, current.id)
+        return restore_session_record(db, session_id, current.id, PushChallengeEvents(db, settings))
     except SessionRecordNotFoundError as error:
         raise HTTPException(status_code=404, detail="Session not found")
     except SessionNotDeletedError as error:

@@ -1,5 +1,5 @@
 import NetInfo from "@react-native-community/netinfo";
-import { apiJson, apiMultipart } from "../../lib/client";
+import { apiJson, apiMultipart, subscribeSuccessfulMutations } from "../../lib/client";
 
 jest.mock("@react-native-community/netinfo", () => ({
   __esModule: true,
@@ -79,6 +79,23 @@ describe("apiJson error parsing", () => {
 
     await expect(apiJson("/users/me", { method: "DELETE", token: "t" })).resolves.toBeNull();
     expect(global.fetch).toHaveBeenCalled();
+  });
+
+  it("announces successful writes but not reads or failures", async () => {
+    const listener = jest.fn();
+    const unsubscribe = subscribeSuccessfulMutations(listener);
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, status: 200, text: async () => "{}" })
+      .mockResolvedValueOnce({ ok: true, status: 200, text: async () => "{}" })
+      .mockResolvedValueOnce({ ok: false, status: 400, text: async () => "{}" });
+
+    await apiJson("/sessions/stop", { method: "post", token: "t", body: {} });
+    await apiJson("/sessions/list", { token: "t" });
+    await apiJson("/sessions/stop", { method: "POST", token: "t", body: {} }).catch(() => undefined);
+    unsubscribe();
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith({ path: "/sessions/stop", method: "POST" });
   });
 
   it("does not retry POST by default on network errors", async () => {

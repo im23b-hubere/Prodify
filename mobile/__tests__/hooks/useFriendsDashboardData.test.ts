@@ -430,6 +430,18 @@ describe("useFriendsDashboardData auth scope", () => {
     expect(result.current.state.challenges).toEqual([]);
   });
 
+  it("shares one request when an action and the challenge sync both force a reload", async () => {
+    const { result } = renderFriendsDataHook("token-a", 1);
+    await waitFor(() => {
+      expect(result.current.state.leaderboard).toEqual(userASnapshot.leaderboard);
+    });
+    mockLoadFriendsDashboard.mockClear();
+
+    await Promise.all([result.current.load({ force: true }), result.current.load({ force: true })]);
+
+    expect(mockLoadFriendsDashboard).toHaveBeenCalledTimes(1);
+  });
+
   it("clears refreshing after a refresh failure while keeping data", async () => {
     const { result } = renderFriendsDataHook("token-a", 1);
 

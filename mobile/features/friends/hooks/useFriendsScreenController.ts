@@ -3,12 +3,12 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
-import { subscribeChallengeCreated } from "../../challengeCreate/challengeCreatedSignal";
 import type { RematchRequest } from "../../challenges/board/duelBoard";
+import { subscribeChallengeSync } from "../../challenges/sync/challengeSync";
 import { liveFriends, pastActivity } from "../activity/friendsActivityFeed";
 import { useFriendsActivityRenderer } from "./useFriendsActivityRenderer";
 import { useFriendsDashboardData } from "./useFriendsDashboardData";
-import { useDuelInviteNotifications, useFriendsNotifications } from "./useFriendsNotifications";
+import { useFriendsNotifications } from "./useFriendsNotifications";
 import { useFriendsScreenActions } from "./useFriendsScreenActions";
 import { useFriendsScreenState } from "./useFriendsScreenState";
 
@@ -61,7 +61,6 @@ export function useFriendsScreenController() {
   const liveActivity = useMemo(() => liveFriends(friendActivity), [friendActivity]);
   const feedActivity = useMemo(() => pastActivity(friendActivity), [friendActivity]);
   useFriendsNotifications(state.incoming, state.activity, user?.id, t);
-  useDuelInviteNotifications(state.challenges, user?.id, t);
 
   const renderActivity = useFriendsActivityRenderer({
     actions,
@@ -94,7 +93,10 @@ export function useFriendsScreenController() {
     [router],
   );
   useEffect(
-    () => subscribeChallengeCreated(() => void load({ force: true }).catch(() => undefined)),
+    () =>
+      subscribeChallengeSync((reason) => {
+        void load({ force: reason === "changed" }).catch(() => undefined);
+      }),
     [load],
   );
 

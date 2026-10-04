@@ -119,6 +119,7 @@ function buildCandidates({
     });
   }
   const closeChallenge = socialChallenges
+    .filter((challenge) => challenge.status === "active")
     .map((challenge) => {
       const mine = challenge.members.find((member) => member.user_id === userId);
       const lead = Math.max(...challenge.members.map((member) => member.progress_sessions), 0);

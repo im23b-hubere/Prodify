@@ -13,6 +13,7 @@ from app.services.progression_service import SESSION_XP_MINUTES_FLOOR
 
 CHALLENGE_MIN_DURATION_SECONDS = SESSION_XP_MINUTES_FLOOR * 60
 COMPLETED_VISIBLE_DAYS = 14
+CANCELLED_VISIBLE = timedelta(hours=48)
 INVITE_TTL = timedelta(hours=48)
 
 
@@ -39,6 +40,19 @@ def load_challenge_meta(row: SocialChallenge) -> dict[str, Any]:
 
 def save_challenge_meta(row: SocialChallenge, meta: dict[str, Any]) -> None:
     row.meta_json = json.dumps(meta)
+
+
+def lock_challenge(db: Session, challenge_id: int) -> SocialChallenge | None:
+    """Reloads the row under a write lock so concurrent session stops cannot overwrite each other's credit."""
+    return db.get(SocialChallenge, challenge_id, with_for_update=True, populate_existing=True)
+
+
+def involved_user_ids(row: SocialChallenge, members: list[SocialChallengeMember]) -> set[int]:
+    involved = {row.owner_id, *(member.user_id for member in members)}
+    invitee_id = invitee_user_id(load_challenge_meta(row))
+    if invitee_id is not None:
+        involved.add(invitee_id)
+    return involved
 
 
 def challenge_duration_days(meta: dict[str, Any]) -> int:
@@ -107,16 +121,29 @@ def session_qualifies_for_challenge(
     return start <= ts < end
 
 
-def _credit_session(meta: dict[str, Any], user_id: int, session_id: int) -> bool:
+def credited_session_ids(meta: dict[str, Any], user_id: int) -> list[int]:
     credited = meta.setdefault("credited_sessions", {})
     key = str(user_id)
     session_ids = credited.setdefault(key, [])
     if not isinstance(session_ids, list):
         session_ids = []
         credited[key] = session_ids
+    return session_ids
+
+
+def _credit_session(meta: dict[str, Any], user_id: int, session_id: int) -> bool:
+    session_ids = credited_session_ids(meta, user_id)
     if session_id in session_ids:
         return False
     session_ids.append(session_id)
+    return True
+
+
+def _uncredit_session(meta: dict[str, Any], user_id: int, session_id: int) -> bool:
+    session_ids = credited_session_ids(meta, user_id)
+    if session_id not in session_ids:
+        return False
+    session_ids.remove(session_id)
     return True
 
 
@@ -130,13 +157,20 @@ def _leader_member(members: list[SocialChallengeMember]) -> SocialChallengeMembe
     return None
 
 
-def cancel_challenge(db: Session, challenge: SocialChallenge, *, reason: str = "cancelled") -> None:
+def cancel_challenge(
+    db: Session,
+    challenge: SocialChallenge,
+    *,
+    reason: str = "cancelled",
+    actor_user_id: int | None = None,
+) -> None:
     if challenge.status not in {"active", "pending"}:
         return
     meta = load_challenge_meta(challenge)
     challenge.status = "cancelled"
     meta["completion_reason"] = reason
     meta["cancelled_at"] = _as_utc_aware(utcnow()).isoformat()
+    meta["cancelled_by_user_id"] = actor_user_id
     save_challenge_meta(challenge, meta)
 
 
@@ -162,26 +196,49 @@ def complete_challenge(
 def maybe_finalize_expired_challenge(db: Session, challenge: SocialChallenge) -> bool:
     if challenge.status != "active":
         return False
-    meta = load_challenge_meta(challenge)
-    if _as_utc_aware(utcnow()) < challenge_window_end(challenge, meta):
+    if _as_utc_aware(utcnow()) < challenge_window_end(challenge, load_challenge_meta(challenge)):
         return False
-    members = db.scalars(
-        select(SocialChallengeMember).where(SocialChallengeMember.challenge_id == challenge.id)
-    ).all()
-    leader = _leader_member(members)
-    if leader is None:
-        top = max((m.progress_sessions for m in members), default=0)
-        tie = len([m for m in members if m.progress_sessions == top]) > 1 if members else False
-        complete_challenge(db, challenge, winner_user_id=None, reason="time_expired", is_tie=tie)
-    else:
-        complete_challenge(
-            db,
-            challenge,
-            winner_user_id=leader.user_id,
-            reason="time_expired",
-            is_tie=False,
-        )
+    locked = lock_challenge(db, challenge.id)
+    if locked is None or locked.status != "active":
+        return False
+    _complete_with_standings(db, locked, reason="time_expired")
     return True
+
+
+def finish_if_target_reached(db: Session, challenge: SocialChallenge) -> bool:
+    """Finishes a challenge whose target was lowered to or below the best progress."""
+    if challenge.status != "active":
+        return False
+    members = _members_of(db, challenge.id)
+    if max((member.progress_sessions for member in members), default=0) < challenge.target_sessions:
+        return False
+    _complete_with_standings(db, challenge, reason="target_reached", members=members)
+    return True
+
+
+def _complete_with_standings(
+    db: Session,
+    challenge: SocialChallenge,
+    *,
+    reason: str,
+    members: list[SocialChallengeMember] | None = None,
+) -> None:
+    members = members if members is not None else _members_of(db, challenge.id)
+    leader = _leader_member(members)
+    is_tie = leader is None and len(members) > 1
+    complete_challenge(
+        db,
+        challenge,
+        winner_user_id=leader.user_id if leader else None,
+        reason=reason,
+        is_tie=is_tie,
+    )
+
+
+def _members_of(db: Session, challenge_id: int) -> list[SocialChallengeMember]:
+    return list(
+        db.scalars(select(SocialChallengeMember).where(SocialChallengeMember.challenge_id == challenge_id)).all()
+    )
 
 
 def sync_challenge_progress_on_session_complete(
@@ -233,7 +290,7 @@ def _credit_member_session(
     stopped_at: datetime,
     duration_seconds: int,
 ) -> int | None:
-    challenge = db.get(SocialChallenge, member.challenge_id)
+    challenge = lock_challenge(db, member.challenge_id)
     if challenge is None or challenge.status != "active":
         return None
     meta = load_challenge_meta(challenge)
@@ -261,21 +318,50 @@ def _credit_member_session(
     return challenge.id
 
 
-def finalize_visible_active_challenges(db: Session, challenges: list[SocialChallenge]) -> None:
-    for challenge in challenges:
-        if challenge.status == "active":
-            maybe_finalize_expired_challenge(db, challenge)
+def revoke_session_challenge_credit(db: Session, *, user_id: int, session_id: int) -> None:
+    """Takes back the point a now-deleted session earned in still-running challenges."""
+    for member in _active_challenge_memberships(db, user_id):
+        challenge = lock_challenge(db, member.challenge_id)
+        if challenge is None or challenge.status != "active":
+            continue
+        meta = load_challenge_meta(challenge)
+        if not _uncredit_session(meta, user_id, session_id):
+            continue
+        save_challenge_meta(challenge, meta)
+        member.progress_sessions = max(0, int(member.progress_sessions or 0) - 1)
+        member.updated_at = utcnow()
+    db.flush()
+
+
+def finalize_visible_active_challenges(db: Session, challenges: list[SocialChallenge]) -> list[int]:
+    """Returns the ids of challenges this call finished."""
+    return [
+        challenge.id
+        for challenge in challenges
+        if challenge.status == "active" and maybe_finalize_expired_challenge(db, challenge)
+    ]
 
 
 def challenge_completed_recently(meta: dict[str, Any]) -> bool:
-    if not meta.get("completed_at"):
-        return False
+    completed_at = meta_timestamp(meta, "completed_at")
+    return completed_at is not None and _as_utc_aware(utcnow()) - completed_at <= timedelta(
+        days=COMPLETED_VISIBLE_DAYS
+    )
+
+
+def challenge_cancelled_recently(meta: dict[str, Any]) -> bool:
+    cancelled_at = meta_timestamp(meta, "cancelled_at")
+    return cancelled_at is not None and _as_utc_aware(utcnow()) - cancelled_at <= CANCELLED_VISIBLE
+
+
+def meta_timestamp(meta: dict[str, Any], key: str) -> datetime | None:
+    raw = meta.get(key)
+    if not raw:
+        return None
     try:
-        completed_at = datetime.fromisoformat(str(meta["completed_at"]))
-        completed_at = _as_utc_aware(completed_at)
+        return _as_utc_aware(datetime.fromisoformat(str(raw)))
     except ValueError:
-        return False
-    return _as_utc_aware(utcnow()) - completed_at <= timedelta(days=COMPLETED_VISIBLE_DAYS)
+        return None
 
 
 def challenge_public_extras(
@@ -306,12 +392,12 @@ def challenge_public_extras(
         "is_tie": bool(meta.get("is_tie")),
         "completion_reason": meta.get("completion_reason"),
         "your_rank": your_rank,
-        "invitee_user_id": _invitee_user_id(meta),
+        "invitee_user_id": invitee_user_id(meta),
         "invite_expires_at": invite_expires_at(meta) if row.status == "pending" else None,
     }
 
 
-def _invitee_user_id(meta: dict[str, Any]) -> int | None:
+def invitee_user_id(meta: dict[str, Any]) -> int | None:
     raw = meta.get("invitee_user_id")
     try:
         return int(raw) if raw is not None else None

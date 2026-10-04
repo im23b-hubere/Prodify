@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { recordMomentumAction } from "../../../lib/momentum";
 import { createChallenge } from "../../../lib/social";
 import type { DuelCreateRequest } from "../challengeDraft";
-import { notifyChallengeCreated } from "../challengeCreatedSignal";
 
 type SubmitState =
   | { status: "idle" }
@@ -28,7 +27,6 @@ export function useChallengeSubmit(token: string | null, userId: number | undefi
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       setSubmitState({ status: "sent" });
-      notifyChallengeCreated();
       if (userId) recordMomentumAction(userId, "challenge").catch(() => undefined);
     },
     [token, userId],

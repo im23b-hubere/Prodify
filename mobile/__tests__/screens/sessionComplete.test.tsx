@@ -214,6 +214,41 @@ describe("SessionCompleteScreen", () => {
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalledWith("/(tabs)/dashboard");
   });
+
+  it("explains why the session did not count for a challenge and opens it on tap", async () => {
+    const respondWithoutCredits = mockApiJson.getMockImplementation();
+    mockApiJson.mockImplementation((path: string, options?: { method?: string }) =>
+      path === "/social/challenges/sessions/12/credits"
+        ? Promise.resolve([
+            {
+              challenge_id: 4,
+              challenge_kind: "duel",
+              title: "Beat week",
+              status: "active",
+              credited: false,
+              reason: "before_start",
+              progress_sessions: 0,
+              target_sessions: 5,
+              winner_user_id: null,
+              is_tie: false,
+            },
+          ])
+        : respondWithoutCredits?.(path, options),
+    );
+    const { findByText, getByText } = render(<SessionCompleteScreen />);
+
+    fireEvent.press(await findByText("Beat week"));
+
+    expect(getByText("sessionComplete.challengeSkipBeforeStart")).toBeTruthy();
+    expect(mockPush).toHaveBeenCalledWith("/challenge/4");
+  });
+
+  it("leaves the challenge card out when the session touched no challenge", async () => {
+    const { findByTestId, queryByTestId } = render(<SessionCompleteScreen />);
+
+    expect(await findByTestId("session-complete-screen")).toBeTruthy();
+    expect(queryByTestId("session-complete-challenges")).toBeNull();
+  });
 });
 
 describe("SessionCompleteScreen focus reflection", () => {

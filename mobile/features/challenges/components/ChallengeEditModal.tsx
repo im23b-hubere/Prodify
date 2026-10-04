@@ -20,27 +20,35 @@ export function ChallengeEditModal({ detail }: Props) {
       <Pressable style={styles.modalBackdrop} onPress={detail.closeEdit}>
         <Pressable style={styles.modalCard} onPress={(event) => event.stopPropagation()}>
           <Text style={styles.modalTitle}>{t("friendsScreen.editChallengeTitle")}</Text>
-          <Text style={styles.modalHint}>{t("friendsScreen.editChallengeHint")}</Text>
+          <Text style={styles.modalHint}>
+            {detail.termsLocked
+              ? t("friendsScreen.editDuelTermsLockedHint")
+              : t("friendsScreen.editChallengeHint")}
+          </Text>
           <ChallengeEditField
             label={t("friendsScreen.challengeTitleLabel")}
             value={detail.editTitle}
             onChange={detail.setEditTitle}
             placeholder={t("friendsScreen.challengeTitlePlaceholder")}
           />
-          <ChallengeEditField
-            label={t("friendsScreen.goalTargetLabel")}
-            value={detail.editTarget}
-            onChange={detail.setEditTarget}
-            placeholder={t("friendsScreen.challengeTargetPlaceholder")}
-            numeric
-          />
-          <ChallengeEditField
-            label={t("friendsScreen.goalDurationLabel")}
-            value={detail.editDuration}
-            onChange={detail.setEditDuration}
-            placeholder={t("friendsScreen.challengeDurationPlaceholder")}
-            numeric
-          />
+          {detail.termsLocked ? null : (
+            <>
+              <ChallengeEditField
+                label={t("friendsScreen.goalTargetLabel")}
+                value={detail.editTarget}
+                onChange={detail.setEditTarget}
+                placeholder={t("friendsScreen.challengeTargetPlaceholder")}
+                numeric
+              />
+              <ChallengeEditField
+                label={t("friendsScreen.goalDurationLabel")}
+                value={detail.editDuration}
+                onChange={detail.setEditDuration}
+                placeholder={t("friendsScreen.challengeDurationPlaceholder")}
+                numeric
+              />
+            </>
+          )}
           <PrimaryButton
             label={detail.editBusy ? t("friendsScreen.loading") : t("friendsScreen.saveChallenge")}
             onPress={() => void detail.submitEdit()}

@@ -1,14 +1,14 @@
 import { useEffect } from "react";
-import { AppState } from "react-native";
 
 import { fetchChallenges } from "../../../lib/social";
+import { subscribeChallengeSync } from "../../challenges/sync/challengeSync";
 import { duelClashPayload, isAcceptedOwnedDuel } from "../duelClashPayload";
 import { loadSeenDuelClashIds, markDuelClashSeen } from "../duelClashSeen";
 import { clearDuelClashQueue, showDuelClash } from "../duelClashStore";
 
 /**
  * Queues a clash for every duel this user sent that was accepted while they were away.
- * Runs on sign-in and whenever the app returns to the foreground.
+ * Runs on sign-in and on every challenge sync (foreground, duel push, challenge writes).
  */
 export function useAcceptedDuelWatcher(token: string | null, userId: number | undefined, youLabel: string) {
   useEffect(() => {
@@ -33,12 +33,10 @@ export function useAcceptedDuelWatcher(token: string | null, userId: number | un
       }
     };
     void check();
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void check();
-    });
+    const unsubscribe = subscribeChallengeSync(() => void check());
     return () => {
       cancelled = true;
-      subscription.remove();
+      unsubscribe();
     };
   }, [token, userId, youLabel]);
 }

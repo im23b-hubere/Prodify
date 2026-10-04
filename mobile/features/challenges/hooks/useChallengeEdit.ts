@@ -4,7 +4,7 @@ import { Alert } from "react-native";
 
 import { updateChallenge } from "../../../lib/social";
 import type { SocialChallengeDto } from "../../../types/friends";
-import { parseChallengeEditDraft } from "../challengeEditDraft";
+import { challengeTermsLocked, parseChallengeEditDraft } from "../challengeEditDraft";
 
 type SetChallenge = (challenge: SocialChallengeDto | null) => void;
 
@@ -20,6 +20,7 @@ export function useChallengeEdit(
   const [editTarget, setEditTarget] = useState("5");
   const [editDuration, setEditDuration] = useState("7");
   const [editBusy, setEditBusy] = useState(false);
+  const termsLocked = challenge ? challengeTermsLocked(challenge) : false;
 
   const openEdit = useCallback(() => {
     if (!challenge) return;
@@ -32,7 +33,7 @@ export function useChallengeEdit(
 
   const submitEdit = useCallback(async () => {
     if (!token || challengeId == null) return;
-    const draft = parseChallengeEditDraft(editTitle, editTarget, editDuration);
+    const draft = parseChallengeEditDraft(editTitle, editTarget, editDuration, { termsLocked });
     if (!draft) {
       Alert.alert(
         t("friendsScreen.invalidChallengeTitle"),
@@ -52,10 +53,11 @@ export function useChallengeEdit(
     } finally {
       setEditBusy(false);
     }
-  }, [challengeId, editDuration, editTarget, editTitle, setChallenge, t, token]);
+  }, [challengeId, editDuration, editTarget, editTitle, setChallenge, t, termsLocked, token]);
 
   return {
     editOpen,
+    termsLocked,
     closeEdit,
     openEdit,
     editTitle,

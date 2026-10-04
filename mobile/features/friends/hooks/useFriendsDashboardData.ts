@@ -48,19 +48,12 @@ export function useFriendsDashboardData({ token, userId, periodParam, t, state }
 
   useFriendsAuthReset(token, userId, resetFriendsAuthScope);
 
-  const load = useCallback(
-    async (opts?: { force?: boolean }) => {
-      const force = Boolean(opts?.force);
-      if (shouldUseCachedDashboard(force, lastFetchRef.current)) return;
-
+  const fetchAndApply = useCallback(
+    async (activeToken: string) => {
       const seq = ++loadSeq.current;
-      if (!token) {
-        if (mounted.current) setLoading(false);
-        return;
-      }
       if (mounted.current) setError(null);
       try {
-        const snapshot = await loadFriendsDashboard(token, periodParam);
+        const snapshot = await loadFriendsDashboard(activeToken, periodParam);
         if (!isCurrentRequest(mounted, loadSeq, seq)) return;
         applyFriendsDashboardSnapshot(dashboardWriter, snapshot);
         lastFetchRef.current = Date.now();
@@ -70,12 +63,35 @@ export function useFriendsDashboardData({ token, userId, periodParam, t, state }
         // Auth/account reset clears via resetFriendsAccountOwnedState separately.
         setError(dashboardLoadError(e, t));
       } finally {
-        if (!isCurrentRequest(mounted, loadSeq, seq)) return;
-        setLoading(false);
-        setRefreshing(false);
+        if (isCurrentRequest(mounted, loadSeq, seq)) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
-    [token, periodParam, t, loadSeq, mounted, setLoading, setError, setRefreshing, dashboardWriter],
+    [periodParam, t, loadSeq, mounted, setLoading, setError, setRefreshing, dashboardWriter],
+  );
+
+  const inFlightRef = useRef<{ key: string; request: Promise<void> } | null>(null);
+  const load = useCallback(
+    async (opts?: { force?: boolean }) => {
+      const force = Boolean(opts?.force);
+      if (shouldUseCachedDashboard(force, lastFetchRef.current)) return;
+      if (!token) {
+        loadSeq.current += 1;
+        if (mounted.current) setLoading(false);
+        return;
+      }
+      const key = `${token}:${periodParam}`;
+      if (inFlightRef.current?.key === key) return inFlightRef.current.request;
+
+      const request = fetchAndApply(token).finally(() => {
+        if (inFlightRef.current?.request === request) inFlightRef.current = null;
+      });
+      inFlightRef.current = { key, request };
+      return request;
+    },
+    [token, periodParam, fetchAndApply, loadSeq, mounted, setLoading],
   );
 
   const onRefresh = useFriendsDashboardRefresh(load, periodParam, setRefreshing);

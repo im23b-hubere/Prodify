@@ -17,6 +17,30 @@ export type { ApiOptions } from "./apiRequestTypes";
 let unauthorizedHandler: (() => void | Promise<void>) | null = null;
 let apiWarmup: Promise<void> | null = null;
 
+export type SuccessfulMutation = { path: string; method: string };
+type MutationListener = (mutation: SuccessfulMutation) => void;
+const mutationListeners = new Set<MutationListener>();
+
+/** Lets a feature react to writes that succeeded, no matter which screen sent them. */
+export function subscribeSuccessfulMutations(listener: MutationListener): () => void {
+  mutationListeners.add(listener);
+  return () => {
+    mutationListeners.delete(listener);
+  };
+}
+
+function announceMutation(path: string, method: string | undefined) {
+  const normalizedMethod = (method ?? "GET").toUpperCase();
+  if (normalizedMethod === "GET") return;
+  for (const listener of mutationListeners) {
+    try {
+      listener({ path, method: normalizedMethod });
+    } catch {
+      // A listener must never turn a successful request into a failure.
+    }
+  }
+}
+
 /** Wake the production API while the user is still entering credentials. */
 export function warmApi(): Promise<void> {
   if (apiWarmup) return apiWarmup;
@@ -51,7 +75,10 @@ export async function apiJson<T = unknown>(path: string, options: ApiOptions = {
 async function apiJsonInternal<T>(path: string, options: InternalApiOptions): Promise<T> {
   const response = await performJsonRequest(path, options);
   const payload = await readResponsePayload(response);
-  if (response.ok) return payload as T;
+  if (response.ok) {
+    announceMutation(path, options.method);
+    return payload as T;
+  }
 
   const authToken = typeof options.token === "string" ? options.token.trim() : "";
   if (shouldRefresh(response.status, authToken, path, options.skipRefresh)) {

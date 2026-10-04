@@ -14,6 +14,11 @@ from app.services.session_skill_focus_service import (
     replace_skill_focuses,
     set_primary_skill_focus,
 )
+from app.services.social_challenge_events import IGNORED_CHALLENGE_EVENTS, ChallengeEvents
+from app.services.social_challenge_service import (
+    revoke_session_challenge_credit,
+    sync_challenge_progress_on_session_complete,
+)
 from app.services.streak_reconcile_service import reconcile_streak_row_for_user
 
 
@@ -98,6 +103,7 @@ def delete_session_record(db: Session, session_id: int, user_id: int) -> None:
         raise ActiveSessionDeleteError
     session.deleted_at = utcnow()
     reconcile_streak_row_for_user(db, user_id)
+    revoke_session_challenge_credit(db, user_id=user_id, session_id=session.id)
     db.commit()
 
 
@@ -105,6 +111,7 @@ def restore_session_record(
     db: Session,
     session_id: int,
     user_id: int,
+    events: ChallengeEvents = IGNORED_CHALLENGE_EVENTS,
 ) -> ProductionSession:
     session = _owned_session(db, session_id, user_id)
     if session.deleted_at is None:
@@ -115,9 +122,24 @@ def restore_session_record(
             raise ActiveSessionRestoreConflictError(active.id)
     session.deleted_at = None
     reconcile_streak_row_for_user(db, user_id)
+    finished_challenge_ids = _recredit_restored_session(db, session)
     db.commit()
+    for challenge_id in finished_challenge_ids:
+        events.challenge_finished(challenge_id)
     db.refresh(session)
     return session
+
+
+def _recredit_restored_session(db: Session, session: ProductionSession) -> list[int]:
+    if session.stopped_at is None:
+        return []
+    return sync_challenge_progress_on_session_complete(
+        db,
+        user_id=session.user_id,
+        session_id=session.id,
+        stopped_at=session.stopped_at,
+        duration_seconds=int(session.duration_seconds or 0),
+    )
 
 
 def _owned_session(

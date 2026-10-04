@@ -57,6 +57,47 @@ describe("buildDuelBoard", () => {
   it("is empty without any duels", () => {
     expect(isDuelBoardEmpty(buildDuelBoard([], 1))).toBe(true);
   });
+
+  it("ignores challenges between other people", () => {
+    const strangers = [
+      { user_id: 2, username: "bob", progress_sessions: 1 },
+      { user_id: 3, username: "carol", progress_sessions: 2 },
+    ];
+    const board = buildDuelBoard(
+      [
+        duel({ id: 5, owner_id: 2, members: strangers }),
+        duel({ id: 6, owner_id: 2, status: "completed", winner_user_id: 3, members: strangers }),
+      ],
+      1,
+    );
+    expect(board.arena).toBeNull();
+    expect(board.history).toEqual([]);
+  });
+
+  it("offers a friend's running group challenge to join instead of showing it as a duel", () => {
+    const board = buildDuelBoard(
+      [
+        duel({
+          id: 7,
+          owner_id: 2,
+          challenge_kind: "team",
+          members: [{ user_id: 2, username: "bob", progress_sessions: 1 }],
+        }),
+      ],
+      1,
+    );
+    expect(board.arena).toBeNull();
+    expect(board.fromFriends.map((challenge) => challenge.id)).toEqual([7]);
+    expect(isDuelBoardEmpty(board)).toBe(false);
+  });
+
+  it("keeps a declined invite in the history so the sender knows what happened", () => {
+    const board = buildDuelBoard(
+      [duel({ id: 8, status: "cancelled", completion_reason: "declined" })],
+      1,
+    );
+    expect(board.history.map((challenge) => challenge.id)).toEqual([8]);
+  });
 });
 
 describe("duelStanding", () => {
@@ -78,6 +119,12 @@ describe("duelOutcome", () => {
       kind: "won",
     });
     expect(duelOutcome(duel({ status: "completed", is_tie: true }), 1)).toEqual({ kind: "tie" });
+  });
+
+  it("reports a cancelled duel with its reason instead of a winner", () => {
+    expect(
+      duelOutcome(duel({ status: "cancelled", completion_reason: "invite_expired" }), 1),
+    ).toEqual({ kind: "cancelled", reason: "invite_expired" });
   });
 });
 
@@ -107,6 +154,11 @@ describe("rematchableDuelIds", () => {
 
   it("skips opponents that cannot be challenged right now", () => {
     expect([...rematchableDuelIds(history, 1, (friendId) => friendId === 3)]).toEqual([12]);
+  });
+
+  it("never offers a rematch for a duel that was called off", () => {
+    const calledOff = [duel({ id: 13, status: "cancelled", completion_reason: "declined" })];
+    expect([...rematchableDuelIds(calledOff, 1, () => true)]).toEqual([]);
   });
 });
 

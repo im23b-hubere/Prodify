@@ -7,6 +7,7 @@ import { buildWeeklyForecast } from "../../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../../lib/goalPace";
 import { buildSessionFeedback } from "../../../lib/sessionFeedbackEngine";
 import { returnTo } from "../../../lib/stackNavigation";
+import { useSessionChallengeCredits } from "./useSessionChallengeCredits";
 import { useSessionCompleteData } from "./useSessionCompleteData";
 import {
   estimateSessionXpGain,
@@ -20,6 +21,7 @@ export function useSessionCompleteController() {
   const rawId = useLocalSearchParams<{ id: string | string[] }>().id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const data = useSessionCompleteData(token, id, t);
+  const challengeCredits = useSessionChallengeCredits(token, id);
   const durationSeconds = data.session?.duration_seconds ?? 0;
   const weeklyGoalTarget = useMemo(
     () =>
@@ -49,7 +51,9 @@ export function useSessionCompleteController() {
   return {
     t,
     id,
+    currentUserId: user?.id,
     ...data,
+    challengeCredits,
     durationSeconds,
     weeklyGoalTarget,
     feedback,

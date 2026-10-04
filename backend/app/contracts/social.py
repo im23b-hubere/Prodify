@@ -195,6 +195,31 @@ class DuelRecordPublic(BaseModel):
     ties: int = 0
 
 
+SessionCreditSkipReason = Literal[
+    "not_started",
+    "too_short",
+    "before_start",
+    "after_end",
+    "already_finished",
+    "session_deleted",
+]
+
+
+class SessionChallengeCreditPublic(BaseModel):
+    """How one session affected one of the user's challenges."""
+
+    challenge_id: int
+    challenge_kind: str
+    title: str
+    status: str
+    credited: bool
+    reason: SessionCreditSkipReason | None = None
+    progress_sessions: int
+    target_sessions: int
+    winner_user_id: int | None = None
+    is_tie: bool = False
+
+
 class CommitmentBody(BaseModel):
     target_sessions: int = Field(ge=1, le=50)
     visibility: Literal["friends", "buddy"] = "friends"

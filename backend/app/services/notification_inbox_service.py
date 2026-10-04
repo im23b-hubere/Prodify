@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
-from sqlalchemy import and_, desc, select
+from sqlalchemy import and_, desc, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -12,6 +12,7 @@ from app.models import (
     NotificationReadState,
     ProductionSession,
     SocialChallenge,
+    SocialChallengeMember,
     SocialComment,
     Streak,
     User,
@@ -20,7 +21,10 @@ from app.models import (
 )
 from app.contracts.notifications import NotificationInboxItemPublic
 from app.services.friend_graph import friend_user_ids
+from app.services.social_challenge_messages import challenge_messages
 from app.services.social_challenge_service import invite_expires_at, invite_is_expired, load_challenge_meta
+
+CHALLENGE_OUTCOME_NEWS_WINDOW = timedelta(days=3)
 
 
 def build_notification_inbox(
@@ -36,6 +40,7 @@ def build_notification_inbox(
         *_friend_request_items(db, user_id),
         *_duel_invite_items(db, user_id),
         *_duel_accepted_items(db, user_id),
+        *_challenge_outcome_items(db, user_id, now),
         *_comment_items(db, user_id),
         *_achievement_items(db, user_id),
         *_streak_risk_items(db, user_id, now),
@@ -180,6 +185,48 @@ def _duel_accepted_items(db: Session, user_id: int) -> Iterable[NotificationInbo
             action_label="Open friends",
             action_route="/(tabs)/friends",
         )
+
+
+def _challenge_outcome_items(
+    db: Session,
+    user_id: int,
+    now: datetime,
+) -> Iterable[NotificationInboxItemPublic]:
+    """Results and cancellations, for as long as they are news (same copy as the push)."""
+    member_challenge_ids = select(SocialChallengeMember.challenge_id).where(SocialChallengeMember.user_id == user_id)
+    related_owner_ids = [user_id, *friend_user_ids(db, user_id)]
+    challenges = db.scalars(
+        select(SocialChallenge)
+        .where(
+            SocialChallenge.status.in_(("completed", "cancelled")),
+            or_(
+                SocialChallenge.id.in_(member_challenge_ids),
+                and_(SocialChallenge.challenge_kind == "duel", SocialChallenge.owner_id.in_(related_owner_ids)),
+            ),
+        )
+        .order_by(desc(SocialChallenge.created_at))
+        .limit(25)
+    ).all()
+    for challenge in challenges:
+        for recipient_id, message in challenge_messages(db, challenge.id):
+            if recipient_id != user_id or message.happened_at is None:
+                continue
+            if now - message.happened_at > CHALLENGE_OUTCOME_NEWS_WINDOW:
+                continue
+            yield NotificationInboxItemPublic(
+                id=f"challenge-{challenge.status}-{challenge.id}",
+                category="social",
+                priority="high" if challenge.status == "completed" else "normal",
+                title=message.title,
+                body=message.body,
+                title_key=message.title_key,
+                body_key=message.body_key,
+                body_params=message.body_params,
+                created_at=message.happened_at,
+                expires_at=message.happened_at + CHALLENGE_OUTCOME_NEWS_WINDOW,
+                action_label="Open challenge" if challenge.status == "completed" else "Open friends",
+                action_route=message.route,
+            )
 
 
 def _comment_items(db: Session, user_id: int) -> Iterable[NotificationInboxItemPublic]:

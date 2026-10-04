@@ -43,6 +43,7 @@ function controller(overrides: Partial<ChallengeDetailController> = {}): Challen
     totalSessions: 6,
     outcomeLine: null,
     editOpen: false,
+    termsLocked: false,
     closeEdit: jest.fn(),
     openEdit: jest.fn(),
     editTitle: "Finish tracks",
@@ -95,5 +96,14 @@ describe("Challenge detail views", () => {
     expect(detail.setEditTitle).toHaveBeenCalledWith("New title");
     expect(detail.submitEdit).toHaveBeenCalledTimes(1);
     expect(detail.closeEdit).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers only the title for a duel whose terms are locked", () => {
+    render(<ChallengeEditModal detail={controller({ editOpen: true, termsLocked: true })} />);
+
+    expect(screen.getByText("friendsScreen.editDuelTermsLockedHint")).toBeTruthy();
+    expect(screen.getByPlaceholderText("friendsScreen.challengeTitlePlaceholder")).toBeTruthy();
+    expect(screen.queryByPlaceholderText("friendsScreen.challengeTargetPlaceholder")).toBeNull();
+    expect(screen.queryByPlaceholderText("friendsScreen.challengeDurationPlaceholder")).toBeNull();
   });
 });

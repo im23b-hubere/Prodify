@@ -30,6 +30,11 @@ export function buildFeedMetrics(activity: FriendActivityDto[]): FeedMetrics {
   );
 }
 
+function applyIfLoaded<T>(value: T | undefined, setter: (next: T) => void) {
+  if (value !== undefined) setter(value);
+}
+
+/** Optional parts that failed to load arrive as `undefined` and keep what the screen already shows. */
 export function applyFriendsDashboardSnapshot(
   state: FriendsDashboardWriter,
   snapshot: FriendsDashboardSnapshot,
@@ -37,11 +42,11 @@ export function applyFriendsDashboardSnapshot(
   state.setLeaderboard(snapshot.leaderboard);
   state.setActivity(snapshot.activity);
   state.setIncoming(snapshot.incoming);
-  state.setBuddy(snapshot.buddy);
-  state.setCheckin(snapshot.checkin);
-  state.setChallenges(snapshot.challenges);
-  state.setDuelRecords(snapshot.duelRecords);
-  state.setCommitment(snapshot.commitment);
-  state.setRecap(snapshot.recap);
+  applyIfLoaded(snapshot.buddy, state.setBuddy);
+  applyIfLoaded(snapshot.checkin, state.setCheckin);
+  applyIfLoaded(snapshot.challenges, state.setChallenges);
+  applyIfLoaded(snapshot.duelRecords, state.setDuelRecords);
+  applyIfLoaded(snapshot.commitment, state.setCommitment);
+  applyIfLoaded(snapshot.recap, state.setRecap);
   state.setFeedMetricsBySession(buildFeedMetrics(snapshot.activity));
 }

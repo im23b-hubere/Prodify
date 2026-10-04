@@ -9,6 +9,7 @@ import { challengeFriendOptions } from "../../challengeCreate/challengeFriends";
 import { DuelArenaCard } from "../../challenges/board/components/DuelArenaCard";
 import { DuelBoardEmpty } from "../../challenges/board/components/DuelBoardEmpty";
 import {
+  FriendChallengeRow,
   HistoryDuelRow,
   LiveDuelRow,
   WaitingDuelRow,
@@ -125,6 +126,19 @@ export function FriendsChallengesBody({ props }: { props: FriendsTogetherProps }
               now={now}
               busy={props.busyActionKey === `withdraw_challenge_${challenge.id}`}
               onWithdraw={props.onWithdrawChallengeInvite}
+            />
+          ))}
+        </ListSection>
+      ) : null}
+      {board.fromFriends.length > 0 ? (
+        <ListSection title={t("duelBoard.sectionFromFriends")} count={board.fromFriends.length}>
+          {board.fromFriends.map((challenge, index) => (
+            <FriendChallengeRow
+              key={challenge.id}
+              t={t}
+              challenge={challenge}
+              divided={index > 0}
+              onOpen={props.onOpenChallenge}
             />
           ))}
         </ListSection>

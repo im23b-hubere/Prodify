@@ -24,6 +24,7 @@ class SessionCompletion:
     session: ProductionSession
     previous_streak: int
     current_streak: int
+    finished_challenge_ids: list[int]
 
 
 class ActiveSessionExistsError(Exception):
@@ -131,7 +132,7 @@ def complete_session(
     grant_achievements_after_completed_session(db, user_id, session, streak)
     _, previous_streak, streak_snapshot = reconcile_streak_row_for_user(db, user_id)
     current_streak = streak_snapshot.current_streak
-    sync_challenge_progress_on_session_complete(
+    finished_challenge_ids = sync_challenge_progress_on_session_complete(
         db,
         user_id=user_id,
         session_id=session.id,
@@ -140,7 +141,7 @@ def complete_session(
     )
     db.commit()
     db.refresh(session)
-    return SessionCompletion(session, previous_streak, current_streak)
+    return SessionCompletion(session, previous_streak, current_streak, finished_challenge_ids)
 
 
 def pause_active_session(db: Session, session: ProductionSession) -> ProductionSession:

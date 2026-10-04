@@ -8,7 +8,13 @@ import { PressableScale } from "../../../../components/ui/PressableScale";
 import type { SocialChallengeDto, SocialChallengeMemberDto } from "../../../../types/friends";
 import { profilePictureUrl } from "../../../profile/friendProfilePresentation";
 import { duelParticipants } from "../../duelParticipants";
-import { duelDaysLeft, duelOutcome, duelStanding, inviteHoursLeft } from "../duelBoard";
+import {
+  type DuelOutcome,
+  duelDaysLeft,
+  duelOutcome,
+  duelStanding,
+  inviteHoursLeft,
+} from "../duelBoard";
 import { duelBoardStyles as styles } from "../duelBoard.styles";
 
 const ROW_AVATAR_SIZE = 44;
@@ -69,12 +75,7 @@ export const HistoryDuelRow = memo(function HistoryDuelRow({
 }) {
   const { you, opponent } = duelParticipants(challenge, currentUserId);
   const outcome = duelOutcome(challenge, currentUserId);
-  const badge =
-    outcome.kind === "won"
-      ? { label: t("duelBoard.outcomeWon"), accent: true }
-      : outcome.kind === "tie"
-        ? { label: t("duelBoard.outcomeTie"), accent: false }
-        : { label: t("duelBoard.outcomeLost"), accent: false };
+  const badge = { label: t(OUTCOME_LABEL_KEYS[outcomeLabel(outcome)]), accent: outcome.kind === "won" };
   const score = { you: you?.progress_sessions ?? 0, opponent: opponent?.progress_sessions ?? 0 };
   if (!onRematch) {
     return (
@@ -82,7 +83,11 @@ export const HistoryDuelRow = memo(function HistoryDuelRow({
         t={t}
         opponent={opponent}
         title={challenge.title}
-        meta={t("duelBoard.finalScore", score)}
+        meta={
+          outcome.kind === "cancelled"
+            ? t("duelBoard.calledOffMeta")
+            : t("duelBoard.finalScore", score)
+        }
         divided={divided}
         onPress={() => onOpen(challenge.id)}
         testID={`duel-history-${challenge.id}`}
@@ -118,6 +123,50 @@ export const HistoryDuelRow = memo(function HistoryDuelRow({
           <Text style={styles.rematchPillText}>{t("duelBoard.rematch")}</Text>
         </PressableScale>
       }
+    />
+  );
+});
+
+const OUTCOME_LABEL_KEYS = {
+  won: "duelBoard.outcomeWon",
+  lost: "duelBoard.outcomeLost",
+  tie: "duelBoard.outcomeTie",
+  declined: "duelBoard.outcomeDeclined",
+  invite_expired: "duelBoard.outcomeExpired",
+  withdrawn: "duelBoard.outcomeWithdrawn",
+  member_left: "duelBoard.outcomeLeft",
+  cancelled: "duelBoard.outcomeEnded",
+} as const;
+
+type OutcomeLabel = keyof typeof OUTCOME_LABEL_KEYS;
+
+function outcomeLabel(outcome: DuelOutcome): OutcomeLabel {
+  if (outcome.kind !== "cancelled") return outcome.kind;
+  return outcome.reason in OUTCOME_LABEL_KEYS ? (outcome.reason as OutcomeLabel) : "cancelled";
+}
+
+/** A friend's running group challenge; opening it leads to the join button. */
+export const FriendChallengeRow = memo(function FriendChallengeRow({
+  t,
+  challenge,
+  divided,
+  onOpen,
+}: Omit<RowProps, "currentUserId"> & { onOpen: (challengeId: number) => void }) {
+  const owner = challenge.members.find((member) => member.user_id === challenge.owner_id) ?? null;
+  return (
+    <BoardRow
+      t={t}
+      opponent={owner}
+      title={challenge.title}
+      meta={t("duelBoard.fromFriendsMeta", {
+        owner: owner?.username ?? t("friendsScreen.challengeSomeone"),
+        count: challenge.members.length,
+        days: t("duelBoard.daysLeft", { count: duelDaysLeft(challenge) }),
+      })}
+      divided={divided}
+      onPress={() => onOpen(challenge.id)}
+      testID={`friend-challenge-${challenge.id}`}
+      accessory={<Pill label={t("duelBoard.join")} accent={false} />}
     />
   );
 });

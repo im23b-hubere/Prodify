@@ -66,9 +66,10 @@ describe("useChallengeDetail", () => {
     expect(result.current.totalSessions).toBe(6);
   });
 
-  it("normalizes and saves an edited draft", async () => {
-    const updated = { ...challenge, title: "New title" };
-    mockUpdateChallenge.mockResolvedValue(updated);
+  it("normalizes and saves an edited group challenge draft", async () => {
+    const teamChallenge = { ...challenge, challenge_kind: "team" };
+    mockFetchChallenge.mockResolvedValue(teamChallenge);
+    mockUpdateChallenge.mockResolvedValue({ ...teamChallenge, title: "New title" });
     const { result } = renderHook(() => useChallengeDetail("token", 9, 1));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -87,6 +88,21 @@ describe("useChallengeDetail", () => {
     });
     expect(result.current.challenge?.title).toBe("New title");
     expect(result.current.editOpen).toBe(false);
+  });
+
+  it("sends only the title when editing a duel", async () => {
+    const { result } = renderHook(() => useChallengeDetail("token", 9, 1));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.openEdit();
+      result.current.setEditTitle("Rematch");
+      result.current.setEditTarget("9");
+    });
+    await act(async () => result.current.submitEdit());
+
+    expect(result.current.termsLocked).toBe(true);
+    expect(mockUpdateChallenge).toHaveBeenCalledWith("token", 9, { title: "Rematch" });
   });
 
   it("runs a destructive cancel only after confirmation", async () => {

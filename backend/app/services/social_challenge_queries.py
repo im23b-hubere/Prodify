@@ -8,9 +8,11 @@ from app.models import SocialChallenge, SocialChallengeMember, User
 from app.contracts.social import SocialChallengeMemberPublic, SocialChallengePublic
 from app.services.friend_graph import friend_user_ids
 from app.services.social_challenge_service import (
+    challenge_cancelled_recently,
     challenge_completed_recently,
     challenge_duration_days,
     challenge_public_extras,
+    invitee_user_id,
     load_challenge_meta,
 )
 
@@ -67,17 +69,19 @@ def challenge_members(db: Session, challenge_id: int) -> list[SocialChallengeMem
     )
 
 
+def viewer_can_see_challenge(db: Session, challenge: SocialChallenge, current_user_id: int) -> bool:
+    return bool(visible_challenges(db, [challenge], current_user_id))
+
+
 def visible_challenges(
     db: Session,
     challenges: list[SocialChallenge],
     current_user_id: int,
 ) -> list[SocialChallenge]:
+    if not challenges:
+        return []
     accepted_friend_ids = set(friend_user_ids(db, current_user_id))
-    member_challenge_ids = set(
-        db.scalars(
-            select(SocialChallengeMember.challenge_id).where(SocialChallengeMember.user_id == current_user_id)
-        ).all()
-    )
+    member_challenge_ids = participating_challenge_ids(db, current_user_id)
     return [
         challenge
         for challenge in challenges
@@ -99,15 +103,24 @@ def _viewer_can_see_challenge(
 ) -> bool:
     if challenge.owner_id == current_user_id or challenge.id in member_challenge_ids:
         return True
-    if challenge.status == "pending":
-        invitee_id = load_challenge_meta(challenge).get("invitee_user_id")
-        return invitee_id == current_user_id
+    if challenge.challenge_kind == "duel" or challenge.status == "pending":
+        return invitee_user_id(load_challenge_meta(challenge)) == current_user_id
     return challenge.owner_id in accepted_friend_ids
 
 
-def should_list_challenge(challenge: SocialChallenge) -> bool:
-    return challenge.status in {"active", "pending"} or (
-        challenge.status == "completed" and challenge_completed_recently(load_challenge_meta(challenge))
+def should_list_challenge(challenge: SocialChallenge, *, viewer_participates: bool) -> bool:
+    """Cancellations are news for participants only; an invitee already knows they declined."""
+    if challenge.status in {"active", "pending"}:
+        return True
+    meta = load_challenge_meta(challenge)
+    if challenge.status == "completed":
+        return challenge_completed_recently(meta)
+    return viewer_participates and challenge.status == "cancelled" and challenge_cancelled_recently(meta)
+
+
+def participating_challenge_ids(db: Session, user_id: int) -> set[int]:
+    return set(
+        db.scalars(select(SocialChallengeMember.challenge_id).where(SocialChallengeMember.user_id == user_id)).all()
     )
 
 
