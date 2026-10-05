@@ -178,6 +178,48 @@ describe("Stats Screen", () => {
     expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
   });
 
+  it("opens a tree branch from the period Woran row", async () => {
+    const previous = apiJson.getMockImplementation()!;
+    apiJson.mockImplementation((path: string) => {
+      if (path.includes("/sessions/stats")) {
+        return Promise.resolve({
+          period: "week",
+          summary: {
+            total_seconds: 5400,
+            total_sessions: 2,
+            avg_session_seconds: 2700,
+            current_streak_days: 1,
+            best_streak_days: 1,
+            hours_delta_vs_prior_period: null,
+          },
+          trend: [],
+          breakdown: [],
+          branch_seconds: [
+            { branch: "mixing", seconds: 3600 },
+            { branch: "beat_making", seconds: 1800 },
+          ],
+          recent_sessions: [],
+          productivity_hint: null,
+        });
+      }
+      return previous(path);
+    });
+    const { findByTestId, findByText } = render(<StatsScreen />);
+
+    expect(await findByText("sessionTypes.mixing")).toBeTruthy();
+    expect(await findByText("1h")).toBeTruthy();
+    fireEvent.press(await findByTestId("stats-woran-mixing"));
+
+    expect(mockPush).toHaveBeenCalledWith("/skill-tree?branch=mixing");
+  });
+
+  it("shows an empty Woran row when the period has no branch hours", async () => {
+    const { findByTestId, findByText } = render(<StatsScreen />);
+
+    expect(await findByTestId("stats-woran")).toBeTruthy();
+    expect(await findByText("stats.woranEmptyTitle")).toBeTruthy();
+  });
+
   it("opens the full skill tree from its stats card", async () => {
     const statsResponses = apiJson.getMockImplementation()!;
     apiJson.mockImplementation((path: string) =>

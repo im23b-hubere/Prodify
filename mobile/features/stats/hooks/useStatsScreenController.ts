@@ -34,6 +34,13 @@ export function useStatsScreenController() {
     onFocusHandled: () => router.setParams({ focus: undefined } as never),
   });
 
+  const openWoranBranch = useCallback(
+    (branch: string) => {
+      router.push(`/skill-tree?branch=${branch}`);
+    },
+    [router],
+  );
+
   const selectFilter = useCallback((index: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     setFilterIdx(index);
@@ -59,6 +66,7 @@ export function useStatsScreenController() {
     selectFilter,
     refresh,
     startSession: () => router.push("/session/setup"),
+    openWoranBranch,
   };
 }
 

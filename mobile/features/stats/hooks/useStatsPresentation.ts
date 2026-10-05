@@ -8,6 +8,7 @@ import { STATS_BREAKDOWN_COLORS } from "../constants";
 import type { PersonalRecord, StatsFilter, StatsPeriod } from "../types";
 import { buildChartData, buildStatsSummary } from "../utils/chartData";
 import { decorateRecords } from "../utils/records";
+import { buildWoranRows } from "../utils/woran";
 
 export function useStatsFilters(t: TFunction, filterIndex: number) {
   const filters = useMemo<readonly StatsFilter[]>(
@@ -40,6 +41,7 @@ export function useStatsPresentation(
       })),
     [stats, t],
   );
+  const woranRows = useMemo(() => buildWoranRows(stats?.branch_seconds, t), [stats, t]);
   const decoratedRecords = useMemo(() => decorateRecords(records), [records]);
   const productivityHintText = useMemo(() => {
     if (stats?.productivity_hint_item) {
@@ -52,6 +54,7 @@ export function useStatsPresentation(
     summary,
     chartData,
     breakdownData,
+    woranRows,
     decoratedRecords,
     productivityHintText,
     recentSessions: stats?.recent_sessions ?? [],

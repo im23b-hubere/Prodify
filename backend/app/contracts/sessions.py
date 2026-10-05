@@ -229,6 +229,11 @@ class SessionStatsTypeBreakdownItem(BaseModel):
     percent: float
 
 
+class SessionStatsBranchItem(BaseModel):
+    branch: str
+    seconds: int
+
+
 class InsightItemPublic(BaseModel):
     """Stable key and parameters for client-side localization."""
 
@@ -241,6 +246,7 @@ class SessionStatsPublic(BaseModel):
     summary: SessionStatsSummary
     trend: list[SessionStatsTrendPoint]
     breakdown: list[SessionStatsTypeBreakdownItem]
+    branch_seconds: list[SessionStatsBranchItem] = Field(default_factory=list)
     recent_sessions: list[SessionPublic] = Field(default_factory=list)
     productivity_hint: str | None = None
     productivity_hint_item: InsightItemPublic | None = None

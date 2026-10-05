@@ -24,6 +24,20 @@ function finiteNonNeg(n: unknown, fallback = 0): number {
   return v;
 }
 
+function parseBranchSeconds(raw: unknown): { branch: string; seconds: number }[] {
+  if (!Array.isArray(raw)) return [];
+  const rows: { branch: string; seconds: number }[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const branch = typeof row.branch === "string" ? row.branch.trim() : "";
+    const seconds = Math.floor(finiteNonNeg(row.seconds, 0));
+    if (!branch || seconds <= 0) continue;
+    rows.push({ branch, seconds });
+  }
+  return rows;
+}
+
 function finiteNumber(n: unknown, fallback = 0): number {
   const v = typeof n === "number" ? n : typeof n === "string" ? Number(n) : NaN;
   return Number.isFinite(v) ? v : fallback;
@@ -92,6 +106,7 @@ export function tryParseSessionStatsDto(value: unknown): SessionStatsDto | null 
     }
   }
 
+  const branch_seconds = parseBranchSeconds(v.branch_seconds);
   const recent_sessions = parseSessionList(v.recent_sessions);
 
   const productivity_hint =
@@ -115,6 +130,7 @@ export function tryParseSessionStatsDto(value: unknown): SessionStatsDto | null 
     summary,
     trend,
     breakdown,
+    branch_seconds,
     recent_sessions,
     productivity_hint,
     productivity_hint_item,

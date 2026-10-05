@@ -49,6 +49,7 @@ export type SessionStatsDto = {
     sessions: number;
     percent: number;
   }[];
+  branch_seconds?: { branch: string; seconds: number }[];
   recent_sessions: SessionDto[];
   productivity_hint: string | null;
   productivity_hint_item?: {

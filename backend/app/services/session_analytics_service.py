@@ -8,6 +8,7 @@ from app.achievementsutil import session_focus_metrics
 from app.contracts.sessions import (
     InsightItemPublic,
     SessionPublic,
+    SessionStatsBranchItem,
     SessionStatsPublic,
     SessionStatsSummary,
     SessionStatsTrendPoint,
@@ -16,6 +17,8 @@ from app.contracts.sessions import (
 from app.contracts.insights import RelatedSessionPublic, SessionDetailInsightsPublic, SessionTimelineSegmentPublic
 from app.models import ProductionSession, Streak, UserGoal, utcnow
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
+from app.skill_catalog import SKILL_BRANCHES
+from app.services.skill_profile_service import branch_seconds_for_session
 from app.services.stats_period import StatsPeriod
 from app.services.streak_calendar import StreakCalendar, load_calendar, session_day_keys
 
@@ -41,6 +44,7 @@ def build_session_stats(db: Session, user_id: int, requested_period: str) -> Ses
         ),
         trend=session_trend(sessions, calendar, period),
         breakdown=_type_breakdown(sessions),
+        branch_seconds=session_branch_breakdown(sessions),
         recent_sessions=[SessionPublic.model_validate(row) for row in reversed(sessions[-10:])],
         productivity_hint=None,
         productivity_hint_item=productivity_hint(sessions, calendar),
@@ -128,6 +132,28 @@ def _type_breakdown(sessions: list[ProductionSession]) -> list[SessionStatsTypeB
         for session_type, count in counts.items()
     ]
     return sorted(items, key=lambda item: item.sessions, reverse=True)
+
+
+def session_branch_breakdown(sessions: list[ProductionSession]) -> list[SessionStatsBranchItem]:
+    """Period hours per skill-tree branch, using the same split as the tree."""
+    totals: dict[str, int] = {}
+    catalog_rank = {branch: index for index, branch in enumerate(SKILL_BRANCHES)}
+    for session in sessions:
+        for branch, seconds in branch_seconds_for_session(
+            session.session_type,
+            session.duration_seconds or 0,
+            session.skill_focus_ids,
+            session.weight_by_area,
+        ).items():
+            if seconds > 0:
+                totals[branch] = totals.get(branch, 0) + seconds
+    return [
+        SessionStatsBranchItem(branch=branch, seconds=seconds)
+        for branch, seconds in sorted(
+            totals.items(),
+            key=lambda item: (-item[1], catalog_rank.get(item[0], len(catalog_rank))),
+        )
+    ]
 
 
 def productivity_hint(
