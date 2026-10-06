@@ -63,6 +63,7 @@ function LiquidGlassTabs() {
   return (
     <ThemeProvider value={NATIVE_TABS_THEME}>
       <NativeTabs
+        backgroundColor={colors.background}
         tintColor={colors.textPrimary}
         iconColor={{ default: colors.textSecondary, selected: colors.textPrimary }}
         labelStyle={{ fontFamily: "DMSans_500Medium", fontSize: 11 }}
@@ -85,6 +86,8 @@ function ClassicTabs() {
   const { t } = useTranslation();
   return (
     <Tabs
+      // Android system-back must not jump Stats/Friends to Dashboard. Tab taps stay the same.
+      backBehavior="none"
       detachInactiveScreens={false}
       screenOptions={{
         lazy: true,

@@ -26,6 +26,7 @@ import { AuthProvider } from "../context/AuthContext";
 import { colors, spacing } from "../constants/theme";
 import { ChallengeSyncBridge } from "../features/challenges/sync/ChallengeSyncBridge";
 import { DuelClashHost } from "../features/duelClash/components/DuelClashHost";
+import { appRootFillStyle, rootStackScreenOptions } from "../features/navigation/rootStackChrome";
 import { initSentry } from "../lib/sentry";
 import { configureNotificationHandler } from "../lib/streakNotifications";
 
@@ -55,7 +56,7 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={appRootFillStyle}>
       <SafeAreaProvider>
         <AuthProvider>
           <CrashBoundary scope="root">
@@ -70,61 +71,35 @@ export default function RootLayout() {
                 contentStyle: { backgroundColor: colors.background },
               }}
             >
-              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="index" options={rootStackScreenOptions("index")} />
+              <Stack.Screen name="(tabs)" options={rootStackScreenOptions("(tabs)")} />
               <Stack.Screen
                 name="progression-overview"
-                options={{
-                  animation: "slide_from_right",
-                  animationTypeForReplace: "pop",
-                  gestureEnabled: true,
-                  gestureDirection: "horizontal",
-                }}
+                options={rootStackScreenOptions("progression-overview")}
               />
+              <Stack.Screen name="skill-tree" options={rootStackScreenOptions("skill-tree")} />
+              <Stack.Screen name="paywall" options={rootStackScreenOptions("paywall")} />
               <Stack.Screen
-                name="skill-tree"
-                options={{
-                  animation: "slide_from_right",
-                  animationTypeForReplace: "pop",
-                  gestureEnabled: false,
-                }}
+                name="notifications"
+                options={rootStackScreenOptions("notifications")}
               />
-              <Stack.Screen name="paywall" options={{ animationTypeForReplace: "pop" }} />
-              <Stack.Screen name="notifications" options={{ animationTypeForReplace: "pop" }} />
+              <Stack.Screen name="settings" options={rootStackScreenOptions("settings")} />
               <Stack.Screen
-                name="settings"
-                options={{
-                  animation: "slide_from_right",
-                  gestureEnabled: true,
-                  gestureDirection: "horizontal",
-                }}
+                name="weekly-recap"
+                options={rootStackScreenOptions("weekly-recap")}
               />
-              <Stack.Screen name="weekly-recap" options={{ animationTypeForReplace: "pop" }} />
-              <Stack.Screen name="legal" options={{ animationTypeForReplace: "pop" }} />
+              <Stack.Screen name="legal" options={rootStackScreenOptions("legal")} />
               <Stack.Screen
                 name="challenge/new"
-                options={{
-                  // The standard iOS page sheet: a custom-height form sheet shifted its content
-                  // under the title on a small upward swipe. Pull down to close.
-                  presentation: "modal",
-                  contentStyle: { backgroundColor: colors.background },
-                }}
+                options={rootStackScreenOptions("challenge/new")}
               />
               <Stack.Screen
                 name="challenge/[id]"
-                options={{
-                  animation: "slide_from_right",
-                  gestureEnabled: true,
-                  gestureDirection: "horizontal",
-                }}
+                options={rootStackScreenOptions("challenge/[id]")}
               />
               <Stack.Screen
                 name="session-active"
-                options={{
-                  presentation: "fullScreenModal",
-                  animation: "slide_from_bottom",
-                  gestureDirection: "vertical",
-                  gestureEnabled: true,
-                }}
+                options={rootStackScreenOptions("session-active")}
               />
             </Stack>
             <DuelClashHost />
