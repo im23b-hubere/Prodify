@@ -210,6 +210,14 @@ describe("Stats Screen", () => {
     expect(order).toEqual([...STATS_STORY_ORDER]);
   });
 
+  it("fits thirty days of studio activity on one screen", async () => {
+    const { findByText, findByTestId, toJSON } = render(<StatsScreen />);
+    fireEvent.press(await findByText("stats.filter30d"));
+    expect(await findByTestId("stats-chart-fit")).toBeTruthy();
+    const cols = collectTestIds(toJSON()).filter((id) => id.startsWith("stats-chart-col-"));
+    expect(cols).toHaveLength(30);
+  });
+
   it("keeps hours over time and hides type mix and the studio read", async () => {
     const previous = apiJson.getMockImplementation()!;
     apiJson.mockImplementation((path: string) => {
@@ -286,7 +294,47 @@ describe("Stats Screen", () => {
     expect(await findByText("stats.woranEmptyTitle")).toBeTruthy();
   });
 
-  it("marks a hours-day best on the chart and names it under the bars", async () => {
+  it("shows the period average in the studio chart header", async () => {
+    const { findByTestId, findByText } = render(<StatsScreen />);
+
+    expect(await findByText("stats.chartAverage")).toBeTruthy();
+    expect(await findByTestId("stats-chart-average")).toBeTruthy();
+    expect(await findByTestId("stats-chart-range")).toBeTruthy();
+    expect(await findByTestId("stats-chart-grid")).toBeTruthy();
+  });
+
+  it("puts a tapped day's hours in the chart header", async () => {
+    const today = localStatsDateKey(new Date());
+    const previous = apiJson.getMockImplementation()!;
+    apiJson.mockImplementation((path: string) => {
+      if (path.includes("/sessions/stats")) {
+        return Promise.resolve({
+          period: "week",
+          summary: {
+            total_seconds: 7200,
+            total_sessions: 1,
+            avg_session_seconds: 7200,
+            current_streak_days: 1,
+            best_streak_days: 1,
+            hours_delta_vs_prior_period: null,
+          },
+          trend: [{ label: today, sessions: 1, seconds: 7200 }],
+          breakdown: [],
+          recent_sessions: [],
+          productivity_hint: null,
+        });
+      }
+      return previous(path);
+    });
+    const { findByTestId, findByText } = render(<StatsScreen />);
+
+    fireEvent.press(await findByTestId(`stats-chart-col-${today}`));
+
+    expect(await findByText("stats.chartHours")).toBeTruthy();
+    expect((await findByTestId("stats-chart-average")).props.children).toBe("2h");
+  });
+
+  it("marks a hours-day best on the chart and names it after a tap", async () => {
     const today = localStatsDateKey(new Date());
     const previous = apiJson.getMockImplementation()!;
     apiJson.mockImplementation((path: string) => {
@@ -322,9 +370,13 @@ describe("Stats Screen", () => {
       }
       return previous(path);
     });
-    const { findByTestId, findByText } = render(<StatsScreen />);
+    const { findByTestId, findByText, queryByTestId } = render(<StatsScreen />);
 
     expect(await findByTestId(`stats-chart-record-${today}`)).toBeTruthy();
+    expect(queryByTestId("stats-chart-record-caption")).toBeNull();
+
+    fireEvent.press(await findByTestId(`stats-chart-col-${today}`));
+
     expect(await findByTestId("stats-chart-record-caption")).toBeTruthy();
     expect(await findByText("stats.recordMostHoursDay · 2h 0m")).toBeTruthy();
   });

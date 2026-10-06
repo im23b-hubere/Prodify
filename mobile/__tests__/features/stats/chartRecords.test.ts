@@ -75,6 +75,15 @@ describe("chartRecordMarks", () => {
     ).toEqual([]);
   });
 
+  it("folds a day best into that month when lifetime is monthly", () => {
+    const marks = chartRecordMarks(
+      [bar("2026-01"), bar("2026-02")],
+      [record({ key: "longest_session", occurred_at: "2026-01-18" })],
+      "all",
+    );
+    expect(marks.map((mark) => mark.barLabel)).toEqual(["2026-01"]);
+  });
+
   it("folds a day best into that week's Monday on the lifetime chart", () => {
     const marks = chartRecordMarks(
       [bar("2026-01-05"), bar("2026-01-12")],

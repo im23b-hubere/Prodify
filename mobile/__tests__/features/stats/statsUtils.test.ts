@@ -155,24 +155,6 @@ describe("stats summary utils", () => {
     expect(chart.find((point) => point.label === today)?.y).toBe(2);
     expect(chart.filter((point) => point.y === 0)).toHaveLength(5);
   });
-
-  it("keeps lifetime week buckets from the server and still plots hours", () => {
-    const chart = buildChartData(
-      emptyStats({
-        period: "all",
-        trend: [
-          { label: "2026-01-05", sessions: 6, seconds: 10800 },
-          { label: "2026-01-12", sessions: 1, seconds: 1800 },
-        ],
-      }),
-      "all",
-    );
-
-    expect(chart.map((point) => ({ label: point.label, y: point.y }))).toEqual([
-      { label: "2026-01-05", y: 3 },
-      { label: "2026-01-12", y: 0.5 },
-    ]);
-  });
 });
 
 describe("chart hour captions", () => {

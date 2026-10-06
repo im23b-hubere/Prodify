@@ -1,4 +1,4 @@
-export const STATS_BAR_CHART_HEIGHT = 132;
+export const STATS_BAR_CHART_HEIGHT = 156;
 export const STATS_SESSION_LOG_PREVIEW = 2;
 export const STATS_RECORDS_PREVIEW = 2;
 export const STATS_RECORD_FRESH_MS = 14 * 24 * 60 * 60 * 1000;

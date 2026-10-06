@@ -5,6 +5,12 @@ export function localStatsDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+export function localMonthKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
 export function hoursFromSeconds(seconds: number): number {
   if (!Number.isFinite(seconds) || seconds <= 0) return 0;
   return Math.round((seconds / 3600) * 10) / 10;

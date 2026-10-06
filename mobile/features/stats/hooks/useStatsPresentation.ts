@@ -43,5 +43,6 @@ export function useStatsPresentation(
     woranRows,
     decoratedRecords,
     recentSessions: stats?.recent_sessions ?? [],
+    totalSeconds: stats?.summary.total_seconds ?? 0,
   };
 }

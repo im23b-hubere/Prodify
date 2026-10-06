@@ -1,5 +1,7 @@
 import { localDateKey, startOfWeekMonday } from "../../../lib/weekCalendar";
 import type { StatsPeriod } from "../types";
+import { localMonthKey } from "./format";
+import { isMonthBarLabel } from "./chartScale";
 
 export type ChartBarTone = "today" | "active" | "empty";
 
@@ -8,9 +10,16 @@ export type TodayBarGrowth = {
   toHours: number;
 };
 
-/** The bar that should feel alive after a session — today, or this week on lifetime. */
-export function liveChartLabel(period: StatsPeriod, today = new Date()): string {
-  if (period === "all") return localDateKey(startOfWeekMonday(today));
+/** The bar that should feel alive after a session — today, this week, or this month. */
+export function liveChartLabel(
+  period: StatsPeriod,
+  today = new Date(),
+  bars: { label: string }[] = [],
+): string {
+  if (period === "all") {
+    if (bars.some((bar) => isMonthBarLabel(bar.label))) return localMonthKey(today);
+    return localDateKey(startOfWeekMonday(today));
+  }
   return localDateKey(today);
 }
 

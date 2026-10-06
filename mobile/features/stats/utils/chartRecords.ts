@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 
 import { localDateKey, parseIsoDate, startOfWeekMonday } from "../../../lib/weekCalendar";
 import type { BarPoint, DecoratedRecord, StatsPeriod } from "../types";
+import { isMonthBarLabel } from "./chartScale";
 import { recordTitle } from "./records";
 
 export type ChartRecordMark = {
@@ -28,7 +29,7 @@ export function chartRecordMarks(
   const chosen = new Map<string, DecoratedRecord>();
 
   for (const record of records) {
-    const barLabel = barLabelForRecord(record, period);
+    const barLabel = barLabelForRecord(record, period, bars);
     if (!barLabel || !visible.has(barLabel)) continue;
     const current = chosen.get(barLabel);
     if (!current || markPriority(record.key) > markPriority(current.key)) {
@@ -43,11 +44,16 @@ export function chartRecordCaption(record: DecoratedRecord, t: TFunction): strin
   return `${recordTitle(record.key, record.label, t)} · ${record.value}`;
 }
 
-function barLabelForRecord(record: DecoratedRecord, period: StatsPeriod): string | null {
+function barLabelForRecord(
+  record: DecoratedRecord,
+  period: StatsPeriod,
+  bars: BarPoint[],
+): string | null {
   const dayKey = calendarDayKey(record.occurred_at);
   if (!dayKey) return null;
 
   if (period === "all") {
+    if (bars.some((bar) => isMonthBarLabel(bar.label))) return dayKey.slice(0, 7);
     if (WEEK_RECORD_KEYS.has(record.key)) return dayKey;
     if (DAY_RECORD_KEYS.has(record.key)) {
       return localDateKey(startOfWeekMonday(parseIsoDate(dayKey)));

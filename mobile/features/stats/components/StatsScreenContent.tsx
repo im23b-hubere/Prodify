@@ -21,6 +21,7 @@ export function StatsScreenContent({ controller }: { controller: StatsScreenCont
         chartData={controller.chartData}
         recordMarks={controller.recordMarks}
         period={controller.filter.period}
+        totalSeconds={controller.totalSeconds}
       />
       <StatsWoranSection
         t={t}

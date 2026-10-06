@@ -1,10 +1,8 @@
 import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef } from "react";
-import { FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   ReduceMotion,
-  useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -23,6 +21,7 @@ import {
   todayBarGrowth,
   type TodayBarGrowth,
 } from "../utils/chartBars";
+import { chartPlotMax, chartYTicks } from "../utils/chartHero";
 import { formatChartHours } from "../utils/format";
 
 type Props = {
@@ -34,15 +33,8 @@ type Props = {
   onSelectBar: (label: string) => void;
 };
 
-const WEEK_FIT_COUNT = 7;
 const GROW_SPRING = { duration: 400, dampingRatio: 1, reduceMotion: ReduceMotion.System };
-const FILL_COLORS = {
-  today: ["#ff8f66", colors.primary],
-  active: ["#ff5a1f", colors.primary],
-  empty: ["#2a2a2a", "#2a2a2a"],
-} as const;
-
-const AnimatedHourInput = Animated.createAnimatedComponent(TextInput);
+const Y_AXIS_WIDTH = 28;
 
 export function SessionsPerDayChart({
   data,
@@ -52,8 +44,10 @@ export function SessionsPerDayChart({
   recordHint,
   onSelectBar,
 }: Props) {
-  const liveLabel = liveChartLabel(period);
-  const maxY = Math.max(1, ...data.map((point) => point.y));
+  const liveLabel = liveChartLabel(period, new Date(), data);
+  const maxY = Math.max(0, ...data.map((point) => point.y));
+  const plotMax = chartPlotMax(maxY);
+  const yTicks = chartYTicks(maxY);
   const liveHours = data.find((point) => point.label === liveLabel)?.y ?? 0;
   const lastLive = useRef<{ label: string; hours: number | null }>({
     label: liveLabel,
@@ -67,107 +61,133 @@ export function SessionsPerDayChart({
 
   if (data.length === 0) return null;
 
+  const dense = data.length > 7;
   const markKeys = new Map(marks.map((mark) => [mark.barLabel, mark.record.key]));
-
-  const columns = data.map((point) => (
-    <ChartColumn
-      key={point.label}
-      point={point}
-      maxY={maxY}
-      isLive={point.label === liveLabel}
-      growth={point.label === liveLabel ? growth : null}
-      fit
-      recordKey={markKeys.get(point.label) ?? null}
-      selected={selectedBarLabel === point.label}
-      recordHint={recordHint}
-      onSelectBar={onSelectBar}
-    />
-  ));
-
-  if (data.length <= WEEK_FIT_COUNT) {
-    return <View style={styles.fitRow}>{columns}</View>;
-  }
+  const hasSelection = Boolean(selectedBarLabel);
 
   return (
-    <FlatList
-      horizontal
-      nestedScrollEnabled={Platform.OS === "android"}
-      data={data}
-      keyExtractor={(point, index) => `${point.label}-${index}`}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-      renderItem={({ item: point }) => (
-        <ChartColumn
-          point={point}
-          maxY={maxY}
-          isLive={point.label === liveLabel}
-          growth={point.label === liveLabel ? growth : null}
-          fit={false}
-          recordKey={markKeys.get(point.label) ?? null}
-          selected={selectedBarLabel === point.label}
-          recordHint={recordHint}
-          onSelectBar={onSelectBar}
-        />
-      )}
-    />
+    <View style={styles.chart}>
+      <View style={styles.plotRow}>
+        <View testID="stats-chart-fit" style={[styles.plot, dense ? styles.plotDense : null]}>
+          <View pointerEvents="none" testID="stats-chart-grid" style={StyleSheet.absoluteFill}>
+            {yTicks.map((tick) => (
+              <View
+                key={tick}
+                style={[styles.gridLine, { bottom: (tick / plotMax) * STATS_BAR_CHART_HEIGHT }]}
+              />
+            ))}
+          </View>
+          {data.map((point) => (
+            <ChartColumn
+              key={point.label}
+              point={point}
+              plotMax={plotMax}
+              isLive={point.label === liveLabel}
+              growth={point.label === liveLabel ? growth : null}
+              dense={dense}
+              recordKey={markKeys.get(point.label) ?? null}
+              selected={selectedBarLabel === point.label}
+              dimmed={hasSelection && selectedBarLabel !== point.label}
+              recordHint={recordHint}
+              onSelectBar={onSelectBar}
+            />
+          ))}
+        </View>
+        <View style={styles.yAxis}>
+          {yTicks.map((tick) => (
+            <Text
+              key={tick}
+              style={[styles.yTick, { bottom: (tick / plotMax) * STATS_BAR_CHART_HEIGHT - 6 }]}
+            >
+              {formatYTick(tick)}
+            </Text>
+          ))}
+        </View>
+      </View>
+      <View style={[styles.axisRow, dense ? styles.axisRowDense : null]}>
+        {data.map((point) => (
+          <Text
+            key={point.label}
+            style={[styles.axisLabel, dense ? styles.axisLabelDense : null]}
+            numberOfLines={1}
+          >
+            {point.x ? point.x : " "}
+          </Text>
+        ))}
+      </View>
+    </View>
   );
 }
 
 function ChartColumn({
   point,
-  maxY,
+  plotMax,
   isLive,
   growth,
-  fit,
+  dense,
   recordKey,
   selected,
+  dimmed,
   recordHint,
   onSelectBar,
 }: {
   point: BarPoint;
-  maxY: number;
+  plotMax: number;
   isLive: boolean;
   growth: TodayBarGrowth | null;
-  fit: boolean;
+  dense: boolean;
   recordKey: string | null;
   selected: boolean;
+  dimmed: boolean;
   recordHint: string;
   onSelectBar: (label: string) => void;
 }) {
   const tone = chartBarTone(isLive, point.y);
   const reduceMotion = useReducedMotion();
-  const targetScale = barFillScale(point.y, maxY);
+  const targetScale = barFillScale(point.y, plotMax);
   const startScale =
-    growth && isLive && !reduceMotion ? barFillScale(growth.fromHours, maxY) : targetScale;
+    growth && isLive && !reduceMotion ? barFillScale(growth.fromHours, plotMax) : targetScale;
   const fill = useSharedValue(startScale);
-  const shownHours = useSharedValue(
-    growth && isLive && !reduceMotion ? growth.fromHours : point.y,
-  );
 
   useEffect(() => {
     if (reduceMotion || !growth || !isLive) {
       fill.set(targetScale);
-      shownHours.set(point.y);
       return;
     }
-    fill.set(barFillScale(growth.fromHours, maxY));
-    shownHours.set(growth.fromHours);
+    fill.set(barFillScale(growth.fromHours, plotMax));
     fill.set(withSpring(targetScale, GROW_SPRING));
-    shownHours.set(withSpring(point.y, GROW_SPRING));
-  }, [fill, growth, isLive, maxY, point.y, reduceMotion, shownHours, targetScale]);
+  }, [fill, growth, isLive, plotMax, reduceMotion, targetScale]);
 
   const fillStyle = useAnimatedStyle(() => ({
-    height: fill.get() * STATS_BAR_CHART_HEIGHT,
-  }));
-  const hourProps = useAnimatedProps(() => ({
-    text: formatLiveHours(shownHours.get()),
-    defaultValue: formatLiveHours(shownHours.get()),
+    transform: [{ scaleY: fill.get() }],
   }));
 
   const hoursLabel = point.y > 0 ? formatChartHours(point.y) : "0";
-  const body = (
-    <>
-      <View style={styles.markerSlot}>
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${point.x || point.label}, ${hoursLabel}`}
+      accessibilityHint={recordKey ? recordHint : undefined}
+      testID={`stats-chart-col-${point.label}`}
+      onPress={() => {
+        Haptics.selectionAsync().catch(() => undefined);
+        onSelectBar(point.label);
+      }}
+      style={({ pressed }) => [styles.column, pressed ? styles.columnPressed : null]}
+    >
+      <View style={styles.barSlot}>
+        {tone === "empty" ? null : (
+          <Animated.View
+            style={[
+              styles.fill,
+              dense ? styles.fillDense : styles.fillFit,
+              dimmed ? styles.fillDimmed : null,
+              fillStyle,
+            ]}
+          />
+        )}
         {recordKey ? (
           <View
             testID={`stats-chart-record-${point.label}`}
@@ -175,170 +195,120 @@ function ChartColumn({
           />
         ) : null}
       </View>
-      <View style={[styles.track, tone === "today" && styles.trackToday]}>
-        {tone === "empty" ? null : (
-          <Animated.View
-            style={[styles.fillHost, fit ? styles.fillFit : styles.fillFixed, fillStyle]}
-          >
-            <LinearGradient colors={[...FILL_COLORS[tone]]} style={StyleSheet.absoluteFill} />
-          </Animated.View>
-        )}
-      </View>
-      <Text
-        style={[styles.axisLabel, tone === "today" && styles.axisLabelToday]}
-        numberOfLines={1}
-      >
-        {point.x}
-      </Text>
-      {isLive ? (
-        <AnimatedHourInput
-          editable={false}
-          pointerEvents="none"
-          underlineColorAndroid="transparent"
-          animatedProps={hourProps}
-          style={[styles.count, styles.countActive, styles.countInput]}
-        />
-      ) : point.y > 0 ? (
-        <Text style={[styles.count, styles.countActive]}>{formatChartHours(point.y)}</Text>
-      ) : (
-        <Text style={styles.count}> </Text>
-      )}
-    </>
-  );
-
-  const columnStyle = [styles.column, fit ? styles.columnFit : styles.columnFixed];
-
-  if (!recordKey) {
-    return (
-      <View style={columnStyle} testID={`stats-chart-col-${point.label}`}>
-        {body}
-      </View>
-    );
-  }
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      accessibilityLabel={`${point.x}, ${hoursLabel}`}
-      accessibilityHint={recordHint}
-      testID={`stats-chart-col-${point.label}`}
-      onPress={() => {
-        Haptics.selectionAsync().catch(() => undefined);
-        onSelectBar(point.label);
-      }}
-      style={({ pressed }) => [columnStyle, pressed ? styles.columnPressed : null]}
-    >
-      {body}
     </Pressable>
   );
 }
 
-function formatLiveHours(hours: number): string {
-  "worklet";
-  if (!Number.isFinite(hours) || hours <= 0) return "0";
-  return `${Math.round(hours * 10) / 10}h`;
+function formatYTick(hours: number): string {
+  if (hours === 0) return "0";
+  return String(hours);
 }
 
 const styles = StyleSheet.create({
-  fitRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    width: "100%",
-    gap: 4,
-    paddingTop: spacing.xs,
-    paddingBottom: 2,
+  chart: {
+    gap: 6,
   },
-  scrollContent: {
+  plotRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+  },
+  plot: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 8,
-    paddingTop: spacing.xs,
-    paddingBottom: 2,
+    height: STATS_BAR_CHART_HEIGHT,
+    gap: 5,
+  },
+  plotDense: {
+    gap: 2,
+  },
+  gridLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  yAxis: {
+    width: Y_AXIS_WIDTH,
+    marginLeft: 6,
+    height: STATS_BAR_CHART_HEIGHT,
+  },
+  yTick: {
+    position: "absolute",
+    right: 0,
+    color: colors.textSecondary,
+    fontSize: 10,
+    lineHeight: 12,
+    fontFamily: fontFamily.bodyMedium,
+    textAlign: "right",
+  },
+  axisRow: {
+    flexDirection: "row",
+    paddingRight: Y_AXIS_WIDTH + 6,
+    gap: 5,
+  },
+  axisRowDense: {
+    gap: 2,
   },
   column: {
-    alignItems: "center",
-  },
-  columnFit: {
     flex: 1,
     minWidth: 0,
-  },
-  columnFixed: {
-    width: 44,
+    height: STATS_BAR_CHART_HEIGHT,
   },
   columnPressed: {
     opacity: motion.pressOpacity,
   },
-  markerSlot: {
-    height: 10,
-    marginBottom: 4,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  marker: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.primary,
-    opacity: 0.7,
-  },
-  markerSelected: {
-    opacity: 1,
-    transform: [{ scale: 1.15 }],
-  },
-  track: {
-    height: STATS_BAR_CHART_HEIGHT,
+  barSlot: {
+    flex: 1,
     width: "100%",
     justifyContent: "flex-end",
     alignItems: "center",
-    backgroundColor: "#161616",
-    borderRadius: 8,
   },
-  trackToday: {
-    backgroundColor: "rgba(255, 61, 0, 0.12)",
-  },
-  fillHost: {
-    position: "absolute",
-    bottom: 0,
-    overflow: "hidden",
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-  },
-  fillFixed: {
-    width: 28,
+  fill: {
+    height: "100%",
+    backgroundColor: colors.primary,
+    transformOrigin: "bottom",
   },
   fillFit: {
-    width: "55%",
+    width: "58%",
     maxWidth: 22,
     minWidth: 8,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+  },
+  fillDense: {
+    width: "86%",
+    maxWidth: 14,
+    minWidth: 2,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+  },
+  fillDimmed: {
+    opacity: 0.42,
+  },
+  marker: {
+    position: "absolute",
+    top: 0,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.primary,
+    opacity: 0.85,
+  },
+  markerSelected: {
+    opacity: 1,
+    transform: [{ scale: 1.2 }],
   },
   axisLabel: {
-    marginTop: 6,
+    flex: 1,
+    minWidth: 0,
     color: colors.textSecondary,
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: fontFamily.bodyMedium,
-    maxWidth: "100%",
     textAlign: "center",
   },
-  axisLabelToday: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-  },
-  count: {
-    marginTop: 2,
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontFamily: fontFamily.bodyMedium,
-    minHeight: 16,
-  },
-  countActive: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 12,
-  },
-  countInput: {
-    padding: 0,
-    margin: 0,
-    textAlign: "center",
+  axisLabelDense: {
+    fontSize: 10,
   },
 });
