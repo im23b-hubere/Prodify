@@ -38,14 +38,4 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
-  hintCard: {
-    gap: 4,
-    paddingVertical: spacing.xs,
-  },
-  hintLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.meta,
-  },
-  hintText: { color: colors.textSecondary, ...typography.body, lineHeight: 22 },
 });

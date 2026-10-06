@@ -1,4 +1,4 @@
-import { Animated, Text, View } from "react-native";
+import { Animated } from "react-native";
 
 import { SkillTreeSection } from "../../skills/components/SkillTreeSection";
 import type { StatsScreenController } from "../hooks/useStatsScreenController";
@@ -22,18 +22,7 @@ export function StatsScreenContent({ controller }: { controller: StatsScreenCont
         rows={controller.woranRows}
         onOpenBranch={controller.openWoranBranch}
       />
-      {controller.productivityHintText ? (
-        <View style={styles.hintCard} testID="stats-ai-insight">
-          <Text style={styles.hintLabel}>{t("stats.aiInsightLabel")}</Text>
-          <Text style={styles.hintText}>{controller.productivityHintText}</Text>
-        </View>
-      ) : null}
-      <StatsTrendsSection
-        t={t}
-        chartData={controller.chartData}
-        breakdownData={controller.breakdownData}
-        period={controller.filter.period}
-      />
+      <StatsTrendsSection t={t} chartData={controller.chartData} period={controller.filter.period} />
       <StatsSessionLogSection
         t={t}
         sessions={controller.recentSessions}

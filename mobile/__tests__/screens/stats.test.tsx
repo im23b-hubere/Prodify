@@ -178,6 +178,40 @@ describe("Stats Screen", () => {
     expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
   });
 
+  it("keeps hours over time and hides type mix and the studio read", async () => {
+    const previous = apiJson.getMockImplementation()!;
+    apiJson.mockImplementation((path: string) => {
+      if (path.includes("/sessions/stats")) {
+        return Promise.resolve({
+          period: "week",
+          summary: {
+            total_seconds: 7200,
+            total_sessions: 4,
+            avg_session_seconds: 1800,
+            current_streak_days: 2,
+            best_streak_days: 5,
+            hours_delta_vs_prior_period: 1.2,
+          },
+          trend: [{ label: "2026-10-06", sessions: 2, seconds: 3600 }],
+          breakdown: [{ session_type: "mixing", sessions: 3, percent: 75 }],
+          recent_sessions: [],
+          productivity_hint: "You often start around 9pm.",
+        });
+      }
+      return previous(path);
+    });
+    const { findByTestId, queryByTestId, queryByText } = render(<StatsScreen />);
+
+    expect(await findByTestId("stats-section-trends")).toBeTruthy();
+    expect(await findByTestId("stats-woran")).toBeTruthy();
+    expect(queryByTestId("stats-ai-insight")).toBeNull();
+    expect(queryByText("stats.aiInsightLabel")).toBeNull();
+    expect(queryByText("You often start around 9pm.")).toBeNull();
+    expect(queryByText("stats.typeMixMeta")).toBeNull();
+    expect(queryByText("stats.typeMixEmptyTitle")).toBeNull();
+    expect(queryByText("sessionTypes.mixing")).toBeNull();
+  });
+
   it("opens a tree branch from the period Woran row", async () => {
     const previous = apiJson.getMockImplementation()!;
     apiJson.mockImplementation((path: string) => {

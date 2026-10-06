@@ -1,4 +1,3 @@
-export const STATS_BREAKDOWN_COLORS = ["#FF3D00", "#FF7A45", "#C94A24"];
 export const STATS_BAR_CHART_HEIGHT = 132;
 export const STATS_SESSION_LOG_PREVIEW = 2;
 export const STATS_RECORDS_PREVIEW = 2;
