@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 
 import SkillTreeRoute from "../../app/skill-tree";
 
@@ -119,6 +119,14 @@ describe("SkillTreeScreen", () => {
     expect(screen.getByTestId("skill-tree-node-mastering").props.accessibilityLabel).toBe(
       "skillTree.nodeLockedAccessibility",
     );
+  });
+
+  it("draws names and icons in screen space instead of inside the scaled world", async () => {
+    await renderMeasuredTree();
+
+    const overlay = await screen.findByTestId("skill-tree-nodes");
+    expect(within(overlay).getByTestId("skill-tree-node-mixing")).toBeTruthy();
+    expect(within(screen.getByTestId("skill-tree-world")).queryByTestId("skill-tree-node-mixing")).toBeNull();
   });
 
   it("shows level and progress of a tapped skill", async () => {

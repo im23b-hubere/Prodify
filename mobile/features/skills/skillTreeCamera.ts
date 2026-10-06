@@ -6,7 +6,7 @@ import {
   type TreePoint,
 } from "./skillTreeLayout";
 
-export const MAX_SCALE = 1.15;
+export const MAX_SCALE = 0.85;
 export const FIT_MARGIN = 0.96;
 const AREA_PADDING = 36;
 
@@ -38,6 +38,26 @@ export function projectToScreen(
   return {
     x: viewport.width / 2 + pose.x + (point.x - canvasSize / 2) * pose.scale,
     y: viewport.height / 2 + pose.y + (point.y - canvasSize / 2) * pose.scale,
+  };
+}
+
+/**
+ * Puts a node in the screen overlay: native-size glyphs, then scale around the circle
+ * centre so names and icons are not flattened with the 2312pt world layer.
+ */
+export function nodeOverlayTransform(
+  node: { x: number; y: number; size: number },
+  pose: CameraPose,
+  viewport: ViewportSize,
+  canvasSize: number,
+) {
+  "worklet";
+  const screenX = viewport.width / 2 + pose.x + (node.x - canvasSize / 2) * pose.scale;
+  const screenY = viewport.height / 2 + pose.y + (node.y - canvasSize / 2) * pose.scale;
+  return {
+    translateX: screenX - node.size / 2,
+    translateY: screenY - node.size / 2,
+    scale: pose.scale,
   };
 }
 

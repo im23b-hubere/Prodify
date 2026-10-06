@@ -74,26 +74,31 @@ export function SkillTreeCanvas({ screen }: { screen: SkillTreeScreenState }) {
         collapsable={false}
         testID="skill-tree-viewport"
       >
-        {viewport.isMeasured ? (
-          <Animated.View
-            style={[
-              styles.canvas,
-              { width: size, height: size, ...viewport.canvasOffset },
-              viewport.canvasStyle,
-            ]}
-          >
-            <SkillTreeLinks
-              layout={SKILL_TREE_LAYOUT}
-              model={model}
-              reveal={reveal}
-              pathReveal={pathReveal}
-              selectedId={selectedId}
-              highlighted={highlighted}
-            />
-            {SKILL_TREE_LAYOUT.nodes.map((node) => (
-              <TreeNode key={node.id} node={node} screen={screen} />
-            ))}
-          </Animated.View>
+        {viewport.isMeasured && viewport.viewportSize ? (
+          <>
+            <Animated.View
+              testID="skill-tree-world"
+              style={[
+                styles.canvas,
+                { width: size, height: size, ...viewport.canvasOffset },
+                viewport.canvasStyle,
+              ]}
+            >
+              <SkillTreeLinks
+                layout={SKILL_TREE_LAYOUT}
+                model={model}
+                reveal={reveal}
+                pathReveal={pathReveal}
+                selectedId={selectedId}
+                highlighted={highlighted}
+              />
+            </Animated.View>
+            <View style={styles.nodesOverlay} testID="skill-tree-nodes">
+              {SKILL_TREE_LAYOUT.nodes.map((node) => (
+                <TreeNode key={node.id} node={node} screen={screen} />
+              ))}
+            </View>
+          </>
         ) : null}
       </View>
     </GestureDetector>
@@ -103,6 +108,8 @@ export function SkillTreeCanvas({ screen }: { screen: SkillTreeScreenState }) {
 function TreeNode({ node, screen }: { node: SkillTreeNodeLayout; screen: SkillTreeScreenState }) {
   const { t } = useTranslation();
   const { model, selectedId, selectNode, viewport, highlighted } = screen;
+  const view = viewport.viewportSize;
+  if (!view) return null;
   const shared = {
     id: node.id,
     kind: node.kind,
@@ -113,6 +120,11 @@ function TreeNode({ node, screen }: { node: SkillTreeNodeLayout; screen: SkillTr
     isDimmed: highlighted !== null && !highlighted.has(node.id),
     enterDelay: enterDelayFor(node),
     scale: viewport.scale,
+    translateX: viewport.translateX,
+    translateY: viewport.translateY,
+    viewportWidth: view.width,
+    viewportHeight: view.height,
+    canvasSize: SKILL_TREE_LAYOUT.size,
     pressedNodeId: viewport.pressedNodeId,
     onActivate: selectNode as (id: string) => void,
   };

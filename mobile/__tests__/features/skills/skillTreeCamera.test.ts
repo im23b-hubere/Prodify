@@ -1,8 +1,10 @@
 import { focusesForBranch } from "../../../constants/skills";
 import {
+  MAX_SCALE,
   areaFitCamera,
   focusFitCamera,
   nearestArea,
+  nodeOverlayTransform,
   openingCamera,
   overviewCamera,
   projectToScreen,
@@ -23,7 +25,11 @@ describe("skill tree camera", () => {
     const overview = overviewCamera(SKILL_TREE_LAYOUT, PHONE);
 
     expect(camera.scale).toBeGreaterThan(overview.scale * 1.8);
-    expect(camera.scale).toBeLessThanOrEqual(1.15);
+    expect(camera.scale).toBeLessThanOrEqual(MAX_SCALE);
+  });
+
+  it("lets you lean in close, but not up to a node's designed size", () => {
+    expect(MAX_SCALE).toBeCloseTo(0.85);
   });
 
   it("keeps you, the area and its skills on screen when that area is fitted", () => {
@@ -55,6 +61,17 @@ describe("skill tree camera", () => {
     expect(openingCamera(SKILL_TREE_LAYOUT, "center", PHONE)).toEqual(
       overviewCamera(SKILL_TREE_LAYOUT, PHONE),
     );
+  });
+
+  it("places a screen-space node so its centre matches the projected world point", () => {
+    const node = { x: 1400, y: 800, size: 44 };
+    const pose = { scale: 0.34, x: 12, y: -40 };
+    const overlay = nodeOverlayTransform(node, pose, PHONE, SKILL_TREE_LAYOUT.size);
+    const projected = projectToScreen(node, pose, PHONE, SKILL_TREE_LAYOUT.size);
+
+    expect(overlay.translateX + node.size / 2).toBeCloseTo(projected.x);
+    expect(overlay.translateY + node.size / 2).toBeCloseTo(projected.y);
+    expect(overlay.scale).toBe(pose.scale);
   });
 
   it("double-tap zooms in on the area under the finger, then back out to the whole tree", () => {

@@ -18,18 +18,19 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 
+import { nodeOverlayTransform } from "../skillTreeCamera";
+import { labelCounterScale, labelOpacity } from "../skillTreeLabelScale";
+import {
+  RING_GAP,
+  RING_WIDTH,
+  type SkillTreeLabelBox,
+} from "../skillTreeLayout";
 import {
   LOCKED_ICON_COLOR,
   LOCKED_NODE_BORDER,
   LOCKED_NODE_FILL,
   styles,
 } from "../skillTree.styles";
-import {
-  RING_GAP,
-  RING_WIDTH,
-  type SkillTreeLabelBox,
-} from "../skillTreeLayout";
-import { labelCounterScale, labelOpacity } from "../skillTreeLabelScale";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const LEVEL_COUNT = 7;
@@ -66,6 +67,11 @@ type SkillTreeNodeProps = {
   /** Nodes further from you appear a little later, so the tree grows outward. */
   enterDelay: number;
   scale: SharedValue<number>;
+  translateX: SharedValue<number>;
+  translateY: SharedValue<number>;
+  viewportWidth: number;
+  viewportHeight: number;
+  canvasSize: number;
   /** The node under a finger that is still down. */
   pressedNodeId: SharedValue<string | null>;
   onActivate: (id: string) => void;
@@ -149,10 +155,30 @@ export const SkillTreeNode = memo(function SkillTreeNode({
   labelBox,
   enterDelay,
   scale,
+  translateX,
+  translateY,
+  viewportWidth,
+  viewportHeight,
+  canvasSize,
   pressedNodeId,
   onActivate,
   children,
 }: SkillTreeNodeProps) {
+  const overlayStyle = useAnimatedStyle(() => {
+    const pose = nodeOverlayTransform(
+      { x, y, size },
+      { scale: scale.get(), x: translateX.get(), y: translateY.get() },
+      { width: viewportWidth, height: viewportHeight },
+      canvasSize,
+    );
+    return {
+      transform: [
+        { translateX: pose.translateX },
+        { translateY: pose.translateY },
+        { scale: pose.scale },
+      ],
+    };
+  });
   const labelStyle = useAnimatedStyle(() => ({
     opacity: labelOpacity(scale.get(), kind === "center" ? "branch" : kind),
     transform: [{ scale: labelCounterScale(scale.get()) }],
@@ -172,78 +198,87 @@ export const SkillTreeNode = memo(function SkillTreeNode({
 
   return (
     <Animated.View
-      entering={nodeEntering(enterDelay)}
-      style={[styles.node, { left: x - size / 2, top: y - size / 2, width: size }]}
+      pointerEvents="none"
+      style={[
+        styles.node,
+        {
+          width: size,
+          transformOrigin: `${size / 2}px ${size / 2}px`,
+        },
+        overlayStyle,
+      ]}
     >
-      <Animated.View
-        style={[styles.nodeBody, styles.dimmable, { opacity: isDimmed ? DIMMED_OPACITY : 1 }]}
-      >
-        {isNew ? <UnlockPulse size={size} accent={accent} /> : null}
+      <Animated.View entering={nodeEntering(enterDelay)}>
         <Animated.View
-          accessible
-          accessibilityRole="button"
-          accessibilityLabel={accessibilityLabel}
-          accessibilityHint={accessibilityHint}
-          accessibilityState={{ selected: isSelected }}
-          accessibilityActions={SCREEN_READER_ACTIONS}
-          onAccessibilityAction={handleAccessibilityAction}
-          testID={`skill-tree-node-${id}`}
-          style={pressStyle}
+          style={[styles.nodeBody, styles.dimmable, { opacity: isDimmed ? DIMMED_OPACITY : 1 }]}
         >
-          {showsLevel ? (
-            <LevelRing
-              size={size}
-              accent={accent}
-              level={level}
-              fraction={levelFraction}
-              animateFill={isNew || isSelected}
-            />
-          ) : null}
+          {isNew ? <UnlockPulse size={size} accent={accent} /> : null}
           <Animated.View
-            key={isUnlocked ? "lit" : "locked"}
-            entering={isUnlocked ? FadeIn.duration(420).delay(enterDelay) : undefined}
-            style={[styles.nodeCircle, { width: size, height: size }, surface]}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={accessibilityLabel}
+            accessibilityHint={accessibilityHint}
+            accessibilityState={{ selected: isSelected }}
+            accessibilityActions={SCREEN_READER_ACTIONS}
+            onAccessibilityAction={handleAccessibilityAction}
+            testID={`skill-tree-node-${id}`}
+            style={pressStyle}
           >
-            {children ??
-              (isUnlocked && Icon ? (
-                <Icon size={size * 0.42} color={accent} strokeWidth={2} />
-              ) : (
-                <Lock size={size * 0.32} color={LOCKED_ICON_COLOR} strokeWidth={2} />
-              ))}
+            {showsLevel ? (
+              <LevelRing
+                size={size}
+                accent={accent}
+                level={level}
+                fraction={levelFraction}
+                animateFill={isNew || isSelected}
+              />
+            ) : null}
+            <Animated.View
+              key={isUnlocked ? "lit" : "locked"}
+              entering={isUnlocked ? FadeIn.duration(420).delay(enterDelay) : undefined}
+              style={[styles.nodeCircle, { width: size, height: size }, surface]}
+            >
+              {children ??
+                (isUnlocked && Icon ? (
+                  <Icon size={size * 0.42} color={accent} strokeWidth={2} />
+                ) : (
+                  <Lock size={size * 0.32} color={LOCKED_ICON_COLOR} strokeWidth={2} />
+                ))}
+            </Animated.View>
+            {showsLevel ? (
+              <Animated.View style={[styles.levelBadge, { backgroundColor: accent }]}>
+                <Text style={styles.levelBadgeText}>{level}</Text>
+              </Animated.View>
+            ) : null}
           </Animated.View>
-          {showsLevel ? (
-            <Animated.View style={[styles.levelBadge, { backgroundColor: accent }]}>
-              <Text style={styles.levelBadgeText}>{level}</Text>
+          {labelBox ? (
+            <Animated.View
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={[
+                styles.nodeLabelWrap,
+                {
+                  top: labelBox.y - (y - size / 2),
+                  left: labelBox.x - (x - size / 2),
+                  width: labelBox.width,
+                },
+                labelStyle,
+              ]}
+            >
+              <Text
+                numberOfLines={kind === "branch" ? 1 : 2}
+                style={[
+                  styles.nodeLabel,
+                  kind === "branch" && styles.branchLabel,
+                  { color: isUnlocked ? "#ffffff" : "#6b6b6b" },
+                ]}
+              >
+                {label}
+              </Text>
             </Animated.View>
           ) : null}
         </Animated.View>
-        {labelBox ? (
-          <Animated.View
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={[
-              styles.nodeLabelWrap,
-              {
-                top: labelBox.y - (y - size / 2),
-                left: labelBox.x - (x - size / 2),
-                width: labelBox.width,
-              },
-              labelStyle,
-            ]}
-          >
-            <Text
-              numberOfLines={kind === "branch" ? 1 : 2}
-              style={[
-                styles.nodeLabel,
-                kind === "branch" && styles.branchLabel,
-                { color: isUnlocked ? "#ffffff" : "#6b6b6b" },
-              ]}
-            >
-              {label}
-            </Text>
-          </Animated.View>
-        ) : null}
       </Animated.View>
     </Animated.View>
   );
