@@ -1,14 +1,41 @@
 import { SKILL_BRANCHES, SKILL_FOCUSES } from "../../../constants/skills";
 import {
-  FOCUS_NODE_SIZE,
   buildSkillTreeLayout,
   type SkillTreeNodeLayout,
 } from "../../../features/skills/skillTreeLayout";
 
 const layout = buildSkillTreeLayout();
+const origin = { x: layout.size / 2, y: layout.size / 2 };
 
-function distance(a: SkillTreeNodeLayout, b: SkillTreeNodeLayout) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
+type LabelBox = { x: number; y: number; width: number; height: number };
+type LabeledNode = SkillTreeNodeLayout & { label: LabelBox };
+
+function labeledNodes(): LabeledNode[] {
+  return layout.nodes.filter((node): node is LabeledNode => node.kind !== "center" && "label" in node);
+}
+
+function labelCenter(box: LabelBox) {
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/** Level ring sits 8px outside the circle (gap 5 + stroke 3). */
+function ringRadius(node: SkillTreeNodeLayout) {
+  return node.size / 2 + 8;
+}
+
+function boxesOverlap(a: LabelBox, b: LabelBox, gap: number) {
+  return (
+    a.x < b.x + b.width + gap &&
+    a.x + a.width + gap > b.x &&
+    a.y < b.y + b.height + gap &&
+    a.y + a.height + gap > b.y
+  );
+}
+
+function circleHitsBox(cx: number, cy: number, radius: number, box: LabelBox, gap: number) {
+  const nearestX = Math.min(Math.max(cx, box.x), box.x + box.width);
+  const nearestY = Math.min(Math.max(cy, box.y), box.y + box.height);
+  return Math.hypot(cx - nearestX, cy - nearestY) < radius + gap;
 }
 
 describe("buildSkillTreeLayout", () => {
@@ -36,22 +63,47 @@ describe("buildSkillTreeLayout", () => {
     }
   });
 
-  it("keeps enough room between nodes that labels and rings never collide", () => {
-    const nodes = layout.nodes;
-    for (let i = 0; i < nodes.length; i += 1) {
-      for (let j = i + 1; j < nodes.length; j += 1) {
-        const minimumGap = (nodes[i].size + nodes[j].size) / 2 + FOCUS_NODE_SIZE / 2;
-        expect(distance(nodes[i], nodes[j])).toBeGreaterThan(minimumGap);
+  it("places a name on every area and focus, further from you than the node", () => {
+    const named = labeledNodes();
+    expect(named).toHaveLength(SKILL_BRANCHES.length + SKILL_FOCUSES.length);
+
+    for (const node of named) {
+      const name = labelCenter(node.label);
+      expect(Math.hypot(name.x - origin.x, name.y - origin.y)).toBeGreaterThan(
+        Math.hypot(node.x - origin.x, node.y - origin.y),
+      );
+    }
+  });
+
+  it("keeps rings and names from covering each other", () => {
+    const named = labeledNodes();
+    expect(named).toHaveLength(SKILL_BRANCHES.length + SKILL_FOCUSES.length);
+    for (let i = 0; i < named.length; i += 1) {
+      for (let j = i + 1; j < named.length; j += 1) {
+        const a = named[i];
+        const b = named[j];
+        expect(boxesOverlap(a.label, b.label, 4)).toBe(false);
+        expect(circleHitsBox(a.x, a.y, ringRadius(a), b.label, 4)).toBe(false);
+        expect(circleHitsBox(b.x, b.y, ringRadius(b), a.label, 4)).toBe(false);
       }
     }
   });
 
-  it("fits every node and its label inside the canvas", () => {
+  it("fits every node, ring and name inside the canvas", () => {
     for (const node of layout.nodes) {
-      expect(node.x - node.size / 2).toBeGreaterThanOrEqual(0);
-      expect(node.y - node.size / 2).toBeGreaterThanOrEqual(0);
-      expect(node.x + node.size / 2).toBeLessThanOrEqual(layout.size);
-      expect(node.y + node.size / 2 + 40).toBeLessThanOrEqual(layout.size);
+      const radius = ringRadius(node);
+      expect(node.x - radius).toBeGreaterThanOrEqual(0);
+      expect(node.y - radius).toBeGreaterThanOrEqual(0);
+      expect(node.x + radius).toBeLessThanOrEqual(layout.size);
+      expect(node.y + radius).toBeLessThanOrEqual(layout.size);
+    }
+    const named = labeledNodes();
+    expect(named).toHaveLength(SKILL_BRANCHES.length + SKILL_FOCUSES.length);
+    for (const node of named) {
+      expect(node.label.x).toBeGreaterThanOrEqual(0);
+      expect(node.label.y).toBeGreaterThanOrEqual(0);
+      expect(node.label.x + node.label.width).toBeLessThanOrEqual(layout.size);
+      expect(node.label.y + node.label.height).toBeLessThanOrEqual(layout.size);
     }
   });
 

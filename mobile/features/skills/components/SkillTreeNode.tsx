@@ -3,10 +3,10 @@ import { memo, useEffect, type ReactNode } from "react";
 import { Text, type AccessibilityActionEvent, type ViewStyle } from "react-native";
 import Animated, {
   Easing,
-  Extrapolation,
   FadeIn,
   interpolate,
   ReduceMotion,
+  useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -24,24 +24,23 @@ import {
   LOCKED_NODE_FILL,
   styles,
 } from "../skillTree.styles";
-import { labelCounterScale } from "../skillTreeLabelScale";
+import {
+  RING_GAP,
+  RING_WIDTH,
+  type SkillTreeLabelBox,
+} from "../skillTreeLayout";
+import { labelCounterScale, labelOpacity } from "../skillTreeLabelScale";
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const LEVEL_COUNT = 7;
 const SEGMENT_GAP_DEGREES = 9;
-const RING_GAP = 5;
-const RING_WIDTH = 3;
-const LABEL_WIDTH = 104;
-/** Area names stay on one line ("Vocal Production" would otherwise wrap). */
-const BRANCH_LABEL_WIDTH = 150;
 const PULSE_REPEATS = 2;
-/** Names fade in once the tree is zoomed in far enough to read them; area names stay longer. */
-const FOCUS_LABEL_FADE_SCALES = [0.5, 0.68];
-const BRANCH_LABEL_FADE_SCALES = [0.32, 0.45];
 const DIMMED_OPACITY = 0.35;
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const PRESSED_SCALE = 0.92;
 const SELECTED_SCALE = 1.1;
 const PRESS_TIMING = { duration: 140, easing: EASE_OUT, reduceMotion: ReduceMotion.System };
+const FILL_TIMING = { duration: 400, easing: EASE_OUT, reduceMotion: ReduceMotion.System };
 /** Touches reach nodes through the canvas tap gesture; screen readers activate them directly. */
 const SCREEN_READER_ACTIONS = [{ name: "activate" }];
 
@@ -62,6 +61,8 @@ type SkillTreeNodeProps = {
   isSelected: boolean;
   isDimmed: boolean;
   isNew: boolean;
+  /** World-space name box; omitted on you because the name lives inside the node. */
+  labelBox?: SkillTreeLabelBox;
   /** Nodes further from you appear a little later, so the tree grows outward. */
   enterDelay: number;
   scale: SharedValue<number>;
@@ -145,15 +146,15 @@ export const SkillTreeNode = memo(function SkillTreeNode({
   isSelected,
   isDimmed,
   isNew,
+  labelBox,
   enterDelay,
   scale,
   pressedNodeId,
   onActivate,
   children,
 }: SkillTreeNodeProps) {
-  const labelFadeScales = kind === "focus" ? FOCUS_LABEL_FADE_SCALES : BRANCH_LABEL_FADE_SCALES;
   const labelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scale.get(), labelFadeScales, [0, 1], Extrapolation.CLAMP),
+    opacity: labelOpacity(scale.get(), kind === "center" ? "branch" : kind),
     transform: [{ scale: labelCounterScale(scale.get()) }],
   }));
   const pressStyle = useAnimatedStyle(() => {
@@ -165,7 +166,6 @@ export const SkillTreeNode = memo(function SkillTreeNode({
     if (event.nativeEvent.actionName === "activate") onActivate(id);
   };
   const showsLevel = isUnlocked && kind !== "center";
-  const labelWidth = kind === "branch" ? BRANCH_LABEL_WIDTH : LABEL_WIDTH;
   const surface = isUnlocked
     ? unlockedSurface(accent, size, level, isSelected)
     : { ...LOCKED_SURFACE, borderColor: isSelected ? "#8a8a8a" : LOCKED_NODE_BORDER };
@@ -191,7 +191,13 @@ export const SkillTreeNode = memo(function SkillTreeNode({
           style={pressStyle}
         >
           {showsLevel ? (
-            <LevelRing size={size} accent={accent} level={level} fraction={levelFraction} />
+            <LevelRing
+              size={size}
+              accent={accent}
+              level={level}
+              fraction={levelFraction}
+              animateFill={isNew || isSelected}
+            />
           ) : null}
           <Animated.View
             key={isUnlocked ? "lit" : "locked"}
@@ -211,7 +217,7 @@ export const SkillTreeNode = memo(function SkillTreeNode({
             </Animated.View>
           ) : null}
         </Animated.View>
-        {kind === "center" ? null : (
+        {labelBox ? (
           <Animated.View
             pointerEvents="none"
             accessibilityElementsHidden
@@ -219,9 +225,9 @@ export const SkillTreeNode = memo(function SkillTreeNode({
             style={[
               styles.nodeLabelWrap,
               {
-                top: size + RING_GAP + RING_WIDTH + 6,
-                left: (size - labelWidth) / 2,
-                width: labelWidth,
+                top: labelBox.y - (y - size / 2),
+                left: labelBox.x - (x - size / 2),
+                width: labelBox.width,
               },
               labelStyle,
             ]}
@@ -237,7 +243,7 @@ export const SkillTreeNode = memo(function SkillTreeNode({
               {label}
             </Text>
           </Animated.View>
-        )}
+        ) : null}
       </Animated.View>
     </Animated.View>
   );
@@ -249,11 +255,13 @@ function LevelRing({
   accent,
   level,
   fraction,
+  animateFill,
 }: {
   size: number;
   accent: string;
   level: number;
   fraction: number;
+  animateFill: boolean;
 }) {
   const ringSize = size + RING_GAP * 2 + RING_WIDTH * 2;
   const center = ringSize / 2;
@@ -262,6 +270,18 @@ function LevelRing({
   const segmentDegrees = 360 / LEVEL_COUNT;
   const arcLength = (circumference * (segmentDegrees - SEGMENT_GAP_DEGREES)) / 360;
   const offset = -(RING_GAP + RING_WIDTH);
+  const currentFill = Math.max(0.08, fraction);
+  const fill = useSharedValue(animateFill ? 0 : currentFill);
+
+  useEffect(() => {
+    if (!animateFill) {
+      fill.set(currentFill);
+      return;
+    }
+    fill.set(0);
+    fill.set(withTiming(currentFill, FILL_TIMING));
+  }, [animateFill, currentFill, fill]);
+
   return (
     <Svg
       width={ringSize}
@@ -270,8 +290,23 @@ function LevelRing({
       pointerEvents="none"
     >
       {Array.from({ length: LEVEL_COUNT }, (_, index) => {
-        const filled = segmentFill(index, level, fraction);
         const rotation = `rotate(${-90 + index * segmentDegrees + SEGMENT_GAP_DEGREES / 2} ${center} ${center})`;
+        const isCurrent = index === level - 1 && level < LEVEL_COUNT;
+        if (isCurrent) {
+          return (
+            <CurrentSegment
+              key={index}
+              center={center}
+              radius={radius}
+              accent={accent}
+              arcLength={arcLength}
+              circumference={circumference}
+              rotation={rotation}
+              fill={fill}
+            />
+          );
+        }
+        const filled = segmentFill(index, level, fraction);
         return (
           <Circle
             key={index}
@@ -288,6 +323,42 @@ function LevelRing({
         );
       })}
     </Svg>
+  );
+}
+
+function CurrentSegment({
+  center,
+  radius,
+  accent,
+  arcLength,
+  circumference,
+  rotation,
+  fill,
+}: {
+  center: number;
+  radius: number;
+  accent: string;
+  arcLength: number;
+  circumference: number;
+  rotation: string;
+  fill: SharedValue<number>;
+}) {
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: arcLength * (1 - fill.get()),
+  }));
+  return (
+    <AnimatedCircle
+      cx={center}
+      cy={center}
+      r={radius}
+      stroke={accent}
+      strokeWidth={RING_WIDTH}
+      strokeLinecap="round"
+      strokeDasharray={`${arcLength} ${circumference}`}
+      transform={rotation}
+      animatedProps={animatedProps}
+      fill="none"
+    />
   );
 }
 

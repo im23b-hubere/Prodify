@@ -25,6 +25,11 @@ const REVEAL_TIMING = {
   easing: Easing.bezier(0.77, 0, 0.175, 1),
   reduceMotion: ReduceMotion.System,
 };
+const PATH_TIMING = {
+  duration: 420,
+  easing: Easing.bezier(0.23, 1, 0.32, 1),
+  reduceMotion: ReduceMotion.System,
+};
 const ENTER_BASE_DELAY = 40;
 const ENTER_DELAY_PER_POINT = 0.75;
 
@@ -37,15 +42,30 @@ function useTreeReveal(isReady: boolean) {
   return reveal;
 }
 
+/** Retraces you → area → skill each time a node is selected. */
+function usePathReveal(selectedId: SkillTreeScreenState["selectedId"]) {
+  const pathReveal = useSharedValue(1);
+  useEffect(() => {
+    if (!selectedId || selectedId === "center") {
+      pathReveal.set(1);
+      return;
+    }
+    pathReveal.set(0);
+    pathReveal.set(withTiming(1, PATH_TIMING));
+  }, [pathReveal, selectedId]);
+  return pathReveal;
+}
+
 function enterDelayFor(node: SkillTreeNodeLayout) {
   const center = SKILL_TREE_LAYOUT.size / 2;
   return ENTER_BASE_DELAY + Math.hypot(node.x - center, node.y - center) * ENTER_DELAY_PER_POINT;
 }
 
 export function SkillTreeCanvas({ screen }: { screen: SkillTreeScreenState }) {
-  const { viewport, model, highlighted, isReady } = screen;
+  const { viewport, model, highlighted, isReady, selectedId } = screen;
   const { size } = SKILL_TREE_LAYOUT;
   const reveal = useTreeReveal(isReady);
+  const pathReveal = usePathReveal(selectedId);
   return (
     <GestureDetector gesture={viewport.gesture}>
       <View
@@ -66,6 +86,8 @@ export function SkillTreeCanvas({ screen }: { screen: SkillTreeScreenState }) {
               layout={SKILL_TREE_LAYOUT}
               model={model}
               reveal={reveal}
+              pathReveal={pathReveal}
+              selectedId={selectedId}
               highlighted={highlighted}
             />
             {SKILL_TREE_LAYOUT.nodes.map((node) => (
@@ -109,7 +131,7 @@ function TreeNode({ node, screen }: { node: SkillTreeNodeLayout; screen: SkillTr
       >
         <Text style={styles.centerLabel}>{t("skillTree.you")}</Text>
         <Text style={styles.centerCount}>
-          {model.unlockedFocusCount}
+          {screen.displayedUnlockCount ?? 0}
           <Text style={styles.centerTotal}>/{model.focusCount}</Text>
         </Text>
       </SkillTreeNode>
@@ -135,6 +157,7 @@ function TreeNode({ node, screen }: { node: SkillTreeNodeLayout; screen: SkillTr
       level={state.level}
       levelFraction={state.levelFraction}
       isNew={node.kind === "focus" && screen.newlyUnlocked.has(node.id)}
+      labelBox={node.label}
     />
   );
 }

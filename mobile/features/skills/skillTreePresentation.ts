@@ -147,3 +147,17 @@ export function highlightedNodeIds(
   }
   return new Set<SkillTreeNodeId>(["center", branchOfFocus(selectedId), selectedId]);
 }
+
+/** Edges to retrace from you outward when a node is selected. */
+export function tracedEdgeToIds(
+  selectedId: SkillTreeNodeId | null,
+): Array<SkillBranch | SkillFocusId> {
+  if (!selectedId || selectedId === "center") return [];
+  if (isSkillBranch(selectedId)) return [selectedId];
+  return [branchOfFocus(selectedId), selectedId];
+}
+
+/** Where the unlock counter starts before it ticks up to the current total. */
+export function unlockCountStart(unlocked: number, newCount: number) {
+  return Math.max(0, unlocked - newCount);
+}

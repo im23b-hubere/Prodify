@@ -6,6 +6,8 @@ import {
   neglectedFocus,
   startingNodeId,
   strongestBranches,
+  tracedEdgeToIds,
+  unlockCountStart,
 } from "../../../features/skills/skillTreePresentation";
 import type { SkillProfileDto } from "../../../types/skillProfile";
 
@@ -127,5 +129,28 @@ describe("highlightedNodeIds", () => {
   it("dims nothing without a selection or when you are selected", () => {
     expect(highlightedNodeIds(null)).toBeNull();
     expect(highlightedNodeIds("center")).toBeNull();
+  });
+});
+
+describe("tracedEdgeToIds", () => {
+  it("traces you to a selected area, then on to a selected skill", () => {
+    expect(tracedEdgeToIds("mixing")).toEqual(["mixing"]);
+    expect(tracedEdgeToIds("mixing.eq")).toEqual(["mixing", "mixing.eq"]);
+  });
+
+  it("traces nothing without a selection or when you are selected", () => {
+    expect(tracedEdgeToIds(null)).toEqual([]);
+    expect(tracedEdgeToIds("center")).toEqual([]);
+  });
+});
+
+describe("unlockCountStart", () => {
+  it("starts the header count on the previously seen unlocks", () => {
+    expect(unlockCountStart(9, 1)).toBe(8);
+    expect(unlockCountStart(2, 2)).toBe(0);
+  });
+
+  it("stays on the current count when nothing new unlocked", () => {
+    expect(unlockCountStart(4, 0)).toBe(4);
   });
 });

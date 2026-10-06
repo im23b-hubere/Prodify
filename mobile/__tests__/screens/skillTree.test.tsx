@@ -42,7 +42,9 @@ jest.mock("react-native-safe-area-context", () => ({
 
 jest.mock("expo-haptics", () => ({
   selectionAsync: jest.fn().mockResolvedValue(undefined),
+  impactAsync: jest.fn().mockResolvedValue(undefined),
   notificationAsync: jest.fn().mockResolvedValue(undefined),
+  ImpactFeedbackStyle: { Light: "Light" },
   NotificationFeedbackType: { Success: "success" },
 }));
 
@@ -181,6 +183,23 @@ describe("SkillTreeScreen", () => {
 
     expect(await screen.findByTestId("skill-tree-detail")).toBeTruthy();
     expect(screen.queryByTestId("skill-tree-list")).toBeNull();
+  });
+
+  it("snaps into an area with a light haptic", async () => {
+    await renderMeasuredTree();
+
+    await activateNode("mixing");
+
+    expect(Haptics.impactAsync).toHaveBeenCalledWith("Light");
+    expect(Haptics.selectionAsync).not.toHaveBeenCalled();
+  });
+
+  it("opens a newly unlocked skill so its path can light up", async () => {
+    await AsyncStorage.clear();
+    await renderMeasuredTree();
+
+    expect(await screen.findByTestId("skill-tree-detail")).toBeTruthy();
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith("success");
   });
 
   it("celebrates skills unlocked since the last visit and shows them", async () => {

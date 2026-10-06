@@ -2,7 +2,6 @@ import { memo } from "react";
 import { View } from "react-native";
 import Animated, {
   Extrapolation,
-  FadeIn,
   FadeOut,
   interpolate,
   useAnimatedProps,
@@ -25,6 +24,7 @@ import { LOCKED_EDGE_COLOR, styles } from "../skillTree.styles";
 import type { SkillTreeEdgeLayout, SkillTreeLayout } from "../skillTreeLayout";
 import {
   isEdgeUnlocked,
+  tracedEdgeToIds,
   type SkillTreeModel,
   type SkillTreeNodeId,
 } from "../skillTreePresentation";
@@ -42,6 +42,9 @@ type SkillTreeLinksProps = {
   model: SkillTreeModel;
   /** 0–1 intro progress; unlocked edges trace in from you outward. */
   reveal: SharedValue<number>;
+  /** 0–1 retrace of the selected path. */
+  pathReveal: SharedValue<number>;
+  selectedId: SkillTreeNodeId | null;
   highlighted: ReadonlySet<SkillTreeNodeId> | null;
 };
 
@@ -62,6 +65,8 @@ export const SkillTreeLinks = memo(function SkillTreeLinks({
   layout,
   model,
   reveal,
+  pathReveal,
+  selectedId,
   highlighted,
 }: SkillTreeLinksProps) {
   const unlockedEdges = layout.edges.filter((edge) => isEdgeUnlocked(model, edge.toId));
@@ -104,7 +109,13 @@ export const SkillTreeLinks = memo(function SkillTreeLinks({
         </Svg>
       </Animated.View>
       {highlighted ? (
-        <HighlightedEdges layout={layout} model={model} highlighted={highlighted} />
+        <HighlightedEdges
+          layout={layout}
+          model={model}
+          highlighted={highlighted}
+          selectedId={selectedId}
+          pathReveal={pathReveal}
+        />
       ) : null}
     </>
   );
@@ -159,19 +170,22 @@ const EdgeTrace = memo(function EdgeTrace({
   edge,
   width,
   reveal,
+  traceWindow = isSkillBranch(edge.toId) ? BRANCH_EDGE_WINDOW : FOCUS_EDGE_WINDOW,
+  stroke = `url(#${gradientId(edge)})`,
 }: {
   edge: SkillTreeEdgeLayout;
   width: number;
   reveal: SharedValue<number>;
+  traceWindow?: readonly [number, number];
+  stroke?: string;
 }) {
-  const window = isSkillBranch(edge.toId) ? BRANCH_EDGE_WINDOW : FOCUS_EDGE_WINDOW;
   const traceProps = useAnimatedProps(() => ({
     strokeDashoffset:
-      edge.length * (1 - interpolate(reveal.get(), window, [0, 1], Extrapolation.CLAMP)),
+      edge.length * (1 - interpolate(reveal.get(), traceWindow, [0, 1], Extrapolation.CLAMP)),
   }));
   const glowProps = useAnimatedProps(() => ({
     strokeDashoffset:
-      edge.length * (1 - interpolate(reveal.get(), window, [0, 1], Extrapolation.CLAMP)),
+      edge.length * (1 - interpolate(reveal.get(), traceWindow, [0, 1], Extrapolation.CLAMP)),
   }));
   const dash = [edge.length, edge.length];
   return (
@@ -188,7 +202,7 @@ const EdgeTrace = memo(function EdgeTrace({
       />
       <AnimatedPath
         d={edge.path}
-        stroke={`url(#${gradientId(edge)})`}
+        stroke={stroke}
         strokeWidth={width}
         strokeLinecap="round"
         strokeDasharray={dash}
@@ -199,47 +213,87 @@ const EdgeTrace = memo(function EdgeTrace({
   );
 });
 
+function pathWindow(index: number, count: number): readonly [number, number] {
+  if (count <= 1) return [0, 1];
+  return index === 0 ? [0, 0.55] : [0.4, 1];
+}
+
 /** The selected path drawn again at full strength above the dimmed tree. */
 function HighlightedEdges({
   layout,
   model,
   highlighted,
+  selectedId,
+  pathReveal,
 }: {
   layout: SkillTreeLayout;
   model: SkillTreeModel;
   highlighted: ReadonlySet<SkillTreeNodeId>;
+  selectedId: SkillTreeNodeId | null;
+  pathReveal: SharedValue<number>;
 }) {
-  const edges = layout.edges.filter((edge) => highlighted.has(edge.toId));
+  const tracedToIds = tracedEdgeToIds(selectedId);
+  const tracedIdSet = new Set(tracedToIds);
+  const tracedEdges = tracedToIds
+    .map((toId) => layout.edges.find((edge) => edge.toId === toId))
+    .filter((edge): edge is SkillTreeEdgeLayout => edge !== undefined);
+  const fanEdges = layout.edges.filter(
+    (edge) => highlighted.has(edge.toId) && !tracedIdSet.has(edge.toId),
+  );
   return (
     <Animated.View
-      entering={FadeIn.duration(motion.quick)}
       exiting={FadeOut.duration(motion.quick)}
       style={styles.layerFill}
       pointerEvents="none"
     >
       <Svg width={layout.size} height={layout.size}>
-        {edges.map((edge) =>
+        {fanEdges.map((edge) => (
+          <HighlightedEdge key={edge.id} edge={edge} model={model} />
+        ))}
+        {tracedEdges.map((edge, index) =>
           isEdgeUnlocked(model, edge.toId) ? (
-            <Path
+            <EdgeTrace
               key={edge.id}
-              d={edge.path}
+              edge={edge}
+              width={edgeWidth(edgeLevel(model, edge.toId)) + 1}
+              reveal={pathReveal}
+              traceWindow={pathWindow(index, tracedEdges.length)}
               stroke={sessionTypeAccent(edge.branch)}
-              strokeWidth={edgeWidth(edgeLevel(model, edge.toId)) + 1}
-              strokeLinecap="round"
-              fill="none"
             />
           ) : (
-            <Path
-              key={edge.id}
-              d={edge.path}
-              stroke={HIGHLIGHTED_LOCKED_EDGE}
-              strokeWidth={2}
-              strokeDasharray="4 7"
-              fill="none"
-            />
+            <HighlightedEdge key={edge.id} edge={edge} model={model} />
           ),
         )}
       </Svg>
     </Animated.View>
+  );
+}
+
+function HighlightedEdge({
+  edge,
+  model,
+}: {
+  edge: SkillTreeEdgeLayout;
+  model: SkillTreeModel;
+}) {
+  if (!isEdgeUnlocked(model, edge.toId)) {
+    return (
+      <Path
+        d={edge.path}
+        stroke={HIGHLIGHTED_LOCKED_EDGE}
+        strokeWidth={2}
+        strokeDasharray="4 7"
+        fill="none"
+      />
+    );
+  }
+  return (
+    <Path
+      d={edge.path}
+      stroke={sessionTypeAccent(edge.branch)}
+      strokeWidth={edgeWidth(edgeLevel(model, edge.toId)) + 1}
+      strokeLinecap="round"
+      fill="none"
+    />
   );
 }
