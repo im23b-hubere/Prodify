@@ -16,7 +16,12 @@ export function StatsScreenContent({ controller }: { controller: StatsScreenCont
     <Animated.View style={[styles.contentFadeWrap, { opacity: controller.contentFade }]}>
       <StatsHero controller={controller} />
       <StatsKpiBlock controller={controller} />
-      <StatsTrendsSection t={t} chartData={controller.chartData} period={controller.filter.period} />
+      <StatsTrendsSection
+        t={t}
+        chartData={controller.chartData}
+        recordMarks={controller.recordMarks}
+        period={controller.filter.period}
+      />
       <StatsWoranSection
         t={t}
         rows={controller.woranRows}

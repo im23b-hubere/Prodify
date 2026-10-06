@@ -46,7 +46,7 @@ def build_personal_records(db: Session, user_id: int) -> PersonalRecordsPublic:
     sessions = _completed_sessions(db, user_id)
     records: list[PersonalRecordItem] = []
     longest_session = _longest_session_record(sessions, calendar)
-    busiest_day = _busiest_day_record(sessions, calendar)
+    busiest_day = _most_hours_day_record(sessions, calendar)
     productive_week = _productive_week_record(sessions, calendar)
     records.extend(record for record in (longest_session, busiest_day) if record is not None)
     records.extend(_streak_records(db, user_id, sessions, calendar))
@@ -146,7 +146,7 @@ def _longest_session_record(
         return None
     session = max(sessions, key=lambda row: int(row.duration_seconds or 0))
     duration = int(session.duration_seconds or 0)
-    value = f"{duration // 3600}h {(duration % 3600) // 60}m" if duration >= 3600 else f"{duration // 60} min"
+    value = _format_hours(duration)
     return PersonalRecordItem(
         key="longest_session",
         label="Longest session",
@@ -156,20 +156,20 @@ def _longest_session_record(
     )
 
 
-def _busiest_day_record(
+def _most_hours_day_record(
     sessions: list[ProductionSession],
     calendar: StreakCalendar,
 ) -> PersonalRecordItem | None:
-    sessions_by_day: defaultdict[str, int] = defaultdict(int)
+    seconds_by_day: defaultdict[str, int] = defaultdict(int)
     for session in sessions:
-        sessions_by_day[calendar.day_key_of(session.started_at)] += 1
-    if not sessions_by_day:
+        seconds_by_day[calendar.day_key_of(session.started_at)] += int(session.duration_seconds or 0)
+    if not seconds_by_day:
         return None
-    day = max(sessions_by_day, key=sessions_by_day.get)
+    day = max(seconds_by_day, key=lambda key: (seconds_by_day[key], key))
     return PersonalRecordItem(
-        key="most_sessions_day",
-        label="Most sessions in one day",
-        value=f"{sessions_by_day[day]} sessions",
+        key="most_hours_day",
+        label="Most hours in one day",
+        value=_format_hours(seconds_by_day[day]),
         context=day,
         occurred_at=day,
     )
@@ -206,10 +206,17 @@ def _productive_week_record(
     return PersonalRecordItem(
         key="productive_week",
         label="Most productive week",
-        value=f"{seconds // 3600}h {(seconds % 3600) // 60}m total",
+        value=f"{_format_hours(seconds)} total",
         context=f"Week of {week}",
         occurred_at=week,
     )
+
+
+def _format_hours(seconds: int) -> str:
+    duration = max(0, int(seconds))
+    if duration >= 3600:
+        return f"{duration // 3600}h {(duration % 3600) // 60}m"
+    return f"{duration // 60} min"
 
 
 def _heatmap_intensity(seconds: int) -> int:

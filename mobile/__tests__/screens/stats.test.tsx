@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import StatsScreen from "../../app/(tabs)/stats";
+import { localStatsDateKey } from "../../features/stats/utils/format";
 
 const mockPush = jest.fn();
 
@@ -283,6 +284,111 @@ describe("Stats Screen", () => {
 
     expect(await findByTestId("stats-woran")).toBeTruthy();
     expect(await findByText("stats.woranEmptyTitle")).toBeTruthy();
+  });
+
+  it("marks a hours-day best on the chart and names it under the bars", async () => {
+    const today = localStatsDateKey(new Date());
+    const previous = apiJson.getMockImplementation()!;
+    apiJson.mockImplementation((path: string) => {
+      if (path.includes("/sessions/stats")) {
+        return Promise.resolve({
+          period: "week",
+          summary: {
+            total_seconds: 7200,
+            total_sessions: 1,
+            avg_session_seconds: 7200,
+            current_streak_days: 1,
+            best_streak_days: 1,
+            hours_delta_vs_prior_period: null,
+          },
+          trend: [{ label: today, sessions: 1, seconds: 7200 }],
+          breakdown: [],
+          recent_sessions: [],
+          productivity_hint: null,
+        });
+      }
+      if (path.includes("/stats/records")) {
+        return Promise.resolve({
+          records: [
+            {
+              key: "most_hours_day",
+              label: "Most hours in one day",
+              value: "2h 0m",
+              context: today,
+              occurred_at: today,
+            },
+          ],
+        });
+      }
+      return previous(path);
+    });
+    const { findByTestId, findByText } = render(<StatsScreen />);
+
+    expect(await findByTestId(`stats-chart-record-${today}`)).toBeTruthy();
+    expect(await findByTestId("stats-chart-record-caption")).toBeTruthy();
+    expect(await findByText("stats.recordMostHoursDay · 2h 0m")).toBeTruthy();
+  });
+
+  it("names a chart best only after choosing among several marked days", async () => {
+    const today = localStatsDateKey(new Date());
+    const yesterdayDate = new Date();
+    yesterdayDate.setHours(0, 0, 0, 0);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = localStatsDateKey(yesterdayDate);
+    const previous = apiJson.getMockImplementation()!;
+    apiJson.mockImplementation((path: string) => {
+      if (path.includes("/sessions/stats")) {
+        return Promise.resolve({
+          period: "week",
+          summary: {
+            total_seconds: 10800,
+            total_sessions: 2,
+            avg_session_seconds: 5400,
+            current_streak_days: 1,
+            best_streak_days: 1,
+            hours_delta_vs_prior_period: null,
+          },
+          trend: [
+            { label: yesterday, sessions: 1, seconds: 7200 },
+            { label: today, sessions: 1, seconds: 3600 },
+          ],
+          breakdown: [],
+          recent_sessions: [],
+          productivity_hint: null,
+        });
+      }
+      if (path.includes("/stats/records")) {
+        return Promise.resolve({
+          records: [
+            {
+              key: "most_hours_day",
+              label: "Most hours in one day",
+              value: "2h 0m",
+              context: yesterday,
+              occurred_at: yesterday,
+            },
+            {
+              key: "longest_session",
+              label: "Longest session",
+              value: "1h 0m",
+              context: "mixing",
+              occurred_at: today,
+            },
+          ],
+        });
+      }
+      return previous(path);
+    });
+    const { findByTestId, queryByTestId, findByText } = render(<StatsScreen />);
+
+    expect(await findByTestId(`stats-chart-record-${today}`)).toBeTruthy();
+    expect(await findByTestId(`stats-chart-record-${yesterday}`)).toBeTruthy();
+    expect(queryByTestId("stats-chart-record-caption")).toBeNull();
+
+    fireEvent.press(await findByTestId(`stats-chart-col-${today}`));
+
+    expect(await findByTestId("stats-chart-record-caption")).toBeTruthy();
+    expect(await findByText("stats.recordLongestSession · 1h 0m")).toBeTruthy();
   });
 
   it("opens the full skill tree from its stats card", async () => {

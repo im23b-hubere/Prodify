@@ -31,6 +31,7 @@ const MOOD_ICONS: Record<MoodLevel, LucideIcon> = {
 
 const RECORD_ICONS: Record<string, LucideIcon> = {
   longest_session: Clock,
+  most_hours_day: Crown,
   most_sessions_day: Calendar,
   longest_streak: Flame,
   current_streak: Zap,
@@ -78,7 +79,7 @@ export function RecordGlyph({
   color = colors.primary,
 }: GlyphProps & { recordKey: string }) {
   const Icon = RECORD_ICONS[recordKey] ?? Star;
-  const filled = recordKey === "longest_streak" || recordKey === "productive_week";
+  const filled = recordKey === "longest_streak" || recordKey === "productive_week" || recordKey === "most_hours_day";
   return <Icon size={size} color={color} strokeWidth={2.2} fill={filled ? color : "none"} />;
 }
 

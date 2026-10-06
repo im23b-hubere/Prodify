@@ -22,7 +22,7 @@ export function formatRecordContext(record: PersonalRecord, t: TFunction) {
   if (record.key === "longest_session") {
     return sessionTypeLabel(record.context, t);
   }
-  if (record.key === "most_sessions_day") {
+  if (record.key === "most_hours_day" || record.key === "most_sessions_day") {
     const date = new Date(record.context);
     return Number.isNaN(date.getTime())
       ? record.context
@@ -42,6 +42,7 @@ export function formatRecordContext(record: PersonalRecord, t: TFunction) {
 
 export function recordTitle(key: string, fallback: string, t: TFunction) {
   if (key === "longest_session") return t("stats.recordLongestSession");
+  if (key === "most_hours_day") return t("stats.recordMostHoursDay");
   if (key === "most_sessions_day") return t("stats.recordMostSessionsDay");
   if (key === "longest_streak") return t("stats.recordLongestStreak");
   if (key === "current_streak") return t("stats.recordCurrentStreak");
@@ -52,7 +53,7 @@ export function recordTitle(key: string, fallback: string, t: TFunction) {
 function recordPriorityScore(key: string) {
   if (key === "longest_streak") return 90;
   if (key === "productive_week") return 80;
-  if (key === "most_sessions_day") return 70;
+  if (key === "most_hours_day" || key === "most_sessions_day") return 70;
   if (key === "longest_session") return 60;
   return 20;
 }

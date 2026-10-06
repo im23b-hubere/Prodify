@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { SessionStatsDto } from "../../../types/session";
 import type { PersonalRecord, StatsFilter, StatsPeriod } from "../types";
 import { buildChartData, buildStatsSummary } from "../utils/chartData";
+import { chartRecordMarks } from "../utils/chartRecords";
 import { decorateRecords } from "../utils/records";
 import { buildWoranRows } from "../utils/woran";
 
@@ -30,10 +31,15 @@ export function useStatsPresentation(
   const chartData = useMemo(() => buildChartData(stats, period), [period, stats]);
   const woranRows = useMemo(() => buildWoranRows(stats?.branch_seconds, t), [stats, t]);
   const decoratedRecords = useMemo(() => decorateRecords(records), [records]);
+  const recordMarks = useMemo(
+    () => chartRecordMarks(chartData, decoratedRecords, period),
+    [chartData, decoratedRecords, period],
+  );
 
   return {
     summary,
     chartData,
+    recordMarks,
     woranRows,
     decoratedRecords,
     recentSessions: stats?.recent_sessions ?? [],

@@ -73,7 +73,7 @@ def test_stats_insights_and_records_after_session(client):
     record_keys = {record["key"] for record in records.json()["records"]}
     assert {
         "longest_session",
-        "most_sessions_day",
+        "most_hours_day",
         "longest_streak",
         "current_streak",
         "productive_week",

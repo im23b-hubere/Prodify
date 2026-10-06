@@ -1,6 +1,7 @@
+import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef } from "react";
-import { FlatList, Platform, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, {
   ReduceMotion,
   useAnimatedProps,
@@ -11,9 +12,10 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { fontFamily } from "../../../constants/fonts";
-import { colors, spacing } from "../../../constants/theme";
+import { colors, motion, spacing } from "../../../constants/theme";
 import { STATS_BAR_CHART_HEIGHT } from "../constants";
 import type { BarPoint, StatsPeriod } from "../types";
+import type { ChartRecordMark } from "../utils/chartRecords";
 import {
   barFillScale,
   chartBarTone,
@@ -26,6 +28,10 @@ import { formatChartHours } from "../utils/format";
 type Props = {
   data: BarPoint[];
   period: StatsPeriod;
+  marks: ChartRecordMark[];
+  selectedBarLabel: string | null;
+  recordHint: string;
+  onSelectBar: (label: string) => void;
 };
 
 const WEEK_FIT_COUNT = 7;
@@ -38,7 +44,14 @@ const FILL_COLORS = {
 
 const AnimatedHourInput = Animated.createAnimatedComponent(TextInput);
 
-export function SessionsPerDayChart({ data, period }: Props) {
+export function SessionsPerDayChart({
+  data,
+  period,
+  marks,
+  selectedBarLabel,
+  recordHint,
+  onSelectBar,
+}: Props) {
   const liveLabel = liveChartLabel(period);
   const maxY = Math.max(1, ...data.map((point) => point.y));
   const liveHours = data.find((point) => point.label === liveLabel)?.y ?? 0;
@@ -54,6 +67,8 @@ export function SessionsPerDayChart({ data, period }: Props) {
 
   if (data.length === 0) return null;
 
+  const markKeys = new Map(marks.map((mark) => [mark.barLabel, mark.record.key]));
+
   const columns = data.map((point) => (
     <ChartColumn
       key={point.label}
@@ -62,6 +77,10 @@ export function SessionsPerDayChart({ data, period }: Props) {
       isLive={point.label === liveLabel}
       growth={point.label === liveLabel ? growth : null}
       fit
+      recordKey={markKeys.get(point.label) ?? null}
+      selected={selectedBarLabel === point.label}
+      recordHint={recordHint}
+      onSelectBar={onSelectBar}
     />
   ));
 
@@ -84,6 +103,10 @@ export function SessionsPerDayChart({ data, period }: Props) {
           isLive={point.label === liveLabel}
           growth={point.label === liveLabel ? growth : null}
           fit={false}
+          recordKey={markKeys.get(point.label) ?? null}
+          selected={selectedBarLabel === point.label}
+          recordHint={recordHint}
+          onSelectBar={onSelectBar}
         />
       )}
     />
@@ -96,12 +119,20 @@ function ChartColumn({
   isLive,
   growth,
   fit,
+  recordKey,
+  selected,
+  recordHint,
+  onSelectBar,
 }: {
   point: BarPoint;
   maxY: number;
   isLive: boolean;
   growth: TodayBarGrowth | null;
   fit: boolean;
+  recordKey: string | null;
+  selected: boolean;
+  recordHint: string;
+  onSelectBar: (label: string) => void;
 }) {
   const tone = chartBarTone(isLive, point.y);
   const reduceMotion = useReducedMotion();
@@ -133,11 +164,17 @@ function ChartColumn({
     defaultValue: formatLiveHours(shownHours.get()),
   }));
 
-  return (
-    <View
-      style={[styles.column, fit ? styles.columnFit : styles.columnFixed]}
-      testID={`stats-chart-col-${point.label}`}
-    >
+  const hoursLabel = point.y > 0 ? formatChartHours(point.y) : "0";
+  const body = (
+    <>
+      <View style={styles.markerSlot}>
+        {recordKey ? (
+          <View
+            testID={`stats-chart-record-${point.label}`}
+            style={[styles.marker, selected ? styles.markerSelected : null]}
+          />
+        ) : null}
+      </View>
       <View style={[styles.track, tone === "today" && styles.trackToday]}>
         {tone === "empty" ? null : (
           <Animated.View
@@ -166,7 +203,34 @@ function ChartColumn({
       ) : (
         <Text style={styles.count}> </Text>
       )}
-    </View>
+    </>
+  );
+
+  const columnStyle = [styles.column, fit ? styles.columnFit : styles.columnFixed];
+
+  if (!recordKey) {
+    return (
+      <View style={columnStyle} testID={`stats-chart-col-${point.label}`}>
+        {body}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${point.x}, ${hoursLabel}`}
+      accessibilityHint={recordHint}
+      testID={`stats-chart-col-${point.label}`}
+      onPress={() => {
+        Haptics.selectionAsync().catch(() => undefined);
+        onSelectBar(point.label);
+      }}
+      style={({ pressed }) => [columnStyle, pressed ? styles.columnPressed : null]}
+    >
+      {body}
+    </Pressable>
   );
 }
 
@@ -201,6 +265,26 @@ const styles = StyleSheet.create({
   },
   columnFixed: {
     width: 44,
+  },
+  columnPressed: {
+    opacity: motion.pressOpacity,
+  },
+  markerSlot: {
+    height: 10,
+    marginBottom: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  marker: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+    opacity: 0.7,
+  },
+  markerSelected: {
+    opacity: 1,
+    transform: [{ scale: 1.15 }],
   },
   track: {
     height: STATS_BAR_CHART_HEIGHT,
