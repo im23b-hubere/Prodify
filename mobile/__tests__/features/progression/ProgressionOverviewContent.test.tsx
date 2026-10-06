@@ -39,23 +39,24 @@ jest.mock("react-native-safe-area-context", () => {
   };
 });
 
-jest.mock("../../../components/progression/ProgressionOverviewSkeleton", () => ({
-  ProgressionOverviewSkeleton: () => {
-    const React = require("react");
-    const { Text } = require("react-native");
-    return React.createElement(Text, null, "progression-skeleton");
-  },
-}));
-
 jest.mock("../../../features/progression/components/RankPath", () => ({
-  RankPath: ({ currentLevel, xpTotal }: { currentLevel: number; xpTotal: number }) => {
+  RankPath: ({
+    currentLevel,
+    xpTotal,
+  }: {
+    currentLevel: number | null;
+    xpTotal: number;
+  }) => {
     const React = require("react");
     const { Text } = require("react-native");
     return React.createElement(
       React.Fragment,
       null,
-      React.createElement(Text, null, `rank-path-current-${currentLevel}`),
-      React.createElement(Text, null, `path-xp-${xpTotal}`),
+      React.createElement(Text, { testID: "rank-path" }, "rank-path"),
+      currentLevel == null
+        ? null
+        : React.createElement(Text, null, `rank-path-current-${currentLevel}`),
+      currentLevel == null ? null : React.createElement(Text, null, `path-xp-${xpTotal}`),
     );
   },
 }));
@@ -109,17 +110,17 @@ describe("ProgressionOverviewContent", () => {
     expect(screen.queryByText(/rank-path-current/)).toBeNull();
   });
 
-  it("shows loading skeleton without fabricated progression values", () => {
+  it("shows the rank path shell while progression loads, without inventing a rank", () => {
     renderContent(
       overview({ loadingProgression: true, loadingCatalog: true, progression: null }),
       true,
     );
 
     expect(screen.getByTestId("progression-overview-loading")).toBeTruthy();
-    expect(screen.getAllByText("progression-skeleton").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("rank-path")).toBeTruthy();
+    expect(screen.queryByText("progression-skeleton")).toBeNull();
     expect(screen.queryByText(/rank-path-current/)).toBeNull();
     expect(screen.queryByText(/path-xp-/)).toBeNull();
-    expect(screen.queryByText(/rank-path/)).toBeNull();
   });
 
   it("shows unavailable state for null progression without fabricating values", () => {

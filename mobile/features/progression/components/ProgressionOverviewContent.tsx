@@ -13,13 +13,11 @@ import {
 import { useReducedMotion } from "react-native-reanimated";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ProgressionOverviewSkeleton } from "../../../components/progression/ProgressionOverviewSkeleton";
 import { ErrorState } from "../../../components/states/ErrorState";
 import { AppCard } from "../../../components/ui/AppCard";
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { ScreenTopBar } from "../../../components/ui/ScreenTopBar";
 import { colors } from "../../../constants/theme";
-import type { ProgressionDto } from "../../../types/outcomes";
 import type { ProgressionOverviewState } from "../hooks/useProgressionOverview";
 import { styles } from "../progressionOverview.styles";
 import { buildRankPathLayout, rankPathCapColors } from "../rankPathLayout";
@@ -40,9 +38,9 @@ const INTRO_SCROLL_DELAY_MS = 450;
 
 export function ProgressionOverviewContent(props: Props) {
   const { t } = useTranslation();
-  const { progression, loadError } = props.overview;
-  if (props.signedIn && !loadError && progression) {
-    return <ProgressionPathView {...props} progression={progression} />;
+  const { progression, loadError, loadingProgression } = props.overview;
+  if (props.signedIn && !loadError && (progression || loadingProgression)) {
+    return <ProgressionPathView {...props} />;
   }
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -61,9 +59,11 @@ export function ProgressionOverviewContent(props: Props) {
   );
 }
 
-function ProgressionPathView(props: Props & { progression: ProgressionDto }) {
+function ProgressionPathView(props: Props) {
   const { t } = useTranslation();
-  const { progression, overview } = props;
+  const { overview, onBack } = props;
+  const progression = overview.progression;
+  const pending = progression == null;
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
@@ -75,24 +75,25 @@ function ProgressionPathView(props: Props & { progression: ProgressionDto }) {
   const [topBarHeight, setTopBarHeight] = useState(0);
   const [infoOpen, setInfoOpen] = useState(false);
 
-  // Levels past the named catalog still sit on the summit node.
-  const pathLevel = Math.min(Math.max(1, progression.current_level), layout.nodes.length);
-  // The path scrolls under the floating top bar, so its content starts below it.
-  const currentNodeY = topBarHeight + (layout.nodes[pathLevel - 1]?.y ?? 0);
+  const pathLevel = pending
+    ? null
+    : Math.min(Math.max(1, progression.current_level), layout.nodes.length);
+  const currentNodeY =
+    pathLevel == null ? 0 : topBarHeight + (layout.nodes[pathLevel - 1]?.y ?? 0);
 
   const scrollToCurrent = useCallback(
     (animated: boolean) => {
-      if (viewportHeight === 0) return;
+      if (viewportHeight === 0 || pathLevel == null) return;
       scrollRef.current?.scrollTo({
         y: Math.max(0, currentNodeY - viewportHeight * CURRENT_NODE_VIEWPORT_RATIO),
         animated,
       });
     },
-    [currentNodeY, viewportHeight],
+    [currentNodeY, pathLevel, viewportHeight],
   );
 
   useEffect(() => {
-    if (introDone.current || viewportHeight === 0 || topBarHeight === 0) return;
+    if (pending || introDone.current || viewportHeight === 0 || topBarHeight === 0) return;
     const timer = setTimeout(
       () => {
         introDone.current = true;
@@ -101,10 +102,14 @@ function ProgressionPathView(props: Props & { progression: ProgressionDto }) {
       reduceMotion ? 0 : INTRO_SCROLL_DELAY_MS,
     );
     return () => clearTimeout(timer);
-  }, [reduceMotion, scrollToCurrent, topBarHeight, viewportHeight]);
+  }, [pending, reduceMotion, scrollToCurrent, topBarHeight, viewportHeight]);
 
   return (
-    <View style={styles.pathScreen}>
+    <View
+      style={styles.pathScreen}
+      testID={pending ? "progression-overview-loading" : undefined}
+      accessibilityState={pending ? { busy: true } : undefined}
+    >
       {/* Over-scroll past either end shows the path's own cap colours instead of black. */}
       <View style={[styles.pathCap, styles.pathCapTop, { backgroundColor: caps.top }]} />
       <View style={[styles.pathCap, styles.pathCapBottom, { backgroundColor: caps.bottom }]} />
@@ -120,9 +125,9 @@ function ProgressionPathView(props: Props & { progression: ProgressionDto }) {
         <RankPath
           layout={layout}
           currentLevel={pathLevel}
-          progressPercent={progression.progress_percent}
-          xpTotal={progression.xp_total}
-          xpToNext={progression.xp_to_next_level}
+          progressPercent={progression?.progress_percent ?? 0}
+          xpTotal={progression?.xp_total ?? 0}
+          xpToNext={progression?.xp_to_next_level ?? 0}
           levelCatalog={overview.levelCatalog}
           t={t}
         />
@@ -135,17 +140,19 @@ function ProgressionPathView(props: Props & { progression: ProgressionDto }) {
       >
         <ScreenTopBar
           title={t("progression.overviewTitle")}
-          onBack={props.onBack}
+          onBack={onBack}
           right={
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("progression.info.open")}
-              hitSlop={12}
-              onPress={() => setInfoOpen(true)}
-              style={({ pressed }) => [styles.infoButton, pressed && styles.infoButtonPressed]}
-            >
-              <Info color={colors.textPrimary} size={18} strokeWidth={2.4} />
-            </Pressable>
+            pending ? undefined : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("progression.info.open")}
+                hitSlop={12}
+                onPress={() => setInfoOpen(true)}
+                style={({ pressed }) => [styles.infoButton, pressed && styles.infoButtonPressed]}
+              >
+                <Info color={colors.textPrimary} size={18} strokeWidth={2.4} />
+              </Pressable>
+            )
           }
         />
       </BlurView>
@@ -185,13 +192,6 @@ function ProgressionFeedback({ overview, signedIn, onSignIn }: Props) {
         retryLabel={t("common.tryAgain")}
         onRetry={() => void overview.load({ force: true })}
       />
-    );
-  }
-  if (overview.loadingProgression) {
-    return (
-      <View testID="progression-overview-loading">
-        <ProgressionOverviewSkeleton hero rankRows={overview.loadingCatalog ? 8 : 0} />
-      </View>
     );
   }
   return (

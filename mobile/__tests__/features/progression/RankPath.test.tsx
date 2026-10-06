@@ -19,7 +19,7 @@ const t = ((key: string, params?: Record<string, unknown>) =>
 // Rank labels are hidden from screen readers; the node itself carries the spoken label.
 const HIDDEN = { includeHiddenElements: true };
 
-function renderPath(currentLevel: number) {
+function renderPath(currentLevel: number | null) {
   render(
     <RankPath
       layout={buildRankPathLayout(390)}
@@ -67,6 +67,17 @@ describe("RankPath", () => {
     expect(screen.getByText(/progression.path.tierRange .*"from":17/)).toBeTruthy();
     expect(screen.getByText("progression.path.finalRank", HIDDEN)).toBeTruthy();
     expect(screen.getByText("progression.path.start")).toBeTruthy();
+  });
+
+  it("renders a locked silhouette when the current rank is not known yet", () => {
+    renderPath(null);
+
+    expect(screen.getByTestId("rank-path")).toBeTruthy();
+    expect(screen.queryByText("progression.path.youAreHere")).toBeNull();
+    expect(screen.queryByLabelText(/"status":"progression.path.status.current"/)).toBeNull();
+    expect(screen.queryByLabelText(/"status":"progression.path.status.cleared"/)).toBeNull();
+    expect(screen.getByLabelText(/"level":1,.*"status":"progression.path.status.locked"/)).toBeTruthy();
+    expect(screen.queryByText(/progression.path.currentLine/, HIDDEN)).toBeNull();
   });
 
   it("shows the summit as max rank for a top-level user", () => {

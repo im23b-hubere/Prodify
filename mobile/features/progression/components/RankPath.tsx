@@ -18,7 +18,8 @@ const xpFormatter = new Intl.NumberFormat("en-US");
 
 type Props = {
   layout: RankPathLayout;
-  currentLevel: number;
+  /** Null while the user's rank is still loading: every node stays locked. */
+  currentLevel: number | null;
   progressPercent: number;
   xpTotal: number;
   xpToNext: number;
@@ -26,7 +27,8 @@ type Props = {
   t: TFunction;
 };
 
-function nodeState(level: number, currentLevel: number): RankNodeState {
+function nodeState(level: number, currentLevel: number | null): RankNodeState {
+  if (currentLevel == null) return "locked";
   if (level < currentLevel) return "cleared";
   if (level === currentLevel) return "current";
   if (level === currentLevel + 1) return "next";
@@ -86,7 +88,7 @@ export function RankPath({
           key={gate.tier.id}
           tier={gate.tier}
           y={gate.y}
-          reached={currentLevel >= gate.fromLevel}
+          reached={currentLevel != null && currentLevel >= gate.fromLevel}
           label={t("progression.path.tierRange", {
             tier: t(gate.tier.labelKey),
             from: gate.fromLevel,
@@ -126,10 +128,11 @@ function RankPathTrail({
   progressPercent,
 }: {
   layout: RankPathLayout;
-  currentLevel: number;
+  currentLevel: number | null;
   progressPercent: number;
 }) {
-  const progress = Math.max(0, Math.min(1, progressPercent / 100));
+  const climbedTo = currentLevel ?? 0;
+  const progress = currentLevel == null ? 0 : Math.max(0, Math.min(1, progressPercent / 100));
   const activeSegment = layout.segments.find((segment) => segment.fromLevel === currentLevel);
   // Glowing head at the end of the lit trail: where the user is between two ranks.
   const tip =
@@ -161,7 +164,7 @@ function RankPathTrail({
         fill="none"
       />
       {layout.segments.map((segment) => {
-        if (segment.fromLevel < currentLevel)
+        if (segment.fromLevel < climbedTo)
           return <LitSegment key={segment.fromLevel} segment={segment} />;
         if (segment.fromLevel === currentLevel && progress > 0.01) {
           return <LitSegment key={segment.fromLevel} segment={segment} fraction={progress} />;
