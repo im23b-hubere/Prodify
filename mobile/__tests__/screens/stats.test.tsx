@@ -130,6 +130,26 @@ const { apiJson } = jest.requireMock("../../lib/client") as {
   apiJson: jest.Mock;
 };
 
+const STATS_STORY_ORDER = [
+  "stats-week-hero",
+  "stats-kpi-strip",
+  "stats-section-trends",
+  "stats-woran",
+  "stats-skill-tree",
+  "stats-section-recent",
+  "stats-section-records",
+] as const;
+
+function collectTestIds(node: unknown, ids: string[] = []): string[] {
+  if (!node || typeof node !== "object") return ids;
+  const item = node as { props?: { testID?: string }; children?: unknown };
+  if (typeof item.props?.testID === "string") ids.push(item.props.testID);
+  if (Array.isArray(item.children)) {
+    for (const child of item.children) collectTestIds(child, ids);
+  }
+  return ids;
+}
+
 describe("Stats Screen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -176,6 +196,17 @@ describe("Stats Screen", () => {
     expect(await findByText("stats.filter7d")).toBeTruthy();
     expect(await findByTestId("stats-week-hero")).toBeTruthy();
     expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
+  });
+
+  it("reads period hours first, then Woran, then the lifetime tree", async () => {
+    const { findByTestId, toJSON } = render(<StatsScreen />);
+    await findByTestId("stats-section-trends");
+    await findByTestId("stats-woran");
+    await findByTestId("stats-skill-tree");
+
+    const wanted = new Set<string>(STATS_STORY_ORDER);
+    const order = collectTestIds(toJSON()).filter((id) => wanted.has(id));
+    expect(order).toEqual([...STATS_STORY_ORDER]);
   });
 
   it("keeps hours over time and hides type mix and the studio read", async () => {

@@ -16,13 +16,13 @@ export function StatsScreenContent({ controller }: { controller: StatsScreenCont
     <Animated.View style={[styles.contentFadeWrap, { opacity: controller.contentFade }]}>
       <StatsHero controller={controller} />
       <StatsKpiBlock controller={controller} />
-      <SkillTreeSection skillProfile={controller.skillProfile} />
+      <StatsTrendsSection t={t} chartData={controller.chartData} period={controller.filter.period} />
       <StatsWoranSection
         t={t}
         rows={controller.woranRows}
         onOpenBranch={controller.openWoranBranch}
       />
-      <StatsTrendsSection t={t} chartData={controller.chartData} period={controller.filter.period} />
+      <SkillTreeSection skillProfile={controller.skillProfile} />
       <StatsSessionLogSection
         t={t}
         sessions={controller.recentSessions}
