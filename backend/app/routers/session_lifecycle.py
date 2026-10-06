@@ -8,7 +8,7 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import ProductionSession, User
-from app.contracts.sessions import SessionPublic, SessionQuickStart, SessionStart, SessionStop
+from app.contracts.sessions import SessionPause, SessionPublic, SessionQuickStart, SessionStart, SessionStop
 from app.services.push_dispatch import schedule_notify_session_complete
 from app.services.session_lifecycle_service import (
     ActiveSessionExistsError,
@@ -92,11 +92,12 @@ def pause_session(
     session_id: int,
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    body: SessionPause | None = None,
 ) -> ProductionSession:
     session = _active_owned_session(db, current.id, session_id)
     if session.pause_started_at is not None:
         raise HTTPException(status_code=400, detail="Session is already paused")
-    return pause_active_session(db, session)
+    return pause_active_session(db, session, paused_at=body.paused_at if body else None)
 
 
 @router.post("/item/{session_id}/resume", response_model=SessionPublic)

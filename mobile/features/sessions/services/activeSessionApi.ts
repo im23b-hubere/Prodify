@@ -34,10 +34,12 @@ export async function fetchLongestCompletedSessionSeconds(token: string): Promis
 export async function pauseActiveSession(
   token: string,
   sessionId: number,
+  pausedAt?: string,
 ): Promise<SessionDto | null> {
   const raw = await apiJson<unknown>(`/sessions/item/${sessionId}/pause`, {
     token,
     method: "POST",
+    body: pausedAt ? { paused_at: pausedAt } : undefined,
   });
   return tryParseSessionDto(raw);
 }

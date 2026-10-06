@@ -67,13 +67,13 @@ function ActiveSessionBody({ controller }: { controller: ActiveSessionController
           {controller.isPaused ? (
             <PrimaryButton
               label={t("sessionActive.resume")}
-              onPress={controller.resume}
+              onPress={() => void controller.resume()}
               loading={controller.busy}
             />
           ) : (
             <Pressable
               style={styles.pauseOutline}
-              onPress={controller.pause}
+              onPress={() => void controller.pause()}
               disabled={controller.busy}
             >
               <Text style={styles.pauseText}>{t("sessionActive.pause")}</Text>

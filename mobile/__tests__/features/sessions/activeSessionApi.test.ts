@@ -57,13 +57,14 @@ describe("active session API", () => {
   it("maps session mutations to explicit endpoints", async () => {
     mockApiJson.mockResolvedValue(session);
 
-    await pauseActiveSession("token", 7);
+    await pauseActiveSession("token", 7, "2026-10-06T19:50:00.000Z");
     await updateActiveSession("token", 7, { notes: "idea" });
     await stopActiveSession("token", 7);
 
     expect(mockApiJson).toHaveBeenNthCalledWith(1, "/sessions/item/7/pause", {
       token: "token",
       method: "POST",
+      body: { paused_at: "2026-10-06T19:50:00.000Z" },
     });
     expect(mockApiJson).toHaveBeenNthCalledWith(2, "/sessions/item/7", {
       token: "token",

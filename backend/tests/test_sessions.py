@@ -72,6 +72,41 @@ def test_session_lifecycle_and_trash_restore(client):
     assert len(listed_after_restore.json()) == 1
 
 
+def test_pause_without_body_still_pauses(client):
+    headers = _auth_headers(client, "pausebody@example.com", "pausebody-user")
+    started = client.post(
+        "/sessions/start",
+        headers=headers,
+        json={"session_type": "beat_making"},
+    )
+    assert started.status_code == 201
+    session_id = started.json()["id"]
+
+    paused = client.post(f"/sessions/item/{session_id}/pause", headers=headers)
+    assert paused.status_code == 200
+    assert paused.json()["pause_started_at"] is not None
+
+
+def test_pause_accepts_the_moment_they_left(client):
+    headers = _auth_headers(client, "pauseleft@example.com", "pauseleft-user")
+    started = client.post(
+        "/sessions/start",
+        headers=headers,
+        json={"session_type": "beat_making"},
+    )
+    assert started.status_code == 201
+    session_id = started.json()["id"]
+    started_at = started.json()["started_at"]
+
+    paused = client.post(
+        f"/sessions/item/{session_id}/pause",
+        headers=headers,
+        json={"paused_at": started_at},
+    )
+    assert paused.status_code == 200
+    assert paused.json()["pause_started_at"] is not None
+
+
 def test_session_track_outcome_update_persists(client):
     headers = _auth_headers(client, "session-track@example.com", "session-track-user")
     started = client.post(

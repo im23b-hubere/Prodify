@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react-native";
 import type { TFunction } from "i18next";
 
 import { useDashboardSessionActions } from "../../features/dashboard/hooks/useDashboardSessionActions";
+import { resetSessionPresenceStateForTests } from "../../lib/sessionPresence";
 import type { SessionDto } from "../../types/session";
 
 const mockPush = jest.fn();
@@ -42,6 +43,7 @@ function createOptions(
 
 describe("useDashboardSessionActions openSessionSetup", () => {
   beforeEach(() => {
+    resetSessionPresenceStateForTests();
     jest.clearAllMocks();
   });
 
@@ -80,7 +82,7 @@ describe("useDashboardSessionActions openSessionSetup", () => {
           active: {
             id: 7,
             user_id: 1,
-            started_at: "2026-08-31T10:00:00.000Z",
+            started_at: new Date(Date.now() - 120_000).toISOString(),
             stopped_at: null,
             duration_seconds: 120,
             session_type: "beat_making",

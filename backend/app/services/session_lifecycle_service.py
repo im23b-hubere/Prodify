@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -17,6 +17,8 @@ from app.services.social_challenge_service import sync_challenge_progress_on_ses
 from app.services.streak_calendar import StreakCalendar, load_calendar
 from app.services.streak_reconcile_service import reconcile_streak_row_for_user
 from app.timeutil import as_utc_aware
+
+PAUSE_LOOKBACK_SECONDS = 12 * 3600
 
 
 @dataclass(frozen=True)
@@ -144,11 +146,38 @@ def complete_session(
     return SessionCompletion(session, previous_streak, current_streak, finished_challenge_ids)
 
 
-def pause_active_session(db: Session, session: ProductionSession) -> ProductionSession:
-    session.pause_started_at = utcnow()
+def pause_active_session(
+    db: Session,
+    session: ProductionSession,
+    paused_at: datetime | None = None,
+) -> ProductionSession:
+    session.pause_started_at = resolve_pause_started_at(
+        started_at=session.started_at,
+        requested=paused_at,
+        now=utcnow(),
+    )
     db.commit()
     db.refresh(session)
     return session
+
+
+def resolve_pause_started_at(
+    *,
+    started_at: datetime,
+    requested: datetime | None,
+    now: datetime,
+) -> datetime:
+    started = as_utc_aware(started_at)
+    current = as_utc_aware(now)
+    if requested is None:
+        return current
+    paused_at = as_utc_aware(requested)
+    earliest = max(started, current - timedelta(seconds=PAUSE_LOOKBACK_SECONDS))
+    if paused_at < earliest:
+        return earliest
+    if paused_at > current:
+        return current
+    return paused_at
 
 
 def resume_active_session(db: Session, session: ProductionSession) -> ProductionSession:

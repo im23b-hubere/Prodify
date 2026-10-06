@@ -96,6 +96,10 @@ class SessionStop(BaseModel):
     session_id: int = Field(gt=0)
 
 
+class SessionPause(BaseModel):
+    paused_at: datetime | None = None
+
+
 class AreaWeight(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -1081,8 +1081,10 @@
     "startWhenReadyCta": "START WHEN READY"
   },
   "sessionActive": {
-    "longSessionTitle": "Long session",
-    "longSessionBody": "You've been going for over 8 hours. Still working?",
+    "stillThereTitle": "Still there?",
+    "stillThereBody": "Your session is paused. Continue, or end it here.",
+    "stillThereContinue": "Continue",
+    "stillThereEnd": "End session",
     "invalidSession": "Invalid session",
     "invalidData": "Invalid session data from server.",
     "loadFailed": "Failed to load",

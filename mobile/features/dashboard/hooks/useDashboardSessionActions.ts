@@ -11,6 +11,8 @@ import { setWeeklyGoal } from "../../../lib/goals";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../../lib/sessionTime";
 import type { SessionDto } from "../../../types/session";
 import type { StreakOverviewDto } from "../../../types/streak";
+import { useActiveSessionPauseControls } from "../../sessions/hooks/useActiveSessionPauseControls";
+import { useSessionPresenceCheckIn } from "../../sessions/hooks/useSessionPresenceCheckIn";
 
 type Options = {
   token?: string | null;
@@ -35,8 +37,9 @@ export function useDashboardSessionActions(options: Options) {
   const navigation = useSessionNavigation(options, router);
   const goal = useWeeklyGoalAction(options);
   const freeze = useFreezeActions(options);
-  const completion = useSessionCompletionActions(options, router);
+  const { stopSession, ...completion } = useSessionCompletionActions(options, router);
   const dismissSession = useDismissSession(options);
+  useDashboardSessionPresence(options, stopSession);
   return { ...navigation, ...goal, ...freeze, ...completion, dismissSession };
 }
 
@@ -185,7 +188,7 @@ function useSessionCompletionActions(options: Options, router: Router) {
       },
     ]);
   }, [active, stopSession, t, token]);
-  return { stopBusy, confirmStop };
+  return { stopBusy, confirmStop, stopSession };
 }
 
 function useDismissSession({ loadSessions, setError, t, token }: Options) {
@@ -207,3 +210,28 @@ function useDismissSession({ loadSessions, setError, t, token }: Options) {
 function ignoreHaptic(request: Promise<void>) {
   request.catch(() => undefined);
 }
+
+function useDashboardSessionPresence(
+  options: Options,
+  stopSession: (session: SessionDto) => Promise<void>,
+) {
+  const { token, active, activeResolved, setActive, setError } = options;
+  const pauseControls = useActiveSessionPauseControls({
+    token: token ?? null,
+    session: active,
+    setSession: setActive,
+    setError,
+    setNowMs: () => undefined,
+  });
+  useSessionPresenceCheckIn({
+    session: active,
+    sessionResolved: activeResolved,
+    pauseAt: (pausedAtMs) => pauseControls.pause({ atMs: pausedAtMs, haptic: false }),
+    applyLocalPause: pauseControls.applyLocalPause,
+    resume: () => pauseControls.resume({ haptic: false }),
+    endSession: () => {
+      if (active) void stopSession(active);
+    },
+  });
+}
+

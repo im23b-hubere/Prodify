@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { mergeSessionPauseTiming, parseSessionDate } from "../../../lib/sessionTime";
@@ -9,9 +9,9 @@ import { pauseActiveSession, resumeActiveSession } from "../services/activeSessi
 type PauseControlsOptions = {
   token: string | null;
   session: SessionDto | null;
-  setSession: Dispatch<SetStateAction<SessionDto | null>>;
-  setError: Dispatch<SetStateAction<string | null>>;
-  setNowMs: Dispatch<SetStateAction<number>>;
+  setSession: (session: SessionDto | null) => void;
+  setError: (error: string | null) => void;
+  setNowMs: (nowMs: number) => void;
 };
 
 export function useActiveSessionPauseControls(options: PauseControlsOptions) {
@@ -27,30 +27,40 @@ export function useActiveSessionPauseControls(options: PauseControlsOptions) {
     [setError, setSession],
   );
 
-  const pause = useCallback(async () => {
-    if (!token || !session || session.pause_started_at) return;
+  const pause = useCallback(async (pauseOptions?: { atMs?: number; haptic?: boolean }) => {
+    if (!token || !session || session.pause_started_at) return false;
     const previous = session;
-    const pausedAtMs = Date.now();
+    const pausedAtMs =
+      typeof pauseOptions?.atMs === "number" && Number.isFinite(pauseOptions.atMs)
+        ? pauseOptions.atMs
+        : Date.now();
     const clientPauseStartedAt = new Date(pausedAtMs).toISOString();
     setNowMs(pausedAtMs);
     setSession({ ...session, pause_started_at: clientPauseStartedAt });
     setBusy(true);
     try {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-      const updated = await pauseActiveSession(token, session.id);
-      if (updated) setSession(mergeSessionPauseTiming(clientPauseStartedAt, updated));
-      else restoreAfterInvalidResponse(previous, t("sessionDetail.invalidResponse"));
+      if (pauseOptions?.haptic !== false) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+      }
+      const updated = await pauseActiveSession(token, session.id, clientPauseStartedAt);
+      if (updated) {
+        setSession(mergeSessionPauseTiming(clientPauseStartedAt, updated));
+        return true;
+      }
+      restoreAfterInvalidResponse(previous, t("sessionDetail.invalidResponse"));
+      return false;
     } catch (pauseError) {
       restoreAfterInvalidResponse(
         previous,
         pauseError instanceof Error ? pauseError.message : t("sessionActive.pauseFailed"),
       );
+      return false;
     } finally {
       setBusy(false);
     }
   }, [restoreAfterInvalidResponse, session, setNowMs, setSession, t, token]);
 
-  const resume = useCallback(async () => {
+  const resume = useCallback(async (resumeOptions?: { haptic?: boolean }) => {
     if (!token || !session?.pause_started_at) return;
     const previous = session;
     const resumedAtMs = Date.now();
@@ -58,7 +68,9 @@ export function useActiveSessionPauseControls(options: PauseControlsOptions) {
     setSession(optimisticResume(session, resumedAtMs));
     setBusy(true);
     try {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+      if (resumeOptions?.haptic !== false) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+      }
       const updated = await resumeActiveSession(token, session.id);
       if (updated) setSession(updated);
       else restoreAfterInvalidResponse(previous, t("sessionDetail.invalidResponse"));
@@ -72,7 +84,13 @@ export function useActiveSessionPauseControls(options: PauseControlsOptions) {
     }
   }, [restoreAfterInvalidResponse, session, setNowMs, setSession, t, token]);
 
-  return { pause, resume, pauseResumeBusy: busy };
+  const applyLocalPause = useCallback((pausedAtMs: number) => {
+    if (!session || session.pause_started_at) return;
+    setNowMs(pausedAtMs);
+    setSession({ ...session, pause_started_at: new Date(pausedAtMs).toISOString() });
+  }, [session, setNowMs, setSession]);
+
+  return { pause, resume, applyLocalPause, pauseResumeBusy: busy };
 }
 
 function optimisticResume(session: SessionDto, resumedAtMs: number): SessionDto {

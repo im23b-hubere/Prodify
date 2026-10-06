@@ -66,5 +66,5 @@ export function useStopActiveSession(options: StopSessionOptions) {
     );
   }, [elapsed, finishSession, session, t]);
 
-  return { confirmStop, stopBusy };
+  return { confirmStop, stopSession: finishSession, stopBusy };
 }

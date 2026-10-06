@@ -9,6 +9,7 @@ import { useActiveSessionClock } from "./useActiveSessionClock";
 import { useActiveSessionLoader } from "./useActiveSessionLoader";
 import { useActiveSessionMetadata } from "./useActiveSessionMetadata";
 import { useActiveSessionPauseControls } from "./useActiveSessionPauseControls";
+import { useSessionPresenceCheckIn } from "./useSessionPresenceCheckIn";
 import { useStopActiveSession } from "./useStopActiveSession";
 
 export { ACTIVE_NOTES_MAX_LENGTH } from "./useActiveSessionMetadata";
@@ -42,6 +43,17 @@ export function useActiveSession(id: string | undefined) {
     () => sessionInsight(clock.elapsed, loader.longestCompletedSeconds, t),
     [clock.elapsed, loader.longestCompletedSeconds, t],
   );
+
+  useSessionPresenceCheckIn({
+    session: loader.session,
+    sessionResolved: !loader.loading,
+    pauseAt: (pausedAtMs) => pauseControls.pause({ atMs: pausedAtMs, haptic: false }),
+    applyLocalPause: pauseControls.applyLocalPause,
+    resume: () => pauseControls.resume({ haptic: false }),
+    endSession: () => {
+      if (loader.session) void stop.stopSession(loader.session.id);
+    },
+  });
 
   return {
     session: loader.session,
