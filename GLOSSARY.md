@@ -35,15 +35,19 @@ The producer's account, after a session, of which areas and focuses it trained.
 _Avoid_: Review, log
 
 **Main focus**:
-The one focus of a session that earned the largest share of its time.
+The one focus of a session with the most assigned time.
 _Avoid_: Primary skill, star
 
-**Area weight**:
-How much of a production session went into one area: a little, some or a lot.
-_Avoid_: Percentage, share, intensity
+**Assigned time**:
+The minutes the producer puts on one focus after a session. The sum cannot exceed the session's duration.
+_Avoid_: Area weight, share, percentage, a little / some / a lot
+
+**Unassigned time**:
+The part of the session's duration that was not put on any focus. It does not grow the tree.
+_Avoid_: Remainder, leftover, slack
 
 **Skill time**:
-The part of a session's duration credited to an area or focus; it drives their levels.
+The part of a session's duration credited to an area or focus; it drives their levels. It is the assigned time, or an even split when nothing was assigned.
 _Avoid_: XP, points
 
 ## Copy

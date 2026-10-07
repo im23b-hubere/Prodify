@@ -57,6 +57,68 @@ def allocate_session_seconds(
     return _share_among_focuses(counted_session_seconds(duration_seconds), focus_ids, primary_focus_id)
 
 
+def allocate_skill_time(
+    duration_seconds: int,
+    focus_ids: list[str],
+    assigned_seconds: dict[str, int] | None = None,
+    *,
+    primary_focus_id: str | None = None,
+    weight_by_area: dict[str, int] | None = None,
+) -> dict[str, int]:
+    """Assigned minutes if any were set; otherwise the legacy even/weight split."""
+    if assigned_seconds:
+        return _allocate_budget(counted_session_seconds(duration_seconds), focus_ids, assigned_seconds)
+    if weight_by_area is not None:
+        return allocate_production_seconds(
+            duration_seconds, focus_ids, primary_focus_id, weight_by_area
+        )
+    return allocate_session_seconds(duration_seconds, focus_ids, primary_focus_id)
+
+
+def _allocate_budget(
+    counted: int, focus_ids: list[str], assigned_seconds: dict[str, int]
+) -> dict[str, int]:
+    if not counted or not focus_ids:
+        return {}
+    remaining = counted
+    allocation: dict[str, int] = {}
+    for focus_id in focus_ids:
+        raw = assigned_seconds.get(focus_id, 0)
+        seconds = max(0, min(int(raw), remaining))
+        allocation[focus_id] = seconds
+        remaining -= seconds
+    return allocation
+
+
+def area_seconds_from_skill_time(allocation: dict[str, int]) -> dict[str, int]:
+    areas: dict[str, int] = {}
+    for focus_id, seconds in allocation.items():
+        if seconds <= 0:
+            continue
+        area = branch_of_focus(focus_id)
+        areas[area] = areas.get(area, 0) + seconds
+    return areas
+
+
+def main_focus_id(allocation: dict[str, int]) -> str | None:
+    top = max(allocation.values(), default=0)
+    if top <= 0:
+        return None
+    winners = [focus_id for focus_id, seconds in allocation.items() if seconds == top]
+    return winners[0] if len(winners) == 1 else None
+
+
+def unassigned_seconds(duration_seconds: int, assigned_seconds: dict[str, int]) -> int:
+    counted = counted_session_seconds(duration_seconds)
+    used = sum(max(0, seconds) for seconds in assigned_seconds.values())
+    return max(0, counted - used)
+
+
+def wheel_cap_seconds(duration_seconds: int, assigned_seconds: dict[str, int], focus_id: str) -> int:
+    this = max(0, assigned_seconds.get(focus_id, 0))
+    return min(counted_session_seconds(duration_seconds), this + unassigned_seconds(duration_seconds, assigned_seconds))
+
+
 def allocate_production_seconds(
     duration_seconds: int,
     focus_ids: list[str],
@@ -149,18 +211,26 @@ def session_skill_progress(db: Session, session: ProductionSession) -> list[Skil
 def _counted_allocation(session: ProductionSession) -> dict[str, int]:
     if session.stopped_at is None or session.deleted_at is not None:
         return {}
-    if session.session_type == SessionType.production.value:
-        return allocate_production_seconds(
-            session.duration_seconds or 0,
-            session.skill_focus_ids,
-            session.primary_skill_focus_id,
-            session.weight_by_area,
-        )
-    return allocate_session_seconds(
+    assigned = _assigned_seconds_map(session)
+    production_weights = (
+        session.weight_by_area if session.session_type == SessionType.production.value else None
+    )
+    return allocate_skill_time(
         session.duration_seconds or 0,
         session.skill_focus_ids,
-        session.primary_skill_focus_id,
+        assigned_seconds=assigned,
+        primary_focus_id=session.primary_skill_focus_id,
+        weight_by_area=production_weights,
     )
+
+
+def _assigned_seconds_map(session: object) -> dict[str, int] | None:
+    assigned: dict[str, int] = {}
+    for focus in getattr(session, "skill_focuses", None) or []:
+        value = getattr(focus, "assigned_seconds", None)
+        if value is not None:
+            assigned[str(focus.skill_id)] = int(value)
+    return assigned or None
 
 
 def _skill_totals(db: Session, user_id: int, skill_ids: list[str]) -> dict[str, int]:
