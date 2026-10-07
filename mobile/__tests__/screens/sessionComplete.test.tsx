@@ -15,7 +15,9 @@ const translate = (key: string, options?: Record<string, unknown>) => {
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn().mockResolvedValue(undefined),
   selectionAsync: jest.fn().mockResolvedValue(undefined),
+  impactAsync: jest.fn().mockResolvedValue(undefined),
   NotificationFeedbackType: { Success: "Success" },
+  ImpactFeedbackStyle: { Light: "Light", Medium: "Medium" },
 }));
 
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
@@ -147,7 +149,7 @@ function skillProgress(skillId: string, overrides: Record<string, unknown> = {})
   };
 }
 
-function mockBackend(session: SessionOverrides = {}) {
+function mockBackend(session: SessionOverrides = {}, { totalSessions = 2 } = {}) {
   mockApiJson.mockImplementation((path: string, options?: { method?: string }) => {
     if (path === "/sessions/item/12/skill-progress") return progressResponder();
     if (path === "/sessions/item/12" && options?.method === "PATCH") return patchResponder();
@@ -157,7 +159,7 @@ function mockBackend(session: SessionOverrides = {}) {
         period: "all",
         summary: {
           total_seconds: 3600,
-          total_sessions: 1,
+          total_sessions: totalSessions,
           best_streak_days: 1,
           avg_session_seconds: 3600,
           current_streak_days: 2,
@@ -258,71 +260,85 @@ describe("SessionCompleteScreen focus reflection", () => {
     progressResponder = () => Promise.resolve([]);
   });
 
-  it("asks what the user worked on and saves a picked focus right away", async () => {
+  it("shows a short list and credits a focus from Add right away", async () => {
     mockBackend();
-    const { findByTestId, getByText } = render(<SessionCompleteScreen />);
+    const { findByTestId, queryByTestId } = render(<SessionCompleteScreen />);
 
-    fireEvent.press(await findByTestId("skill-focus-beat_making.drums"));
+    expect(await findByTestId("session-complete-focus")).toBeTruthy();
+    expect(queryByTestId("skill-focus-beat_making.drums")).toBeNull();
+    fireEvent.press(await findByTestId("worked-on-add"));
+    fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
 
-    await waitFor(() => expect(getByText("sessionComplete.focusSaved")).toBeTruthy());
-    expect(getByText("sessionComplete.focusTitle")).toBeTruthy();
-    expect(focusPatchBodies()).toEqual([["beat_making.drums"]]);
-  });
-
-  it("pre-selects the planned focus and saves the correction when it is removed", async () => {
-    mockBackend({ skill_focus_ids: ["beat_making.groove"] });
-    const { findByTestId, getByText } = render(<SessionCompleteScreen />);
-
-    const plannedChip = await findByTestId("skill-focus-beat_making.groove");
-    expect(plannedChip.props.accessibilityState).toEqual(
-      expect.objectContaining({ checked: true }),
+    await waitFor(() =>
+      expect(lastPatchBody()).toEqual({
+        skill_focus_ids: ["beat_making.drums"],
+        focus_times: [{ skill_id: "beat_making.drums", assigned_seconds: 3600 }],
+      }),
     );
-    expect(getByText("sessionComplete.focusTitlePlanned")).toBeTruthy();
-
-    fireEvent.press(plannedChip);
-
-    await waitFor(() => expect(focusPatchBodies()).toEqual([[]]));
+    expect(await findByTestId("worked-on-beat_making.drums")).toBeTruthy();
   });
 
-  it("sends rapid changes one after another so the latest selection wins", async () => {
+  it("pre-selects the planned focus and saves when it is removed", async () => {
+    mockBackend({ skill_focus_ids: ["beat_making.groove"] });
+    const { findByTestId, getByTestId, queryByTestId } = render(<SessionCompleteScreen />);
+
+    expect(await findByTestId("worked-on-beat_making.groove")).toBeTruthy();
+    expect(queryByTestId("session-complete-skill-tree")).toBeNull();
+    expect(getByTestId("worked-on-remove-beat_making.groove").props.accessibilityLabel).toBe(
+      "sessionComplete.removeFocus",
+    );
+
+    fireEvent.press(await findByTestId("worked-on-remove-beat_making.groove"));
+
+    await waitFor(() =>
+      expect(lastPatchBody()).toEqual({
+        skill_focus_ids: [],
+        primary_skill_focus_id: null,
+      }),
+    );
+  });
+
+  it("sends rapid adds one after another so the latest list wins", async () => {
     mockBackend();
     let resolveFirst: () => void = () => undefined;
     patchResponder = () =>
       new Promise((resolve) => {
         resolveFirst = () => resolve(completedSession());
       });
-    const { findByTestId, getByText } = render(<SessionCompleteScreen />);
+    const { findByTestId } = render(<SessionCompleteScreen />);
 
-    fireEvent.press(await findByTestId("skill-focus-beat_making.drums"));
-    fireEvent.press(await findByTestId("skill-focus-beat_making.bass"));
+    fireEvent.press(await findByTestId("worked-on-add"));
+    fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+    fireEvent.press(await findByTestId("add-focus-beat_making.bass"));
     expect(focusPatchBodies()).toEqual([["beat_making.drums"]]);
 
     patchResponder = () => Promise.resolve(completedSession());
     await act(async () => resolveFirst());
 
-    await waitFor(() => expect(getByText("sessionComplete.focusSaved")).toBeTruthy());
-    expect(focusPatchBodies()).toEqual([
-      ["beat_making.drums"],
-      ["beat_making.drums", "beat_making.bass"],
-    ]);
+    await waitFor(() =>
+      expect(focusPatchBodies()).toEqual([
+        ["beat_making.drums"],
+        ["beat_making.drums", "beat_making.bass"],
+      ]),
+    );
   });
 
-  it("keeps the selection after a failed save and retries it", async () => {
+  it("keeps the row after a failed save and retries it", async () => {
     mockBackend();
     patchResponder = () => Promise.reject(new Error("offline"));
     const { findByTestId, findByText, getByTestId } = render(<SessionCompleteScreen />);
 
-    fireEvent.press(await findByTestId("skill-focus-beat_making.drums"));
+    fireEvent.press(await findByTestId("worked-on-add"));
+    fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
     expect(await findByText("sessionComplete.focusSaveFailed")).toBeTruthy();
-    expect(getByTestId("skill-focus-beat_making.drums").props.accessibilityState).toEqual(
-      expect.objectContaining({ checked: true }),
-    );
+    expect(getByTestId("worked-on-beat_making.drums")).toBeTruthy();
 
     patchResponder = () => Promise.resolve(completedSession());
     fireEvent.press(getByTestId("session-complete-focus-retry"));
 
-    expect(await findByText("sessionComplete.focusSaved")).toBeTruthy();
-    expect(focusPatchBodies()).toEqual([["beat_making.drums"], ["beat_making.drums"]]);
+    await waitFor(() =>
+      expect(focusPatchBodies()).toEqual([["beat_making.drums"], ["beat_making.drums"]]),
+    );
   });
 
   it("does not ask for a focus after a session too short to count", async () => {
@@ -333,164 +349,163 @@ describe("SessionCompleteScreen focus reflection", () => {
     expect(queryByTestId("session-complete-focus")).toBeNull();
   });
 
-  it("lets a learning session browse practice areas without dropping the saved focus", async () => {
+  it("keeps a learning focus on the list while Add still offers other areas", async () => {
     mockBackend({ session_type: "learning", skill_focus_ids: ["mixing.eq"] });
-    const { findByTestId, getByTestId } = render(<SessionCompleteScreen />);
+    const { findByTestId } = render(<SessionCompleteScreen />);
 
-    fireEvent.press(await findByTestId("practice-branch-recording"));
-    fireEvent.press(getByTestId("practice-branch-mixing"));
-
-    expect(getByTestId("skill-focus-mixing.eq").props.accessibilityState).toEqual(
-      expect.objectContaining({ checked: true }),
-    );
+    expect(await findByTestId("worked-on-mixing.eq")).toBeTruthy();
+    fireEvent.press(await findByTestId("worked-on-add"));
+    expect(await findByTestId("add-focus-recording.room")).toBeTruthy();
     expect(focusPatchBodies()).toEqual([]);
   });
 
-  it("selects every focus of the area with one full-pass tap", async () => {
-    mockBackend();
+  it("highlights an empty Worked on list after the first counted session", async () => {
+    mockBackend({}, { totalSessions: 1 });
     const { findByTestId } = render(<SessionCompleteScreen />);
 
-    fireEvent.press(await findByTestId("full-pass-beat_making"));
-
-    await waitFor(() =>
-      expect(lastPatchBody()?.skill_focus_ids).toEqual([
-        "beat_making.drums",
-        "beat_making.groove",
-        "beat_making.bass",
-        "beat_making.chords_melody",
-        "beat_making.sampling",
-        "beat_making.sound_selection",
-      ]),
-    );
+    expect(await findByTestId("worked-on-nudge")).toBeTruthy();
   });
 
-  it("saves the starred focus as the main focus", async () => {
-    mockBackend({ skill_focus_ids: ["beat_making.drums", "beat_making.bass"] });
-    const { findByTestId } = render(<SessionCompleteScreen />);
+  it("does not highlight Worked on after later sessions", async () => {
+    mockBackend();
+    const { findByTestId, queryByTestId } = render(<SessionCompleteScreen />);
 
-    fireEvent.press(
-      await findByTestId("skill-focus-star-beat_making.bass", { includeHiddenElements: true }),
-    );
-
-    await waitFor(() =>
-      expect(lastPatchBody()).toEqual({
-        skill_focus_ids: ["beat_making.drums", "beat_making.bass"],
-        primary_skill_focus_id: "beat_making.bass",
-      }),
-    );
+    expect(await findByTestId("session-complete-focus")).toBeTruthy();
+    expect(queryByTestId("worked-on-nudge")).toBeNull();
   });
 
-  it("offers screen readers the main focus as an action on the tile", async () => {
-    mockBackend();
-    const { findByTestId } = render(<SessionCompleteScreen />);
+  it("does not highlight Worked on when a planned focus is already on the list", async () => {
+    mockBackend({ skill_focus_ids: ["beat_making.groove"] }, { totalSessions: 1 });
+    const { findByTestId, queryByTestId } = render(<SessionCompleteScreen />);
 
-    fireEvent(await findByTestId("skill-focus-beat_making.groove"), "accessibilityAction", {
-      nativeEvent: { actionName: "mainFocus" },
+    expect(await findByTestId("worked-on-beat_making.groove")).toBeTruthy();
+    expect(queryByTestId("worked-on-nudge")).toBeNull();
+  });
+
+  it("drops the first-session highlight once a focus is credited", async () => {
+    mockBackend({}, { totalSessions: 1 });
+    const { findByTestId, queryByTestId } = render(<SessionCompleteScreen />);
+
+    expect(await findByTestId("worked-on-nudge")).toBeTruthy();
+    fireEvent.press(await findByTestId("worked-on-add"));
+    fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+
+    await waitFor(() => expect(queryByTestId("worked-on-nudge")).toBeNull());
+  });
+
+  it("rebalances the other row live and saves the wheel on Save", async () => {
+    mockBackend({
+      session_type: "mixing",
+      duration_seconds: 92 * 60,
+      skill_focus_ids: ["mixing.stereo", "mixing.eq"],
     });
+    const { findByTestId, getByText, queryByTestId } = render(<SessionCompleteScreen />);
+
+    fireEvent.press(await findByTestId("worked-on-mixing.eq"));
+    expect(await findByTestId("duration-wheel")).toBeTruthy();
+    fireEvent.press(await findByTestId("duration-wheel-hour-1"));
+    fireEvent.press(await findByTestId("duration-wheel-minute-0"));
+
+    expect(getByText("1h")).toBeTruthy();
+    expect(getByText("32m")).toBeTruthy();
+    expect(queryByTestId("duration-wheel-hour-1")).toBeTruthy();
+
+    fireEvent.press(await findByTestId("duration-wheel-save"));
 
     await waitFor(() =>
       expect(lastPatchBody()).toEqual({
-        skill_focus_ids: ["beat_making.groove"],
-        primary_skill_focus_id: "beat_making.groove",
-      }),
-    );
-  });
-
-  it("shows the minutes a planned focus earned and how far the next level is", async () => {
-    mockBackend({ skill_focus_ids: ["beat_making.drums"] });
-    progressResponder = () => Promise.resolve([skillProgress("beat_making.drums")]);
-    const { findByText, getByText } = render(<SessionCompleteScreen />);
-
-    expect(await findByText("sessionComplete.progressGained")).toBeTruthy();
-    expect(getByText("sessionComplete.progressToNext")).toBeTruthy();
-  });
-
-  it("refreshes the progress after a newly picked focus is saved", async () => {
-    mockBackend();
-    progressResponder = () => Promise.resolve([skillProgress("beat_making.drums")]);
-    const { findByTestId, findByText } = render(<SessionCompleteScreen />);
-
-    fireEvent.press(await findByTestId("skill-focus-beat_making.drums"));
-
-    expect(await findByText("sessionComplete.progressGained")).toBeTruthy();
-  });
-
-  it("celebrates a level up reached in this session", async () => {
-    mockBackend({ skill_focus_ids: ["beat_making.drums"] });
-    progressResponder = () =>
-      Promise.resolve([skillProgress("beat_making.drums", { previous_level: 1 })]);
-    const { findByText } = render(<SessionCompleteScreen />);
-
-    expect(await findByText("sessionComplete.progressLevelUp")).toBeTruthy();
-  });
-
-  it("opens the skill tree at the area of this session", async () => {
-    mockBackend();
-    const { findByTestId } = render(<SessionCompleteScreen />);
-
-    fireEvent.press(await findByTestId("session-complete-skill-tree"));
-
-    expect(mockPush).toHaveBeenCalledWith("/skill-tree?branch=beat_making");
-  });
-
-  it("lets a production session add the areas it went into", async () => {
-    mockBackend({ session_type: "production", skill_focus_ids: ["beat_making.groove"] });
-    const { findByTestId, getByTestId } = render(<SessionCompleteScreen />);
-
-    fireEvent.press(await findByTestId("worked-area-mixing"));
-    fireEvent.press(getByTestId("skill-focus-mixing.eq"));
-
-    await waitFor(() =>
-      expect(lastPatchBody()).toEqual({
-        skill_focus_ids: ["beat_making.groove", "mixing.eq"],
-        primary_skill_focus_id: null,
-        area_weights: [
-          { branch: "beat_making", weight: 2 },
-          { branch: "mixing", weight: 2 },
+        skill_focus_ids: ["mixing.stereo", "mixing.eq"],
+        focus_times: [
+          { skill_id: "mixing.stereo", assigned_seconds: 32 * 60 },
+          { skill_id: "mixing.eq", assigned_seconds: 60 * 60 },
         ],
       }),
     );
   });
 
-  it("saves how much of the session went into an area", async () => {
-    mockBackend({ session_type: "production", skill_focus_ids: ["mixing.eq"] });
+  it("drops the live preview when the wheel is cancelled", async () => {
+    mockBackend({
+      session_type: "mixing",
+      duration_seconds: 92 * 60,
+      skill_focus_ids: ["mixing.stereo", "mixing.eq"],
+    });
+    const { findByTestId, queryByText } = render(<SessionCompleteScreen />);
+
+    fireEvent.press(await findByTestId("worked-on-mixing.eq"));
+    fireEvent.press(await findByTestId("duration-wheel-hour-1"));
+    fireEvent.press(await findByTestId("duration-wheel-minute-0"));
+    fireEvent.press(await findByTestId("duration-wheel-cancel"));
+
+    expect(queryByText("1h")).toBeNull();
+    expect(focusPatchBodies()).toEqual([]);
+  });
+
+  it("does not open the wheel when only one focus is credited", async () => {
+    mockBackend({ skill_focus_ids: ["beat_making.groove"] });
+    const { findByTestId, queryByTestId } = render(<SessionCompleteScreen />);
+
+    fireEvent.press(await findByTestId("worked-on-beat_making.groove"));
+    expect(queryByTestId("duration-wheel")).toBeNull();
+  });
+
+  it("uses a minutes-only wheel when the session is under an hour", async () => {
+    mockBackend({
+      session_type: "mixing",
+      duration_seconds: 46 * 60,
+      skill_focus_ids: ["mixing.stereo", "mixing.eq"],
+    });
+    const { findByTestId, queryByTestId } = render(<SessionCompleteScreen />);
+
+    fireEvent.press(await findByTestId("worked-on-mixing.eq"));
+    expect(await findByTestId("duration-wheel-minute-30")).toBeTruthy();
+    expect(queryByTestId("duration-wheel-hour-0")).toBeNull();
+  });
+
+  it("shows a level pip when this session pushed a focus over a level", async () => {
+    mockBackend({ skill_focus_ids: ["beat_making.drums"] });
+    progressResponder = () =>
+      Promise.resolve([skillProgress("beat_making.drums", { previous_level: 1, level: 2 })]);
     const { findByTestId } = render(<SessionCompleteScreen />);
 
-    fireEvent.press(await findByTestId("area-weight-mixing-3"));
+    expect(await findByTestId("worked-on-level-beat_making.drums")).toBeTruthy();
+  });
+
+  it("hides the level pip when the focus did not level up", async () => {
+    mockBackend({ skill_focus_ids: ["beat_making.drums"] });
+    progressResponder = () => Promise.resolve([skillProgress("beat_making.drums")]);
+    const { findByTestId, queryByTestId } = render(<SessionCompleteScreen />);
+
+    expect(await findByTestId("worked-on-beat_making.drums")).toBeTruthy();
+    expect(queryByTestId("worked-on-level-beat_making.drums")).toBeNull();
+  });
+
+  it("shows the pip after a save that levels the focus", async () => {
+    mockBackend();
+    progressResponder = () =>
+      Promise.resolve([skillProgress("beat_making.drums", { previous_level: 1, level: 2 })]);
+    const { findByTestId } = render(<SessionCompleteScreen />);
+
+    fireEvent.press(await findByTestId("worked-on-add"));
+    fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+
+    expect(await findByTestId("worked-on-level-beat_making.drums")).toBeTruthy();
+  });
+
+  it("lets a production session add a focus from another area without weights", async () => {
+    mockBackend({ session_type: "production", skill_focus_ids: ["beat_making.groove"] });
+    const { findByTestId } = render(<SessionCompleteScreen />);
+
+    fireEvent.press(await findByTestId("worked-on-add"));
+    fireEvent.press(await findByTestId("add-focus-mixing.eq"));
 
     await waitFor(() =>
-      expect(lastPatchBody()?.area_weights).toEqual([{ branch: "mixing", weight: 3 }]),
+      expect(lastPatchBody()).toEqual({
+        skill_focus_ids: ["beat_making.groove", "mixing.eq"],
+        focus_times: [
+          { skill_id: "beat_making.groove", assigned_seconds: 1800 },
+          { skill_id: "mixing.eq", assigned_seconds: 1800 },
+        ],
+      }),
     );
-  });
-
-  it("previews how the session time splits across the weighted areas", async () => {
-    mockBackend({
-      session_type: "production",
-      area_weights: [
-        { branch: "beat_making", weight: 3 },
-        { branch: "mixing", weight: 2 },
-      ],
-    });
-    const { findByTestId } = render(<SessionCompleteScreen />);
-
-    expect((await findByTestId("area-time-preview")).props.children).toBe(
-      "sessionComplete.areaTimeShare · sessionComplete.areaTimeShare",
-    );
-  });
-
-  it("asks a production session for its areas before showing any focus", async () => {
-    mockBackend({ session_type: "production" });
-    const { findByText, queryByTestId } = render(<SessionCompleteScreen />);
-
-    expect(await findByText("sessionComplete.areasEmpty")).toBeTruthy();
-    expect(queryByTestId("skill-focus-beat_making.drums")).toBeNull();
-  });
-
-  it("explains when skill progress cannot be loaded", async () => {
-    mockBackend({ skill_focus_ids: ["beat_making.drums"] });
-    progressResponder = () => Promise.reject(new Error("offline"));
-    const { findByText } = render(<SessionCompleteScreen />);
-
-    expect(await findByText("sessionComplete.progressUnavailable")).toBeTruthy();
   });
 });

@@ -15,6 +15,7 @@ type LoadState = "loading" | "ready" | "error";
 type SessionCompleteData = {
   session: SessionDto | null;
   streak: number | null;
+  totalSessions: number | null;
   progression: ProgressionDto | null;
   weeklyGoalTarget: number | null;
   weekSessionsCount: number;
@@ -52,10 +53,10 @@ async function loadCompletionSummary(token: string) {
     syncProgression(token, { force: true }).catch(() => null),
     apiJson<unknown>("/goals/current", { token }).catch(() => null),
   ]);
+  const stats = statsRaw ? tryParseSessionStatsDto(statsRaw) : null;
   return {
-    streak: statsRaw
-      ? (tryParseSessionStatsDto(statsRaw)?.summary.current_streak_days ?? null)
-      : null,
+    streak: stats?.summary.current_streak_days ?? null,
+    totalSessions: stats ? stats.summary.total_sessions : null,
     progression,
     rawGoal,
   };
@@ -79,6 +80,7 @@ export function useSessionCompleteData(
 ): SessionCompleteData {
   const [session, setSession] = useState<SessionDto | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
+  const [totalSessions, setTotalSessions] = useState<number | null>(null);
   const [progression, setProgression] = useState<ProgressionDto | null>(null);
   const [weeklyGoalTarget, setWeeklyGoalTarget] = useState<number | null>(null);
   const [weekSessionsCount, setWeekSessionsCount] = useState(0);
@@ -90,6 +92,7 @@ export function useSessionCompleteData(
     setLoadState("error");
     setLoadError(message);
     setSession(null);
+    setTotalSessions(null);
   }, []);
 
   const reload = useCallback(async () => {
@@ -109,6 +112,7 @@ export function useSessionCompleteData(
       const summary = await loadCompletionSummary(request.token);
       if (cancelled.current) return;
       setStreak(summary.streak);
+      setTotalSessions(summary.totalSessions);
       setProgression(summary.progression);
       applyGoalResult(
         summary.rawGoal,
@@ -129,6 +133,7 @@ export function useSessionCompleteData(
   return {
     session,
     streak,
+    totalSessions,
     progression,
     weeklyGoalTarget,
     weekSessionsCount,

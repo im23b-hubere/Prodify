@@ -19,6 +19,12 @@ export function levelFraction(seconds: number, levelStart: number, nextLevel: nu
   return Math.min(1, Math.max(0, (seconds - levelStart) / span));
 }
 
+/** New level after this session, or null if the focus did not level up. */
+export function leveledUpTo(progress: SkillProgressDto | undefined): number | null {
+  if (!progress || progress.level <= progress.previous_level) return null;
+  return progress.level;
+}
+
 export function skillProgressView(progress: SkillProgressDto): SkillProgressView {
   const { total_seconds, gained_seconds, level_start_seconds, next_level_seconds } = progress;
   const isLevelUp = progress.level > progress.previous_level;

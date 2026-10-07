@@ -1,112 +1,155 @@
-# Focus time assignment
+# Credit the session
 
-After a session, the producer puts minutes on the focuses they touched. The sum cannot exceed the session's duration. Leftover stays unassigned and does not grow the tree.
+Stop → a short list of what you worked on → spin minutes onto each row. That is the whole reflection.
 
-This replaces area weights (a little / some / a lot) and the rule that the starred focus earns half the time.
+No hints, no star, no a little/some/a lot, no full pass, no catalog of eight tiles with descriptions. The dopamine is the number ticking onto a named focus, not copy.
 
-## Rule
+Allocator and PATCH from Slices 1–2 stay. This document replaces the old complete-card plan.
 
-| Layer | What it is | UI |
-|-------|------------|----|
-| **Counted duration** | Session duration, floored at the minimum counted length and capped at 12h | Already stored |
-| **Touched focuses** | Which focuses the producer marks after the session | Tiles on Session complete (unchanged tap) |
-| **Assigned time** | Minutes on one focus; integer seconds under the hood | Duration wheel in a sheet |
-| **Unassigned time** | Counted duration minus assigned total | Remaining bar + “Put the rest on {focus}” |
-| **Area time** | Sum of assigned time in that area | Derived; no separate control |
-| **Main focus** | The focus with the most assigned time | Derived; no star-as-share |
+## Why the current card fails
 
-Weekly goal, streak, and XP rank still use the session as a whole. Only the skill tree reads assigned time.
+Session complete asks the producer to **fill out a form**: eyebrow, two titles, a sentence of rules, area chips, weights, stars, full pass, progress bars, a skill-tree link. That is homework. They already finished the work. This screen should feel like locking in a take.
 
-## Allocation
+## Feel
 
-Let `D` = counted duration. Let `A(f)` = assigned seconds on focus `f`, or unset.
+Fast, professional, a little like logging a set. One decision: **what did I touch?** Then the minutes are already there. The wheel is only if EQ was more than Stereo.
 
-1. Session too short (`D = 0`): no skill time. Hide the wheel.
-2. Focuses tapped, **no** focus has assigned time: **equal split** of `D` across tapped focuses. Same as today's split when there is no main focus. This is the skip path.
-3. **Any** focus has assigned time: **budget mode**. Skill time is exactly `A(f)` for each focus. Unset focuses in the tap set get `0`. `sum(A) <= D`. Unassigned `D - sum(A)` is session time, not skill time.
-4. Assigning `0` to a tapped focus means “touched, no skill time”.
-5. Main focus = the unique max `A(f)`. Tie → none (equal split already has no main).
-6. Production sessions do not weigh areas. Area time = sum of its focuses.
-7. Old sessions with no assigned seconds keep today's allocator (area weights + half to main focus) so history does not jump.
+Gamification is motion and numbers, not slogans:
 
-Cap for one wheel: `A(f) + unassigned` in budget mode, else `D`. Never above `D`.
+- The minutes on the row are large and jump with the wheel (1:1, same frame as the finger).
+- Light haptic per minute detent; a slightly heavier tick when a focus levels up.
+- If this session pushed a focus over a level, a small `Lvl 2` appears on that row after the wheel commits. That is the hit.
+- Streak and duration stay on the hero above. This card does not repeat XP, quest copy, or emoji.
+
+Reduced motion: no inertia on the wheel, no row pulse; numbers still update.
+
+## Screen
+
+After the existing complete hero (duration, streak):
+
+```
+Worked on
+────────────────────────────────
+  EQ                         46 min
+  Stereo                     46 min
+  + Add
+```
+
+That is the card. No subtitle. No footnote. Save error stays the existing retry row, only when a PATCH fails.
+
+| Piece | What it is |
+|-------|------------|
+| **List** | Only the focuses they picked. Short name (`EQ`), not the essay. Intentions from start are already on the list. |
+| **Minutes** | Always a number, never `—`. Adding a focus even-splits counted duration `D` across the list so the session is credited immediately. |
+| **Wheel** | Tap a row → Clock-style duration sheet. One wheel. Cancel / Save. Live minutes on the row while it spins. |
+| **Add** | Sheet of the remaining focuses, short names, grouped by area if the session type has more than one. Tap to add, sheet stays open for a second add, swipe down to close. |
+| **Remove** | Minus on the row. Last row removed → list empty → no skill time. |
+
+No remaining-bar lecture. The list always spends all of `D`. Turning one wheel **rebalances the others** so the sum stays `D`. One focus: the wheel is `0…D` (turning below `D` is the only way leftover exists, and we do not offer it — one focus is `D`).
+
+Short session (`D = 0`): hide this card. Hero + min-duration hint already exist.
+
+## Wheel
+
+iOS Clock alarm duration, not a clock time.
+
+- Slides up from the bottom and occupies half the screen. Cancel / Save in Prodify orange.
+- Title = focus short name. No subtitle of rules.
+- Minutes only when `D < 60m`; hours + minutes when `D >= 60m`. 1-minute ticks. No seconds.
+- Finger and value move together. Rubber-band at 0 and at the cap. Cap for this row = `D` minus the other rows’ current minutes (so this row can take everything).
+- Save commits and autosaves. Cancel drops the live preview.
+
+## What goes away on this card
+
+- Star / main-focus as a share
+- A little / some / a lot, production area time preview
+- Full pass
+- `focusHint*` sentences
+- Tile descriptions, covers, skill-progress bars on every tile
+- “View skill tree” from this card (the tab exists)
+- Learning area as a separate homework step: Add is grouped by area instead
+
+Learning still needs an area to browse in Add. Mixing / Beat Making Add is a flat short list. Production Add is short names under area headers, no weights.
+
+## Allocation (unchanged engine)
+
+`D` = counted duration (min floor, 12h cap).
+
+The **new client always sends a full assignment** once the list is non-empty: `sum(A) = D`. Empty list → ids `[]`, omit `focus_times` → no skill time.
+
+Even split is the default fill when the list changes (add/remove), then PATCH `focus_times`. Spinning one row rebalances the rest (`remainder / n-1`), then PATCH. No skip-with-nulls from this UI.
+
+Old rows with `NULL` assigned seconds keep the legacy allocator (weights + half to star) so history does not jump.
+
+Main focus = unique max `A(f)` on the server. The client does not show a star.
+
+Area time = sum of its focuses. No separate control.
+
+Weekly goal, streak, XP rank still use the session as a whole.
+
+## Copy
+
+Almost none. Studio voice if a string is required:
+
+| Surface | Copy |
+|---------|------|
+| Card title | `Worked on` |
+| Add | `Add` |
+| Empty list | nothing (the Add row is the empty state) |
+| Wheel | Cancel / Save |
+| Level pip | `Lvl {{level}}` |
+| Save error | existing retry |
+
+No “share”, “weight”, “block”, “assign”, “remaining”, “splits evenly”.
 
 ## Flow
 
-1. Stop session → Session complete hero (duration, streak).
-2. **What did you work on?** Tap tiles. Intentions from start stay pre-selected.
-3. Each selected row shows a duration on the right: empty (`—`) until assigned, then `12 min`.
-4. Tap the duration → form sheet with a duration wheel, Cancel / Save, subtitle `0–{remaining} min`.
-5. Footer: `48 min of 1h 32m assigned` and a thin fill. If remaining > 0 and at least one focus is selected, a text button **Put the rest on {name}** (the main focus if any, else the last opened).
-6. Autosave the reflection as today (PATCH on change). Closing the sheet is enough; no extra confirm on the card.
-7. Same card on session detail, so a later edit uses the same cap (`D` of that session).
+1. Stop. Hero lands (duration, streak).
+2. If they planned a focus, it is already a row with `D` (or even split if two). If not, the card is title + Add.
+3. Add EQ → row `EQ  1h 32m`. Add Stereo → both show `46 min`. Tree already gets the time.
+4. They want more EQ → tap EQ → spin → Stereo shrinks live → Save. Haptic. If EQ leveled, `Lvl 2` on the row.
+5. Done. No confirm. They can leave.
 
-Learning sessions still pick an area first, then focuses, then the same wheel. Mixing / Beat Making sessions skip the area chips; tapping focuses is enough.
+Same list on session detail, same cap `D`.
 
-## UI
+## Data (already on the server)
 
-- **List, one wheel.** Never eight pickers on screen. The sheet is `presentation: formSheet` (or `Modal` `formSheet`), Cancel (leading) / Save (trailing), like Clock.
-- **Duration, not clock time.** Minutes only when `D < 60m`; hours + minutes when `D >= 60m`. 1-minute ticks. No seconds.
-- **Direct.** The wheel tracks the finger 1:1; rubber-band at 0 and at the cap; light haptic per detent; reduced motion drops inertia.
-- **Remaining bar.** Live while the wheel moves. Going over the cap is impossible, so the bar never exceeds 100%.
-- **Empty / short / error.** Short session: tiles only, existing min-duration hint. Save error: existing retry row. No assigned times: remaining bar reads `Not assigned · splits evenly` so skippers are not punished.
+`session_skill_focuses.assigned_seconds`. PATCH `focus_times`. See [Slice 2](#slice-2--schema--api).
 
-Copy stays studio voice: Session, Focus, Area, Skill time. No “share”, “weight”, “block”.
-
-## Data
-
-`session_skill_focuses.assigned_seconds` nullable integer.
-
-- `NULL` on every focus of a session → legacy allocator.
-- Any non-null on that session → budget mode; missing values count as 0.
-
-PATCH body (new, alongside today's fields):
-
-```json
-{
-  "skill_focus_ids": ["mixing.stereo", "mixing.eq"],
-  "focus_times": [
-    { "skill_id": "mixing.stereo", "assigned_seconds": 720 },
-    { "skill_id": "mixing.eq", "assigned_seconds": 480 }
-  ]
-}
-```
-
-Reject if a `skill_id` is not in `skill_focus_ids`, if any value is < 0, or if the sum exceeds counted duration. Do not send `area_weights` from new clients. Keep accepting `area_weights` and `primary_skill_focus_id` for old clients and for legacy rows.
-
-Public session DTO adds `focus_times: { skill_id, assigned_seconds }[]`. Main focus stays a derived field on read (`primary_skill_focus_id`) so the tree and stats do not care how it was chosen.
-
-`counted_skill_seconds` in `skill_progress_service.py` becomes: if the session has any assigned seconds → those values (already counted-capped); else existing `allocate_session_seconds` / `allocate_production_seconds`.
+New client: every reflection save with a non-empty list includes `focus_times` summing to `D`. Do not send `area_weights`. Do not send `primary_skill_focus_id` from this card (server derives it).
 
 ## Implementation slices
 
-TDD each slice. Do not start UI before the allocator is green.
+TDD each slice. Backend 1–2 are done.
 
-1. **Allocator** — `backend/app/services/skill_progress_service.py` (+ `mobile/features/sessions/areaWeights.ts` equivalent). Tests: short session; equal split; budget; cap; production area sum; legacy weights still work.
-2. **Schema + API** — Alembic on `session_skill_focuses.assigned_seconds`; PATCH/GET; 422 on overflow. Tests in `test_session_skill_focuses.py`.
-3. **Reflection payload** — `focusReflectionPayload.ts`, `SessionDto`, `useSkillFocusSync`. Autosave `focus_times`. Tests that skip path sends ids only (all null).
-4. **Duration sheet** — wheel + remaining bar + put-the-rest. Session complete first; session detail reuses the same card.
-5. **Retire area-weight UI** — remove a little/some/a lot and the production area time preview that is computed from weights. Area chips can stay as a filter for which focuses you see, or drop if tapping focuses is enough (prefer drop: areas follow focuses).
-6. **Copy + glossary already in this plan** — `sessionComplete.focusHint*`, `areaWeight*`. Stats “where the hours went” already sums skill time; it should start matching assigned minutes without a new screen.
+1. **Allocator** — done.
+2. **Schema + API** — done.
+3. **List model** — `FocusReflection.assignedSeconds` always a full split of `D` for the tap set (helpers: even split on add/remove, rebalance on set). Payload always sends `focus_times` when the list is non-empty. Parse GET. Tests: two ids → 46/46 of 92; set EQ to 60 → Stereo 32; remove Stereo → EQ 92; empty → omit `focus_times`.
+4. **Complete list UI** — replace the tile grid on Session complete with the short list + Add sheet. No wheel yet: minutes are the even split, tappable later. Strip star, full pass, weights, hints, skill-tree link, tile blurbs from this card.
+5. **Wheel** — half-screen sheet from the bottom, live rebalance, haptic, autosave on Save. Hide card when `D = 0`. Session detail reuses the list+wheel.
+6. **Level pip** — after Save, if that focus’s level rose, show `Lvl n` on the row (data already on skill-progress). No extra copy.
 
 ## Do not
 
-- Require the bar to fill to 100%.
-- Let assigned totals exceed `D` and then normalize.
-- Count overlapping work twice.
-- Keep the star as “this focus gets half”.
-- Backfill old sessions into minutes (history stays on the old allocator).
-- Show the wheel on sessions under the counted minimum.
-- Commit seed-lab scripts as part of this work.
+- Put eight wheels on screen.
+- Explain the rules on the card.
+- Keep leftover as a user-facing idea (the engine still allows it; this UI fills `D`).
+- Backfill old sessions.
+- Gamify with coach lines, XP on this card, or emoji.
+- Commit seed-lab scripts.
 
 ## Test plan
 
-- 92 min mixing session, tap Stereo + EQ, assign 40 and 20 → tree +40 / +20, 32 min unassigned, Stats mixing area +60.
-- Tap three focuses, assign nothing → each gets a third of `D`.
-- Assign 92 of 92 on one focus → others 0 if still tapped.
-- Wheel will not go past remaining; Save with 0 is allowed.
-- Production session with mixing + beat-making focuses, only minutes set → no `area_weights` in PATCH; area hours follow the minutes.
-- Session under minimum → no skill time, no wheel.
-- Existing fixture with weights and a primary focus → same totals as before this feature.
-- Edit on session detail after a day → cap is still that session's duration.
-- Reduced motion: sheet still usable, no haptic.
+- 92 min mixing, add Stereo then EQ → list 46 / 46, PATCH times 2760 / 2760, tree +46 each.
+- Spin EQ to 60 → Stereo 32 live, Save → tree +60 / +32.
+- Remove Stereo → EQ 92.
+- Empty list → no skill time.
+- Planned EQ at start → complete already shows EQ with 92, no extra tap.
+- Production, add Drums + EQ → no `area_weights` in PATCH; areas follow the minutes.
+- Short session → card hidden.
+- Old session with weights and a star, opened in detail, not edited → same totals as today.
+- Reduced motion: wheel usable, no haptic.
+
+## Slice 2 — Schema + API
+
+Shipped. Nullable `assigned_seconds`, PATCH `focus_times`, 422 on overflow / unknown id / running / short+positive. GET lists only non-null rows. Budget area seconds follow assigned minutes. Alembic **0027** (after **0026** on the server).

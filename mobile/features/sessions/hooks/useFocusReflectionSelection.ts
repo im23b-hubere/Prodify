@@ -9,6 +9,7 @@ import {
   type SkillFocusId,
 } from "../../../constants/skills";
 import { reflectedAreas, setAreaWeight, toggleArea, withExplicitAreaWeights } from "../areaWeights";
+import { addCreditedFocus, removeCreditedFocus } from "../creditList";
 import {
   fitReflectionToSessionType,
   restrictToBranches,
@@ -28,6 +29,7 @@ export function useFocusReflectionSelection(
   sessionType: SessionType,
   seed: FocusReflection,
   onCommit?: (next: FocusReflection) => void,
+  durationSeconds = 0,
 ) {
   const [pickedReflection, setPickedReflection] = useState(seed);
   const [browsedPracticeBranch, setBrowsedPracticeBranch] = useState<SkillBranch | null>(null);
@@ -70,6 +72,20 @@ export function useFocusReflectionSelection(
     toggleFocus: (id: SkillFocusId) => commit((current) => toggleTouchedFocus(current, id)),
     toggleMainFocus: (id: SkillFocusId) => commit((current) => toggleMainFocus(current, id)),
     toggleFullPass: (branch: SkillBranch) => commit((current) => toggleFullPass(current, branch)),
+    addFocus: (id: SkillFocusId) => {
+      const next = addCreditedFocus(committedReflection, id, durationSeconds);
+      setPickedReflection(next);
+      onCommit?.(next);
+    },
+    removeFocus: (id: SkillFocusId) => {
+      const next = removeCreditedFocus(committedReflection, id, durationSeconds);
+      setPickedReflection(next);
+      onCommit?.(next);
+    },
+    commitReflection: (next: FocusReflection) => {
+      setPickedReflection(next);
+      onCommit?.(next);
+    },
   };
 }
 

@@ -1,6 +1,7 @@
 import {
   estimateSessionXpGain,
   shortenSessionLabel,
+  shouldNudgeWorkedOn,
 } from "../../../features/sessions/sessionCompletePresentation";
 
 describe("session complete presentation", () => {
@@ -17,5 +18,20 @@ describe("session complete presentation", () => {
   it("trims and shortens long progression labels", () => {
     expect(shortenSessionLabel("  Producer  ")).toBe("Producer");
     expect(shortenSessionLabel("Extraordinary Producer", 10)).toBe("Extraordi…");
+  });
+});
+
+describe("shouldNudgeWorkedOn", () => {
+  it("highlights an empty list after the first counted session", () => {
+    expect(shouldNudgeWorkedOn(1, 0)).toBe(true);
+  });
+
+  it("stays quiet once a focus is already credited", () => {
+    expect(shouldNudgeWorkedOn(1, 1)).toBe(false);
+  });
+
+  it("stays quiet after later sessions or when stats are missing", () => {
+    expect(shouldNudgeWorkedOn(2, 0)).toBe(false);
+    expect(shouldNudgeWorkedOn(null, 0)).toBe(false);
   });
 });

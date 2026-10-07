@@ -431,6 +431,275 @@ def test_saving_unchanged_focuses_is_not_tracked(client):
     assert _focus_reflection_events(session_id) == []
 
 
+def _assign(client, headers, session_id: int, focus_ids: list[str], times: list[tuple[str, int | None]]):
+    return client.patch(
+        f"/sessions/item/{session_id}",
+        headers=headers,
+        json={
+            "skill_focus_ids": focus_ids,
+            "focus_times": [
+                {"skill_id": skill_id, "assigned_seconds": seconds} for skill_id, seconds in times
+            ],
+        },
+    )
+
+
+def test_assigned_times_are_stored_and_returned(client):
+    headers = _auth_headers(client, "focus-times@example.com", "focus-times")
+    session_id = _finished_session(client, headers, duration_minutes=92, session_type="mixing")
+
+    updated = _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.stereo", "mixing.eq"],
+        [("mixing.stereo", 40 * 60), ("mixing.eq", 20 * 60)],
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["focus_times"] == [
+        {"skill_id": "mixing.stereo", "assigned_seconds": 40 * 60},
+        {"skill_id": "mixing.eq", "assigned_seconds": 20 * 60},
+    ]
+
+
+def test_skill_progress_uses_assigned_times(client):
+    headers = _auth_headers(client, "focus-times-progress@example.com", "focus-times-progress")
+    session_id = _finished_session(client, headers, duration_minutes=92, session_type="mixing")
+    _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.stereo", "mixing.eq"],
+        [("mixing.stereo", 40 * 60), ("mixing.eq", 20 * 60)],
+    )
+
+    progress = _progress_by_skill(client, headers, session_id)
+
+    assert progress["mixing.stereo"]["gained_seconds"] == 40 * 60
+    assert progress["mixing.eq"]["gained_seconds"] == 20 * 60
+
+
+def test_omitting_focus_times_keeps_the_even_split(client):
+    headers = _auth_headers(client, "focus-times-skip@example.com", "focus-times-skip")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+
+    updated = _reflect(client, headers, session_id, ["mixing.eq", "mixing.space"])
+
+    assert updated.json()["focus_times"] == []
+    progress = _progress_by_skill(client, headers, session_id)
+    assert progress["mixing.eq"]["gained_seconds"] == 1800
+    assert progress["mixing.space"]["gained_seconds"] == 1800
+
+
+def test_assigning_zero_is_budget_not_an_even_split(client):
+    headers = _auth_headers(client, "focus-times-zero@example.com", "focus-times-zero")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+    _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.stereo", "mixing.eq"],
+        [("mixing.stereo", 40 * 60), ("mixing.eq", 0)],
+    )
+
+    progress = _progress_by_skill(client, headers, session_id)
+
+    assert progress["mixing.stereo"]["gained_seconds"] == 40 * 60
+    assert progress["mixing.eq"]["gained_seconds"] == 0
+
+
+def test_assigned_time_over_the_session_is_rejected(client):
+    headers = _auth_headers(client, "focus-times-overflow@example.com", "focus-times-overflow")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+
+    updated = _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.stereo", "mixing.eq"],
+        [("mixing.stereo", 40 * 60), ("mixing.eq", 30 * 60)],
+    )
+
+    assert updated.status_code == 422
+    assert _progress_by_skill(client, headers, session_id) == {}
+
+
+def test_assigned_time_must_be_on_a_tapped_focus(client):
+    headers = _auth_headers(client, "focus-times-untapped@example.com", "focus-times-untapped")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+
+    updated = _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.stereo", "mixing.eq"],
+        [("mixing.space", 10 * 60)],
+    )
+
+    assert updated.status_code == 422
+
+
+def test_negative_assigned_time_is_rejected(client):
+    headers = _auth_headers(client, "focus-times-neg@example.com", "focus-times-neg")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+
+    updated = _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.eq"],
+        [("mixing.eq", -1)],
+    )
+
+    assert updated.status_code == 422
+
+
+def test_unique_longest_assignment_becomes_the_main_focus(client):
+    headers = _auth_headers(client, "focus-times-main@example.com", "focus-times-main")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+
+    unique = _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.stereo", "mixing.eq"],
+        [("mixing.stereo", 40 * 60), ("mixing.eq", 20 * 60)],
+    )
+    tied = _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.stereo", "mixing.eq"],
+        [("mixing.stereo", 20 * 60), ("mixing.eq", 20 * 60)],
+    )
+
+    assert unique.json()["primary_skill_focus_id"] == "mixing.stereo"
+    assert tied.json()["primary_skill_focus_id"] is None
+
+
+def test_clearing_focus_times_returns_to_an_even_split(client):
+    headers = _auth_headers(client, "focus-times-clear@example.com", "focus-times-clear")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+    _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.eq", "mixing.space"],
+        [("mixing.eq", 40 * 60), ("mixing.space", 10 * 60)],
+    )
+
+    cleared = client.patch(
+        f"/sessions/item/{session_id}",
+        headers=headers,
+        json={"focus_times": []},
+    )
+
+    assert cleared.json()["focus_times"] == []
+    assert cleared.json()["primary_skill_focus_id"] is None
+    progress = _progress_by_skill(client, headers, session_id)
+    assert progress["mixing.eq"]["gained_seconds"] == 1800
+    assert progress["mixing.space"]["gained_seconds"] == 1800
+
+
+def test_adding_a_focus_without_times_keeps_existing_assignments(client):
+    headers = _auth_headers(client, "focus-times-keep@example.com", "focus-times-keep")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+    _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.stereo", "mixing.eq"],
+        [("mixing.stereo", 40 * 60), ("mixing.eq", 10 * 60)],
+    )
+
+    updated = client.patch(
+        f"/sessions/item/{session_id}",
+        headers=headers,
+        json={"skill_focus_ids": ["mixing.stereo", "mixing.eq", "mixing.space"]},
+    )
+
+    assert updated.json()["focus_times"] == [
+        {"skill_id": "mixing.stereo", "assigned_seconds": 40 * 60},
+        {"skill_id": "mixing.eq", "assigned_seconds": 10 * 60},
+    ]
+
+
+def test_running_session_rejects_assigned_time(client):
+    headers = _auth_headers(client, "focus-times-running@example.com", "focus-times-running")
+    session_id = _start(client, headers, session_type="mixing").json()["id"]
+
+    updated = _assign(client, headers, session_id, ["mixing.eq"], [("mixing.eq", 10 * 60)])
+
+    assert updated.status_code == 422
+
+
+def test_short_session_rejects_assigned_time(client):
+    headers = _auth_headers(client, "focus-times-short@example.com", "focus-times-short")
+    session_id = _finished_session(
+        client, headers, duration_minutes=3, session_type="mixing", skill_focus_ids=["mixing.eq"]
+    )
+
+    updated = _assign(client, headers, session_id, ["mixing.eq"], [("mixing.eq", 60)])
+
+    assert updated.status_code == 422
+    assert _progress_by_skill(client, headers, session_id)["mixing.eq"]["gained_seconds"] == 0
+
+
+def test_production_assigned_minutes_split_areas_without_weights(client):
+    headers = _auth_headers(client, "focus-times-prod@example.com", "focus-times-prod")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="production")
+    _assign(
+        client,
+        headers,
+        session_id,
+        ["beat_making.drums", "mixing.eq"],
+        [("beat_making.drums", 30 * 60), ("mixing.eq", 15 * 60)],
+    )
+
+    progress = _progress_by_skill(client, headers, session_id)
+    profile = client.get("/skills/profile", headers=headers).json()
+    areas = {item["branch"]: item["total_seconds"] for item in profile["branches"]}
+
+    assert progress["beat_making.drums"]["gained_seconds"] == 30 * 60
+    assert progress["mixing.eq"]["gained_seconds"] == 15 * 60
+    assert (areas["beat_making"], areas["mixing"]) == (30 * 60, 15 * 60)
+
+
+def test_assigned_minutes_cut_unassigned_time_out_of_the_area(client):
+    headers = _auth_headers(client, "focus-times-area@example.com", "focus-times-area")
+    session_id = _finished_session(client, headers, duration_minutes=92, session_type="mixing")
+    _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.stereo", "mixing.eq"],
+        [("mixing.stereo", 40 * 60), ("mixing.eq", 20 * 60)],
+    )
+
+    profile = client.get("/skills/profile", headers=headers).json()
+    mixing = next(item for item in profile["branches"] if item["branch"] == "mixing")
+    stats = client.get("/sessions/stats?period=week", headers=headers).json()
+    week_areas = {item["branch"]: item["seconds"] for item in stats["branch_seconds"]}
+
+    assert mixing["total_seconds"] == 60 * 60
+    assert week_areas == {"mixing": 60 * 60}
+
+
+def test_legacy_weights_and_main_focus_still_split_without_focus_times(client):
+    headers = _auth_headers(client, "focus-times-legacy@example.com", "focus-times-legacy")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+    _reflect(
+        client, headers, session_id, ["mixing.eq", "mixing.space", "mixing.stereo"], "mixing.eq"
+    )
+
+    progress = _progress_by_skill(client, headers, session_id)
+
+    assert progress["mixing.eq"]["gained_seconds"] == 1800
+    assert progress["mixing.space"]["gained_seconds"] == 900
+    assert progress["mixing.stereo"]["gained_seconds"] == 900
+
+
 def test_deleting_account_removes_session_focuses(client):
     headers = _auth_headers(client, "focus-delete@example.com", "focus-delete")
     session_id = _start(

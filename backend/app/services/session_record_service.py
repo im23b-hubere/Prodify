@@ -11,6 +11,7 @@ from app.services.session_skill_focus_service import (
     drop_area_weights_unless_production,
     drop_incompatible_skill_focuses,
     replace_area_weights,
+    replace_focus_times,
     replace_skill_focuses,
     set_primary_skill_focus,
 )
@@ -224,6 +225,10 @@ def _apply_updates(session: ProductionSession, updates: dict) -> None:
         drop_incompatible_skill_focuses(session)
         if "primary_skill_focus_id" in updates:
             set_primary_skill_focus(session, updates["primary_skill_focus_id"])
+    if "focus_times" in updates:
+        replace_focus_times(session, updates["focus_times"] or [])
+        if not session.focus_times and "primary_skill_focus_id" not in updates:
+            set_primary_skill_focus(session, None)
     if "area_weights" in updates:
         weights = updates["area_weights"] or []
         replace_area_weights(session, {item["branch"]: item["weight"] for item in weights})

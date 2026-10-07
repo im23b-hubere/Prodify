@@ -7,6 +7,7 @@ from app.models import (
     SessionType,
     SkillFocusSource,
 )
+from app.services.skill_progress_service import counted_session_seconds, main_focus_id
 from app.skill_catalog import (
     MAX_PLANNED_FOCUSES_PER_SESSION,
     incompatible_focus_ids,
@@ -40,6 +41,28 @@ class PrimaryFocusNotSelectedError(SkillFocusValidationError):
 class AreaWeightsRequireProductionError(SkillFocusValidationError):
     def __init__(self, session_type: str) -> None:
         super().__init__(f"area weights only apply to production sessions, not {session_type}")
+
+
+class AssignedTimeNotSelectedError(SkillFocusValidationError):
+    def __init__(self, focus_ids: list[str]) -> None:
+        super().__init__(
+            f"assigned time {', '.join(focus_ids)} must be one of the session's focuses"
+        )
+
+
+class AssignedTimeOverflowError(SkillFocusValidationError):
+    def __init__(self) -> None:
+        super().__init__("assigned time cannot exceed the session's duration")
+
+
+class AssignedTimeRequiresStoppedSessionError(SkillFocusValidationError):
+    def __init__(self) -> None:
+        super().__init__("assigned time can only be set after the session is stopped")
+
+
+class AssignedTimeOnShortSessionError(SkillFocusValidationError):
+    def __init__(self) -> None:
+        super().__init__("short sessions cannot take assigned time")
 
 
 def replace_skill_focuses(
@@ -90,6 +113,34 @@ def replace_area_weights(session: ProductionSession, weight_by_area: dict[str, i
 def drop_area_weights_unless_production(session: ProductionSession) -> None:
     if not _is_production(session):
         session.area_weights = []
+
+
+def replace_focus_times(
+    session: ProductionSession, focus_times: list[dict[str, str | int | None]]
+) -> None:
+    """Replace assigned seconds on the current tap set. Missing ids become unset."""
+    if session.stopped_at is None or session.duration_seconds is None:
+        raise AssignedTimeRequiresStoppedSessionError
+    by_id = {str(item["skill_id"]): item.get("assigned_seconds") for item in focus_times}
+    unknown = [skill_id for skill_id in by_id if skill_id not in session.skill_focus_ids]
+    if unknown:
+        raise AssignedTimeNotSelectedError(unknown)
+    counted = counted_session_seconds(session.duration_seconds)
+    used = sum(int(value) for value in by_id.values() if value is not None)
+    if counted == 0 and used > 0:
+        raise AssignedTimeOnShortSessionError
+    if used > counted:
+        raise AssignedTimeOverflowError
+    for focus in session.skill_focuses:
+        value = by_id.get(focus.skill_id)
+        focus.assigned_seconds = None if value is None else int(value)
+    assigned = {
+        focus.skill_id: focus.assigned_seconds or 0
+        for focus in session.skill_focuses
+        if focus.assigned_seconds is not None
+    }
+    if assigned:
+        set_primary_skill_focus(session, main_focus_id(assigned))
 
 
 def _weighted_row(row: SessionAreaWeight | None, branch: str, weight: int) -> SessionAreaWeight:

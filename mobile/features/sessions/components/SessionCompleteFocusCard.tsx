@@ -1,97 +1,67 @@
-import { useRouter } from "expo-router";
-import type { TFunction } from "i18next";
-import { Check, ChevronRight } from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
 
 import { sessionTypeAccent } from "../../../components/session/SkillFocusChips";
 import type { SessionType } from "../../../constants/sessionTypes";
-import type { SkillBranch } from "../../../constants/skills";
 import { colors, motion } from "../../../constants/theme";
 import type { SessionDto } from "../../../types/session";
-import {
-  useSessionFocusReflection,
-  type SessionFocusReflection,
-} from "../hooks/useSessionFocusReflection";
+import { useSessionFocusReflection } from "../hooks/useSessionFocusReflection";
 import type { FocusSaveStatus } from "../hooks/useSkillFocusSync";
 import { styles } from "../sessionComplete.styles";
-import { SkillFocusReflectionPicker } from "./SkillFocusReflectionPicker";
+import { shouldNudgeWorkedOn } from "../sessionCompletePresentation";
+import { WorkedOnEditor } from "./WorkedOnEditor";
 
-type SessionCompleteFocusCardProps = { session: SessionDto; sessionType: SessionType };
+type SessionCompleteFocusCardProps = {
+  session: SessionDto;
+  sessionType: SessionType;
+  totalSessions: number | null;
+};
 
-export function SessionCompleteFocusCard({ session, sessionType }: SessionCompleteFocusCardProps) {
-  const { t } = useTranslation();
+export function SessionCompleteFocusCard({
+  session,
+  sessionType,
+  totalSessions,
+}: SessionCompleteFocusCardProps) {
   const reflection = useSessionFocusReflection(session, sessionType);
   const accent = sessionTypeAccent(sessionType);
+  const credited = reflection.selection.committedReflection;
+  const nudge = shouldNudgeWorkedOn(totalSessions, credited.focusIds.length);
+
   return (
     <Animated.View
       entering={FadeInDown.duration(motion.standard).delay(motion.quick)}
-      style={[styles.focusCard, { borderColor: `${accent}40` }]}
+      style={[
+        styles.focusCard,
+        { borderColor: `${accent}40` },
+        nudge ? styles.focusCardNudge : null,
+      ]}
       testID="session-complete-focus"
     >
-      <FocusCardHeader reflection={reflection} accent={accent} />
-      <SkillFocusReflectionPicker
+      <View style={styles.focusCardHeader}>
+        <WorkedOnTitle />
+        <SaveStatusIndicator status={reflection.saveStatus} />
+      </View>
+      <WorkedOnEditor
         selection={reflection.selection}
         durationSeconds={session.duration_seconds ?? 0}
+        sessionType={sessionType}
         progressBySkill={reflection.progressBySkill}
+        nudge={nudge}
       />
       {reflection.saveStatus === "error" ? <SaveErrorRow onRetry={reflection.retrySave} /> : null}
-      {reflection.progressLoadState === "error" ? (
-        <Text style={styles.focusFootnote}>{t("sessionComplete.progressUnavailable")}</Text>
-      ) : null}
-      <SkillTreeLink branch={reflection.selection.visibleBranches[0]} />
     </Animated.View>
   );
 }
 
-function SkillTreeLink({ branch }: { branch: SkillBranch | undefined }) {
-  const { t } = useTranslation();
-  const { push } = useRouter();
-  return (
-    <Pressable
-      accessibilityRole="link"
-      onPress={() => push(branch ? `/skill-tree?branch=${branch}` : "/skill-tree")}
-      style={({ pressed }) => [styles.skillTreeLink, pressed && styles.focusRetryPressed]}
-      testID="session-complete-skill-tree"
-    >
-      <Text style={styles.skillTreeLinkText}>{t("sessionComplete.viewSkillTree")}</Text>
-      <ChevronRight size={16} color={colors.textSecondary} />
-    </Pressable>
-  );
-}
-
-function FocusCardHeader({
-  reflection,
-  accent,
-}: {
-  reflection: SessionFocusReflection;
-  accent: string;
-}) {
+function WorkedOnTitle() {
   const { t } = useTranslation();
   return (
-    <>
-      <Text style={[styles.focusEyebrow, { color: accent }]}>
-        {t("sessionComplete.focusEyebrow")}
-      </Text>
-      <View style={styles.focusCardHeader}>
-        <Text style={styles.focusCardTitle} accessibilityRole="header">
-          {reflection.hasPlannedFocus
-            ? t("sessionComplete.focusTitlePlanned")
-            : t("sessionComplete.focusTitle")}
-        </Text>
-        <SaveStatusIndicator status={reflection.saveStatus} />
-      </View>
-      <Text style={styles.focusCardHint}>{focusHint(reflection, t)}</Text>
-    </>
+    <Text style={styles.focusCardTitle} accessibilityRole="header">
+      {t("sessionComplete.workedOn")}
+    </Text>
   );
-}
-
-function focusHint(reflection: SessionFocusReflection, t: TFunction): string {
-  if (reflection.selection.isProduction) return t("sessionComplete.focusHintProduction");
-  return reflection.hasPlannedFocus
-    ? t("sessionComplete.focusHintPlanned")
-    : t("sessionComplete.focusHint");
 }
 
 function SaveStatusIndicator({ status }: { status: FocusSaveStatus }) {

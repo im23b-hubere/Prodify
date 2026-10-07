@@ -1,5 +1,6 @@
 import {
   formatCompactDuration,
+  leveledUpTo,
   skillProgressView,
 } from "../../../features/sessions/skillProgressPresentation";
 import { parseSkillProgressList } from "../../../lib/skillProgressDto";
@@ -44,6 +45,14 @@ describe("skillProgressView", () => {
 
     expect(view.toFraction).toBe(1);
     expect(view.secondsToNextLevel).toBeNull();
+  });
+});
+
+describe("leveledUpTo", () => {
+  it("returns the new level only when this session crossed it", () => {
+    expect(leveledUpTo(progress({ previous_level: 1, level: 2 }))).toBe(2);
+    expect(leveledUpTo(progress())).toBeNull();
+    expect(leveledUpTo(undefined)).toBeNull();
   });
 });
 

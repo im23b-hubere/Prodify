@@ -26,6 +26,43 @@ describe("tryParseSessionDto skill focuses", () => {
   });
 });
 
+describe("tryParseSessionDto focus times", () => {
+  it("keeps known assigned seconds in order", () => {
+    const session = tryParseSessionDto({
+      ...baseSession,
+      skill_focus_ids: ["mixing.stereo", "mixing.eq"],
+      focus_times: [
+        { skill_id: "mixing.stereo", assigned_seconds: 2760 },
+        { skill_id: "mixing.eq", assigned_seconds: 2760 },
+      ],
+    });
+
+    expect(session?.focus_times).toEqual([
+      { skill_id: "mixing.stereo", assigned_seconds: 2760 },
+      { skill_id: "mixing.eq", assigned_seconds: 2760 },
+    ]);
+  });
+
+  it("drops unknown ids, negatives, and junk", () => {
+    const session = tryParseSessionDto({
+      ...baseSession,
+      focus_times: [
+        { skill_id: "mixing.eq", assigned_seconds: 60 },
+        { skill_id: "mixing.future_skill", assigned_seconds: 60 },
+        { skill_id: "mixing.space", assigned_seconds: -1 },
+        { skill_id: "mixing.stereo" },
+        42,
+      ],
+    });
+
+    expect(session?.focus_times).toEqual([{ skill_id: "mixing.eq", assigned_seconds: 60 }]);
+  });
+
+  it("defaults to an empty list when the field is missing", () => {
+    expect(tryParseSessionDto(baseSession)?.focus_times).toEqual([]);
+  });
+});
+
 describe("tryParseSessionDto area weights", () => {
   it("keeps the weights of known areas", () => {
     const session = tryParseSessionDto({

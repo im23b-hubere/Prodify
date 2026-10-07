@@ -10,7 +10,7 @@ import { SESSION_TYPE_IDS, type SessionDto, type SessionType } from "../../../ty
 import type { FocusReflectionSelection } from "../hooks/useFocusReflectionSelection";
 import type { SessionDetailPresentation } from "../sessionDetailPresentation";
 import { focusesAllowedForSessionType } from "../skillFocusSelection";
-import { SkillFocusReflectionPicker } from "./SkillFocusReflectionPicker";
+import { WorkedOnEditor } from "./WorkedOnEditor";
 
 const NOTES_MAX_LENGTH = 2000;
 
@@ -103,16 +103,12 @@ function SkillFocusSection({
     return (
       <View style={styles.section} testID="session-detail-focus-editor">
         <Text style={styles.sectionTitle} accessibilityRole="header">
-          {t("sessionDetail.skillFocus")}
+          {t("sessionComplete.workedOn")}
         </Text>
-        <Text style={styles.sectionHint}>
-          {focusSelection.isProduction
-            ? t("sessionComplete.focusHintProduction")
-            : t("sessionComplete.focusHint")}
-        </Text>
-        <SkillFocusReflectionPicker
+        <WorkedOnEditor
           selection={focusSelection}
           durationSeconds={session.duration_seconds ?? 0}
+          sessionType={selectedType}
         />
       </View>
     );
@@ -266,12 +262,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.body,
     marginBottom: spacing.sm,
-  },
-  sectionHint: {
-    color: colors.textSecondary,
-    ...typography.caption,
-    marginTop: -spacing.xs,
-    marginBottom: spacing.xs,
   },
   chips: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   readOnlyValue: { color: colors.textPrimary, fontFamily: fontFamily.body, ...typography.body },

@@ -48,7 +48,12 @@ function useSessionDraft(session: SessionDto | null, currentUserId?: number | nu
   }
 
   const savedReflection = useMemo(() => storedReflection(session), [session]);
-  const focusSelection = useFocusReflectionSelection(selectedType, savedReflection);
+  const focusSelection = useFocusReflectionSelection(
+    selectedType,
+    savedReflection,
+    undefined,
+    session?.duration_seconds ?? 0,
+  );
   const isOwnSession = !!session && currentUserId != null && session.user_id === currentUserId;
   const canEditFocuses = isOwnSession && session?.stopped_at != null;
 

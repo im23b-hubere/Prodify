@@ -24,6 +24,7 @@ export function SessionCompleteView({ controller }: { controller: SessionComplet
           <SessionCompleteFocusCard
             session={controller.session}
             sessionType={controller.focusReflectionType}
+            totalSessions={controller.totalSessions}
           />
         ) : null}
         <SessionCompleteWeekCard

@@ -43,6 +43,14 @@ export function estimateSessionXpGain(durationSeconds: number): number {
 
 export const MINIMUM_COUNTED_SESSION_SECONDS = SESSION_XP_MINUTES_FLOOR * 60;
 
+/** First counted session with nothing credited yet — draw the eye to Worked on. */
+export function shouldNudgeWorkedOn(
+  totalSessions: number | null,
+  creditedCount: number,
+): boolean {
+  return totalSessions === 1 && creditedCount === 0;
+}
+
 /** Session type to reflect focuses for, or null when a reflection would add noise. */
 export function focusReflectionSessionType(session: SessionDto): SessionType | null {
   if ((session.duration_seconds ?? 0) < MINIMUM_COUNTED_SESSION_SECONDS) return null;

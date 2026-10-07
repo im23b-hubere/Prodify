@@ -127,6 +127,14 @@ class ProductionSession(Base):
     def primary_skill_focus_id(self) -> Optional[str]:
         return next((focus.skill_id for focus in self.skill_focuses if focus.is_primary), None)
 
+    @property
+    def focus_times(self) -> list[dict[str, str | int]]:
+        return [
+            {"skill_id": focus.skill_id, "assigned_seconds": focus.assigned_seconds}
+            for focus in self.skill_focuses
+            if focus.assigned_seconds is not None
+        ]
+
 
 class SkillFocusSource(str, enum.Enum):
     planned = "planned"
@@ -144,8 +152,9 @@ class SessionSkillFocus(Base):
     skill_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     # "planned" = chosen before/while producing; "reflected" = added after the session ended.
     source: Mapped[str] = mapped_column(String(16), nullable=False, default=SkillFocusSource.planned.value)
-    # At most one focus per session is the main focus; it earns the larger share of the time.
+    # At most one focus per session is the main focus (unique max assigned time, or a stored star).
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    assigned_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

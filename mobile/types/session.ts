@@ -27,6 +27,7 @@ export type SessionDto = {
   skill_focus_ids?: SkillFocusId[];
   primary_skill_focus_id?: SkillFocusId | null;
   area_weights?: { branch: SkillBranch; weight: AreaWeight }[];
+  focus_times?: { skill_id: SkillFocusId; assigned_seconds: number }[];
 };
 
 export type SessionStatsDto = {

@@ -1,7 +1,8 @@
 """A user's whole skill tree: time and level per branch and per focus, derived from sessions.
 
 Branches earn the full time of sessions of their type, so history from before skill focuses
-existed still counts; multi-area sessions split their time. Focuses earn only the share their
+existed still counts; multi-area sessions split their time. Assigned minutes override that:
+an area then only gets the assigned time of its focuses. Focuses earn only the share their
 sessions allocate to them.
 """
 
@@ -17,6 +18,7 @@ from app.services.skill_progress_service import (
     MIN_COUNTED_SESSION_SECONDS,
     SKILL_LEVEL_THRESHOLDS_SECONDS,
     SkillLevel,
+    area_seconds_from_skill_time,
     counted_session_seconds,
     counted_skill_seconds,
     effective_area_weights,
@@ -87,6 +89,18 @@ def branch_seconds_for_session(
     return {}
 
 
+def area_seconds_for_session(session: ProductionSession) -> dict[str, int]:
+    """Assigned minutes when any were set; otherwise the legacy type/weight split."""
+    if session.focus_times:
+        return area_seconds_from_skill_time(counted_skill_seconds(session))
+    return branch_seconds_for_session(
+        session.session_type,
+        session.duration_seconds or 0,
+        session.skill_focus_ids,
+        session.weight_by_area,
+    )
+
+
 def build_skill_profile(db: Session, user_id: int) -> SkillProfile:
     sessions = db.scalars(
         select(ProductionSession)
@@ -110,12 +124,7 @@ def build_skill_profile(db: Session, user_id: int) -> SkillProfile:
     }
     total_seconds = 0
     for session in sessions:
-        branch_seconds = branch_seconds_for_session(
-            session.session_type,
-            session.duration_seconds or 0,
-            session.skill_focus_ids,
-            session.weight_by_area,
-        )
+        branch_seconds = area_seconds_for_session(session)
         if branch_seconds:
             total_seconds += counted_session_seconds(session.duration_seconds or 0)
         for branch, seconds in branch_seconds.items():

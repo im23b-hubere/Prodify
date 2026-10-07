@@ -1,7 +1,20 @@
 import { StyleSheet } from "react-native";
+import { type CSSAnimationProperties, cubicBezier } from "react-native-reanimated";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, motion, radii, spacing, typography, ui } from "../../constants/theme";
+
+/** Slow breathe on first-session Add — rare, so a loop is allowed. */
+export const ADD_NUDGE_PULSE = {
+  animationName: {
+    "0%": { transform: [{ scale: 1 }] },
+    "50%": { transform: [{ scale: 1.03 }] },
+    "100%": { transform: [{ scale: 1 }] },
+  },
+  animationDuration: 1600,
+  animationIterationCount: "infinite",
+  animationTimingFunction: cubicBezier(0.77, 0, 0.175, 1),
+} as const satisfies CSSAnimationProperties;
 
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, padding: ui.screenPadding },
@@ -117,6 +130,11 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.lg,
   },
+  focusCardNudge: {
+    borderColor: colors.primary,
+    backgroundColor: "rgba(255,61,0,0.1)",
+    boxShadow: "0 0 28px rgba(255,61,0,0.28)",
+  },
   focusEyebrow: {
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
@@ -140,6 +158,101 @@ export const styles = StyleSheet.create({
     marginTop: spacing.xs,
     color: colors.textSecondary,
     ...typography.meta,
+  },
+  workedOnList: { marginTop: spacing.md, gap: spacing.xs },
+  workedOnRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    minHeight: 52,
+  },
+  workedOnRowMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    minHeight: 52,
+  },
+  workedOnName: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
+  workedOnLevel: {
+    color: colors.success,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
+  workedOnMinutes: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
+    letterSpacing: -0.4,
+  },
+  workedOnRemove: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.round,
+    borderCurve: "continuous",
+  },
+  workedOnAdd: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    minHeight: 44,
+    paddingVertical: spacing.xs,
+  },
+  workedOnAddText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
+  workedOnAddNudge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderCurve: "continuous",
+    backgroundColor: colors.primary,
+  },
+  workedOnAddNudgeText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
+  addSheet: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg },
+  addSheetTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.cardTitle,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  addSheetList: { paddingBottom: spacing.xl, gap: spacing.lg },
+  addGroup: { gap: spacing.xs },
+  addGroupTitle: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginBottom: spacing.xs,
+  },
+  addRow: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingVertical: spacing.sm,
+  },
+  addRowText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
   },
   focusStatus: { flexDirection: "row", alignItems: "center", gap: spacing.xs, minHeight: 20 },
   focusStatusText: {
@@ -190,21 +303,6 @@ export const styles = StyleSheet.create({
     ...typography.caption,
   },
   creditDetail: { color: colors.textSecondary, ...typography.meta },
-  skillTreeLink: {
-    marginTop: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    minHeight: 44,
-  },
-  skillTreeLinkText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-  },
   branchSection: { marginTop: spacing.lg, gap: spacing.sm },
   branchHeader: {
     flexDirection: "row",

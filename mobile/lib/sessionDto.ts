@@ -83,6 +83,7 @@ export function tryParseSessionDto(value: unknown): SessionDto | null {
   const area_weights = Array.isArray(v.area_weights)
     ? v.area_weights.filter(isKnownAreaWeight)
     : [];
+  const focus_times = Array.isArray(v.focus_times) ? v.focus_times.filter(isKnownFocusTime) : [];
 
   return {
     id,
@@ -102,7 +103,21 @@ export function tryParseSessionDto(value: unknown): SessionDto | null {
     skill_focus_ids,
     primary_skill_focus_id,
     area_weights,
+    focus_times,
   };
+}
+
+function isKnownFocusTime(
+  value: unknown,
+): value is NonNullable<SessionDto["focus_times"]>[number] {
+  if (!value || typeof value !== "object") return false;
+  const { skill_id, assigned_seconds } = value as Record<string, unknown>;
+  return (
+    isSkillFocusId(skill_id) &&
+    typeof assigned_seconds === "number" &&
+    Number.isFinite(assigned_seconds) &&
+    assigned_seconds >= 0
+  );
 }
 
 function isKnownAreaWeight(

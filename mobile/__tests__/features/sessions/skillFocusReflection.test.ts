@@ -27,6 +27,30 @@ describe("savedFocusReflection", () => {
     area_weights: [{ branch: "mixing", weight: 3 }],
   };
 
+  it("reads assigned seconds from the session", () => {
+    expect(
+      savedFocusReflection(
+        {
+          ...session,
+          session_type: "mixing",
+          skill_focus_ids: ["mixing.stereo", "mixing.eq"],
+          focus_times: [
+            { skill_id: "mixing.stereo", assigned_seconds: 2760 },
+            { skill_id: "mixing.eq", assigned_seconds: 2760 },
+          ],
+        },
+        "mixing",
+      ).assignedSeconds,
+    ).toEqual({
+      "mixing.stereo": 2760,
+      "mixing.eq": 2760,
+    });
+  });
+
+  it("leaves assigned seconds empty when the session has none", () => {
+    expect(savedFocusReflection(session, "production").assignedSeconds).toEqual({});
+  });
+
   it("counts areas reached only through a focus as some, like the server", () => {
     expect(savedFocusReflection(session, "production").areaWeights).toEqual({
       beat_making: 2,

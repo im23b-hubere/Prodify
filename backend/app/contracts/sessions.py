@@ -121,6 +121,27 @@ class AreaWeight(BaseModel):
         return value
 
 
+class FocusTime(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    skill_id: str
+    assigned_seconds: int | None = None
+
+    @field_validator("skill_id")
+    @classmethod
+    def require_known_focus(cls, value: str) -> str:
+        if value not in SKILL_FOCUS_IDS:
+            raise ValueError(f"unknown skill focus ids: {value}")
+        return value
+
+    @field_validator("assigned_seconds")
+    @classmethod
+    def require_non_negative(cls, value: int | None) -> int | None:
+        if value is not None and value < 0:
+            raise ValueError("assigned_seconds must be at least 0")
+        return value
+
+
 class SessionUpdate(BaseModel):
     session_type: SessionType | None = None
     notes: str | None = Field(default=None, max_length=2000)
@@ -133,6 +154,7 @@ class SessionUpdate(BaseModel):
     skill_focus_ids: list[str] | None = None
     primary_skill_focus_id: str | None = None
     area_weights: list[AreaWeight] | None = None
+    focus_times: list[FocusTime] | None = None
 
     @field_validator("notes")
     @classmethod
@@ -155,6 +177,14 @@ class SessionUpdate(BaseModel):
         branches = [item.branch for item in value or []]
         if len(branches) != len(set(branches)):
             raise ValueError("each area may be weighted only once")
+        return value
+
+    @field_validator("focus_times")
+    @classmethod
+    def require_each_focus_once(cls, value: list[FocusTime] | None) -> list[FocusTime] | None:
+        skill_ids = [item.skill_id for item in value or []]
+        if len(skill_ids) != len(set(skill_ids)):
+            raise ValueError("each focus may be assigned time only once")
         return value
 
     @field_validator("track_title")
@@ -183,6 +213,7 @@ class SessionPublic(BaseModel):
     skill_focus_ids: list[str] = Field(default_factory=list)
     primary_skill_focus_id: str | None = None
     area_weights: list[AreaWeight] = Field(default_factory=list)
+    focus_times: list[FocusTime] = Field(default_factory=list)
 
     @field_validator("tags", mode="before")
     @classmethod

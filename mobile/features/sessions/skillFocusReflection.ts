@@ -9,6 +9,7 @@ import {
   type SkillFocusId,
 } from "../../constants/skills";
 import type { SessionDto } from "../../types/session";
+import type { SkillTimeAllocation } from "./focusTime";
 
 export type AreaWeights = Partial<Record<SkillBranch, AreaWeight>>;
 
@@ -20,6 +21,7 @@ export type FocusReflection = {
   focusIds: SkillFocusId[];
   primaryFocusId: SkillFocusId | null;
   areaWeights: AreaWeights;
+  assignedSeconds?: SkillTimeAllocation;
 };
 
 export function withoutOrphanedPrimary(
@@ -31,6 +33,9 @@ export function withoutOrphanedPrimary(
     ...reflection,
     focusIds,
     primaryFocusId: primary && focusIds.includes(primary) ? primary : null,
+    assignedSeconds: reflection.assignedSeconds
+      ? assignedSecondsFor(reflection, focusIds)
+      : reflection.assignedSeconds,
   };
 }
 
@@ -63,7 +68,33 @@ export function storedFocusReflection(session: SessionDto): FocusReflection {
     focusIds,
     primaryFocusId: session.primary_skill_focus_id ?? null,
     areaWeights: storedAreaWeights(focusIds, session.area_weights ?? []),
+    assignedSeconds: storedAssignedSeconds(focusIds, session.focus_times ?? []),
   };
+}
+
+function storedAssignedSeconds(
+  focusIds: SkillFocusId[],
+  times: NonNullable<SessionDto["focus_times"]>,
+): SkillTimeAllocation {
+  const allowed = new Set(focusIds);
+  const assigned: SkillTimeAllocation = {};
+  for (const row of times) {
+    if (!allowed.has(row.skill_id)) continue;
+    assigned[row.skill_id] = row.assigned_seconds;
+  }
+  return assigned;
+}
+
+function assignedSecondsFor(
+  reflection: FocusReflection,
+  focusIds: SkillFocusId[],
+): SkillTimeAllocation {
+  const assigned: SkillTimeAllocation = {};
+  for (const id of focusIds) {
+    const seconds = reflection.assignedSeconds?.[id];
+    if (seconds !== undefined) assigned[id] = seconds;
+  }
+  return assigned;
 }
 
 /** Areas reached only through a focus count as "some", as they do on the server. */
@@ -122,7 +153,21 @@ export function isSameReflection(a: FocusReflection, b: FocusReflection): boolea
     a.primaryFocusId === b.primaryFocusId &&
     a.focusIds.length === b.focusIds.length &&
     a.focusIds.every((id) => b.focusIds.includes(id)) &&
-    hasSameAreaWeights(a.areaWeights, b.areaWeights)
+    hasSameAreaWeights(a.areaWeights, b.areaWeights) &&
+    hasSameAssignedSeconds(a.assignedSeconds, b.assignedSeconds)
+  );
+}
+
+function hasSameAssignedSeconds(
+  a: SkillTimeAllocation | undefined,
+  b: SkillTimeAllocation | undefined,
+): boolean {
+  const left = a ?? {};
+  const right = b ?? {};
+  const ids = Object.keys(left);
+  return (
+    ids.length === Object.keys(right).length &&
+    ids.every((id) => left[id as SkillFocusId] === right[id as SkillFocusId])
   );
 }
 

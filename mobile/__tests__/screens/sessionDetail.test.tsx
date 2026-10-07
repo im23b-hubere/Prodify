@@ -221,19 +221,22 @@ describe("SessionDetailScreen", () => {
       return patchCall?.[1]?.body;
     };
 
-    it("saves touched focuses and the main focus with the other changes", async () => {
-      const { findByTestId, findByText, getByTestId } = render(<SessionDetailScreen />);
+    it("saves the credited list and even-split times with the other changes", async () => {
+      const { findByTestId, findByText } = render(<SessionDetailScreen />);
 
-      fireEvent.press(await findByTestId("skill-focus-beat_making.drums"));
-      fireEvent.press(getByTestId("skill-focus-beat_making.groove"));
-      fireEvent.press(getByTestId("skill-focus-star-beat_making.groove", { includeHiddenElements: true }));
+      fireEvent.press(await findByTestId("worked-on-add"));
+      fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+      fireEvent.press(await findByTestId("add-focus-beat_making.groove"));
       fireEvent.press(await findByText("sessionDetail.saveChanges"));
 
       await waitFor(() => {
         expect(patchBody()).toEqual(
           expect.objectContaining({
             skill_focus_ids: ["beat_making.drums", "beat_making.groove"],
-            primary_skill_focus_id: "beat_making.groove",
+            focus_times: [
+              { skill_id: "beat_making.drums", assigned_seconds: 1800 },
+              { skill_id: "beat_making.groove", assigned_seconds: 1800 },
+            ],
           }),
         );
       });
@@ -250,26 +253,40 @@ describe("SessionDetailScreen", () => {
       expect(patchBody()).not.toHaveProperty("primary_skill_focus_id");
     });
 
-    it("does not offer saving until a focus actually changes", async () => {
-      const { findByTestId, queryByText, getByTestId } = render(<SessionDetailScreen />);
-      const drums = await findByTestId("skill-focus-beat_making.drums");
+    it("shows an even split on stored focuses without marking the editor dirty", async () => {
+      mockApiJson.mockImplementation((path: string, opts?: { method?: string }) => {
+        if (path === "/sessions/item/12" && opts?.method === "PATCH") {
+          return Promise.resolve({ ...baseSession, notes: "updated note" });
+        }
+        if (path === "/sessions/item/12") {
+          return Promise.resolve({
+            ...baseSession,
+            skill_focus_ids: ["beat_making.drums", "beat_making.groove"],
+          });
+        }
+        if (path === "/sessions/item/12/insights") {
+          return Promise.resolve(mockInsights);
+        }
+        return Promise.resolve(null);
+      });
+      const { findByTestId, getAllByText, queryByText } = render(<SessionDetailScreen />);
 
-      expect(queryByText("sessionDetail.saveChanges")).toBeNull();
-      fireEvent.press(drums);
-      expect(queryByText("sessionDetail.saveChanges")).toBeTruthy();
-      fireEvent.press(getByTestId("skill-focus-beat_making.drums"));
+      expect(await findByTestId("worked-on-beat_making.drums")).toBeTruthy();
+      expect(getAllByText("30m")).toHaveLength(2);
       expect(queryByText("sessionDetail.saveChanges")).toBeNull();
     });
 
-    it("selects every focus of the area with a full pass", async () => {
-      const { findByTestId, findByText } = render(<SessionDetailScreen />);
+    it("does not offer saving until a focus actually changes", async () => {
+      const { findByTestId, queryByText, queryByTestId } = render(<SessionDetailScreen />);
 
-      fireEvent.press(await findByTestId("full-pass-beat_making"));
-      fireEvent.press(await findByText("sessionDetail.saveChanges"));
-
-      await waitFor(() => {
-        expect(patchBody()?.skill_focus_ids).toHaveLength(6);
-      });
+      expect(await findByTestId("session-detail-focus-editor")).toBeTruthy();
+      expect(queryByText("sessionDetail.saveChanges")).toBeNull();
+      fireEvent.press(await findByTestId("worked-on-add"));
+      fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+      expect(queryByText("sessionDetail.saveChanges")).toBeTruthy();
+      fireEvent.press(await findByTestId("worked-on-remove-beat_making.drums"));
+      expect(queryByText("sessionDetail.saveChanges")).toBeNull();
+      expect(queryByTestId("skill-focus-beat_making.drums")).toBeNull();
     });
 
     it("keeps focuses read-only while the session is still running", async () => {

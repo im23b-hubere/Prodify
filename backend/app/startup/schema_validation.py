@@ -68,7 +68,7 @@ REQUIRED_COLUMNS = {
         "access_token_version",
         "timezone",
     },
-    "session_skill_focuses": {"is_primary"},
+    "session_skill_focuses": {"is_primary", "assigned_seconds"},
 }
 
 
