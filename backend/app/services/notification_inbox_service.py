@@ -304,7 +304,7 @@ def _streak_risk_items(
         category="streak",
         priority="critical",
         title="Streak at risk",
-        body="Start one short session today to protect your streak.",
+        body="Start a session today to keep your streak.",
         title_key="notificationsUi.streakRiskTitle",
         body_key="notificationsUi.streakRiskBody",
         created_at=now,

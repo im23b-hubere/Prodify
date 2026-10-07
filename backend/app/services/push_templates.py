@@ -33,16 +33,16 @@ def format_duration_en(seconds: int) -> str:
 def session_complete(session_type: str, duration_seconds: int) -> tuple[str, str]:
     title = "Session saved"
     label = _session_label(session_type)
-    body = f"{label} · {format_duration_en(duration_seconds)} — nice work!"
+    body = f"{label} · {format_duration_en(duration_seconds)}"
     return title, body
 
 
 def streak_reminder(streak_days: int, hours_left: int | None = None) -> tuple[str, str]:
     title = "Streak at risk"
     if hours_left is not None and hours_left > 0:
-        body = f"About {hours_left}h left to protect your {streak_days}-day streak."
+        body = f"About {hours_left}h left to keep your {streak_days}-day streak."
     else:
-        body = f"Log a session today — your {streak_days}-day streak needs you."
+        body = f"Start a session today to keep your {streak_days}-day streak."
     return title, body
 
 
@@ -61,31 +61,31 @@ def streak_reminder_slot(slot_kind: str, streak_days: int) -> tuple[str, str]:
     """
     title = "Streak at risk"
     if slot_kind == "streak_utc_22":
-        body = f"⚠️ Your {streak_days}-day streak: ~2 hours left in the UTC day. Start a session!"
+        body = f"Your {streak_days}-day streak needs a session — about 2 hours left today."
     elif slot_kind == "streak_utc_23":
-        body = f"🔥 Last chance today (UTC) — your {streak_days}-day streak needs a session."
+        body = f"One hour left today to keep your {streak_days}-day streak."
     elif slot_kind == "streak_utc_2330":
-        body = f"⏰ ~30 min left (UTC) for your {streak_days}-day streak. Open Prodify!"
+        body = f"About 30 minutes left to keep your {streak_days}-day streak."
     else:
         body = streak_reminder(streak_days, hours_left=1)[1]
     return title, body
 
 
 def inactivity_nudge(days_inactive: int) -> tuple[str, str]:
-    title = "Your momentum is waiting"
-    body = f"You've been away {days_inactive} day(s). Open Prodify and ship one focused block today."
+    title = "Your studio is waiting"
+    body = f"No session in {days_inactive} day(s). Open Prodify and start one."
     return title, body
 
 
 def best_time_nudge(hour: int) -> tuple[str, str]:
-    title = "Best-time window is open"
-    body = f"You usually perform best around {hour:02d}:00. Start now and protect your momentum."
+    title = "Your usual studio hour"
+    body = f"You usually start around {hour:02d}:00. Start a session now."
     return title, body
 
 
 def forecast_risk_nudge(remaining_sessions: int, days_left: int) -> tuple[str, str]:
     title = "Weekly goal at risk"
-    body = f"You're {remaining_sessions} session(s) away with {days_left} day(s) left. Start one now."
+    body = f"{remaining_sessions} session(s) left with {days_left} day(s) in the week."
     return title, body
 
 

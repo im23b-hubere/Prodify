@@ -45,3 +45,9 @@ _Avoid_: Percentage, share, intensity
 **Skill time**:
 The part of a session's duration credited to an area or focus; it drives their levels.
 _Avoid_: XP, points
+
+## Copy
+
+**Studio voice**:
+Producer-facing messages talk like studio talk: Session, Streak, Area, Focus, Skill time. English, short, factual.
+_Avoid_: Branch, block, XP (except rank), emoji in system messages, UTC, coach slogans

@@ -1092,9 +1092,9 @@
     "resumingSession": "Resuming your session…",
     "minimizeHint": "Swipe down to dashboard",
     "inProgress": "Session in progress",
-    "insightDefault": "Stay in flow — every minute counts.",
-    "insightPastBest": "You're past your previous best ({{prev}}). Keep going!",
-    "insightLongest": "Your longest session so far: {{duration}}",
+    "insightDefault": "Your session is running.",
+    "insightPastBest": "Past your previous best ({{prev}}).",
+    "insightLongest": "Longest so far: {{duration}}",
     "sessionType": "Session type",
     "mood": "Mood",
     "notes": "Notes",
@@ -1137,7 +1137,7 @@
       "offTrack": "Push it"
     },
     "viewDetails": "View session details",
-    "xpMinDurationHint": "Sessions under {{min}} minutes do not grant XP or weekly-goal progress.",
+    "xpMinDurationHint": "Sessions under {{min}} minutes do not count toward skill time or your weekly goal.",
     "levelProgress": "{{name}} · {{toNext}} XP to {{nextName}}",
     "focusEyebrow": "Skill progress",
     "focusTitle": "What did you work on?",
@@ -1187,8 +1187,8 @@
     "openTree": "Open the tree",
     "openTreeHint": "Lifetime progress, not this filter",
     "topAreas": "Top areas",
-    "emptyTitle": "Your tree is still asleep",
-    "emptyBody": "Finish a session to unlock your first area, then mark what you worked on to light up skills.",
+    "emptyTitle": "No skills unlocked yet",
+    "emptyBody": "Finish a session, then mark which areas and focuses you worked on.",
     "loadError": "Your skill tree couldn't load.",
     "retry": "Try again",
     "back": "Back",
@@ -1226,7 +1226,7 @@
   "sessionFeedback": {
     "progressTitle": "Session impact",
     "progressSecured": "You secured {{pct}}% of your weekly goal",
-    "progressFallback": "Session completed. Momentum secured.",
+    "progressFallback": "Session saved.",
     "remainingToGoal_one": "{{count}} more session and you hit your goal",
     "remainingToGoal_other": "{{count}} more sessions and you hit your goal",
     "goalReached": "Weekly goal reached. Strong work.",
@@ -1238,15 +1238,15 @@
       "goalComplete": "Goal complete for this week."
     },
     "emotion": {
-      "protectedStreak": "Good work. You protected your streak.",
-      "strongSession": "Nice. That was a strong session.",
-      "solidConsistency": "Solid consistency."
+      "protectedStreak": "That session kept your streak.",
+      "strongSession": "That was a long session.",
+      "solidConsistency": "Session counted."
     },
     "nextActionTitle": "Next action",
     "nextAction": {
       "goalHit": "Do another 30 min session this week to stay ahead.",
       "oneMore": "Plan 1 more {{minutes}} min session this week to hit your goal.",
-      "fewMore": "Plan {{sessions}} focused sessions this week to close your goal.",
+      "fewMore": "Plan {{sessions}} sessions this week to close your goal.",
       "keepPace": "Plan another {{minutes}} min session today to keep your pace."
     },
     "planNextSession": "Prepare next session",
@@ -1406,7 +1406,7 @@
     "newCommentBody_one": "{{count}} new comment is waiting.",
     "newCommentBody_other": "{{count}} new comments are waiting.",
     "streakRiskTitle": "Streak at risk",
-    "streakRiskBody": "Start one short session today to protect your streak.",
+    "streakRiskBody": "Start a session today to keep your streak.",
     "openFriends": "Open friends",
     "openSession": "Open session",
     "timeNow": "Just now",
@@ -1433,14 +1433,14 @@
     "levelStatA11y": "Your level. Open your rank",
     "liveLabel": "Live",
     "spark": {
-      "morning": "Morning clarity. One session sets the week.",
-      "afternoon": "The beat is waiting. Drop in.",
-      "evening": "Night studio. This is where tracks get finished.",
-      "night": "Quiet hours. Good music happens now.",
-      "atRisk": "Your streak needs you today.",
-      "todayDone": "You're in. Keep the sound moving.",
-      "streak": "{{count}}-day run. The chain is the work.",
-      "goalDone": "Weekly goal locked. Keep the flow."
+      "morning": "Morning studio. Start a session.",
+      "afternoon": "Afternoon. The studio is open.",
+      "evening": "Evening studio hours.",
+      "night": "Late session hours.",
+      "atRisk": "Your streak needs a session today.",
+      "todayDone": "You're in.",
+      "streak": "{{count}}-day streak.",
+      "goalDone": "Weekly goal done."
     },
     "studioTodayLabel": "Today",
     "studioTodayValue": "{{minutes}} min",
@@ -1550,8 +1550,8 @@
     "chartRecordHint": "Shows this personal best",
     "woranTitle": "Where the hours went",
     "woranSubtitle": "This period · by skill area",
-    "woranEmptyTitle": "No branch time yet",
-    "woranEmpty": "Finish a counted session to see which branches got time.",
+    "woranEmptyTitle": "No area time yet",
+    "woranEmpty": "Finish a counted session to see which areas got time.",
     "forecastRiskOnTrack": "On track",
     "forecastRiskAtRisk": "At risk",
     "forecastRiskOffTrack": "Off track",
@@ -1616,7 +1616,7 @@
     "longest": "Longest streak: {{days}} days",
     "historyA11y": "View streak history",
     "historyLink": "Streak history",
-    "riskBanner": "Keep the streak alive! Start a session today and keep your chain strong.",
+    "riskBanner": "Start a session today to keep your streak.",
     "freezeActivating": "Activating…",
     "freezeAvailable": "{{n}} Streak Freeze available",
     "freezeNone": "No freezes left this month",
@@ -1747,7 +1747,7 @@
     "recommendation": {
       "offTrackOne": "Do 1 x {{minutes}} min focused session today to get back on track.",
       "offTrackMany": "Do {{sessions}} short sessions today to close the gap.",
-      "streakRisk": "Do 1 short {{minutes}} min session today to protect your streak.",
+      "streakRisk": "Do 1 short {{minutes}} min session today to keep your streak.",
       "onTrack": "Stay on target: finish 1 x {{minutes}} min focused session today.",
       "ahead": "You're ahead - lock in 1 focused {{minutes}} min session to keep momentum.",
       "fallback": "Do one focused {{minutes}} min session today."
@@ -2111,12 +2111,12 @@
   },
   "streakNotifications": {
     "channelName": "Streak reminders",
-    "slot22Title": "Streak in danger",
-    "slot22Body": "⚠️ Your {{count}}-day streak needs a session today — about 2 hours left.",
-    "slot23Title": "Last chance",
-    "slot23Body": "🔥 One hour left to save your {{count}}-day streak. Start a quick session!",
-    "slot2330Title": "30 minutes left",
-    "slot2330Body": "⏰ 30 minutes until your {{count}}-day streak resets. Open Prodify."
+    "slot22Title": "Streak at risk",
+    "slot22Body": "Your {{count}}-day streak needs a session today — about 2 hours left.",
+    "slot23Title": "Streak at risk",
+    "slot23Body": "One hour left today to keep your {{count}}-day streak.",
+    "slot2330Title": "Streak at risk",
+    "slot2330Body": "About 30 minutes left to keep your {{count}}-day streak."
   },
   "sessionInsights": {
     "impact": "Session impact",
@@ -2136,8 +2136,8 @@
     "share": "Share",
     "storyPng": "Story image (PNG)",
     "shareMinimal": "{{type}} · {{duration}} · Prodify",
-    "shareBold": "🔥 {{type}}\n⏱ {{duration}}\n— Prodify",
-    "shareGradient": "✨ Session recap\n{{type}}\n{{duration}}\nFocus {{focus}}%\nProdify",
+    "shareBold": "{{type}}\n{{duration}}\n— Prodify",
+    "shareGradient": "Session recap\n{{type}}\n{{duration}}\nFocus {{focus}}%\nProdify",
     "shareTextMinimal": "Text · Minimal",
     "shareTextBold": "Text · Bold",
     "shareTextLong": "Text · Long",
@@ -2168,20 +2168,20 @@
       "impact_streak_fuel": "This session fuels your {{days}}-day streak.",
       "impact_weekly_goal_cleared": "Weekly goal cleared ({{count}}/{{target}} sessions).",
       "impact_week_progress": "Week progress: {{count}}/{{target}} sessions.",
-      "impact_default_momentum": "Another rep in the studio — momentum compounds.",
-      "prod_peak_pattern": "You're most productive on {{weekday}} around {{hourRange}} (UTC).",
-      "prod_minimal_pause": "Minimal pause time — deep work mode.",
-      "prod_long_breaks": "You took breaks — recovery fuels the next push."
+      "impact_default_momentum": "Another session in the studio.",
+      "prod_peak_pattern": "You usually start on {{weekday}} around {{hourRange}}.",
+      "prod_minimal_pause": "Little pause time.",
+      "prod_long_breaks": "This session had long pauses."
     }
   },
   "focusScore": {
     "messages": {
-      "perfect": "Perfect focus! Legendary!",
-      "excellent": "Excellent focus!",
-      "great": "Great focus!",
-      "good": "Good focus!",
-      "decent": "Decent focus",
-      "roomForImprovement": "Room for improvement"
+      "perfect": "Sharp focus.",
+      "excellent": "Strong focus.",
+      "great": "Good focus.",
+      "good": "Solid focus.",
+      "decent": "Okay focus.",
+      "roomForImprovement": "Room to tighten focus."
     },
     "tips": {
       "minimizePauses": "Try to minimize pauses for better flow.",
@@ -2225,16 +2225,16 @@
     "you": "You"
   },
   "motivationApi": {
-    "legend": "That's how legends are made! 🔥",
-    "brick": "Another brick in your empire! 🏗️",
-    "special": "You're building something special! ✨",
-    "grind": "The grind doesn't lie! 💪",
-    "consistency": "Consistency beats talent! 🎯",
-    "compound": "Studio time is compound interest. 📈",
-    "showed_up": "You showed up — that is the whole game. 🎹",
-    "mastery": "One more session closer to mastery. 🏆",
-    "stacking": "Keep stacking wins. 🔁",
-    "focus": "Focus looks good on you. ✨"
+    "legend": "Session saved.",
+    "brick": "Another session in the studio.",
+    "special": "That session counted.",
+    "grind": "You showed up.",
+    "consistency": "Consistency is the work.",
+    "compound": "Studio time adds up.",
+    "showed_up": "You started a session. That's the job.",
+    "mastery": "One more session on the tree.",
+    "stacking": "Keep going.",
+    "focus": "Stay with the session."
   },
   "challengeDetail": {
     "title": "Challenge",

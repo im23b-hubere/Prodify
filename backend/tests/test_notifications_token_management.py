@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.database import SessionLocal
-from app.models import PushToken
+from app.models import PushToken, Streak, utcnow
 
 
 from tests.auth_helpers import auth_headers as _auth_headers
@@ -157,3 +157,23 @@ def test_notifications_inbox_dedupes_multiple_session_comments(client):
         it for it in inbox.json() if str(it.get("id", "")).startswith(f"session-comment-{sid}-")
     ]
     assert len(comment_notifications) == 1
+
+
+def test_streak_risk_inbox_asks_to_keep_the_streak(client):
+    headers = _auth_headers(client, "streak-risk-copy@example.com", "streak-risk-copy")
+    me = client.get("/auth/me", headers=headers)
+    assert me.status_code == 200
+    user_id = me.json()["id"]
+
+    with SessionLocal() as db:
+        streak = db.query(Streak).filter(Streak.user_id == user_id).one()
+        streak.current_streak = 4
+        streak.last_session_date = utcnow() - timedelta(days=2)
+        db.commit()
+
+    inbox = client.get("/notifications/inbox", headers=headers)
+    assert inbox.status_code == 200
+    risk = next(it for it in inbox.json() if str(it.get("id", "")).startswith("streak-risk-"))
+    assert risk["title"] == "Streak at risk"
+    assert risk["body"] == "Start a session today to keep your streak."
+    assert "protect" not in risk["body"].lower()

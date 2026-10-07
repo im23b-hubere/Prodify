@@ -147,6 +147,7 @@ Vor PR:
 
 - Store metadata source of truth: `mobile/store/STORE_METADATA.en-US.md`
 - Entitlements (subscription-only): `docs/premium-entitlements.md`
+- Producer messages (push / local / inbox / in-app): `docs/messages.md`
 
 ## Sentry Setup (Production)
 
