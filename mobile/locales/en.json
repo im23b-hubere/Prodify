@@ -1082,7 +1082,7 @@
   },
   "sessionActive": {
     "stillThereTitle": "Still there?",
-    "stillThereBody": "Your session is paused. Continue, or end it here.",
+    "stillThereBody": "Your session is still running. Continue, or end it here.",
     "stillThereContinue": "Continue",
     "stillThereEnd": "End session",
     "invalidSession": "Invalid session",
@@ -2101,6 +2101,13 @@
     "channelName": "Weekly recap",
     "sundayTitle": "Your week is ready",
     "sundayBody": "Swipe through your studio recap before the new week starts."
+  },
+  "sessionPresenceNotifications": {
+    "channelName": "Session",
+    "stillThereTitle": "Still there?",
+    "stillThereBody": "Your session is still running. Open Prodify to continue or end it.",
+    "autoStoppedTitle": "Session ended",
+    "autoStoppedBody": "Your session was stopped after 8 hours."
   },
   "streakNotifications": {
     "channelName": "Streak reminders",

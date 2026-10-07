@@ -11,7 +11,6 @@ import { setWeeklyGoal } from "../../../lib/goals";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../../lib/sessionTime";
 import type { SessionDto } from "../../../types/session";
 import type { StreakOverviewDto } from "../../../types/streak";
-import { useActiveSessionPauseControls } from "../../sessions/hooks/useActiveSessionPauseControls";
 import { useSessionPresenceCheckIn } from "../../sessions/hooks/useSessionPresenceCheckIn";
 
 type Options = {
@@ -163,12 +162,14 @@ function useSessionCompletionActions(options: Options, router: Router) {
         setActive(null);
         invalidateDashboard();
         router.push(sessionSummaryHref(session.id));
+        return true;
       } catch (error) {
         ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
         const message = error instanceof Error ? error.message : t("dashboard.stopFailed");
         debugLog("session", "stop_failure", { sessionId: session.id, message });
         setError(message);
         await loadSessions().catch(() => undefined);
+        return false;
       } finally {
         inFlight.current = false;
         setStopBusy(false);
@@ -213,24 +214,15 @@ function ignoreHaptic(request: Promise<void>) {
 
 function useDashboardSessionPresence(
   options: Options,
-  stopSession: (session: SessionDto) => Promise<void>,
+  stopSession: (session: SessionDto) => Promise<boolean | void>,
 ) {
-  const { token, active, activeResolved, setActive, setError } = options;
-  const pauseControls = useActiveSessionPauseControls({
-    token: token ?? null,
-    session: active,
-    setSession: setActive,
-    setError,
-    setNowMs: () => undefined,
-  });
+  const { active, activeResolved } = options;
   useSessionPresenceCheckIn({
     session: active,
     sessionResolved: activeResolved,
-    pauseAt: (pausedAtMs) => pauseControls.pause({ atMs: pausedAtMs, haptic: false }),
-    applyLocalPause: pauseControls.applyLocalPause,
-    resume: () => pauseControls.resume({ haptic: false }),
     endSession: () => {
-      if (active) void stopSession(active);
+      if (!active) return false;
+      return stopSession(active);
     },
   });
 }

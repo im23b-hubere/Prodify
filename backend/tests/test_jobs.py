@@ -36,6 +36,23 @@ def test_streak_reminders_job_accepts_valid_key(client, monkeypatch):
     assert response.json()["sent"] == 0
 
 
+def test_session_presence_job_accepts_valid_key(client, monkeypatch):
+    monkeypatch.setattr("app.routers.jobs.settings.internal_job_key", "expected-key-123456789")
+    monkeypatch.setattr(
+        "app.routers.jobs.run_session_presence_job",
+        lambda db, settings: {"nudged": 0, "stopped": 0, "scanned": 0},
+    )
+
+    response = client.post(
+        "/jobs/session-presence",
+        headers={"X-Internal-Job-Key": "expected-key-123456789"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["nudged"] == 0
+    assert response.json()["stopped"] == 0
+
+
 SEED_CREDENTIALS = {
     "main_email": "review-demo@example.com",
     "main_username": "reviewdemo",

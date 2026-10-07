@@ -5,7 +5,7 @@ A productivity app for music producers: they time their sessions and watch their
 ## Sessions
 
 **Session**:
-One timed stretch of music work, started and stopped by the producer.
+One timed stretch of music work. The producer starts it and usually stops it; Prodify stops it after eight hours if it is still running.
 _Avoid_: Run, block, entry
 
 **Session type**:

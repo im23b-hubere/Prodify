@@ -113,10 +113,12 @@ def complete_session(
     db: Session,
     user_id: int,
     session: ProductionSession,
+    *,
+    stopped_at: datetime | None = None,
 ) -> SessionCompletion:
     calendar = load_calendar(db, user_id)
-    stopped_at = utcnow()
-    _finish_timing(session, stopped_at, calendar)
+    ended = _resolve_stopped_at(session.started_at, stopped_at, utcnow())
+    _finish_timing(session, ended, calendar)
     _mark_auto_checkin_done(db, user_id, calendar)
     db.flush()
     xp_delta = _grant_session_xp(db, user_id, session)
@@ -138,7 +140,7 @@ def complete_session(
         db,
         user_id=user_id,
         session_id=session.id,
-        stopped_at=stopped_at,
+        stopped_at=ended,
         duration_seconds=int(session.duration_seconds or 0),
     )
     db.commit()
@@ -159,6 +161,23 @@ def pause_active_session(
     db.commit()
     db.refresh(session)
     return session
+
+
+def _resolve_stopped_at(
+    started_at: datetime,
+    requested: datetime | None,
+    now: datetime,
+) -> datetime:
+    started = as_utc_aware(started_at)
+    current = as_utc_aware(now)
+    if requested is None:
+        return current
+    ended = as_utc_aware(requested)
+    if ended < started:
+        return started
+    if ended > current:
+        return current
+    return ended
 
 
 def resolve_pause_started_at(

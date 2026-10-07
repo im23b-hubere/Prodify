@@ -87,3 +87,14 @@ def forecast_risk_nudge(remaining_sessions: int, days_left: int) -> tuple[str, s
     title = "Weekly goal at risk"
     body = f"You're {remaining_sessions} session(s) away with {days_left} day(s) left. Start one now."
     return title, body
+
+
+def session_still_there() -> tuple[str, str]:
+    return (
+        "Still there?",
+        "Your session is still running. Open Prodify to continue or end it.",
+    )
+
+
+def session_auto_stopped() -> tuple[str, str]:
+    return "Session ended", "Your session was stopped after 8 hours."

@@ -84,13 +84,7 @@ export function useActiveSessionPauseControls(options: PauseControlsOptions) {
     }
   }, [restoreAfterInvalidResponse, session, setNowMs, setSession, t, token]);
 
-  const applyLocalPause = useCallback((pausedAtMs: number) => {
-    if (!session || session.pause_started_at) return;
-    setNowMs(pausedAtMs);
-    setSession({ ...session, pause_started_at: new Date(pausedAtMs).toISOString() });
-  }, [session, setNowMs, setSession]);
-
-  return { pause, resume, applyLocalPause, pauseResumeBusy: busy };
+  return { pause, resume, pauseResumeBusy: busy };
 }
 
 function optimisticResume(session: SessionDto, resumedAtMs: number): SessionDto {

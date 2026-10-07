@@ -35,12 +35,14 @@ export function useStopActiveSession(options: StopSessionOptions) {
         );
         await stopActiveSession(token, sessionId);
         router.replace(sessionSummaryHref(sessionId));
+        return true;
       } catch (stopError) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
           () => undefined,
         );
         setError(stopError instanceof Error ? stopError.message : t("sessionActive.stopFailed"));
         void reload();
+        return false;
       } finally {
         stopInFlight.current = false;
         setStopBusy(false);

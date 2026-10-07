@@ -4,33 +4,26 @@ import { useTranslation } from "react-i18next";
 import { Alert, AppState, type AppStateStatus } from "react-native";
 
 import {
+  abandonSessionAutoStop,
+  beginSessionAutoStop,
   beginSessionPresencePrompt,
-  clearSessionLeftAtMs,
   decideSessionPresence,
-  effectiveLeftAtMs,
   endSessionPresencePrompt,
-  followPresencePause,
-  abandonPresenceAttempt,
   isBackgroundAppState,
   isSessionRunning,
-  markLongRunPrompted,
-  noteSessionWentAway,
-  peekSessionLeftAtMs,
-  rememberPresencePause,
-  wasLongRunPrompted,
+  markStillTherePrompted,
+  wasStillTherePrompted,
 } from "../../../lib/sessionPresence";
-import { effectiveElapsedSeconds, parseSessionDate } from "../../../lib/sessionTime";
+import { syncSessionPresenceNotifications } from "../../../lib/sessionPresenceNotifications";
+import { effectiveElapsedSeconds } from "../../../lib/sessionTime";
 import type { SessionDto } from "../../../types/session";
 
-const LONG_RUN_POLL_MS = 15_000;
+const PRESENCE_POLL_MS = 15_000;
 
 type SessionPresenceCheckInOptions = {
   session: SessionDto | null;
   sessionResolved: boolean;
-  pauseAt: (pausedAtMs: number) => Promise<boolean | void>;
-  applyLocalPause?: (pausedAtMs: number) => void;
-  resume: () => void | Promise<void>;
-  endSession: () => void;
+  endSession: () => void | boolean | Promise<void | boolean>;
 };
 
 export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions) {
@@ -41,59 +34,26 @@ export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions
   const reconcileRef = useRef(() => Promise.resolve());
 
   reconcileRef.current = async () => {
-    const { session, pauseAt, applyLocalPause } = optionsRef.current;
-    const appIsActive = !isBackgroundAppState(String(AppState.currentState));
-
-    if (!session) return;
-
-    if (!isSessionRunning(session)) {
-      if (appIsActive) clearSessionLeftAtMs();
-      return;
-    }
-
-    if (!appIsActive) return;
-
-    const nowMs = Date.now();
-    const startedAtMs = parseSessionDate(session.started_at).getTime();
-    const leftAtMs = effectiveLeftAtMs(peekSessionLeftAtMs(), startedAtMs);
-    if (peekSessionLeftAtMs() != null && leftAtMs == null) clearSessionLeftAtMs();
+    const { session } = optionsRef.current;
+    if (!session || !isSessionRunning(session)) return;
+    if (isBackgroundAppState(String(AppState.currentState))) return;
 
     const decision = decideSessionPresence({
       isRunning: true,
-      leftAtMs,
-      nowMs,
-      elapsedSeconds: effectiveElapsedSeconds(session, nowMs),
-      longRunPrompted: wasLongRunPrompted(session.id),
+      elapsedSeconds: effectiveElapsedSeconds(session, Date.now()),
+      stillTherePrompted: wasStillTherePrompted(session.id),
     });
+    if (decision.kind === "none") return;
 
-    if (decision.kind === "none") {
-      const followAt = followPresencePause(session.id);
-      if (followAt != null) applyLocalPause?.(followAt);
-      else if (leftAtMs != null) clearSessionLeftAtMs();
+    if (decision.kind === "auto-stop") {
+      if (!beginSessionAutoStop(session.id)) return;
+      const stopped = await Promise.resolve(optionsRef.current.endSession());
+      if (stopped === false) abandonSessionAutoStop(session.id);
       return;
     }
 
-    if (!beginSessionPresencePrompt()) {
-      const followAt = followPresencePause(session.id) ?? decision.pauseAtMs;
-      applyLocalPause?.(followAt);
-      return;
-    }
-
-    rememberPresencePause(session.id, decision.pauseAtMs);
-
-    try {
-      const paused = await pauseAt(decision.pauseAtMs);
-      if (paused === false) {
-        abandonPresenceAttempt(session.id, decision.reason);
-        return;
-      }
-    } catch {
-      abandonPresenceAttempt(session.id, decision.reason);
-      return;
-    }
-
-    clearSessionLeftAtMs();
-    if (decision.reason === "long-run") markLongRunPrompted(session.id);
+    if (!beginSessionPresencePrompt()) return;
+    markStillTherePrompted(session.id);
 
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
       () => undefined,
@@ -104,10 +64,7 @@ export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions
       [
         {
           text: t("sessionActive.stillThereContinue"),
-          onPress: () => {
-            endSessionPresencePrompt();
-            void optionsRef.current.resume();
-          },
+          onPress: endSessionPresencePrompt,
         },
         {
           text: t("sessionActive.stillThereEnd"),
@@ -126,10 +83,6 @@ export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions
     const subscription = AppState.addEventListener("change", (next) => {
       const previous = appState.current;
       appState.current = next;
-      if (isBackgroundAppState(next) && !isBackgroundAppState(previous)) {
-        noteSessionWentAway(Date.now());
-        return;
-      }
       if (next === "active" && isBackgroundAppState(previous)) {
         void reconcileRef.current();
       }
@@ -142,8 +95,18 @@ export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions
   }, [options.session, options.sessionResolved]);
 
   useEffect(() => {
+    void syncSessionPresenceNotifications(options.session);
+  }, [
+    options.session?.id,
+    options.session?.started_at,
+    options.session?.pause_started_at,
+    options.session?.stopped_at,
+    options.session?.paused_duration_seconds,
+  ]);
+
+  useEffect(() => {
     if (!isSessionRunning(options.session)) return;
-    const interval = setInterval(() => void reconcileRef.current(), LONG_RUN_POLL_MS);
+    const interval = setInterval(() => void reconcileRef.current(), PRESENCE_POLL_MS);
     return () => clearInterval(interval);
   }, [options.session?.id, options.session?.pause_started_at, options.session?.stopped_at]);
 }

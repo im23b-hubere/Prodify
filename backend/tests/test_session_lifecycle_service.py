@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.services import session_lifecycle_service
-from app.services.session_lifecycle_service import resolve_pause_started_at
+from app.services.session_lifecycle_service import _resolve_stopped_at, resolve_pause_started_at
 
 
 class RollbackTrackingSession:
@@ -72,4 +72,18 @@ def test_pause_started_at_lookback_is_capped() -> None:
     requested = datetime(2026, 10, 5, 1, 0, tzinfo=timezone.utc)
     paused_at = resolve_pause_started_at(started_at=started, requested=requested, now=now)
     assert paused_at == now - timedelta(hours=12)
+
+
+def test_stopped_at_caps_a_late_safety_stop() -> None:
+    started = datetime(2026, 10, 6, 10, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 6, 19, 0, tzinfo=timezone.utc)
+    requested = datetime(2026, 10, 6, 18, 0, tzinfo=timezone.utc)
+    assert _resolve_stopped_at(started, requested, now) == requested
+
+
+def test_stopped_at_does_not_go_beyond_now() -> None:
+    started = datetime(2026, 10, 6, 10, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 6, 12, 0, tzinfo=timezone.utc)
+    requested = datetime(2026, 10, 6, 13, 0, tzinfo=timezone.utc)
+    assert _resolve_stopped_at(started, requested, now) == now
 

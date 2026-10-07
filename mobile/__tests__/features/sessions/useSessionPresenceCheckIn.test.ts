@@ -5,9 +5,10 @@ import { Alert, AppState } from "react-native";
 import { useSessionPresenceCheckIn } from "../../../features/sessions/hooks/useSessionPresenceCheckIn";
 import {
   resetSessionPresenceStateForTests,
-  SESSION_IDLE_AWAY_MS,
-  SESSION_LONG_RUN_SECONDS,
+  SESSION_AUTO_STOP_SECONDS,
+  SESSION_STILL_THERE_SECONDS,
 } from "../../../lib/sessionPresence";
+import { syncSessionPresenceNotifications } from "../../../lib/sessionPresenceNotifications";
 import type { SessionDto } from "../../../types/session";
 
 jest.mock("react-i18next", () => ({
@@ -17,6 +18,10 @@ jest.mock("react-i18next", () => ({
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(() => Promise.resolve()),
   NotificationFeedbackType: { Warning: "warning" },
+}));
+
+jest.mock("../../../lib/sessionPresenceNotifications", () => ({
+  syncSessionPresenceNotifications: jest.fn(() => Promise.resolve()),
 }));
 
 const START_MS = Date.parse("2026-10-06T20:00:00.000Z");
@@ -33,9 +38,14 @@ const runningSession: SessionDto = {
   paused_duration_seconds: 0,
 };
 
-const longRunSession: SessionDto = {
+const stillThereSession: SessionDto = {
   ...runningSession,
-  started_at: new Date(START_MS - SESSION_LONG_RUN_SECONDS * 1000).toISOString(),
+  started_at: new Date(START_MS - SESSION_STILL_THERE_SECONDS * 1000).toISOString(),
+};
+
+const autoStopSession: SessionDto = {
+  ...runningSession,
+  started_at: new Date(START_MS - SESSION_AUTO_STOP_SECONDS * 1000).toISOString(),
 };
 
 type AppStateListener = (state: string) => void;
@@ -55,19 +65,15 @@ function setAppState(state: "active" | "background" | "inactive") {
 function renderPresence(
   overrides: Partial<Parameters<typeof useSessionPresenceCheckIn>[0]> = {},
 ) {
-  const pauseAt = jest.fn(async () => undefined);
-  const resume = jest.fn(async () => undefined);
   const endSession = jest.fn();
   const initialProps = {
     session: runningSession as SessionDto | null,
     sessionResolved: true,
-    pauseAt,
-    resume,
     endSession,
     ...overrides,
   };
   const view = renderHook((props) => useSessionPresenceCheckIn(props), { initialProps });
-  return { ...view, pauseAt, resume, endSession };
+  return { ...view, endSession };
 }
 
 beforeEach(() => {
@@ -89,73 +95,37 @@ afterEach(() => {
 });
 
 describe("useSessionPresenceCheckIn", () => {
-  it("pauses from leftAt and asks once after a long background trip", async () => {
-    const { pauseAt } = renderPresence();
-    const leftAt = nowMs;
+  it("keeps the session running after the phone is off for a long time", async () => {
+    const { endSession } = renderPresence();
 
     act(() => setAppState("background"));
-    nowMs += SESSION_IDLE_AWAY_MS;
+    nowMs += 40 * 60 * 1000;
     act(() => setAppState("active"));
+    await act(async () => undefined);
 
-    await waitFor(() => expect(pauseAt).toHaveBeenCalledWith(leftAt));
-    expect(pauseAt).toHaveBeenCalledTimes(1);
-    expect(Alert.alert).toHaveBeenCalledTimes(1);
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(endSession).not.toHaveBeenCalled();
+  });
+
+  it("skips while the session is paused", async () => {
+    const { endSession } = renderPresence({
+      session: { ...stillThereSession, pause_started_at: "2026-10-06T19:50:00.000Z" },
+    });
+    await act(async () => undefined);
+
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(endSession).not.toHaveBeenCalled();
+  });
+
+  it("asks still-there after three hours without pausing", async () => {
+    renderPresence({ session: stillThereSession });
+
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledTimes(1));
     expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
   });
 
-  it("does not pause after a short background trip", async () => {
-    const { pauseAt } = renderPresence();
-
-    act(() => setAppState("background"));
-    nowMs += SESSION_IDLE_AWAY_MS - 1;
-    act(() => setAppState("active"));
-    await act(async () => undefined);
-
-    expect(pauseAt).not.toHaveBeenCalled();
-    expect(Alert.alert).not.toHaveBeenCalled();
-  });
-
-  it("skips check-in when the session is already paused", async () => {
-    const { pauseAt } = renderPresence({
-      session: { ...runningSession, pause_started_at: "2026-10-06T19:50:00.000Z" },
-    });
-
-    act(() => setAppState("background"));
-    nowMs += SESSION_IDLE_AWAY_MS;
-    act(() => setAppState("active"));
-    await act(async () => undefined);
-
-    expect(pauseAt).not.toHaveBeenCalled();
-    expect(Alert.alert).not.toHaveBeenCalled();
-  });
-
-  it("only one surface pauses when dashboard and fullscreen both listen", async () => {
-    const first = renderPresence();
-    const second = renderPresence();
-    const leftAt = nowMs;
-
-    act(() => setAppState("background"));
-    nowMs += SESSION_IDLE_AWAY_MS;
-    act(() => setAppState("active"));
-
-    await waitFor(() =>
-      expect(first.pauseAt.mock.calls.length + second.pauseAt.mock.calls.length).toBe(1),
-    );
-    expect([...first.pauseAt.mock.calls, ...second.pauseAt.mock.calls][0][0]).toBe(leftAt);
-    expect(Alert.alert).toHaveBeenCalledTimes(1);
-  });
-
-  it("pauses now after a long foreground run without leaving", async () => {
-    const { pauseAt } = renderPresence({ session: longRunSession });
-
-    await waitFor(() => expect(pauseAt).toHaveBeenCalledWith(START_MS));
-    expect(Alert.alert).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not repeat the long-run check-in after Continue", async () => {
-    const { pauseAt, rerender, resume, endSession } = renderPresence({
-      session: longRunSession,
-    });
+  it("Continue keeps the session running", async () => {
+    const { endSession, rerender } = renderPresence({ session: stillThereSession });
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledTimes(1));
 
     const buttons = (Alert.alert as jest.Mock).mock.calls[0][2] as {
@@ -165,165 +135,78 @@ describe("useSessionPresenceCheckIn", () => {
     act(() => buttons.find((button) => button.text === "sessionActive.stillThereContinue")?.onPress?.());
 
     rerender({
-      session: longRunSession,
+      session: stillThereSession,
       sessionResolved: true,
-      pauseAt,
-      resume,
       endSession,
     });
     await act(async () => undefined);
 
-    expect(resume).toHaveBeenCalledTimes(1);
-    expect(pauseAt).toHaveBeenCalledTimes(1);
+    expect(endSession).not.toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps leftAt while the session is still loading, then pauses from that moment", async () => {
-    const pauseAt = jest.fn(async () => undefined);
-    const resume = jest.fn(async () => undefined);
-    const endSession = jest.fn();
-    const { rerender } = renderHook(
-      (props: Parameters<typeof useSessionPresenceCheckIn>[0]) => useSessionPresenceCheckIn(props),
-      {
-        initialProps: {
-          session: null,
-          sessionResolved: false,
-          pauseAt,
-          resume,
-          endSession,
-        },
-      },
-    );
-
-    act(() => setAppState("background"));
-    const leftAt = nowMs;
-    nowMs += SESSION_IDLE_AWAY_MS;
-    act(() => setAppState("active"));
-    await act(async () => undefined);
-    expect(pauseAt).not.toHaveBeenCalled();
-
-    rerender({
-      session: runningSession,
-      sessionResolved: true,
-      pauseAt,
-      resume,
-      endSession,
-    });
-
-    await waitFor(() => expect(pauseAt).toHaveBeenCalledWith(leftAt));
-  });
-
-  it("does not apply a leftover trip to a session started after return", async () => {
-    const pauseAt = jest.fn(async () => undefined);
-    const resume = jest.fn(async () => undefined);
-    const endSession = jest.fn();
-    const { rerender } = renderHook(
-      (props: Parameters<typeof useSessionPresenceCheckIn>[0]) => useSessionPresenceCheckIn(props),
-      {
-        initialProps: {
-          session: null,
-          sessionResolved: true,
-          pauseAt,
-          resume,
-          endSession,
-        },
-      },
-    );
-
-    act(() => setAppState("background"));
-    nowMs += SESSION_IDLE_AWAY_MS;
-    act(() => setAppState("active"));
-    await act(async () => undefined);
-
-    rerender({
-      session: {
-        ...runningSession,
-        started_at: new Date(nowMs).toISOString(),
-      },
-      sessionResolved: true,
-      pauseAt,
-      resume,
-      endSession,
-    });
-    await act(async () => undefined);
-
-    expect(pauseAt).not.toHaveBeenCalled();
-  });
-
-  it("Continue uses the resume from after the session was paused", async () => {
-    const firstResume = jest.fn();
-    const secondResume = jest.fn();
-    const { pauseAt, rerender, endSession } = renderPresence({ resume: firstResume });
-
-    act(() => setAppState("background"));
-    nowMs += SESSION_IDLE_AWAY_MS;
-    act(() => setAppState("active"));
+  it("End stops the session from the latest callback", async () => {
+    const firstEnd = jest.fn();
+    const secondEnd = jest.fn();
+    const { rerender } = renderPresence({ session: stillThereSession, endSession: firstEnd });
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledTimes(1));
 
     rerender({
-      session: runningSession,
+      session: stillThereSession,
       sessionResolved: true,
-      pauseAt,
-      resume: secondResume,
-      endSession,
+      endSession: secondEnd,
     });
 
     const buttons = (Alert.alert as jest.Mock).mock.calls[0][2] as {
       text: string;
       onPress?: () => void;
     }[];
-    act(() =>
-      buttons.find((button) => button.text === "sessionActive.stillThereContinue")?.onPress?.(),
-    );
+    act(() => buttons.find((button) => button.text === "sessionActive.stillThereEnd")?.onPress?.());
 
-    expect(secondResume).toHaveBeenCalledTimes(1);
-    expect(firstResume).not.toHaveBeenCalled();
+    expect(secondEnd).toHaveBeenCalledTimes(1);
+    expect(firstEnd).not.toHaveBeenCalled();
   });
 
-  it("does not ask if pausing the session fails", async () => {
-    const pauseAt = jest.fn(async () => false);
-    renderPresence({ pauseAt });
+  it("only one surface asks still-there", async () => {
+    renderPresence({ session: stillThereSession });
+    renderPresence({ session: stillThereSession });
 
-    act(() => setAppState("background"));
-    nowMs += SESSION_IDLE_AWAY_MS;
-    act(() => setAppState("active"));
-    await waitFor(() => expect(pauseAt).toHaveBeenCalled());
-    await act(async () => undefined);
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledTimes(1));
+  });
 
+  it("stops after eight hours without an extra prompt", async () => {
+    const { endSession } = renderPresence({ session: autoStopSession });
+
+    await waitFor(() => expect(endSession).toHaveBeenCalledTimes(1));
     expect(Alert.alert).not.toHaveBeenCalled();
   });
 
-  it("still pauses from leftAt if a surface had no session while away", async () => {
-    const pauseAt = jest.fn(async () => undefined);
-    const resume = jest.fn(async () => undefined);
-    const endSession = jest.fn();
-    const { rerender } = renderHook(
-      (props: Parameters<typeof useSessionPresenceCheckIn>[0]) => useSessionPresenceCheckIn(props),
-      {
-        initialProps: {
-          session: null,
-          sessionResolved: true,
-          pauseAt,
-          resume,
-          endSession,
-        },
-      },
-    );
+  it("only one surface auto-stops", async () => {
+    const first = renderPresence({ session: autoStopSession });
+    const second = renderPresence({ session: autoStopSession });
 
-    act(() => setAppState("background"));
-    const leftAt = nowMs;
-    nowMs += SESSION_IDLE_AWAY_MS;
-    act(() => setAppState("active"));
-    await act(async () => undefined);
+    await waitFor(() =>
+      expect(first.endSession.mock.calls.length + second.endSession.mock.calls.length).toBe(1),
+    );
+  });
+
+  it("retries auto-stop if ending the session fails", async () => {
+    const endSession = jest.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const { rerender } = renderPresence({ session: autoStopSession, endSession });
+
+    await waitFor(() => expect(endSession).toHaveBeenCalledTimes(1));
 
     rerender({
-      session: runningSession,
+      session: { ...autoStopSession },
       sessionResolved: true,
-      pauseAt,
-      resume,
       endSession,
     });
 
-    await waitFor(() => expect(pauseAt).toHaveBeenCalledWith(leftAt));
+    await waitFor(() => expect(endSession).toHaveBeenCalledTimes(2));
+  });
+
+  it("schedules local presence notifications while the session is running", async () => {
+    renderPresence();
+    await waitFor(() => expect(syncSessionPresenceNotifications).toHaveBeenCalledWith(runningSession));
   });
 });

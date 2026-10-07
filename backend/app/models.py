@@ -96,6 +96,7 @@ class ProductionSession(Base):
     tags: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     paused_duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pause_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    still_there_notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     focus_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     track_outcome: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     track_title: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)

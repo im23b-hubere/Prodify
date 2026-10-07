@@ -47,11 +47,9 @@ export function useActiveSession(id: string | undefined) {
   useSessionPresenceCheckIn({
     session: loader.session,
     sessionResolved: !loader.loading,
-    pauseAt: (pausedAtMs) => pauseControls.pause({ atMs: pausedAtMs, haptic: false }),
-    applyLocalPause: pauseControls.applyLocalPause,
-    resume: () => pauseControls.resume({ haptic: false }),
     endSession: () => {
-      if (loader.session) void stop.stopSession(loader.session.id);
+      if (!loader.session) return false;
+      return stop.stopSession(loader.session.id);
     },
   });
 

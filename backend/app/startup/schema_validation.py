@@ -56,6 +56,7 @@ REQUIRED_COLUMNS = {
         "focus_score",
         "track_outcome",
         "track_title",
+        "still_there_notified_at",
     },
     "push_tokens": {"is_active", "last_used_at"},
     "users": {

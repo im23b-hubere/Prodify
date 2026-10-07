@@ -20,6 +20,10 @@ jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "Success", Error: "Error", Warning: "Warning" },
 }));
 
+jest.mock("../../lib/sessionPresenceNotifications", () => ({
+  syncSessionPresenceNotifications: jest.fn(() => Promise.resolve()),
+}));
+
 function createOptions(
   overrides: Partial<Parameters<typeof useDashboardSessionActions>[0]> = {},
 ) {

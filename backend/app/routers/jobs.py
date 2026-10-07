@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.jobs.enforce_session_presence import run_session_presence_job
 from app.jobs.send_streak_reminders import run_streak_reminder_job
 from app.jobs.settle_social_challenges import run_social_challenge_job
 from app.contracts.outcomes import SeedScreenshotAccountBody
@@ -45,6 +46,15 @@ def http_run_streak_reminders(
 ) -> dict:
     _require_internal_job_key(x_internal_job_key)
     return run_streak_reminder_job(db, settings)
+
+
+@router.post("/session-presence")
+def http_run_session_presence(
+    db: Annotated[Session, Depends(get_db)],
+    x_internal_job_key: Annotated[str | None, Header(alias="X-Internal-Job-Key")] = None,
+) -> dict:
+    _require_internal_job_key(x_internal_job_key)
+    return run_session_presence_job(db, settings)
 
 
 @router.post("/social-challenges")
