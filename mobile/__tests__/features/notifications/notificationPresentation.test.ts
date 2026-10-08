@@ -4,6 +4,8 @@ import {
   filterNotifications,
   formatNotificationRelativeTime,
   latestNotificationTimestamp,
+  notificationKind,
+  notificationSections,
   safeNotificationCategory,
 } from "../../../features/notifications/notificationPresentation";
 import type { InboxItem } from "../../../lib/notificationInbox";
@@ -42,5 +44,34 @@ describe("notification presentation", () => {
       30,
     );
     expect(latestNotificationTimestamp([], 99)).toBe(99);
+  });
+
+  it("picks a kind from where the notification leads, falling back to its category", () => {
+    expect(notificationKind({ category: "social", actionRoute: "/challenge/12" })).toBe(
+      "challenge",
+    );
+    expect(notificationKind({ category: "social", actionRoute: "/session/40" })).toBe("comment");
+    expect(notificationKind({ category: "social", actionRoute: "/(tabs)/friends" })).toBe("friend");
+    expect(notificationKind({ category: "tips", actionRoute: "/session/setup" })).toBe("tips");
+    expect(notificationKind({ category: "streak" })).toBe("streak");
+  });
+
+  it("groups notifications newest first into today, yesterday and earlier", () => {
+    const now = new Date(2026, 9, 8, 15, 0).getTime();
+    const hour = 3_600_000;
+    const sections = notificationSections(
+      [
+        item("old", "tips", now - 72 * hour),
+        item("morning", "social", now - 6 * hour),
+        item("lastNight", "streak", now - 20 * hour),
+        item("justNow", "social", now - 60_000),
+      ],
+      now,
+    );
+
+    expect(sections.map(({ key }) => key)).toEqual(["today", "yesterday", "earlier"]);
+    expect(sections[0]!.data.map(({ id }) => id)).toEqual(["justNow", "morning"]);
+    expect(sections[1]!.data.map(({ id }) => id)).toEqual(["lastNight"]);
+    expect(notificationSections([], now)).toEqual([]);
   });
 });

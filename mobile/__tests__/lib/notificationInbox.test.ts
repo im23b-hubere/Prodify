@@ -182,6 +182,11 @@ describe("notification inbox account scope", () => {
     expect(await getNotificationServerSyncMs()).toBe(0);
   });
 
+  it("starts with quiet hours off until the user turns them on", async () => {
+    const settings = await loadSettings();
+    expect(settings.quietStartHour).toBe(settings.quietEndHour);
+  });
+
   it("keeps notification settings device-scoped across account switches", async () => {
     const deviceSettings = {
       streak: false,
