@@ -2241,8 +2241,7 @@
     "friends": "Friends",
     "addFriend": "Add friend",
     "requestPending": "Request pending",
-    "friendsBadge": "Friends",
-    "you": "You"
+    "friendsBadge": "Friends"
   },
   "motivationApi": {
     "legend": "Session saved.",
