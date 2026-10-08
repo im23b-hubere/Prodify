@@ -72,20 +72,12 @@ type Props = {
 };
 
 /** Swipe order; Isometric is the default look and comes first. */
-const TEMPLATE_ORDER: readonly TemplateId[] = [
-  "isometric",
-  "mono",
-  "timeline",
-  "echo",
-  "transparent",
-  "photo",
-];
+const TEMPLATE_ORDER: readonly TemplateId[] = ["isometric", "echo", "transparent", "mono", "photo"];
 
 const TEMPLATE_LABEL_KEYS: Record<TemplateId, string> = {
   photo: "sessionInsights.shareTemplatePhoto",
   transparent: "sessionInsights.shareTemplateTransparent",
   mono: "sessionInsights.shareTemplateMono",
-  timeline: "sessionInsights.shareTemplateTimeline",
   isometric: "sessionInsights.shareTemplateIsometric",
   echo: "sessionInsights.shareTemplateEcho",
 };

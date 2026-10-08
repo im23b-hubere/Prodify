@@ -116,7 +116,7 @@ describe("SessionShareImageModal", () => {
     expect(screen.getAllByLabelText(CARD)).toHaveLength(DRAWN_ON_OPEN);
     expect(screen.queryByLabelText("sessionInsights.shareClose")).toBeNull();
     expect(screen.getByText("sessionInsights.shareTemplateIsometric")).toBeTruthy();
-    for (const key of ["Photo", "Transparent", "Mono", "Timeline", "Isometric", "Echo"]) {
+    for (const key of ["Isometric", "Echo", "Transparent", "Mono", "Photo"]) {
       expect(screen.getByLabelText(`sessionInsights.shareTemplate${key}`)).toBeTruthy();
     }
   });
@@ -127,11 +127,11 @@ describe("SessionShareImageModal", () => {
     );
 
     swipeTo(2);
-    expect(screen.getByText("sessionInsights.shareTemplateTimeline")).toBeTruthy();
+    expect(screen.getByText("sessionInsights.shareTemplateTransparent")).toBeTruthy();
     expect(screen.getAllByLabelText(CARD).length).toBeGreaterThan(DRAWN_ON_OPEN);
     fireEvent.press(screen.getByLabelText("sessionInsights.shareTemplateMono"));
     expect(screen.getByLabelText("sessionInsights.shareMonoLight")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText("sessionInsights.shareTemplateTransparent"));
+    fireEvent.press(screen.getByLabelText("sessionInsights.shareTemplateEcho"));
     expect(screen.queryByLabelText("sessionInsights.shareMonoLight")).toBeNull();
   });
 
@@ -140,7 +140,7 @@ describe("SessionShareImageModal", () => {
       <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
     );
 
-    swipeTo(3);
+    swipeTo(1);
     expect(screen.getByText("sessionInsights.shareTemplateEcho")).toBeTruthy();
     view.rerender(
       <SessionShareImageModal
@@ -166,7 +166,7 @@ describe("SessionShareImageModal", () => {
       <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
     );
 
-    swipeTo(5);
+    swipeTo(4);
     fireEvent.press(screen.getAllByText("sessionInsights.sharePickPhoto").at(-1)!);
     expect(await screen.findAllByText("sessionInsights.shareChangePhoto")).not.toHaveLength(0);
     view.rerender(
@@ -180,7 +180,7 @@ describe("SessionShareImageModal", () => {
     view.rerender(
       <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
     );
-    swipeTo(5);
+    swipeTo(4);
     expect(screen.queryByText("sessionInsights.shareChangePhoto")).toBeNull();
     expect(screen.getAllByText("sessionInsights.sharePickPhoto").length).toBeGreaterThan(0);
   });
@@ -190,7 +190,7 @@ describe("SessionShareImageModal", () => {
       <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
     );
 
-    swipeTo(5);
+    swipeTo(4);
     fireEvent.press(screen.getAllByText("sessionInsights.sharePickPhoto").at(-1)!);
     await waitFor(() => expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalled());
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
@@ -225,11 +225,11 @@ describe("SessionShareImageModal", () => {
 
     expect(screen.queryByLabelText("sessionInsights.sharePreviousStyle")).toBeNull();
     fireEvent.press(screen.getByLabelText("sessionInsights.shareNextStyle"));
-    expect(screen.getByText("sessionInsights.shareTemplateMono")).toBeTruthy();
+    expect(screen.getByText("sessionInsights.shareTemplateEcho")).toBeTruthy();
     fireEvent.press(screen.getByLabelText("sessionInsights.sharePreviousStyle"));
     expect(screen.getByText("sessionInsights.shareTemplateIsometric")).toBeTruthy();
 
-    swipeTo(5);
+    swipeTo(4);
     expect(screen.queryByLabelText("sessionInsights.shareNextStyle")).toBeNull();
   });
 });

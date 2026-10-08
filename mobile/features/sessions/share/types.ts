@@ -1,4 +1,4 @@
-export const TEMPLATE_IDS = ['photo', 'transparent', 'mono', 'timeline', 'isometric', 'echo'] as const;
+export const TEMPLATE_IDS = ['photo', 'transparent', 'mono', 'isometric', 'echo'] as const;
 export type TemplateId = typeof TEMPLATE_IDS[number];
 
 export interface SessionActivity {

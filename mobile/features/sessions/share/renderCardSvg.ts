@@ -129,30 +129,8 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
         content += label(984, y, durationLabel(row.durationSeconds), 36, muted, 500, 'end', 0, medium);
       });
     }
-    content += rule(1720);
     if (showIdentity) content += label(96, 1800, username, 32, muted, 500, 'start', 0, medium);
     content += streak(showIdentity ? 620 : 96, 1800);
-  }
-
-  if (template === 'timeline') {
-    content += header();
-    content += label(96, 420, 'TODAY IN THE STUDIO', 26, muted, 500, 'start', 2.8, medium);
-    content += bigTime(96, 640, false, 188);
-    content += label(96, 716, 'Your production, in focus.', 36, muted, 400, 'start', 0, body);
-    if (showActivities && session.durationSeconds > 0) {
-      content += label(96, 860, 'TIME BY ACTIVITY', 24, muted, 500, 'start', 2.4, medium);
-      rows.forEach((row, index) => {
-        const y = 960 + index * 168;
-        const width = 888 * row.durationSeconds / session.durationSeconds;
-        content += label(96, y, truncate(row.label, 26), 34, colour, 400, 'start', 0, body);
-        content += label(984, y, durationLabel(row.durationSeconds), 32, muted, 500, 'end', 0, medium);
-        content += `<rect x="96" y="${y + 22}" width="888" height="16" rx="8" fill="${colors.border}"/>`;
-        if (width > 0) content += `<rect x="96" y="${y + 22}" width="${Math.max(width, 16)}" height="16" rx="8" fill="${accent}"/>`;
-      });
-    }
-    content += rule(1568);
-    content += streak(96, 1660);
-    if (showIdentity) content += label(984, 1660, username, 32, muted, 500, 'end', 0, medium);
   }
 
   if (template === 'isometric') {
@@ -161,9 +139,8 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
     content += bigTime(96, 640, false, 188);
     content += label(96, 716, 'Production time', 36, muted, 400, 'start', 0, body);
     content += activitiesInline(96, 812);
-    content += rule(960);
     content += streak(96, 1052);
-    if (showIdentity) content += label(984, 1052, username, 32, muted, 500, 'end', 0, medium);
+    if (showIdentity) content += label(984, 1200, username, 32, muted, 500, 'end', 0, medium);
   }
 
   if (template === 'echo') {
