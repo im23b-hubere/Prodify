@@ -9,7 +9,6 @@ import {
   type ReactNode,
   type RefObject,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -19,7 +18,6 @@ import { useTranslation } from "react-i18next";
 import {
   Alert,
   type LayoutChangeEvent,
-  Modal,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   PixelRatio,
@@ -27,12 +25,9 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from "react-native";
-import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
-  Easing,
   Extrapolation,
   FadeIn,
   interpolate,
@@ -42,8 +37,6 @@ import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
-  withTiming,
 } from "react-native-reanimated";
 import Svg, { Polyline } from "react-native-svg";
 import ViewShot from "react-native-view-shot";
@@ -61,6 +54,7 @@ import { colors, radii, spacing, typography } from "../../constants/theme";
 import type { SessionDetailInsightsDto } from "../../types/insights";
 import type { SessionDto } from "../../types/session";
 import { PrimaryButton } from "../ui/PrimaryButton";
+import { SwipeSheet } from "../ui/SwipeSheet";
 
 type Props = {
   visible: boolean;
@@ -97,12 +91,6 @@ const MIN_PREVIEW_WIDTH = 160;
 /** Room on each side of the card for the previous / next arrows. */
 const ARROW_GUTTER = 52;
 const CARD_READY_TIMEOUT_MS = 4000;
-/** The sheet stops short of the top so the dimmed screen behind shows it can be dismissed. */
-const SHEET_HEIGHT_RATIO = 0.86;
-const SHEET_OPEN_TIMING = { duration: 340, easing: Easing.bezier(0.23, 1, 0.32, 1) };
-const SHEET_CLOSE_TIMING = { duration: 240, easing: Easing.bezier(0.4, 0, 1, 1) };
-const DISMISS_DISTANCE = 120;
-const DISMISS_VELOCITY = 900;
 
 /**
  * Points that rasterize to exactly 1080 × 1920 pixels at the screen scale.
@@ -208,54 +196,6 @@ function useSessionShareExport(
   return { busy, captureAndShare };
 }
 
-/**
- * Slides the sheet up on open, and closes it on a backdrop tap, a grabber tap or a drag down far
- * or fast enough; a shorter drag springs back.
- */
-function useSwipeDownSheet(visible: boolean, height: number, onClose: () => void) {
-  const offset = useSharedValue(height);
-
-  useEffect(() => {
-    if (!visible) return;
-    offset.value = height;
-    offset.value = withTiming(0, SHEET_OPEN_TIMING);
-  }, [height, offset, visible]);
-
-  const close = useCallback(() => {
-    offset.value = withTiming(height, SHEET_CLOSE_TIMING, (finished) => {
-      if (finished) runOnJS(onClose)();
-    });
-  }, [height, offset, onClose]);
-
-  // Horizontal drags fail this gesture, so swiping between styles still belongs to the carousel.
-  const drag = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetY(12)
-        .failOffsetX([-16, 16])
-        .onUpdate((event) => {
-          offset.value = Math.max(0, event.translationY);
-        })
-        .onEnd((event) => {
-          if (event.translationY > DISMISS_DISTANCE || event.velocityY > DISMISS_VELOCITY) {
-            offset.value = withTiming(height, SHEET_CLOSE_TIMING, (finished) => {
-              if (finished) runOnJS(onClose)();
-            });
-          } else {
-            offset.value = withSpring(0, { damping: 24, stiffness: 260 });
-          }
-        }),
-    [height, offset, onClose],
-  );
-
-  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: offset.value }] }));
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(offset.value, [0, height], [1, 0], Extrapolation.CLAMP),
-  }));
-
-  return { close, drag, sheetStyle, backdropStyle };
-}
-
 export function SessionShareImageModal(props: Props) {
   const { t } = useTranslation();
   const shotRef = useRef<ComponentRef<typeof ViewShot> | null>(null);
@@ -272,8 +212,6 @@ export function SessionShareImageModal(props: Props) {
   const { busy, captureAndShare } = useSessionShareExport(shotRef, t, waitForCard);
   const captureSize = captureSizeInPoints();
   const { visible, onClose, session, producerName } = props;
-  const sheetHeight = Math.round(useWindowDimensions().height * SHEET_HEIGHT_RATIO);
-  const sheet = useSwipeDownSheet(visible, sheetHeight, onClose);
   // Every open starts fresh: on the first style, like the carousel, which remounts on the first
   // card, and without the photo picked last time.
   const [wasVisible, setWasVisible] = useState(visible);
@@ -389,159 +327,127 @@ export function SessionShareImageModal(props: Props) {
   }, [captureAndShare, photoMissing, pickPhoto]);
 
   return (
-    <Modal
+    <SwipeSheet
       visible={visible}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={sheet.close}
+      onClose={onClose}
+      closeLabel={t("sessionInsights.shareCloseA11y")}
+      testID="share-sheet"
     >
-      {/* Modals are a separate native hierarchy on iOS — gestures need their own root here. */}
-      <GestureHandlerRootView style={styles.root}>
-        <Animated.View style={[styles.backdrop, sheet.backdropStyle]}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={sheet.close}
-            accessibilityRole="button"
-            accessibilityLabel={t("sessionInsights.shareCloseA11y")}
+      <Text style={styles.title}>{t("sessionInsights.shareModalTitle")}</Text>
+      <Text style={styles.sub}>{t("sessionInsights.shareModalSubtitle")}</Text>
+
+      <View
+        style={styles.stage}
+        onLayout={(event: LayoutChangeEvent) =>
+          setStageHeight(Math.floor(event.nativeEvent.layout.height))
+        }
+      >
+        <Animated.ScrollView
+          ref={carouselRef}
+          horizontal
+          pagingEnabled
+          scrollEnabled={!busy}
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={onScroll}
+          onLayout={(event: LayoutChangeEvent) => {
+            const width = Math.round(event.nativeEvent.layout.width);
+            pageWidthValue.value = width;
+            setPageWidth(width);
+          }}
+          onMomentumScrollEnd={onSwipeEnd}
+          style={styles.carousel}
+          accessibilityLabel={t("sessionInsights.shareSwipeA11y")}
+        >
+          {TEMPLATE_ORDER.map((id, index) => (
+            <View key={id} style={[styles.page, pageWidth > 0 && { width: pageWidth }]}>
+              <TemplatePreview
+                t={t}
+                template={id}
+                width={previewWidth}
+                drawn={drawn.has(index)}
+                options={optionsFor(id)}
+                session={shareSession}
+                photoUri={id === "photo" ? photoUri : undefined}
+                onPickPhoto={pickPhoto}
+              />
+            </View>
+          ))}
+        </Animated.ScrollView>
+        <StepArrow
+          direction="previous"
+          label={t("sessionInsights.sharePreviousStyle")}
+          hidden={templateIndex === 0}
+          disabled={busy}
+          onPress={() => showTemplate(TEMPLATE_ORDER[templateIndex - 1]!)}
+        />
+        <StepArrow
+          direction="next"
+          label={t("sessionInsights.shareNextStyle")}
+          hidden={templateIndex === TEMPLATE_ORDER.length - 1}
+          disabled={busy}
+          onPress={() => showTemplate(TEMPLATE_ORDER[templateIndex + 1]!)}
+        />
+      </View>
+
+      <TemplateIndicator
+        t={t}
+        selected={template}
+        onSelect={showTemplate}
+        disabled={busy}
+        scrollX={scrollX}
+        pageWidth={pageWidthValue}
+      />
+
+      <View style={styles.options}>
+        {template === "photo" ? (
+          <PhotoOptions
+            t={t}
+            hasPhoto={Boolean(photoUri)}
+            position={photoPosition}
+            onPickPhoto={() => void pickPhoto()}
+            onFlip={() => {
+              Haptics.selectionAsync().catch(() => undefined);
+              setPhotoPosition((value) => (value === "bottom" ? "top" : "bottom"));
+            }}
           />
-        </Animated.View>
-        <GestureDetector gesture={sheet.drag}>
-          <Animated.View
-            style={[styles.sheet, { height: sheetHeight }, sheet.sheetStyle]}
-            testID="share-sheet"
+        ) : null}
+        {template === "mono" ? (
+          <MonoThemeOptions t={t} value={monoTheme} onChange={setMonoTheme} />
+        ) : null}
+      </View>
+
+      <PrimaryButton
+        label={
+          busy
+            ? t("sessionInsights.sharePngBusy")
+            : photoMissing
+              ? t("sessionInsights.sharePickPhoto")
+              : t("sessionInsights.sharePngCta")
+        }
+        onPress={share}
+        loading={busy}
+      />
+
+      {busy ? (
+        <View style={[styles.hiddenShot, captureSize]} collapsable={false} pointerEvents="none">
+          <ViewShot
+            ref={shotRef}
+            options={{ format: "png", quality: 1, result: "tmpfile" }}
+            style={[styles.shot, captureSize]}
           >
-            <Pressable
-              onPress={sheet.close}
-              hitSlop={{ top: 12, bottom: 12, left: 40, right: 40 }}
-              style={styles.grabberHit}
-              accessibilityRole="button"
-              accessibilityLabel={t("sessionInsights.shareCloseA11y")}
-            >
-              <View style={styles.grabber} />
-            </Pressable>
-            <Text style={styles.title}>{t("sessionInsights.shareModalTitle")}</Text>
-            <Text style={styles.sub}>{t("sessionInsights.shareModalSubtitle")}</Text>
-
-            <View
-              style={styles.stage}
-              onLayout={(event: LayoutChangeEvent) =>
-                setStageHeight(Math.floor(event.nativeEvent.layout.height))
-              }
-            >
-              <Animated.ScrollView
-                ref={carouselRef}
-                horizontal
-                pagingEnabled
-                scrollEnabled={!busy}
-                showsHorizontalScrollIndicator={false}
-                scrollEventThrottle={16}
-                onScroll={onScroll}
-                onLayout={(event: LayoutChangeEvent) => {
-                  const width = Math.round(event.nativeEvent.layout.width);
-                  pageWidthValue.value = width;
-                  setPageWidth(width);
-                }}
-                onMomentumScrollEnd={onSwipeEnd}
-                style={styles.carousel}
-                accessibilityLabel={t("sessionInsights.shareSwipeA11y")}
-              >
-                {TEMPLATE_ORDER.map((id, index) => (
-                  <View key={id} style={[styles.page, pageWidth > 0 && { width: pageWidth }]}>
-                    <TemplatePreview
-                      t={t}
-                      template={id}
-                      width={previewWidth}
-                      drawn={drawn.has(index)}
-                      options={optionsFor(id)}
-                      session={shareSession}
-                      photoUri={id === "photo" ? photoUri : undefined}
-                      onPickPhoto={pickPhoto}
-                    />
-                  </View>
-                ))}
-              </Animated.ScrollView>
-              <StepArrow
-                direction="previous"
-                label={t("sessionInsights.sharePreviousStyle")}
-                hidden={templateIndex === 0}
-                disabled={busy}
-                onPress={() => showTemplate(TEMPLATE_ORDER[templateIndex - 1]!)}
-              />
-              <StepArrow
-                direction="next"
-                label={t("sessionInsights.shareNextStyle")}
-                hidden={templateIndex === TEMPLATE_ORDER.length - 1}
-                disabled={busy}
-                onPress={() => showTemplate(TEMPLATE_ORDER[templateIndex + 1]!)}
-              />
-            </View>
-
-            <TemplateIndicator
-              t={t}
-              selected={template}
-              onSelect={showTemplate}
-              disabled={busy}
-              scrollX={scrollX}
-              pageWidth={pageWidthValue}
+            <ShareCard
+              session={shareSession}
+              options={optionsFor(template)}
+              width={captureSize.width}
+              photoUri={photoUri}
+              onLayout={onCardLayout}
+              onPhotoLoad={onPhotoLoad}
             />
-
-            <View style={styles.options}>
-              {template === "photo" ? (
-                <PhotoOptions
-                  t={t}
-                  hasPhoto={Boolean(photoUri)}
-                  position={photoPosition}
-                  onPickPhoto={() => void pickPhoto()}
-                  onFlip={() => {
-                    Haptics.selectionAsync().catch(() => undefined);
-                    setPhotoPosition((value) => (value === "bottom" ? "top" : "bottom"));
-                  }}
-                />
-              ) : null}
-              {template === "mono" ? (
-                <MonoThemeOptions t={t} value={monoTheme} onChange={setMonoTheme} />
-              ) : null}
-            </View>
-
-            <PrimaryButton
-              label={
-                busy
-                  ? t("sessionInsights.sharePngBusy")
-                  : photoMissing
-                    ? t("sessionInsights.sharePickPhoto")
-                    : t("sessionInsights.sharePngCta")
-              }
-              onPress={share}
-              loading={busy}
-            />
-
-            {busy ? (
-              <View
-                style={[styles.hiddenShot, captureSize]}
-                collapsable={false}
-                pointerEvents="none"
-              >
-                <ViewShot
-                  ref={shotRef}
-                  options={{ format: "png", quality: 1, result: "tmpfile" }}
-                  style={[styles.shot, captureSize]}
-                >
-                  <ShareCard
-                    session={shareSession}
-                    options={optionsFor(template)}
-                    width={captureSize.width}
-                    photoUri={photoUri}
-                    onLayout={onCardLayout}
-                    onPhotoLoad={onPhotoLoad}
-                  />
-                </ViewShot>
-              </View>
-            ) : null}
-          </Animated.View>
-        </GestureDetector>
-      </GestureHandlerRootView>
-    </Modal>
+          </ViewShot>
+        </View>
+      ) : null}
+    </SwipeSheet>
   );
 }
 
@@ -822,36 +728,6 @@ function MonoThemeOptions({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  backdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
-  sheet: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderCurve: "continuous",
-    overflow: "hidden",
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xxl,
-  },
-  grabberHit: {
-    alignSelf: "center",
-    paddingVertical: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  grabber: {
-    width: 36,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.22)",
-  },
   title: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.headline },
   sub: {
     color: colors.textSecondary,

@@ -12,44 +12,14 @@ export const styles = StyleSheet.create({
     borderColor: "rgba(255,61,0,0.22)",
     overflow: "hidden",
   },
-  badgeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-  },
-  ownBadge: {
-    borderRadius: radii.round,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    backgroundColor: "rgba(255,61,0,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(255,61,0,0.35)",
-  },
-  ownBadgeText: {
-    color: colors.primary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    fontSize: 11,
-  },
-  focusBadge: {
-    borderRadius: radii.round,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  focusBadgeText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamily.bodyBold,
-    ...typography.caption,
-    fontSize: 11,
-  },
   typeLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
     marginTop: spacing.xs,
+  },
+  typeDash: {
+    color: colors.primary,
   },
   duration: {
     color: colors.textPrimary,

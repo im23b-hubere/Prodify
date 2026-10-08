@@ -9,15 +9,6 @@ type SessionEditActionProps = {
   onDelete: () => void;
 };
 
-export function SessionDeleteAction({ onDelete }: SessionEditActionProps) {
-  const { t } = useTranslation();
-  return (
-    <Pressable style={styles.deleteButton} onPress={onDelete}>
-      <Text style={styles.deleteText}>{t("sessionDetail.deleteSession")}</Text>
-    </Pressable>
-  );
-}
-
 export function SessionEditFooter({
   busy,
   onSave,
@@ -43,15 +34,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     gap: spacing.sm,
-  },
-  deleteButton: {
-    marginTop: spacing.sm,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.danger,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    backgroundColor: "rgba(255,59,48,0.1)",
   },
   compactDeleteButton: {
     borderRadius: radii.md,

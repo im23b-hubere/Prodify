@@ -24,26 +24,23 @@ type Props = {
   onOpenProfile: () => void;
 };
 
-function HeroBadges({
+/** The session type, followed by the focus score after an accent dash when there is one. */
+function TypeLine({
   t,
-  isOwnSession,
+  typeLabel,
   focusScore,
-}: Pick<Props, "t" | "isOwnSession" | "focusScore">) {
+}: Pick<Props, "t" | "focusScore"> & { typeLabel: string }) {
+  const hasFocus = focusScore != null && focusScore > 0;
   return (
-    <View style={styles.badgeRow}>
-      {isOwnSession ? (
-        <View style={styles.ownBadge}>
-          <Text style={styles.ownBadgeText}>{t("sessionDetail.yourSessionBadge")}</Text>
-        </View>
+    <Text style={styles.typeLabel}>
+      {typeLabel}
+      {hasFocus ? (
+        <>
+          <Text style={styles.typeDash}>{"  —  "}</Text>
+          {t("sessionDetail.focusBadge", { score: focusScore })}
+        </>
       ) : null}
-      {focusScore != null && focusScore > 0 ? (
-        <View style={styles.focusBadge}>
-          <Text style={styles.focusBadgeText}>
-            {t("sessionDetail.focusBadge", { score: focusScore })}
-          </Text>
-        </View>
-      ) : null}
-    </View>
+    </Text>
   );
 }
 
@@ -163,9 +160,7 @@ export function SessionDetailHero(props: Props) {
           onOpenProfile={onOpenProfile}
         />
       ) : null}
-      <HeroBadges t={t} isOwnSession={isOwnSession} focusScore={focusScore} />
-
-      <Text style={styles.typeLabel}>{typeLabel}</Text>
+      <TypeLine t={t} typeLabel={typeLabel} focusScore={focusScore} />
       <Text style={styles.duration}>{durationLabel}</Text>
       {/* A friend's session already shows the date under their name. */}
       {isOwnSession ? <Text style={styles.meta}>{dateLine}</Text> : null}

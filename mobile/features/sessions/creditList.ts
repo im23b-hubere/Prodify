@@ -31,6 +31,24 @@ export function removeCreditedFocus(
   return withEvenSplit(next, durationSeconds);
 }
 
+/**
+ * Makes the credited list match `ids`: drops focuses that are not in it, then adds the new ones
+ * in order. Returns the same reflection when nothing changes.
+ */
+export function applyFocusList(
+  reflection: FocusReflection,
+  ids: readonly SkillFocusId[],
+  durationSeconds: number,
+): FocusReflection {
+  const wanted = new Set(ids);
+  let next = reflection;
+  for (const id of reflection.focusIds) {
+    if (!wanted.has(id)) next = removeCreditedFocus(next, id, durationSeconds);
+  }
+  for (const id of ids) next = addCreditedFocus(next, id, durationSeconds);
+  return next;
+}
+
 export function setCreditedSeconds(
   reflection: FocusReflection,
   id: SkillFocusId,

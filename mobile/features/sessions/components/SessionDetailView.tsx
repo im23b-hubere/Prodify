@@ -1,8 +1,17 @@
-import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView } from "react-native";
+import { Trash2 } from "lucide-react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionShareImageModal } from "../../../components/session/SessionShareImageModal";
 import { BackButton } from "../../../components/ui/BackButton";
+import { ScrollRevealProvider, useScrollRevealSource } from "../../../components/ui/ScrollReveal";
 import { colors } from "../../../constants/theme";
 import type { SessionDetailController } from "../hooks/useSessionDetailController";
 import { sessionDetailStyles as styles } from "../sessionDetail.styles";
@@ -14,6 +23,8 @@ import { SessionDetailLoading } from "./SessionDetailStates";
 import { SessionReactionBar } from "./SessionReactionBar";
 
 export function SessionDetailView({ controller }: { controller: SessionDetailController }) {
+  // Lets the session type menu scroll the page so it can open in full.
+  const scrollReveal = useScrollRevealSource(controller.scrollRef);
   if (!controller.session) return <SessionDetailLoading controller={controller} />;
   const { session, presentation } = controller;
   if (!presentation) return null;
@@ -36,6 +47,8 @@ export function SessionDetailView({ controller }: { controller: SessionDetailCon
           ref={controller.scrollRef}
           onContentSizeChange={controller.onContentSizeChange}
           onScrollBeginDrag={controller.stopFollowingComments}
+          onScroll={scrollReveal.onScroll}
+          scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
           refreshControl={
@@ -46,7 +59,21 @@ export function SessionDetailView({ controller }: { controller: SessionDetailCon
             />
           }
         >
-          <BackButton onPress={controller.goBack} style={styles.backRow} />
+          <View style={styles.topRow}>
+            <BackButton onPress={controller.goBack} />
+            {controller.isOwnSession ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={controller.t("sessionDetail.deleteSession")}
+                hitSlop={12}
+                onPress={controller.confirmDelete}
+                style={({ pressed }) => pressed && styles.pressed}
+                testID="session-detail-delete"
+              >
+                <Trash2 color={colors.danger} size={20} strokeWidth={2} />
+              </Pressable>
+            ) : null}
+          </View>
           <SessionDetailHero
             t={controller.t}
             session={session}
@@ -68,7 +95,9 @@ export function SessionDetailView({ controller }: { controller: SessionDetailCon
             busyEmoji={controller.reactionBusyEmoji}
             onToggle={(emoji) => void controller.toggleReaction(emoji)}
           />
-          <SessionDetailContent controller={controller} />
+          <ScrollRevealProvider value={scrollReveal.reveal}>
+            <SessionDetailContent controller={controller} />
+          </ScrollRevealProvider>
         </ScrollView>
         {controller.isOwnSession && controller.isDirty ? (
           <SessionEditFooter

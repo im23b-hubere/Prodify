@@ -3,6 +3,8 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import SessionDetailScreen from "../../app/session/[id]";
 
+jest.mock("react-native-gesture-handler", () => require("../../test/gestureHandlerStub"));
+
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
 const mockPush = jest.fn();
@@ -143,6 +145,24 @@ describe("SessionDetailScreen", () => {
     expect(await findByTestId("session-detail-hero")).toBeTruthy();
   });
 
+  it("offers delete as a trash at the top of your own session", async () => {
+    const { findByTestId, queryByText } = render(<SessionDetailScreen />);
+    const trash = await findByTestId("session-detail-delete");
+    expect(trash.props.accessibilityLabel).toBe("sessionDetail.deleteSession");
+    expect(queryByText("sessionDetail.deleteSession")).toBeNull();
+  });
+
+  it("does not offer delete on a friend's session", async () => {
+    mockApiJson.mockImplementation((path: string) => {
+      if (path === "/sessions/item/12") return Promise.resolve({ ...baseSession, user_id: 2 });
+      if (path === "/sessions/item/12/insights") return Promise.resolve(mockInsights);
+      return Promise.resolve(null);
+    });
+    const { findByTestId, queryByTestId } = render(<SessionDetailScreen />);
+    await findByTestId("session-detail-hero");
+    expect(queryByTestId("session-detail-delete")).toBeNull();
+  });
+
   it("enforces notes max length and toggles reaction", async () => {
     const { findByPlaceholderText, findByText } = render(<SessionDetailScreen />);
     const noteInput = await findByPlaceholderText("sessionDetail.notesPlaceholder");
@@ -227,6 +247,7 @@ describe("SessionDetailScreen", () => {
       fireEvent.press(await findByTestId("worked-on-add"));
       fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
       fireEvent.press(await findByTestId("add-focus-beat_making.groove"));
+      fireEvent.press(await findByTestId("add-focus-save"));
       fireEvent.press(await findByText("sessionDetail.saveChanges"));
 
       await waitFor(() => {
@@ -245,7 +266,10 @@ describe("SessionDetailScreen", () => {
     it("leaves the stored focuses untouched when only the note changes", async () => {
       const { findByPlaceholderText, findByText } = render(<SessionDetailScreen />);
 
-      fireEvent.changeText(await findByPlaceholderText("sessionDetail.notesPlaceholder"), "new note");
+      fireEvent.changeText(
+        await findByPlaceholderText("sessionDetail.notesPlaceholder"),
+        "new note",
+      );
       fireEvent.press(await findByText("sessionDetail.saveChanges"));
 
       await waitFor(() => expect(patchBody()).toBeDefined());
@@ -283,6 +307,7 @@ describe("SessionDetailScreen", () => {
       expect(queryByText("sessionDetail.saveChanges")).toBeNull();
       fireEvent.press(await findByTestId("worked-on-add"));
       fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+      fireEvent.press(await findByTestId("add-focus-save"));
       expect(queryByText("sessionDetail.saveChanges")).toBeTruthy();
       fireEvent.press(await findByTestId("worked-on-remove-beat_making.drums"));
       expect(queryByText("sessionDetail.saveChanges")).toBeNull();

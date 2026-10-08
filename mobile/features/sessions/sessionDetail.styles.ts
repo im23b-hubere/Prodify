@@ -28,7 +28,15 @@ export const sessionDetailStyles = StyleSheet.create({
     ...typography.meta,
   },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.lg },
-  backRow: { alignSelf: "flex-start", marginBottom: spacing.sm },
+  /** Back on the left; on your own session, the delete trash on the right. */
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 24,
+    marginBottom: spacing.sm,
+  },
+  pressed: { opacity: 0.6 },
   loadingBack: { alignSelf: "flex-start", marginLeft: spacing.md, marginTop: spacing.sm },
   mutedNote: { color: colors.textSecondary, ...typography.caption },
   section: {

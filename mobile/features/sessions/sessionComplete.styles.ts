@@ -226,15 +226,21 @@ export const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.body,
   },
-  addSheet: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.lg },
+  addSheet: { flex: 1 },
+  /** The title, set apart from the list by a divider so it never reads as a row. */
+  addSheetHeader: {
+    paddingBottom: spacing.md,
+    marginBottom: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
   addSheetTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     ...typography.cardTitle,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
   },
-  addSheetList: { paddingBottom: spacing.xl, gap: spacing.lg },
+  addSheetList: { paddingBottom: spacing.md, gap: spacing.lg },
+  addSheetFooter: { paddingTop: spacing.md },
   addGroup: { gap: spacing.xs },
   addGroupTitle: {
     color: colors.textSecondary,
@@ -244,15 +250,47 @@ export const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: spacing.xs,
   },
-  addRow: {
-    minHeight: 44,
-    justifyContent: "center",
-    paddingVertical: spacing.sm,
+  addGroupCard: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
   },
+  addRow: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  addRowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  addRowPressed: { backgroundColor: "rgba(255,255,255,0.05)" },
   addRowText: {
+    flex: 1,
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.body,
+  },
+  addRowTextSelected: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
-    ...typography.body,
+  },
+  addCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addCheckSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   focusStatus: { flexDirection: "row", alignItems: "center", gap: spacing.xs, minHeight: 20 },
   focusStatusText: {

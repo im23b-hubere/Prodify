@@ -3,6 +3,8 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import SessionCompleteScreen from "../../app/session/complete";
 
+jest.mock("react-native-gesture-handler", () => require("../../test/gestureHandlerStub"));
+
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -78,8 +80,16 @@ jest.mock("../../components/ui/PrimaryButton", () => {
   const React = require("react");
   const { Pressable, Text } = require("react-native");
   return {
-    PrimaryButton: ({ label, onPress }: { label: string; onPress: () => void }) => (
-      <Pressable onPress={onPress}>
+    PrimaryButton: ({
+      label,
+      onPress,
+      testID,
+    }: {
+      label: string;
+      onPress: () => void;
+      testID?: string;
+    }) => (
+      <Pressable onPress={onPress} testID={testID}>
         <Text>{label}</Text>
       </Pressable>
     ),
@@ -260,7 +270,7 @@ describe("SessionCompleteScreen focus reflection", () => {
     progressResponder = () => Promise.resolve([]);
   });
 
-  it("shows a short list and credits a focus from Add right away", async () => {
+  it("shows a short list and credits a focus once Add is saved", async () => {
     mockBackend();
     const { findByTestId, queryByTestId } = render(<SessionCompleteScreen />);
 
@@ -268,6 +278,7 @@ describe("SessionCompleteScreen focus reflection", () => {
     expect(queryByTestId("skill-focus-beat_making.drums")).toBeNull();
     fireEvent.press(await findByTestId("worked-on-add"));
     fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+    fireEvent.press(await findByTestId("add-focus-save"));
 
     await waitFor(() =>
       expect(lastPatchBody()).toEqual({
@@ -309,7 +320,9 @@ describe("SessionCompleteScreen focus reflection", () => {
 
     fireEvent.press(await findByTestId("worked-on-add"));
     fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+    fireEvent.press(await findByTestId("add-focus-save"));
     fireEvent.press(await findByTestId("add-focus-beat_making.bass"));
+    fireEvent.press(await findByTestId("add-focus-save"));
     expect(focusPatchBodies()).toEqual([["beat_making.drums"]]);
 
     patchResponder = () => Promise.resolve(completedSession());
@@ -330,6 +343,7 @@ describe("SessionCompleteScreen focus reflection", () => {
 
     fireEvent.press(await findByTestId("worked-on-add"));
     fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+    fireEvent.press(await findByTestId("add-focus-save"));
     expect(await findByText("sessionComplete.focusSaveFailed")).toBeTruthy();
     expect(getByTestId("worked-on-beat_making.drums")).toBeTruthy();
 
@@ -389,6 +403,7 @@ describe("SessionCompleteScreen focus reflection", () => {
     expect(await findByTestId("worked-on-nudge")).toBeTruthy();
     fireEvent.press(await findByTestId("worked-on-add"));
     fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+    fireEvent.press(await findByTestId("add-focus-save"));
 
     await waitFor(() => expect(queryByTestId("worked-on-nudge")).toBeNull());
   });
@@ -487,6 +502,7 @@ describe("SessionCompleteScreen focus reflection", () => {
 
     fireEvent.press(await findByTestId("worked-on-add"));
     fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
+    fireEvent.press(await findByTestId("add-focus-save"));
 
     expect(await findByTestId("worked-on-level-beat_making.drums")).toBeTruthy();
   });
@@ -497,6 +513,7 @@ describe("SessionCompleteScreen focus reflection", () => {
 
     fireEvent.press(await findByTestId("worked-on-add"));
     fireEvent.press(await findByTestId("add-focus-mixing.eq"));
+    fireEvent.press(await findByTestId("add-focus-save"));
 
     await waitFor(() =>
       expect(lastPatchBody()).toEqual({

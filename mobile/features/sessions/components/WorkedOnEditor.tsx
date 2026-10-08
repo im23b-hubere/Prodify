@@ -5,7 +5,12 @@ import type { SessionType } from "../../../constants/sessionTypes";
 import type { SkillFocusId } from "../../../constants/skills";
 import { skillFocusText } from "../../../lib/skillI18n";
 import type { SkillProgressDto } from "../../../types/skillProgress";
-import { ensureCredited, remainingFocuses, setCreditedSeconds } from "../creditList";
+import {
+  applyFocusList,
+  ensureCredited,
+  remainingFocuses,
+  setCreditedSeconds,
+} from "../creditList";
 import { countedMinutes } from "../durationWheel";
 import type { FocusReflectionSelection } from "../hooks/useFocusReflectionSelection";
 import type { FocusReflection } from "../skillFocusReflection";
@@ -62,7 +67,10 @@ export function WorkedOnEditor({
         visible={addOpen}
         sessionType={sessionType}
         selectedIds={shown.focusIds}
-        onAdd={selection.addFocus}
+        onSave={(ids) => {
+          const next = applyFocusList(committed, ids, durationSeconds);
+          if (next !== committed) selection.commitReflection(next);
+        }}
         onClose={() => setAddOpen(false)}
       />
       {wheelId ? (

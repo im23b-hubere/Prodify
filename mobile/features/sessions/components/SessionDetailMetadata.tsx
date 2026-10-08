@@ -1,15 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
-import { SessionTypeChip } from "../../../components/ui/SessionTypeChip";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
 import { sessionMoodLabel, sessionTypeLabel } from "../../../lib/sessionI18n";
 import { skillFocusText } from "../../../lib/skillI18n";
-import { SESSION_TYPE_IDS, type SessionDto, type SessionType } from "../../../types/session";
+import type { SessionDto, SessionType } from "../../../types/session";
 import type { FocusReflectionSelection } from "../hooks/useFocusReflectionSelection";
 import type { SessionDetailPresentation } from "../sessionDetailPresentation";
 import { focusesAllowedForSessionType } from "../skillFocusSelection";
+import { SessionTypeDropdown } from "./SessionTypeDropdown";
 import { WorkedOnEditor } from "./WorkedOnEditor";
 
 const NOTES_MAX_LENGTH = 2000;
@@ -37,16 +37,7 @@ function SessionTypeSection({
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{t("sessionDetail.sessionType")}</Text>
       {isOwnSession ? (
-        <View style={styles.chips}>
-          {SESSION_TYPE_IDS.map((type) => (
-            <SessionTypeChip
-              key={type}
-              label={sessionTypeLabel(type, t)}
-              active={selectedType === type}
-              onPress={() => onTypeChange(type)}
-            />
-          ))}
-        </View>
+        <SessionTypeDropdown value={selectedType} onChange={onTypeChange} />
       ) : (
         <Text style={styles.readOnlyValue}>{sessionTypeLabel(session.session_type, t)}</Text>
       )}
@@ -263,7 +254,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     marginBottom: spacing.sm,
   },
-  chips: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   readOnlyValue: { color: colors.textPrimary, fontFamily: fontFamily.body, ...typography.body },
   noteInput: {
     borderRadius: radii.md,
