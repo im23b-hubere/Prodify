@@ -1,5 +1,5 @@
 import { Lock, type LucideIcon } from "lucide-react-native";
-import { memo, useEffect, type ReactNode } from "react";
+import { memo, useEffect, useMemo, type ReactNode } from "react";
 import { Text, type AccessibilityActionEvent, type ViewStyle } from "react-native";
 import Animated, {
   Easing,
@@ -23,6 +23,7 @@ import { labelCounterScale, labelOpacity } from "../skillTreeLabelScale";
 import {
   RING_GAP,
   RING_WIDTH,
+  labelAlignment,
   type SkillTreeLabelBox,
 } from "../skillTreeLayout";
 import {
@@ -191,6 +192,10 @@ export const SkillTreeNode = memo(function SkillTreeNode({
   const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
     if (event.nativeEvent.actionName === "activate") onActivate(id);
   };
+  const alignment = useMemo(
+    () => (labelBox ? labelAlignment({ x, y }, labelBox) : null),
+    [labelBox, x, y],
+  );
   const showsLevel = isUnlocked && kind !== "center";
   const surface = isUnlocked
     ? unlockedSurface(accent, size, level, isSelected)
@@ -251,7 +256,7 @@ export const SkillTreeNode = memo(function SkillTreeNode({
               </Animated.View>
             ) : null}
           </Animated.View>
-          {labelBox ? (
+          {labelBox && alignment ? (
             <Animated.View
               pointerEvents="none"
               accessibilityElementsHidden
@@ -262,6 +267,9 @@ export const SkillTreeNode = memo(function SkillTreeNode({
                   top: labelBox.y - (y - size / 2),
                   left: labelBox.x - (x - size / 2),
                   width: labelBox.width,
+                  height: labelBox.height,
+                  alignItems: alignment.alignItems,
+                  justifyContent: alignment.justifyContent,
                 },
                 labelStyle,
               ]}
@@ -271,7 +279,7 @@ export const SkillTreeNode = memo(function SkillTreeNode({
                 style={[
                   styles.nodeLabel,
                   kind === "branch" && styles.branchLabel,
-                  { color: isUnlocked ? "#ffffff" : "#6b6b6b" },
+                  { color: isUnlocked ? "#ffffff" : "#6b6b6b", textAlign: alignment.textAlign },
                 ]}
               >
                 {label}

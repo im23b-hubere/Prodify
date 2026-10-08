@@ -17,9 +17,10 @@ export const FOCUS_LABEL_HEIGHT = 34;
 export const BRANCH_LABEL_WIDTH = 150;
 export const BRANCH_LABEL_HEIGHT = 20;
 
-const BRANCH_RING_RADIUS = 340;
-const FOCUS_RING_RADII = [560, 780, 1000] as const;
-const CURVE_CONTROL_RADIUS = 450;
+/** About as tight as the rings go before names start to touch (75% is the limit). */
+const BRANCH_RING_RADIUS = 265;
+const FOCUS_RING_RADII = [437, 608, 780] as const;
+const CURVE_CONTROL_RADIUS = 351;
 const CANVAS_PAD = 16;
 /** Empty slots between two areas keep their fans visually apart. */
 const GAP_SLOTS_PER_BRANCH = 3;
@@ -184,6 +185,32 @@ function nodeLabel(
     y: node.y + dirY * t - height / 2,
     width,
     height,
+  };
+}
+
+/** Below this share of a direction, a name stays centred on that axis. */
+const LABEL_HUG_THRESHOLD = 0.35;
+
+export type LabelAlignment = {
+  justifyContent: "flex-start" | "center" | "flex-end";
+  alignItems: "flex-start" | "center" | "flex-end";
+  textAlign: "left" | "center" | "right";
+};
+
+/**
+ * Where a name sits inside its box. The box is sized for the longest two-line name, so a
+ * short name hugs the side that faces its node instead of floating in the middle of the box.
+ */
+export function labelAlignment(node: TreePoint, box: SkillTreeLabelBox): LabelAlignment {
+  const dir = normalize(box.x + box.width / 2 - node.x, box.y + box.height / 2 - node.y);
+  const towardNodeX = dir.x > LABEL_HUG_THRESHOLD ? "start" : dir.x < -LABEL_HUG_THRESHOLD ? "end" : "center";
+  const towardNodeY = dir.y > LABEL_HUG_THRESHOLD ? "start" : dir.y < -LABEL_HUG_THRESHOLD ? "end" : "center";
+  const flex = { start: "flex-start", center: "center", end: "flex-end" } as const;
+  const text = { start: "left", center: "center", end: "right" } as const;
+  return {
+    alignItems: flex[towardNodeX],
+    justifyContent: flex[towardNodeY],
+    textAlign: text[towardNodeX],
   };
 }
 

@@ -1,7 +1,10 @@
 import { focusesForBranch } from "../../../constants/skills";
 import {
+  AREA_MIN_SCALE,
+  FOCUS_SCALE,
   MAX_SCALE,
   areaFitCamera,
+  coreCamera,
   focusFitCamera,
   nearestArea,
   nodeOverlayTransform,
@@ -20,47 +23,58 @@ function isOnScreen(x: number, y: number, inset = 8) {
 }
 
 describe("skill tree camera", () => {
-  it("fits a dense area onto the phone without scaling the canvas past sharpness", () => {
-    const camera = areaFitCamera(SKILL_TREE_LAYOUT, "mixing", PHONE);
-    const overview = overviewCamera(SKILL_TREE_LAYOUT, PHONE);
-
-    expect(camera.scale).toBeGreaterThan(overview.scale * 1.8);
-    expect(camera.scale).toBeLessThanOrEqual(MAX_SCALE);
+  it("looks at an area close enough to read, without scaling the canvas past sharpness", () => {
+    for (const branch of ["mixing", "beat_making", "arrangement"] as const) {
+      const camera = areaFitCamera(SKILL_TREE_LAYOUT, branch, PHONE);
+      expect(camera.scale).toBeGreaterThanOrEqual(AREA_MIN_SCALE);
+      expect(camera.scale).toBeLessThanOrEqual(MAX_SCALE);
+    }
   });
 
   it("lets you lean in close, but not up to a node's designed size", () => {
     expect(MAX_SCALE).toBeCloseTo(0.85);
   });
 
-  it("keeps you, the area and its skills on screen when that area is fitted", () => {
+  it("keeps the area and you on screen when an area is too big to fit", () => {
     const camera = areaFitCamera(SKILL_TREE_LAYOUT, "mixing", PHONE);
-    const mixingIds = new Set(["center", "mixing", ...focusesForBranch("mixing").map(({ id }) => id)]);
 
-    for (const node of SKILL_TREE_LAYOUT.nodes) {
-      if (!mixingIds.has(node.id)) continue;
+    for (const id of ["center", "mixing"]) {
+      const node = SKILL_TREE_LAYOUT.nodes.find((item) => item.id === id)!;
       const screen = projectToScreen(node, camera, PHONE, SKILL_TREE_LAYOUT.size);
       expect(isOnScreen(screen.x, screen.y)).toBe(true);
     }
+    const nearSkills = focusesForBranch("mixing").filter((_, index) => index % 3 === 0);
+    const onScreen = nearSkills.filter(({ id }) => {
+      const node = SKILL_TREE_LAYOUT.nodes.find((item) => item.id === id)!;
+      const screen = projectToScreen(node, camera, PHONE, SKILL_TREE_LAYOUT.size);
+      return isOnScreen(screen.x, screen.y);
+    });
+    expect(onScreen.length).toBeGreaterThan(0);
   });
 
-  it("looks at a skill with the same zoom as its area, sitting above the detail card", () => {
-    const area = areaFitCamera(SKILL_TREE_LAYOUT, "mixing", PHONE, DETAIL_LIFT);
+  it("leans in on a tapped skill, sitting above the detail card", () => {
     const focus = focusFitCamera(SKILL_TREE_LAYOUT, "mixing.eq", PHONE, DETAIL_LIFT);
     const eq = SKILL_TREE_LAYOUT.nodes.find((node) => node.id === "mixing.eq");
     const screen = projectToScreen(eq!, focus, PHONE, SKILL_TREE_LAYOUT.size);
 
-    expect(focus.scale).toBeCloseTo(area.scale, 5);
+    expect(focus.scale).toBe(FOCUS_SCALE);
+    expect(FOCUS_SCALE).toBeLessThanOrEqual(MAX_SCALE);
     expect(screen.x).toBeCloseTo(PHONE.width / 2, 0);
     expect(screen.y).toBeCloseTo(PHONE.height / 2 - DETAIL_LIFT, 0);
   });
 
-  it("opens on the fitted area, or the whole tree before anything was trained", () => {
+  it("opens on the latest area, or on you and the areas before anything was trained", () => {
     expect(openingCamera(SKILL_TREE_LAYOUT, "mixing", PHONE)).toEqual(
       areaFitCamera(SKILL_TREE_LAYOUT, "mixing", PHONE),
     );
-    expect(openingCamera(SKILL_TREE_LAYOUT, "center", PHONE)).toEqual(
-      overviewCamera(SKILL_TREE_LAYOUT, PHONE),
-    );
+    const core = openingCamera(SKILL_TREE_LAYOUT, "center", PHONE);
+    expect(core).toEqual(coreCamera(SKILL_TREE_LAYOUT, PHONE));
+    expect(core.scale).toBeGreaterThan(overviewCamera(SKILL_TREE_LAYOUT, PHONE).scale * 2);
+    for (const node of SKILL_TREE_LAYOUT.nodes) {
+      if (node.kind === "focus") continue;
+      const screen = projectToScreen(node, core, PHONE, SKILL_TREE_LAYOUT.size);
+      expect(isOnScreen(screen.x, screen.y)).toBe(true);
+    }
   });
 
   it("places a screen-space node so its centre matches the projected world point", () => {

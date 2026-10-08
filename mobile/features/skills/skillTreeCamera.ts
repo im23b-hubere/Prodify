@@ -7,6 +7,13 @@ import {
 } from "./skillTreeLayout";
 
 export const MAX_SCALE = 0.85;
+/** Close enough that a tapped skill and its name read comfortably. */
+export const FOCUS_SCALE = 0.8;
+/**
+ * The furthest an area view goes out. Fitting a whole area on a phone lands near 0.3, where
+ * nodes shrink to specks, so an area that does not fit is centred on its node instead.
+ */
+export const AREA_MIN_SCALE = 0.6;
 export const FIT_MARGIN = 0.96;
 const AREA_PADDING = 36;
 
@@ -94,7 +101,17 @@ export function areaFitCamera(
   viewport: ViewportSize,
   liftBy = 0,
 ): CameraPose {
-  return fitBox(occupancyBox(nodesOfArea(layout, branch)), viewport, layout.size, liftBy);
+  const fit = fitBox(occupancyBox(nodesOfArea(layout, branch)), viewport, layout.size, liftBy);
+  if (fit.scale >= AREA_MIN_SCALE) return fit;
+  const areaNode = layout.nodes.find((node) => node.id === branch);
+  if (!areaNode) return fit;
+  return cameraToPoint(areaNode, AREA_MIN_SCALE, layout.size, liftBy / 2);
+}
+
+/** You and the area nodes around you: where the tree opens before anything was trained. */
+export function coreCamera(layout: SkillTreeLayout, viewport: ViewportSize): CameraPose {
+  const core = layout.nodes.filter((node) => node.kind === "center" || node.kind === "branch");
+  return fitBox(occupancyBox(core), viewport, layout.size, 0);
 }
 
 export function focusFitCamera(
@@ -105,8 +122,7 @@ export function focusFitCamera(
 ): CameraPose {
   const node = layout.nodes.find((item) => item.id === focusId);
   if (!node || node.kind === "center") return overviewCamera(layout, viewport);
-  const area = areaFitCamera(layout, node.branch, viewport, liftBy);
-  return cameraToPoint(node, area.scale, layout.size, liftBy);
+  return cameraToPoint(node, FOCUS_SCALE, layout.size, liftBy);
 }
 
 export function openingCamera(
@@ -114,7 +130,7 @@ export function openingCamera(
   startId: OpeningNodeId,
   viewport: ViewportSize,
 ): CameraPose {
-  if (startId === "center") return overviewCamera(layout, viewport);
+  if (startId === "center") return coreCamera(layout, viewport);
   return areaFitCamera(layout, startId, viewport);
 }
 

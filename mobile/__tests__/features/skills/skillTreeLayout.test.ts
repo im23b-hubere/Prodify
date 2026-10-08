@@ -1,6 +1,7 @@
 import { SKILL_BRANCHES, SKILL_FOCUSES } from "../../../constants/skills";
 import {
   buildSkillTreeLayout,
+  labelAlignment,
   type SkillTreeNodeLayout,
 } from "../../../features/skills/skillTreeLayout";
 
@@ -105,6 +106,27 @@ describe("buildSkillTreeLayout", () => {
       expect(node.label.x + node.label.width).toBeLessThanOrEqual(layout.size);
       expect(node.label.y + node.label.height).toBeLessThanOrEqual(layout.size);
     }
+  });
+
+  it("pulls a short name against the side of its box that faces the node", () => {
+    const box = { x: 100, y: 0, width: 104, height: 34 };
+    expect(labelAlignment({ x: 60, y: 17 }, box)).toEqual({
+      alignItems: "flex-start",
+      justifyContent: "center",
+      textAlign: "left",
+    });
+    expect(labelAlignment({ x: 250, y: 17 }, box)).toMatchObject({
+      alignItems: "flex-end",
+      textAlign: "right",
+    });
+    expect(labelAlignment({ x: 152, y: 80 }, box)).toEqual({
+      alignItems: "center",
+      justifyContent: "flex-end",
+      textAlign: "center",
+    });
+    expect(labelAlignment({ x: 152, y: -40 }, box)).toMatchObject({
+      justifyContent: "flex-start",
+    });
   });
 
   it("starts the first branch at the top", () => {
