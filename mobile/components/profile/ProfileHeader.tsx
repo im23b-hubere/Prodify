@@ -45,13 +45,9 @@ function FriendshipBadge({ status, onAddFriend }: Pick<Props, "status" | "onAddF
       </View>
     );
   }
-  // Friends get a small mark next to their name instead of a pill (see ProfileHeader).
-  if (status === "accepted") return null;
-  return (
-    <View style={styles.followingPill}>
-      <Text style={styles.followingTxt}>{t("profileHeader.you")}</Text>
-    </View>
-  );
+  // Friends get a small mark next to their name instead (see ProfileHeader); your own
+  // profile needs no badge at all.
+  return null;
 }
 
 export const ProfileHeader = memo(function ProfileHeader({
@@ -232,15 +228,4 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   pendingTxt: { color: colors.textSecondary, ...typography.caption },
-  followingPill: {
-    alignSelf: "center",
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radii.round,
-    backgroundColor: "rgba(34,197,94,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.35)",
-  },
-  followingTxt: { color: FRIEND_GREEN, fontFamily: fontFamily.bodyBold, ...typography.caption },
 });
