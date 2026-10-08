@@ -1,4 +1,4 @@
-export const TEMPLATE_IDS = ['photo', 'transparent', 'black', 'timeline', 'isometric', 'echo'] as const;
+export const TEMPLATE_IDS = ['photo', 'transparent', 'mono', 'timeline', 'isometric', 'echo'] as const;
 export type TemplateId = typeof TEMPLATE_IDS[number];
 
 export interface SessionActivity {
@@ -34,5 +34,6 @@ export interface CardOptions {
   showStreak?: boolean;
   showIdentity?: boolean;
   photoPosition?: 'top' | 'bottom';
-  transparentText?: 'white' | 'black';
+  /** Mono only: black card with white type, or a warm white card with dark type. */
+  monoTheme?: 'dark' | 'light';
 }

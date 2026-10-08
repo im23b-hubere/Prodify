@@ -47,7 +47,37 @@ describe("share card svg", () => {
   it("maps focus time into activity labels without exceeding the session", () => {
     expect(data.dateLabel).toBe("07 OCT 2026");
     expect(data.producerName).toBe("erix");
-    expect(data.activities.reduce((sum, row) => sum + row.durationSeconds, 0)).toBeLessThanOrEqual(6420);
-    expect(renderCardSvg(data, { template: "black" })).toContain("@erix");
+    expect(data.activities.reduce((sum, row) => sum + row.durationSeconds, 0)).toBeLessThanOrEqual(
+      6420,
+    );
+    expect(renderCardSvg(data, { template: "mono" })).toContain("@erix");
+  });
+
+  it("leaves weights to the app's single-weight font files, but sets them for generic families", () => {
+    for (const template of TEMPLATE_IDS) {
+      expect(renderCardSvg(data, { template })).not.toContain("font-weight=");
+    }
+    const generic = renderCardSvg(data, {
+      template: "isometric",
+      displayFont: "Syne",
+      bodyFont: "DM Sans",
+      bodyMediumFont: "DM Sans Medium",
+    });
+    expect(generic).toContain('font-weight="700"');
+  });
+
+  it("draws Mono as a black or a warm white card", () => {
+    const dark = renderCardSvg(data, { template: "mono" });
+    const light = renderCardSvg(data, { template: "mono", monoTheme: "light" });
+    expect(dark).toContain(`fill="${colors.background}"`);
+    expect(light).toContain('fill="#F4F1EB"');
+    expect(light).toContain('fill="#0B0B0C"');
+    expect(light).toContain(colors.primary);
+  });
+
+  it("leaves the repeated Production line off a transparent card without activities", () => {
+    const bare = { ...data, activities: [] };
+    expect(renderCardSvg(bare, { template: "transparent" })).not.toContain(">Production</text>");
+    expect(renderCardSvg(data, { template: "transparent" })).toContain("prodify");
   });
 });

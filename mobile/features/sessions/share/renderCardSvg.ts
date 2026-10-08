@@ -11,8 +11,10 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
   const { template } = options;
   const accent = validateAccent(options.accent ?? colors.primary);
   const rows = activityRows(session);
-  const colour = template === "transparent" && options.transparentText === "black" ? "#111214" : colors.textPrimary;
-  const muted = template === "photo" || template === "transparent" ? colour : colors.textSecondary;
+  const light = template === "mono" && options.monoTheme === "light";
+  const colour = light ? "#0B0B0C" : colors.textPrimary;
+  const muted = template === "photo" || template === "transparent" ? colour : light ? "#6F6A62" : colors.textSecondary;
+  const line = light ? "#DDD7CC" : colors.border;
   const display = xmlEscape(options.displayFont ?? fontFamily.heading);
   const body = xmlEscape(options.bodyFont ?? fontFamily.body);
   const medium = xmlEscape(options.bodyMediumFont ?? fontFamily.bodyMedium);
@@ -22,18 +24,24 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
   const showIdentity = options.showIdentity !== false;
   const showActivities = options.showActivities !== false;
   const showStreak = options.showStreak !== false && Number.isInteger(session.streakDays) && (session.streakDays ?? 0) > 0;
+  // The app's font names (Syne_700Bold, DMSans_500Medium…) each already are one weight. Adding a
+  // font-weight on top makes iOS look for a bolder face of that file and fall back to another
+  // font, so weights are only written for generic families such as the export's "Syne".
+  const familiesCarryWeight =
+    !options.displayFont && !options.bodyFont && !options.bodyMediumFont && !options.fontFamily;
+  const weightAttr = (weight: number) => (familiesCarryWeight ? "" : ` font-weight="${weight}"`);
 
   const label = (x: number, y: number, value: string, size = 34, fill = colour, weight = 400, anchor = 'start', spacing = 0, family = body) =>
-    `<text x="${x}" y="${y}" font-family="${family}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" letter-spacing="${spacing}" fill="${fill}">${xmlEscape(value)}</text>`;
+    `<text x="${x}" y="${y}" font-family="${family}" font-size="${size}"${weightAttr(weight)} text-anchor="${anchor}" letter-spacing="${spacing}" fill="${fill}">${xmlEscape(value)}</text>`;
 
   const brand = (x: number, y: number, center = false) =>
-    `<text x="${x}" y="${y}" font-family="${display}" font-size="64" font-weight="700" letter-spacing="-1.6" text-anchor="${center ? 'middle' : 'start'}" fill="${colour}">prodify<tspan fill="${accent}">.</tspan></text>`;
+    `<text x="${x}" y="${y}" font-family="${display}" font-size="64"${weightAttr(700)} letter-spacing="-1.6" text-anchor="${center ? 'middle' : 'start'}" fill="${colour}">prodify<tspan fill="${accent}">.</tspan></text>`;
 
   const bigTime = (x: number, y: number, center = false, size = 188) => {
     const fitted = Math.min(size, 900 / Math.max(duration.length * 0.62, 1));
     const parts = duration.match(/\d+|[hms]|\s+/g) ?? [];
     const tracking = Math.round(fitted * -0.025);
-    return `<text x="${x}" y="${y}" text-anchor="${center ? 'middle' : 'start'}" font-family="${display}" font-size="${fitted}" font-weight="700" letter-spacing="${tracking}" fill="${colour}">${parts.map(part => /[hms]/.test(part) ? `<tspan font-size="${Math.round(fitted * 0.62)}" letter-spacing="${Math.round(tracking * 0.4)}">${part}</tspan>` : xmlEscape(part)).join('')}</text>`;
+    return `<text x="${x}" y="${y}" text-anchor="${center ? 'middle' : 'start'}" font-family="${display}" font-size="${fitted}"${weightAttr(700)} letter-spacing="${tracking}" fill="${colour}">${parts.map(part => /[hms]/.test(part) ? `<tspan font-size="${Math.round(fitted * 0.62)}" letter-spacing="${Math.round(tracking * 0.4)}">${part}</tspan>` : xmlEscape(part)).join('')}</text>`;
   };
 
   const flame = (x: number, y: number) =>
@@ -59,8 +67,8 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
     : '';
 
   const header = () => brand(96, 268) + label(984, 260, date, 26, muted, 500, 'end', 1.6, medium);
-  const rule = (y: number) => `<path d="M96 ${y}H984" stroke="${colors.border}" stroke-width="2"/>`;
-  let content = backgroundMarkup(template, accent);
+  const rule = (y: number) => `<path d="M96 ${y}H984" stroke="${line}" stroke-width="2"/>`;
+  let content = backgroundMarkup(template, accent, options.monoTheme);
 
   if (template === 'photo') {
     const top = options.photoPosition === 'top';
@@ -79,27 +87,51 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
     content += bigTime(540, 840, true, 188);
     content += label(540, 916, 'Production time', 36, colour, 400, 'middle', 0, body);
     content += `<rect x="492" y="972" width="96" height="6" rx="3" fill="${accent}"/>`;
-    content += activitiesInline(540, 1068, true);
-    content += streak(540, 1168, true);
-    content += brand(540, 1308, true);
+    // Stacked from the accent stroke down, so the logo sits right under it when there is nothing
+    // in between. A session without assigned activities would only repeat "Production" here.
+    let cursor = 978;
+    const hasActivities = showActivities && session.activities.some((activity) => activity.durationSeconds > 0);
+    if (hasActivities) {
+      const inline = Array.from(rows.map((row) => truncate(row.label, 17)).join('  ·  ')).length <= 42;
+      content += activitiesInline(540, cursor + 90, true);
+      cursor += 90 + (inline ? 0 : (rows.length - 1) * 46);
+    }
+    if (showStreak) {
+      content += streak(540, cursor + 100, true);
+      cursor += 100;
+    }
+    content += brand(540, cursor + 120, true);
   }
 
-  if (template === 'black') {
-    content += header();
-    content += `<circle cx="108" cy="392" r="6" fill="${accent}"/>` + label(132, 402, 'SESSION COMPLETE', 26, muted, 500, 'start', 2.4, medium);
+  if (template === 'mono') {
+    // Poster layout: the time owns the top half, the breakdown and the producer sit at the foot.
+    content += brand(96, 236) + label(984, 228, date, 26, muted, 500, 'end', 1.6, medium);
+    content += `<circle cx="108" cy="412" r="7" fill="${accent}"/>` + label(134, 422, 'SESSION COMPLETE', 26, muted, 500, 'start', 2.4, medium);
+    // "47m" → a big number with a smaller unit, so the figure reads first.
+    const figure = (value: string, y: number, fill: string, size: number) => {
+      const match = value.match(/^(\d+)([hms])$/);
+      if (!match) return label(96, y, value, size, fill, 700, 'start', -6, display);
+      return `<text x="96" y="${y}" font-family="${display}" font-size="${size}"${weightAttr(700)} letter-spacing="${Math.round(size * -0.03)}" fill="${fill}">${match[1]}<tspan font-size="${Math.round(size * 0.42)}" dx="${Math.round(size * 0.015)}" letter-spacing="0">${match[2]}</tspan></text>`;
+    };
     const parts = duration.split(' ');
     if (parts.length === 2) {
-      const size = 248;
-      content += label(96, 700, parts[0], size, colour, 700, 'start', -6, display);
-      content += label(96, 980, parts[1], size, accent, 700, 'start', -6, display);
+      content += figure(parts[0]!, 760, colour, 300) + figure(parts[1]!, 1060, accent, 300);
+      content += label(96, 1150, 'Production time', 38, muted, 400, 'start', 0, body);
     } else {
-      content += bigTime(96, 760, false, 220);
+      content += figure(parts[0]!, 900, accent, 340);
+      content += label(96, 1000, 'Production time', 38, muted, 400, 'start', 0, body);
     }
-    content += label(96, 1088, 'Made time. Made music.', 36, muted, 400, 'start', 0, body);
-    content += rule(1172) + detailRows(1268);
-    content += rule(1568);
-    if (showIdentity) content += label(96, 1660, username, 32, muted, 500, 'start', 0, medium);
-    content += streak(showIdentity ? 620 : 96, 1660);
+    if (showActivities && rows.length > 0) {
+      content += rule(1270);
+      rows.forEach((row, index) => {
+        const y = 1350 + index * 84;
+        content += label(96, y, truncate(row.label, 24), 38, colour, 400, 'start', 0, body);
+        content += label(984, y, durationLabel(row.durationSeconds), 36, muted, 500, 'end', 0, medium);
+      });
+    }
+    content += rule(1720);
+    if (showIdentity) content += label(96, 1800, username, 32, muted, 500, 'start', 0, medium);
+    content += streak(showIdentity ? 620 : 96, 1800);
   }
 
   if (template === 'timeline') {

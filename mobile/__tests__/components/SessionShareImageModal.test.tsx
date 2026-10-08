@@ -1,3 +1,4 @@
+import * as ImagePicker from "expo-image-picker";
 import * as Sharing from "expo-sharing";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
@@ -22,13 +23,30 @@ jest.mock("expo-sharing", () => ({
 }));
 
 jest.mock("expo-image-picker", () => ({
-  launchImageLibraryAsync: jest.fn(),
+  launchImageLibraryAsync: jest.fn(() => Promise.resolve({ canceled: true, assets: [] })),
 }));
+
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
+jest.mock("react-native-gesture-handler", () => {
+  const { View } = require("react-native");
+  const chainable: object = new Proxy({}, { get: () => () => chainable });
+  return {
+    Gesture: { Pan: () => chainable },
+    GestureDetector: ({ children }: { children: React.ReactNode }) => children,
+    GestureHandlerRootView: View,
+  };
+});
 
 jest.mock("react-native-svg", () => {
   const React = require("react");
   const { Text } = require("react-native");
-  return { SvgXml: ({ xml }: { xml: string }) => <Text>{xml.slice(0, 40)}</Text> };
+  return {
+    __esModule: true,
+    default: () => null,
+    Polyline: () => null,
+    SvgXml: ({ xml }: { xml: string }) => <Text>{xml.slice(0, 40)}</Text>,
+  };
 });
 
 jest.mock("react-native-view-shot", () => {
@@ -74,30 +92,108 @@ const session: SessionDto = {
   focus_times: [{ skill_id: "beat_making.drums", assigned_seconds: 3480 }],
 };
 
+const CARD = "Production session. eric. 107 minutes.";
+/** Opening the sheet draws the first card and its neighbour; the rest are drawn as you swipe. */
+const DRAWN_ON_OPEN = 2;
+
+function swipeTo(page: number) {
+  const carousel = screen.getByLabelText("sessionInsights.shareSwipeA11y");
+  fireEvent(carousel, "layout", { nativeEvent: { layout: { width: 400, height: 500 } } });
+  fireEvent(carousel, "momentumScrollEnd", {
+    nativeEvent: { contentOffset: { x: page * 400, y: 0 } },
+  });
+}
+
 describe("SessionShareImageModal", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("renders the six share templates in the existing sheet", () => {
+  it("shows every style as a swipeable card, starting on Isometric", () => {
     render(
       <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
     );
 
     expect(screen.getByText("sessionInsights.shareModalTitle")).toBeTruthy();
-    expect(screen.getByLabelText("sessionInsights.shareTemplatePhoto")).toBeTruthy();
-    expect(screen.getByLabelText("sessionInsights.shareTemplateTransparent")).toBeTruthy();
-    expect(screen.getByLabelText("sessionInsights.shareTemplateBlack")).toBeTruthy();
-    expect(screen.getByLabelText("sessionInsights.shareTemplateTimeline")).toBeTruthy();
-    expect(screen.getByLabelText("sessionInsights.shareTemplateIsometric")).toBeTruthy();
-    expect(screen.getByLabelText("sessionInsights.shareTemplateEcho")).toBeTruthy();
+    expect(screen.getAllByLabelText(CARD)).toHaveLength(DRAWN_ON_OPEN);
+    expect(screen.queryByLabelText("sessionInsights.shareClose")).toBeNull();
+    expect(screen.getByText("sessionInsights.shareTemplateIsometric")).toBeTruthy();
+    for (const key of ["Photo", "Transparent", "Mono", "Timeline", "Isometric", "Echo"]) {
+      expect(screen.getByLabelText(`sessionInsights.shareTemplate${key}`)).toBeTruthy();
+    }
   });
 
-  it("draws the selected template with the producer name", () => {
+  it("follows swipes and dot taps to the chosen style", () => {
     render(
       <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
     );
 
-    fireEvent.press(screen.getByLabelText("sessionInsights.shareTemplateTimeline"));
-    expect(screen.getAllByLabelText("Production session. eric. 107 minutes.")).toHaveLength(1);
+    swipeTo(2);
+    expect(screen.getByText("sessionInsights.shareTemplateTimeline")).toBeTruthy();
+    expect(screen.getAllByLabelText(CARD).length).toBeGreaterThan(DRAWN_ON_OPEN);
+    fireEvent.press(screen.getByLabelText("sessionInsights.shareTemplateMono"));
+    expect(screen.getByLabelText("sessionInsights.shareMonoLight")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("sessionInsights.shareTemplateTransparent"));
+    expect(screen.queryByLabelText("sessionInsights.shareMonoLight")).toBeNull();
+  });
+
+  it("starts over on Isometric after closing on another style", () => {
+    const view = render(
+      <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
+    );
+
+    swipeTo(3);
+    expect(screen.getByText("sessionInsights.shareTemplateEcho")).toBeTruthy();
+    view.rerender(
+      <SessionShareImageModal
+        visible={false}
+        onClose={jest.fn()}
+        session={session}
+        producerName="eric"
+      />,
+    );
+    view.rerender(
+      <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
+    );
+    expect(screen.getByText("sessionInsights.shareTemplateIsometric")).toBeTruthy();
+    expect(screen.queryByText("sessionInsights.shareTemplateEcho")).toBeNull();
+  });
+
+  it("forgets the picked photo once the sheet is closed", async () => {
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: "file:///studio.jpg", width: 1080, height: 1920 }],
+    });
+    const view = render(
+      <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
+    );
+
+    swipeTo(5);
+    fireEvent.press(screen.getAllByText("sessionInsights.sharePickPhoto").at(-1)!);
+    expect(await screen.findAllByText("sessionInsights.shareChangePhoto")).not.toHaveLength(0);
+    view.rerender(
+      <SessionShareImageModal
+        visible={false}
+        onClose={jest.fn()}
+        session={session}
+        producerName="eric"
+      />,
+    );
+    view.rerender(
+      <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
+    );
+    swipeTo(5);
+    expect(screen.queryByText("sessionInsights.shareChangePhoto")).toBeNull();
+    expect(screen.getAllByText("sessionInsights.sharePickPhoto").length).toBeGreaterThan(0);
+  });
+
+  it("asks for a photo instead of sharing an empty Photo card", async () => {
+    render(
+      <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
+    );
+
+    swipeTo(5);
+    fireEvent.press(screen.getAllByText("sessionInsights.sharePickPhoto").at(-1)!);
+    await waitFor(() => expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalled());
+    expect(Sharing.shareAsync).not.toHaveBeenCalled();
   });
 
   it("captures and shares the story image once the export card has laid out", async () => {
@@ -107,10 +203,10 @@ describe("SessionShareImageModal", () => {
     );
 
     fireEvent.press(screen.getByText("sessionInsights.sharePngCta"));
-    const cards = screen.getAllByLabelText("Production session. eric. 107 minutes.");
-    expect(cards).toHaveLength(2);
+    const cards = screen.getAllByLabelText(CARD);
+    expect(cards).toHaveLength(DRAWN_ON_OPEN + 1);
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
-    fireEvent(cards[1], "layout", { nativeEvent: { layout: { width: 360, height: 640 } } });
+    fireEvent(cards.at(-1)!, "layout", { nativeEvent: { layout: { width: 360, height: 640 } } });
     await act(async () => jest.advanceTimersByTime(100));
     await waitFor(() =>
       expect(Sharing.shareAsync).toHaveBeenCalledWith("file:///mock.png", {
@@ -120,5 +216,20 @@ describe("SessionShareImageModal", () => {
       }),
     );
     jest.useRealTimers();
+  });
+
+  it("steps through the styles with the side arrows, hiding them at either end", () => {
+    render(
+      <SessionShareImageModal visible onClose={jest.fn()} session={session} producerName="eric" />,
+    );
+
+    expect(screen.queryByLabelText("sessionInsights.sharePreviousStyle")).toBeNull();
+    fireEvent.press(screen.getByLabelText("sessionInsights.shareNextStyle"));
+    expect(screen.getByText("sessionInsights.shareTemplateMono")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("sessionInsights.sharePreviousStyle"));
+    expect(screen.getByText("sessionInsights.shareTemplateIsometric")).toBeTruthy();
+
+    swipeTo(5);
+    expect(screen.queryByLabelText("sessionInsights.shareNextStyle")).toBeNull();
   });
 });

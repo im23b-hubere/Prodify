@@ -18,11 +18,11 @@ export function sessionShareData(
   const dateLabel = Number.isNaN(started.getTime())
     ? ""
     : started
+        // The producer's own calendar day: an evening session must not show tomorrow's date.
         .toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",
           year: "numeric",
-          timeZone: "UTC",
         })
         .toUpperCase();
   const activities: SessionData["activities"][number][] = [];

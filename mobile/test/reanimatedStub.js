@@ -1,4 +1,4 @@
-const { Image, Text, View } = require("react-native");
+const { Image, ScrollView, Text, View } = require("react-native");
 
 const identity = (value) => value;
 const enter = {
@@ -11,10 +11,11 @@ const enter = {
 
 module.exports = {
   __esModule: true,
-  default: { View, Image, Text, createAnimatedComponent: identity },
+  default: { View, Image, Text, ScrollView, createAnimatedComponent: identity },
   View,
   Image,
   Text,
+  ScrollView,
   FadeIn: enter,
   FadeOut: enter,
   FadeInUp: enter,
@@ -34,6 +35,8 @@ module.exports = {
   },
   useAnimatedStyle: (fn) => fn(),
   useAnimatedProps: (fn) => fn(),
+  useAnimatedScrollHandler: (handlers) => (event) =>
+    (typeof handlers === "function" ? handlers : handlers.onScroll)?.(event?.nativeEvent ?? event),
   useReducedMotion: () => false,
   withRepeat: identity,
   withTiming: identity,

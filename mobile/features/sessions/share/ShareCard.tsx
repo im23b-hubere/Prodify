@@ -43,7 +43,14 @@ export const ShareCard = forwardRef<ComponentRef<typeof View>, ShareCardProps>(f
           accessibilityIgnoresInvertColors
         />
       ) : null}
-      <SvgXml xml={svg} width={width} height={height} />
+      {/* Keyed per look: react-native-svg can keep a previous card's clip paths when only the
+          markup changes, which made templates draw with another template's leftovers. */}
+      <SvgXml
+        key={`${options.template}-${options.monoTheme ?? ''}-${options.photoPosition ?? ''}`}
+        xml={svg}
+        width={width}
+        height={height}
+      />
     </View>
   );
 });
