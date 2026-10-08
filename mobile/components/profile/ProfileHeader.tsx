@@ -1,4 +1,3 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { UserCheck } from "lucide-react-native";
@@ -68,9 +67,9 @@ export const ProfileHeader = memo(function ProfileHeader({
   onAddFriend,
 }: Props) {
   const { t } = useTranslation();
+  // An open heading like the Profile tab's, not a card: the page's glow sits behind it.
   return (
-    <View style={styles.wrap}>
-      <LinearGradient colors={["#3d1510", "#141414"]} style={styles.gradient} />
+    <View style={styles.wrap} testID="profile-header">
       <View style={styles.content}>
         <View style={styles.avatar}>
           {profilePictureUrl ? (
@@ -80,7 +79,14 @@ export const ProfileHeader = memo(function ProfileHeader({
           )}
         </View>
         <View style={styles.nameRow}>
-          <Text style={styles.username}>{username}</Text>
+          <Text
+            style={styles.username}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {username}
+          </Text>
           {status === "accepted" ? (
             <View accessible accessibilityLabel={t("profileHeader.friendsBadge")}>
               <UserCheck color={FRIEND_GREEN} size={20} strokeWidth={2.4} />
@@ -110,6 +116,7 @@ export const ProfileHeader = memo(function ProfileHeader({
             <Text style={styles.qVal}>{totalSessions}</Text>
             <Text style={styles.qLbl}>{t("profileHeader.sessions")}</Text>
           </View>
+          <View style={styles.qDivider} />
           <View style={styles.qItem}>
             <View style={[glyphRowStyle, styles.qValRow]}>
               <Text style={styles.qVal}>{currentStreak}</Text>
@@ -117,6 +124,7 @@ export const ProfileHeader = memo(function ProfileHeader({
             </View>
             <Text style={styles.qLbl}>{t("profileHeader.streak")}</Text>
           </View>
+          <View style={styles.qDivider} />
           <View style={styles.qItem}>
             <Text style={styles.qVal}>{friendsCount}</Text>
             <Text style={styles.qLbl}>{t("profileHeader.friends")}</Text>
@@ -129,29 +137,37 @@ export const ProfileHeader = memo(function ProfileHeader({
 });
 
 const styles = StyleSheet.create({
-  wrap: { borderRadius: radii.xl, overflow: "hidden", marginBottom: spacing.md },
-  gradient: { ...StyleSheet.absoluteFill },
-  content: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.sm },
+  wrap: { paddingTop: spacing.lg, marginBottom: spacing.md },
+  content: { alignItems: "center", gap: spacing.sm },
+  // Same ring and size as the avatar on your own Profile tab.
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: "rgba(255,106,61,0.2)",
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: "rgba(255,61,0,0.14)",
     borderWidth: 2,
-    borderColor: "rgba(255,106,61,0.5)",
+    borderColor: "rgba(255,61,0,0.6)",
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "center",
+    overflow: "hidden",
+    marginBottom: spacing.xs,
   },
-  avatarTxt: { fontSize: 28, fontFamily: fontFamily.heading, color: colors.textPrimary },
+  avatarTxt: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.subheadline,
+  },
   avatarImage: { width: "100%", height: "100%" },
   username: {
+    flexShrink: 1,
     textAlign: "center",
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    fontSize: 24,
+    ...typography.screenTitle,
   },
   nameRow: {
+    maxWidth: "100%",
+    paddingHorizontal: spacing.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -185,8 +201,14 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
   },
-  quick: { flexDirection: "row", justifyContent: "space-around", marginTop: spacing.sm },
-  qItem: { alignItems: "center", gap: 4 },
+  quick: {
+    alignSelf: "stretch",
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: spacing.md,
+  },
+  qItem: { flex: 1, alignItems: "center", gap: 4 },
+  qDivider: { width: StyleSheet.hairlineWidth, height: 28, backgroundColor: colors.border },
   qVal: { color: colors.textPrimary, fontFamily: fontFamily.heading, fontSize: 18 },
   qValRow: { justifyContent: "center" },
   qLbl: { color: colors.textSecondary, ...typography.caption },

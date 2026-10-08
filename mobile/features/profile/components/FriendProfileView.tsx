@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -95,6 +96,13 @@ function ReadyProfile({ state, onBack, onOpenFriends, onOpenSession, onChallenge
   const locked = state.status === "none" || state.status === "pending";
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      {/* The same warm glow as the Profile tab, so the header reads as a heading, not a card. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(255,61,0,0.18)", "rgba(255,61,0,0.05)", "rgba(10,10,10,0)"]}
+        locations={[0, 0.42, 1]}
+        style={styles.ambient}
+      />
       <View style={styles.topRow}>
         <BackButton onPress={onBack} style={styles.back} />
       </View>
@@ -136,7 +144,12 @@ function LockedProfile({
       : t("friendProfile.lockedNone");
   return (
     <View style={styles.locked}>
-      <Text style={styles.lockedMainTitle}>
+      <Text
+        style={styles.lockedMainTitle}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+      >
         {state.targetUsername
           ? t("friendProfile.lockedUserHeading", { name: state.targetUsername })
           : t("friendProfile.lockedTitle")}

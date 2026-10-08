@@ -5,6 +5,7 @@ import { colors, radii, spacing, typography } from "../../constants/theme";
 
 export const friendProfileStyles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
+  ambient: { position: "absolute", top: 0, left: 0, right: 0, height: 320 },
   topRow: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   back: { alignSelf: "flex-start" },
   scroll: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
@@ -24,21 +25,23 @@ export const friendProfileStyles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     ...typography.caption,
   },
+  // An open heading over the page glow, like the visible profile, rather than a card.
   locked: {
-    padding: spacing.lg,
-    borderRadius: radii.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingTop: spacing.xl,
     gap: spacing.md,
   },
   lockedMainTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
-    ...typography.headline,
+    ...typography.screenTitle,
     textAlign: "center",
   },
-  lockedSub: { color: colors.textSecondary, ...typography.body },
+  lockedSub: {
+    color: colors.textSecondary,
+    ...typography.body,
+    textAlign: "center",
+    marginBottom: spacing.sm,
+  },
   block: { marginBottom: spacing.sm },
   statsCard: {
     padding: spacing.md,
