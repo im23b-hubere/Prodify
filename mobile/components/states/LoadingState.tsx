@@ -1,19 +1,28 @@
 import { ActivityIndicator, StyleSheet, Text } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 import { fontFamily } from "../../constants/fonts";
-import { colors, spacing, typography, ui } from "../../constants/theme";
-import { AppCard } from "../ui/AppCard";
+import { colors, spacing, typography } from "../../constants/theme";
 
 type LoadingStateProps = {
   message: string;
 };
 
+/**
+ * A spinner and a quiet line of text straight on the page, with no card behind them. It fades
+ * in after a short pause, so loads that finish quickly never flash it.
+ */
 export function LoadingState({ message }: LoadingStateProps) {
   return (
-    <AppCard style={styles.container}>
-      <ActivityIndicator size="large" color={colors.primary} />
+    <Animated.View
+      entering={FadeIn.delay(150).duration(220)}
+      style={styles.container}
+      accessibilityRole="progressbar"
+      accessibilityLabel={message}
+    >
+      <ActivityIndicator color={colors.primary} />
       <Text style={styles.message}>{message}</Text>
-    </AppCard>
+    </Animated.View>
   );
 }
 
@@ -22,8 +31,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: spacing.xl,
-    paddingHorizontal: ui.cardPadding,
-    gap: ui.compactGap,
+    gap: spacing.sm,
   },
   message: {
     color: colors.textSecondary,
