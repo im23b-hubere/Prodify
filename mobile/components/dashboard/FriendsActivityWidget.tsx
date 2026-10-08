@@ -8,13 +8,17 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { colors } from "../../constants/theme";
 import { pastActivity } from "../../features/friends/activity/friendsActivityFeed";
+import { profilePictureUrl } from "../../features/profile/friendProfilePresentation";
 import { AppCard } from "../ui/AppCard";
+import { Avatar } from "../ui/Avatar";
 import { TextButton } from "../ui/TextButton";
 import { sessionTypeLabel } from "../../lib/sessionI18n";
 import { openTab } from "../../lib/stackNavigation";
 import { formatTimeAgo } from "../../lib/timeAgo";
 import type { FriendActivityDto, FriendLeaderboardEntryDto } from "../../types/friends";
 import { styles } from "./FriendsActivityWidget.styles";
+
+const LEADER_AVATAR_SIZE = 36;
 
 type PrimaryAction = {
   message: string;
@@ -47,18 +51,22 @@ export const FriendsActivityWidget = memo(function FriendsActivityWidget({
 }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [expanded, setExpanded] = useState(defaultExpanded || Boolean(primaryAction));
-  const toggleExpanded = useCallback(() => {
-    Haptics.selectionAsync().catch(() => undefined);
-    setExpanded((current) => !current);
-  }, []);
+  // Null until the user toggles: until then the section opens whenever there are friends to show,
+  // which is only known once the data has loaded.
+  const [chosenExpanded, setChosenExpanded] = useState<boolean | null>(null);
   const leaders = leaderboard.filter((entry) => entry.user_id !== currentUserId).slice(0, 3);
   // The activity feed also contains your own sessions; those already show under "Recent sessions".
   const feed = pastActivity(activity)
     .filter((entry) => entry.user_id !== currentUserId)
     .slice(0, 3);
+  const hasFriends = leaders.length > 0 || feed.length > 0;
+  const expanded = chosenExpanded ?? (defaultExpanded || hasFriends);
+  const toggleExpanded = useCallback(() => {
+    Haptics.selectionAsync().catch(() => undefined);
+    setChosenExpanded(!expanded);
+  }, [expanded]);
   if (loading) return <LoadingWidget t={t} />;
-  if (leaders.length === 0 && feed.length === 0) {
+  if (!hasFriends) {
     return (
       <EmptyWidget
         t={t}
@@ -177,7 +185,9 @@ function WidgetHeader({
         ]}
       >
         <Text style={styles.title}>{t("friendsWidget.title")}</Text>
-        {hasPrimaryAction && collapsed ? <View style={styles.nudgeDot} /> : null}
+        {hasPrimaryAction ? (
+          <View style={styles.nudgeDot} testID="friends-widget-nudge-dot" />
+        ) : null}
         {collapsible ? (
           collapsed ? (
             <ChevronDown color={colors.textSecondary} size={18} />
@@ -237,7 +247,11 @@ function LeaderboardBlock({ t, leaders }: { t: TFunction; leaders: FriendLeaderb
           style={({ pressed }) => [styles.leaderRow, pressed && { opacity: 0.88 }]}
           onPress={() => navigate(router, `/profile/${entry.user_id}` as Href)}
         >
-          <Text style={styles.rankTxt}>{entry.rank}</Text>
+          <Avatar
+            name={entry.username}
+            photoUri={profilePictureUrl(entry.profile_picture_url)}
+            size={LEADER_AVATAR_SIZE}
+          />
           <View style={styles.leaderCopy}>
             <Text style={styles.name} numberOfLines={1}>
               {entry.username}

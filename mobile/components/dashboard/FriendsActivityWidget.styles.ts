@@ -46,13 +46,6 @@ export const styles = StyleSheet.create({
     minWidth: 0,
     gap: 2,
   },
-  rankTxt: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.meta,
-    width: 18,
-    textAlign: "center",
-  },
   name: {
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyMedium,
