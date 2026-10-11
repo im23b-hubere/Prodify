@@ -46,9 +46,9 @@ jest.mock("react-native-reanimated", () => {
 });
 
 jest.mock("expo-haptics", () => ({
-  impactAsync: jest.fn(),
-  selectionAsync: jest.fn(),
-  notificationAsync: jest.fn(),
+  impactAsync: jest.fn(() => Promise.resolve()),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
   ImpactFeedbackStyle: { Light: "Light", Medium: "Medium" },
   NotificationFeedbackType: { Success: "Success", Error: "Error", Warning: "Warning" },
 }));
@@ -195,6 +195,11 @@ jest.mock("../../lib/notificationInbox", () => ({
   syncServerInbox: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock("../../lib/sessionPresenceNotifications", () => ({
+  ...jest.requireActual("../../lib/sessionPresenceNotifications"),
+  syncSessionPresenceNotifications: jest.fn(() => Promise.resolve()),
+  cancelSessionPresenceScheduled: jest.fn(() => Promise.resolve()),
+}));
 jest.mock("../../lib/pushToken", () => ({
   registerPushTokenWithBackend: jest.fn().mockResolvedValue(undefined),
 }));

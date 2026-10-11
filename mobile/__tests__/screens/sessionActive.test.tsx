@@ -85,6 +85,11 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "7", source: "dashboard" }),
 }));
 
+jest.mock("../../lib/sessionPresenceNotifications", () => ({
+  ...jest.requireActual("../../lib/sessionPresenceNotifications"),
+  syncSessionPresenceNotifications: jest.fn(() => Promise.resolve()),
+  cancelSessionPresenceScheduled: jest.fn(() => Promise.resolve()),
+}));
 jest.mock("../../lib/client", () => ({
   apiJson: (...args: unknown[]) => mockApiJson(...args),
 }));
