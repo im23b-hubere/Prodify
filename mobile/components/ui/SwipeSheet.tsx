@@ -74,8 +74,8 @@ type SwipeSheetProps = {
   onClose: () => void;
   /** Read out for the backdrop and the grabber, which both close the sheet. */
   closeLabel: string;
-  /** Sits under the grabber and always drags the sheet. */
-  header?: ReactNode;
+  /** Sits under the grabber and always drags the sheet; receives `close` like `children`. */
+  header?: ReactNode | ((close: () => void) => ReactNode);
   /** Receives `close`, which slides the sheet away before calling `onClose`. */
   children: ReactNode | ((close: () => void) => ReactNode);
   /** A shorter sheet for short content; never taller than the default. */
@@ -118,7 +118,7 @@ export function SwipeSheet({
       >
         <View style={styles.grabber} />
       </Pressable>
-      {header}
+      {typeof header === "function" ? header(sheet.close) : header}
     </View>
   );
 

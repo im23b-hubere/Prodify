@@ -1,6 +1,11 @@
 const { Image, ScrollView, Text, View } = require("react-native");
 
 const identity = (value) => value;
+// Animations finish at once under Jest, so completion callbacks still run.
+const finishAtOnce = (value, _config, callback) => {
+  callback?.(true);
+  return value;
+};
 const enter = {
   duration: () => enter,
   delay: () => enter,
@@ -39,8 +44,8 @@ module.exports = {
     (typeof handlers === "function" ? handlers : handlers.onScroll)?.(event?.nativeEvent ?? event),
   useReducedMotion: () => false,
   withRepeat: identity,
-  withTiming: identity,
-  withSpring: identity,
+  withTiming: finishAtOnce,
+  withSpring: finishAtOnce,
   withDecay: () => 0,
   ReduceMotion: { System: "system", Always: "always", Never: "never" },
   withSequence: identity,

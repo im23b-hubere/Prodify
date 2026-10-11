@@ -321,6 +321,7 @@ describe("SessionCompleteScreen focus reflection", () => {
     fireEvent.press(await findByTestId("worked-on-add"));
     fireEvent.press(await findByTestId("add-focus-beat_making.drums"));
     fireEvent.press(await findByTestId("add-focus-save"));
+    fireEvent.press(await findByTestId("worked-on-add"));
     fireEvent.press(await findByTestId("add-focus-beat_making.bass"));
     fireEvent.press(await findByTestId("add-focus-save"));
     expect(focusPatchBodies()).toEqual([["beat_making.drums"]]);
