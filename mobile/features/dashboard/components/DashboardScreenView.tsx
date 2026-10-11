@@ -210,7 +210,6 @@ function SocialSection({ controller }: { controller: DashboardScreenController }
         leaderboard={data.friendLeaderboard?.entries ?? []}
         loading={data.socialLoading}
         collapsible
-        defaultExpanded={Boolean(nudge)}
         primaryAction={
           nudge
             ? {

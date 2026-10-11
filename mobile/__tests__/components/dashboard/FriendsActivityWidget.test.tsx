@@ -77,6 +77,33 @@ describe("FriendsActivityWidget", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it("opens by default once friends show up, and keeps the nudge dot while open", () => {
+    const action = { message: "Keep it going", ctaLabel: "Go", onPress: jest.fn() };
+    const { getByTestId, rerender } = render(
+      <FriendsActivityWidget
+        currentUserId={ME}
+        activity={[]}
+        leaderboard={[]}
+        loading
+        collapsible
+        primaryAction={action}
+      />,
+    );
+
+    rerender(
+      <FriendsActivityWidget
+        currentUserId={ME}
+        activity={[activityBy(8, "sam")]}
+        leaderboard={[self]}
+        loading={false}
+        collapsible
+        primaryAction={action}
+      />,
+    );
+    expect(getByTestId("friends-widget-expanded")).toBeTruthy();
+    expect(getByTestId("friends-widget-nudge-dot")).toBeTruthy();
+  });
+
   it("shows friends' activity but not your own", () => {
     const { getByText, queryByText, queryByTestId } = render(
       <FriendsActivityWidget

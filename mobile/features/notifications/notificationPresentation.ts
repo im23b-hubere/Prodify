@@ -1,10 +1,6 @@
 import type { TFunction } from "i18next";
 
-import type {
-  InboxItem,
-  NotificationCategory,
-  NotificationPriority,
-} from "../../lib/notificationInbox";
+import type { InboxItem, NotificationCategory } from "../../lib/notificationInbox";
 
 export const NOTIFICATION_FILTER_LABELS: Record<NotificationCategory | "all", string> = {
   all: "notificationsUi.filterAll",
@@ -14,12 +10,43 @@ export const NOTIFICATION_FILTER_LABELS: Record<NotificationCategory | "all", st
   tips: "notificationsUi.catTips",
 };
 
-export const NOTIFICATION_PRIORITY_LABELS: Record<NotificationPriority, string> = {
-  low: "notificationsUi.priorityLow",
-  normal: "notificationsUi.priorityNormal",
-  high: "notificationsUi.priorityHigh",
-  critical: "notificationsUi.priorityCritical",
-};
+/** What a notification is about, which picks its icon: finer than its category. */
+export type NotificationKind = "challenge" | "comment" | "friend" | NotificationCategory;
+
+export function notificationKind(
+  item: Pick<InboxItem, "category" | "actionRoute">,
+): NotificationKind {
+  const route = item.actionRoute ?? "";
+  if (route.startsWith("/challenge")) return "challenge";
+  if (/^\/session\/\d+/.test(route)) return "comment";
+  if (route.startsWith("/(tabs)/friends")) return "friend";
+  return safeNotificationCategory(item.category);
+}
+
+export type NotificationSectionKey = "today" | "yesterday" | "earlier";
+export type NotificationSection = { key: NotificationSectionKey; data: InboxItem[] };
+
+/** Newest first, grouped by local day: today, yesterday, and everything before. */
+export function notificationSections(items: InboxItem[], now = Date.now()): NotificationSection[] {
+  const midnight = new Date(now);
+  midnight.setHours(0, 0, 0, 0);
+  const today = midnight.getTime();
+  midnight.setDate(midnight.getDate() - 1);
+  const yesterday = midnight.getTime();
+  const buckets: Record<NotificationSectionKey, InboxItem[]> = {
+    today: [],
+    yesterday: [],
+    earlier: [],
+  };
+  for (const item of [...items].sort((a, b) => b.createdAt - a.createdAt)) {
+    const key =
+      item.createdAt >= today ? "today" : item.createdAt >= yesterday ? "yesterday" : "earlier";
+    buckets[key].push(item);
+  }
+  return (["today", "yesterday", "earlier"] as const)
+    .map((key) => ({ key, data: buckets[key] }))
+    .filter((section) => section.data.length > 0);
+}
 
 export function formatNotificationRelativeTime(
   timestamp: number,

@@ -20,7 +20,7 @@ jest.mock("../../lib/momentum", () => ({
 const mockT = mockTFunction();
 
 describe("useDashboardSocialNudges", () => {
-  it("includes a checkin-behind nudge when weekly rhythm is off track", async () => {
+  it("leaves the weekly check-in rhythm out of the friends nudges", async () => {
     const { result } = renderHook(() =>
       useDashboardSocialNudges({
         userId: 1,
@@ -41,7 +41,7 @@ describe("useDashboardSocialNudges", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    expect(result.current.primaryNudge?.key).toBe("checkin_behind");
-    expect(result.current.primaryNudge?.actionKey).toBe("start_session");
+    expect(result.current.primaryNudge).toBeNull();
+    expect(result.current.secondaryNudge).toBeNull();
   });
 });

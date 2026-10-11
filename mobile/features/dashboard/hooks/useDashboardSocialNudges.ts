@@ -44,7 +44,7 @@ type Params = {
 
 type NudgeCandidate = DashboardPrimaryNudge & { priority: number };
 type WeightedNudge = NudgeCandidate & { weighted: number };
-type CandidateParams = Omit<Params, "friendActivity">;
+type CandidateParams = Omit<Params, "friendActivity" | "checkinStatus">;
 type NudgeSetters = {
   setMomentumState: Dispatch<SetStateAction<MomentumState>>;
   setMomentumScore: Dispatch<SetStateAction<number>>;
@@ -53,7 +53,7 @@ type NudgeSetters = {
 };
 
 export function useDashboardSocialNudges(params: Params) {
-  const { buddyRisk, checkinStatus, commitmentStatus, socialChallenges, t, userId } = params;
+  const { buddyRisk, commitmentStatus, socialChallenges, t, userId } = params;
   const [momentumState, setMomentumState] = useState<MomentumState>("low");
   const [momentumScore, setMomentumScore] = useState(0);
   const [primaryNudge, setPrimaryNudge] = useState<DashboardPrimaryNudge | null>(null);
@@ -62,13 +62,12 @@ export function useDashboardSocialNudges(params: Params) {
     () =>
       buildCandidates({
         buddyRisk,
-        checkinStatus,
         commitmentStatus,
         socialChallenges,
         t,
         userId,
       }),
-    [buddyRisk, checkinStatus, commitmentStatus, socialChallenges, t, userId],
+    [buddyRisk, commitmentStatus, socialChallenges, t, userId],
   );
   const weighted = useMemo(
     () => weightCandidates(candidates, momentumState),
@@ -95,9 +94,9 @@ export function useDashboardSocialNudges(params: Params) {
   };
 }
 
+// The weekly check-in rhythm is not a friends matter, so it never nudges from this section.
 function buildCandidates({
   buddyRisk,
-  checkinStatus,
   commitmentStatus,
   socialChallenges,
   t,
@@ -145,20 +144,6 @@ function buildCandidates({
       actionKey: "start_session",
     });
   }
-  if (
-    checkinStatus &&
-    !checkinStatus.on_track &&
-    checkinStatus.done_count < checkinStatus.target_checkins
-  ) {
-    candidates.push({
-      key: "checkin_behind",
-      category: "checkin_behind",
-      message: t("dashboard.nudgeCheckinBehind"),
-      priority: 4,
-      ctaLabel: t("dashboard.nudgeCtaJumpTrack"),
-      actionKey: "start_session",
-    });
-  }
   return candidates.sort((left, right) => left.priority - right.priority);
 }
 
@@ -167,9 +152,9 @@ function weightCandidates(
   momentumState: MomentumState,
 ): WeightedNudge[] {
   const preferred: Record<MomentumState, string[]> = {
-    low: ["commitment_behind", "checkin_behind", "buddy_risk"],
-    mid: ["challenge_close", "commitment_behind", "checkin_behind", "buddy_risk"],
-    high: ["buddy_risk", "challenge_close", "checkin_behind"],
+    low: ["commitment_behind", "buddy_risk"],
+    mid: ["challenge_close", "commitment_behind", "buddy_risk"],
+    high: ["buddy_risk", "challenge_close"],
   };
   return candidates
     .map((nudge) => ({
@@ -259,10 +244,10 @@ function rankForMomentum(
   lastAction: MomentumAction | null,
 ): WeightedNudge[] {
   const preference: Record<MomentumAction, string[]> = {
-    rescue: ["challenge_close", "commitment_behind", "checkin_behind"],
-    social: ["commitment_behind", "checkin_behind", "challenge_close"],
-    session: ["buddy_risk", "challenge_close", "checkin_behind"],
-    challenge: ["buddy_risk", "commitment_behind", "checkin_behind"],
+    rescue: ["challenge_close", "commitment_behind"],
+    social: ["commitment_behind", "challenge_close"],
+    session: ["buddy_risk", "challenge_close"],
+    challenge: ["buddy_risk", "commitment_behind"],
     checkin: ["buddy_risk", "challenge_close", "commitment_behind"],
   };
   const preferred = lastAction ? preference[lastAction] : [];

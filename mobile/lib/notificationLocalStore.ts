@@ -32,8 +32,9 @@ const defaultSettings: NotificationSettings = {
   achievements: true,
   social: true,
   tips: true,
-  quietStartHour: 23,
-  quietEndHour: 7,
+  // Quiet hours start off; equal start and end hours mean no quiet window.
+  quietStartHour: 0,
+  quietEndHour: 0,
   frequency: "all",
 };
 
