@@ -246,6 +246,16 @@ class UserFriendProfilePublic(BaseModel):
     streak_status_key: str = "starting"
     streak_status_label: str = "STARTING"
     streak_status_emoji: str = "🌱"
+    level: int = 1
+    xp_total: int = 0
+    level_progress_percent: float = 0.0
+    nudged_today: bool = False
+    next_nudge_at: datetime | None = None
+
+
+class FriendNudgePublic(BaseModel):
+    recipient_user_id: int
+    next_nudge_at: datetime
 
 
 class ReliabilityScorePublic(BaseModel):

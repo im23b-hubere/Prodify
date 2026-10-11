@@ -9,6 +9,7 @@ from app.models import (
     ChallengeParticipant,
     CheckinLog,
     CheckinPlan,
+    FriendNudge,
     Friendship,
     GrowthEvent,
     NotificationReadState,
@@ -94,6 +95,11 @@ def delete_user_account(db: Session, user: User) -> None:
     db.execute(
         delete(StreakRescue).where(
             or_(StreakRescue.rescued_user_id == user.id, StreakRescue.rescuer_user_id == user.id)
+        )
+    )
+    db.execute(
+        delete(FriendNudge).where(
+            or_(FriendNudge.sender_user_id == user.id, FriendNudge.recipient_user_id == user.id)
         )
     )
     db.delete(user)

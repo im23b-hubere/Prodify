@@ -89,6 +89,10 @@ def forecast_risk_nudge(remaining_sessions: int, days_left: int) -> tuple[str, s
     return title, body
 
 
+def friend_nudge(sender_username: str) -> tuple[str, str]:
+    return f"👊 {sender_username} nudged you", "Studio time? Your crew is waiting on your next session."
+
+
 def session_still_there() -> tuple[str, str]:
     return (
         "Still there?",

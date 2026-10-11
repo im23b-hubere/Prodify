@@ -148,3 +148,23 @@ class StreakRescue(Base):
     )
     day_key: Mapped[str] = mapped_column(String(10), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class FriendNudge(Base):
+    """A one-tap "time for a session" push from one friend to another, at most once per UTC day."""
+
+    __tablename__ = "friend_nudges"
+    __table_args__ = (
+        UniqueConstraint("sender_user_id", "recipient_user_id", "day_key", name="uq_friend_nudge_pair_day"),
+        Index("idx_friend_nudge_recipient_created", "recipient_user_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sender_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    recipient_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    day_key: Mapped[str] = mapped_column(String(10), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

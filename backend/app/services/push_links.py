@@ -9,6 +9,14 @@ def challenge_path(challenge_id: int) -> str:
     return f"/challenge/{challenge_id}"
 
 
+def profile_path(user_id: int) -> str:
+    return f"/profile/{user_id}"
+
+
+def push_data_friend_nudge(sender_user_id: int) -> dict[str, str]:
+    return {"path": profile_path(sender_user_id), "kind": "friend_nudge", "from_user_id": str(sender_user_id)}
+
+
 def push_data_dashboard() -> dict[str, str]:
     return {"path": DASHBOARD_PATH, "kind": "dashboard"}
 

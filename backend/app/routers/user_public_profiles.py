@@ -12,16 +12,37 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.contracts.insights import HeatmapDayPublic
 from app.contracts.social import FriendCommitmentPublic
-from app.models import Friendship, FriendshipStatus, ProductionSession, Streak, User, UserAchievement, utcnow
+from app.config import settings
+from app.models import (
+    Friendship,
+    FriendshipStatus,
+    ProductionSession,
+    Streak,
+    User,
+    UserAchievement,
+    UserProgression,
+    utcnow,
+)
 from app.schemas import (
     AchievementUnlockedPublic,
+    FriendNudgePublic,
     ReliabilityScorePublic,
     UserFriendProfilePublic,
     UserFriendStatsPublic,
     UserPublicSessionItem,
 )
 from app.services.commitment_service import get_friend_commitment
+from app.services.friend_nudge_service import (
+    AlreadyNudgedTodayError,
+    FriendNudgeError,
+    NudgeFriendRequiredError,
+    SelfNudgeError,
+    has_nudged_today,
+    next_nudge_available_at,
+    send_friend_nudge,
+)
 from app.services.identity_tags import profile_identity_tags
+from app.services.progression_service import to_progression_public
 from app.services.reliability_service import ReliabilityScoreService
 from app.services.streak_reconcile_service import compute_streak_counts_for_display
 from app.services.streak_status_service import streak_status_for_days
@@ -126,6 +147,10 @@ def get_user_profile(
     if streak_row and streak_row.last_session_date:
         inactive_days = max((utcnow().date() - streak_row.last_session_date.date()).days, 0)
     status_key, status_label, status_emoji = streak_status_for_days(cur, inactive_days)
+    progression = to_progression_public(
+        db.scalar(select(UserProgression).where(UserProgression.user_id == user_id))
+    )
+    nudged_today = user_id != current.id and has_nudged_today(db, current.id, user_id)
 
     return UserFriendProfilePublic(
         id=user.id,
@@ -144,6 +169,11 @@ def get_user_profile(
         streak_status_key=status_key,
         streak_status_label=status_label,
         streak_status_emoji=status_emoji,
+        level=progression.current_level,
+        xp_total=progression.xp_total,
+        level_progress_percent=progression.progress_percent,
+        nudged_today=nudged_today,
+        next_nudge_at=next_nudge_available_at(utcnow()) if nudged_today else None,
     )
 
 
@@ -250,3 +280,26 @@ def get_user_sessions(
         )
         for r in rows
     ]
+
+
+@router.post("/{user_id}/nudge", response_model=FriendNudgePublic)
+def nudge_user(
+    user_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> FriendNudgePublic:
+    try:
+        next_nudge_at = send_friend_nudge(settings, db, current, user_id)
+    except FriendNudgeError as error:
+        raise _nudge_http_error(error) from error
+    return FriendNudgePublic(recipient_user_id=user_id, next_nudge_at=next_nudge_at)
+
+
+def _nudge_http_error(error: FriendNudgeError) -> HTTPException:
+    if isinstance(error, SelfNudgeError):
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot nudge yourself")
+    if isinstance(error, NudgeFriendRequiredError):
+        return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only nudge friends")
+    if isinstance(error, AlreadyNudgedTodayError):
+        return HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Already nudged today")
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nudge failed")

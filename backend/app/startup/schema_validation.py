@@ -39,6 +39,7 @@ REQUIRED_TABLES = {
     "social_challenge_members",
     "social_commitments",
     "streak_rescues",
+    "friend_nudges",
     "streak_break_notify_dedupe",
     "analytics_event_dedupe",
     "notification_read_states",

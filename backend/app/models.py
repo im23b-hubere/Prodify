@@ -297,6 +297,7 @@ from app.models_social import (
     BuddyStatus,
     CheckinLog,
     CheckinPlan,
+    FriendNudge,
     SocialChallenge,
     SocialChallengeMember,
     SocialComment,
