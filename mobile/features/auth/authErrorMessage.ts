@@ -10,6 +10,10 @@ export function loginErrorMessage(caught: unknown, t: TFunction): string {
   return mapAuthFormError(caught, t, "auth.login.signInFailed");
 }
 
+export function socialSignInErrorMessage(caught: unknown, t: TFunction): string {
+  return mapAuthFormError(caught, t, "auth.social.failed");
+}
+
 function mapAuthFormError(caught: unknown, t: TFunction, fallbackKey: string): string {
   if (caught instanceof ApiError) {
     if (caught.status === 429) return t("errors.tooManyRequests");
@@ -24,6 +28,9 @@ function mapKnownAuthError(code: string | null, message: string, t: TFunction): 
   if (code === "USERNAME_TAKEN") return t("errors.auth.usernameTaken");
   if (code === "REGISTRATION_CONFLICT") return t("errors.auth.registerConflict");
   if (code === "INVALID_CREDENTIALS") return t("errors.auth.invalidCredentials");
+  if (code === "SOCIAL_EMAIL_REQUIRED") return t("errors.auth.socialEmailRequired");
+  if (code === "SOCIAL_TOKEN_INVALID") return t("errors.auth.socialTokenInvalid");
+  if (code === "SOCIAL_PROVIDER_UNAVAILABLE") return t("errors.auth.socialProviderUnavailable");
 
   if (/username is already taken/i.test(message)) return t("errors.auth.usernameTaken");
   if (/already registered/i.test(message)) return t("errors.auth.emailTaken");

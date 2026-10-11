@@ -12,6 +12,7 @@
       "supportsTablet": false,
       "buildNumber": "1",
       "bundleIdentifier": "com.prodify.app",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserNotificationsUsageDescription": "Prodify sends reminders to help you keep your studio streak.",
@@ -39,6 +40,7 @@
       "@sentry/react-native",
       "expo-localization",
       "expo-asset",
+      "expo-apple-authentication",
       [
         "expo-image-picker",
         {

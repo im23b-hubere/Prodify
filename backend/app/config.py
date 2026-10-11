@@ -84,6 +84,23 @@ class Settings(BaseSettings):
     object_storage_bucket: str | None = None
     object_storage_public_base_url: str | None = None
     object_storage_region: str = "auto"
+    # Sign in with Apple: comma-separated bundle ids an identity token may be issued for.
+    apple_bundle_ids: str = "com.prodify.app"
+    # Optional "Sign in with Apple" key (.p8). Needed to revoke Apple authorizations on account
+    # deletion (App Store guideline 5.1.1(v)); without it sign-in still works.
+    apple_team_id: str | None = None
+    apple_key_id: str | None = None
+    apple_private_key: str | None = None
+    # Comma-separated Google OAuth client ids (web, iOS, Android). Empty disables Google sign-in.
+    google_client_ids: str = ""
+
+    @property
+    def apple_audiences(self) -> list[str]:
+        return _split_comma_separated(self.apple_bundle_ids)
+
+    @property
+    def google_audiences(self) -> list[str]:
+        return _split_comma_separated(self.google_client_ids)
 
     @field_validator("secret_key")
     @classmethod
@@ -184,6 +201,10 @@ class Settings(BaseSettings):
             )
         self.object_storage_public_base_url = public
         return self
+
+
+def _split_comma_separated(raw: str) -> list[str]:
+    return [part.strip() for part in raw.split(",") if part.strip()]
 
 
 settings = Settings()

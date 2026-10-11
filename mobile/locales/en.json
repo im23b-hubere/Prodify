@@ -29,6 +29,12 @@
       "createAccount": "Create account",
       "registerFailed": "Registration failed",
       "hasAccount": "Already have an account? Sign in"
+    },
+    "social": {
+      "divider": "or",
+      "continueWithApple": "Continue with Apple",
+      "continueWithGoogle": "Continue with Google",
+      "failed": "Sign in failed. Please try again."
     }
   },
   "tabs": {
@@ -2309,7 +2315,10 @@
       "emailTaken": "This email is already registered. Try signing in.",
       "usernameTaken": "This username is already taken. Please choose another.",
       "registerConflict": "This email or username is already in use. Try signing in, or pick a different username.",
-      "invalidCredentials": "Incorrect email or password."
+      "invalidCredentials": "Incorrect email or password.",
+      "socialEmailRequired": "Prodify needs your email address to create an account. Please allow email sharing and try again.",
+      "socialTokenInvalid": "We couldn't verify your sign-in. Please try again.",
+      "socialProviderUnavailable": "This sign-in option isn't available right now. Please use email instead."
     },
     "requestTimeout": "Connection timed out. Check your network and try again.",
     "network": "Network error. Check your connection and try again.",

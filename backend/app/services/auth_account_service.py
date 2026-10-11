@@ -59,7 +59,9 @@ def register_account(
 def authenticate_account(db: Session, email: str, password: str) -> User:
     normalized_email = email.strip().lower()
     user = db.scalar(select(User).where(func.lower(User.email) == normalized_email))
-    if user is None or not verify_password(password, user.hashed_password):
+    if user is None or user.hashed_password is None:
+        raise InvalidCredentialsError
+    if not verify_password(password, user.hashed_password):
         raise InvalidCredentialsError
     return user
 

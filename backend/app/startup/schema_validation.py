@@ -44,6 +44,7 @@ REQUIRED_TABLES = {
     "analytics_event_dedupe",
     "notification_read_states",
     "session_skill_focuses",
+    "user_identities",
 }
 REQUIRED_COLUMNS = {
     "streaks": {"frozen_day_keys", "freezes_remaining", "billing_month"},

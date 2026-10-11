@@ -41,6 +41,10 @@ yarn-error.log*
 # Root: package.json is metadata-only; avoid committing an empty lockfile from accidental `npm install` here
 /package-lock.json
 
+# Signing / API private keys (Apple .p8, Google service accounts) live in env vars, never in git
+*.p8
+*.pem
+
 # OS / IDE
 .DS_Store
 Thumbs.db

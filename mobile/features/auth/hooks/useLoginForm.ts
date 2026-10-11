@@ -33,6 +33,27 @@ export function useLoginForm(t: TFunction) {
   const paywallVariant =
     params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
 
+  /** Post-auth navigation shared by email and Apple / Google sign-in. */
+  const finishSignIn = useCallback(async () => {
+    await prepareE2eAccount();
+    if (existingAccountLogin) {
+      await markOnboardingComplete();
+    }
+    if (pendingPaywall) {
+      router.replace({
+        pathname: "/paywall",
+        params: { source: "post_auth", variant: paywallVariant },
+      });
+      return;
+    }
+    const route = await resolvePostAuthRouteFromStorage({ hasToken: true, entryPoint: "login" });
+    if (route.pathname === "/(tabs)/dashboard") {
+      await replaceWithPendingDeepLinkOrDashboard(router);
+    } else {
+      router.replace(toHref(route));
+    }
+  }, [existingAccountLogin, paywallVariant, pendingPaywall, router]);
+
   const submit = useCallback(async () => {
     if (loading) return;
     const credentials = resolveLoginCredentials(email, password, getE2eTestCredentials());
@@ -48,39 +69,13 @@ export function useLoginForm(t: TFunction) {
     setLoading(true);
     try {
       await signIn(credentials.email, credentials.password);
-      await prepareE2eAccount();
-      if (existingAccountLogin) {
-        await markOnboardingComplete();
-      }
-      if (pendingPaywall) {
-        router.replace({
-          pathname: "/paywall",
-          params: { source: "post_auth", variant: paywallVariant },
-        });
-        return;
-      }
-      const route = await resolvePostAuthRouteFromStorage({ hasToken: true, entryPoint: "login" });
-      if (route.pathname === "/(tabs)/dashboard") {
-        await replaceWithPendingDeepLinkOrDashboard(router);
-      } else {
-        router.replace(toHref(route));
-      }
+      await finishSignIn();
     } catch (caught) {
       setError(loginErrorMessage(caught, t));
     } finally {
       setLoading(false);
     }
-  }, [
-    email,
-    existingAccountLogin,
-    loading,
-    password,
-    paywallVariant,
-    pendingPaywall,
-    router,
-    signIn,
-    t,
-  ]);
+  }, [email, finishSignIn, loading, password, signIn, t]);
 
   const openRegistration = useCallback(() => {
     router.push({
@@ -100,6 +95,7 @@ export function useLoginForm(t: TFunction) {
     loading,
     showConnectionHint,
     submit,
+    finishSignIn,
     openRegistration,
   };
 }

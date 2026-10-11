@@ -34,6 +34,18 @@ class UserLogin(BaseModel):
         return str(value).strip().lower()
 
 
+class AppleSignIn(BaseModel):
+    identity_token: str = Field(min_length=20, max_length=8192)
+    # One-time code from the device; exchanged for an Apple refresh token so deletion can revoke it.
+    authorization_code: str | None = Field(default=None, max_length=1024)
+    # Apple only reveals the name on the very first authorization, so the app forwards it.
+    given_name: str | None = Field(default=None, max_length=64)
+
+
+class GoogleSignIn(BaseModel):
+    id_token: str = Field(min_length=20, max_length=8192)
+
+
 class UserPublic(BaseModel):
     """Friend-visible fields that never expose account email."""
 

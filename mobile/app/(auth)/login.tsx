@@ -12,12 +12,15 @@ import {
 import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { colors } from "../../constants/theme";
+import { SocialSignInButtons } from "../../features/auth/components/SocialSignInButtons";
 import { useLoginForm } from "../../features/auth/hooks/useLoginForm";
+import { useSocialSignIn } from "../../features/auth/hooks/useSocialSignIn";
 import { styles } from "../../features/auth/login.styles";
 
 export default function LoginScreen() {
   const { t } = useTranslation();
   const form = useLoginForm(t);
+  const socialSignIn = useSocialSignIn({ t, onSignedIn: form.finishSignIn });
 
   return (
     <KeyboardAvoidingView
@@ -78,9 +81,12 @@ export default function LoginScreen() {
             label={t("auth.login.signIn")}
             onPress={form.submit}
             loading={form.loading}
+            disabled={socialSignIn.pendingProvider !== null}
             testID="sign-in-button"
           />
         </View>
+
+        <SocialSignInButtons controller={socialSignIn} disabled={form.loading} />
 
         <Pressable
           style={styles.linkWrap}

@@ -29,6 +29,7 @@ from app.models import (
     User,
     UserAchievement,
     UserGoal,
+    UserIdentity,
     UserProgression,
     UserSubscription,
     WeeklyCheckin,
@@ -39,6 +40,7 @@ from app.models import (
 USER_OWNED_MODELS = (
     AnalyticsEventDedupe,
     RefreshToken,
+    UserIdentity,
     PushToken,
     NotificationReadState,
     ProductionSession,

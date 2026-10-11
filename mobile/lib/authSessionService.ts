@@ -33,8 +33,10 @@ export type AuthenticatedUser = {
 
 export type TokenPair = { access_token: string; refresh_token: string };
 
+export type AuthenticatePath = "/auth/login" | "/auth/register" | "/auth/apple" | "/auth/google";
+
 type AuthenticateOptions = {
-  path: "/auth/login" | "/auth/register";
+  path: AuthenticatePath;
   body: Record<string, string>;
   timeoutMs: number;
   identityTimeoutMs: number;

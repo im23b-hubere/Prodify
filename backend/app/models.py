@@ -34,7 +34,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    # NULL for accounts created through Sign in with Apple / Google; password login is then refused.
+    hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     profile_picture_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     # IANA identifier (e.g. "Europe/Berlin") reported by the device; NULL means "assume UTC".
     # Streak day boundaries are resolved in this zone, so travel and DST stay correct.
@@ -70,6 +71,29 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     user: Mapped["User"] = relationship("User", back_populates="refresh_tokens")
+
+
+class SocialProvider(str, enum.Enum):
+    apple = "apple"
+    google = "google"
+
+
+class UserIdentity(Base):
+    """An external sign-in account (Apple / Google) linked to a Prodify user."""
+
+    __tablename__ = "user_identities"
+    __table_args__ = (UniqueConstraint("provider", "subject", name="uq_user_identity_provider_subject"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    provider: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Stable provider account id (`sub` claim); emails can change or be hidden behind relays.
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Apple refresh token, kept only so account deletion can revoke the Apple authorization.
+    provider_refresh_token: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship("User")
 
 
 class ProductionSession(Base):

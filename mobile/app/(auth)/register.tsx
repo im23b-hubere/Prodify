@@ -14,12 +14,20 @@ import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { SocialSignInButtons } from "../../features/auth/components/SocialSignInButtons";
 import {
   type RegisterFormController,
   useRegisterForm,
 } from "../../features/auth/hooks/useRegisterForm";
+import { useSocialSignIn } from "../../features/auth/hooks/useSocialSignIn";
 
-function RegisterCard({ form }: { form: RegisterFormController }) {
+function RegisterCard({
+  form,
+  isSocialSignInPending,
+}: {
+  form: RegisterFormController;
+  isSocialSignInPending: boolean;
+}) {
   const { t } = useTranslation();
   return (
     <View style={styles.card}>
@@ -78,6 +86,7 @@ function RegisterCard({ form }: { form: RegisterFormController }) {
         label={t("auth.register.createAccount")}
         onPress={form.submit}
         loading={form.loading}
+        disabled={isSocialSignInPending}
       />
     </View>
   );
@@ -86,6 +95,7 @@ function RegisterCard({ form }: { form: RegisterFormController }) {
 export default function RegisterScreen() {
   const { t } = useTranslation();
   const form = useRegisterForm(t);
+  const socialSignIn = useSocialSignIn({ t, onSignedIn: form.finishSignUp });
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -97,7 +107,8 @@ export default function RegisterScreen() {
           <Text style={styles.title}>{t("auth.register.title")}</Text>
           <Text style={styles.subtitle}>{t("auth.register.subtitle")}</Text>
         </View>
-        <RegisterCard form={form} />
+        <RegisterCard form={form} isSocialSignInPending={socialSignIn.pendingProvider !== null} />
+        <SocialSignInButtons controller={socialSignIn} disabled={form.loading} />
 
         <Pressable
           style={styles.linkWrap}

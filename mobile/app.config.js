@@ -6,6 +6,9 @@ module.exports = ({ config }) => {
   const revenueCatEntitlementId =
     process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID?.trim() || "app_access";
   const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ?? "";
+  // Google Sign-In: the web client id is the ID-token audience the backend verifies against.
+  const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() ?? "";
+  const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() ?? "";
   const appEnv =
     process.env.EXPO_PUBLIC_APP_ENV?.trim() || process.env.EXPO_PUBLIC_ENV?.trim() || "";
   const e2eMode = process.env.EXPO_PUBLIC_E2E_MODE === "true";
@@ -47,6 +50,12 @@ module.exports = ({ config }) => {
   if (isEasBuild && !plugins.includes("expo-dev-client")) {
     plugins.push("expo-dev-client");
   }
+  if (googleIosClientId) {
+    plugins.push([
+      "@react-native-google-signin/google-signin",
+      { iosUrlScheme: toGoogleIosUrlScheme(googleIosClientId) },
+    ]);
+  }
 
   return {
     ...appJson.expo,
@@ -69,6 +78,14 @@ module.exports = ({ config }) => {
       e2eMode: e2eMode && appEnv !== "production",
       e2eTestEmail: e2eMode ? e2eTestEmail : "",
       e2eTestPassword: e2eMode ? e2eTestPassword : "",
+      googleWebClientId,
+      googleIosClientId,
     },
   };
 };
+
+/** "123-abc.apps.googleusercontent.com" -> "com.googleusercontent.apps.123-abc" */
+function toGoogleIosUrlScheme(iosClientId) {
+  const clientPrefix = iosClientId.replace(/\.apps\.googleusercontent\.com$/, "");
+  return `com.googleusercontent.apps.${clientPrefix}`;
+}

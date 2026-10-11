@@ -21,6 +21,18 @@ export function useRegisterForm(t: TFunction) {
     params.variant === "outcome" || params.variant === "social_proof" ? params.variant : "value";
   const showConnectionHint = useConnectionHint(loading);
 
+  /** Post-auth navigation shared by email and Apple / Google sign-up. */
+  const finishSignUp = useCallback(() => {
+    if (pendingPaywall) {
+      router.replace({
+        pathname: "/paywall",
+        params: { source: "post_auth", variant: paywallVariant },
+      });
+    } else {
+      router.replace("/onboarding");
+    }
+  }, [paywallVariant, pendingPaywall, router]);
+
   const submit = useCallback(async () => {
     if (loading) return;
     const result = resolveRegistrationCredentials(email, username, password);
@@ -33,20 +45,13 @@ export function useRegisterForm(t: TFunction) {
     try {
       const { credentials } = result;
       await signUp(credentials.email, credentials.username, credentials.password);
-      if (pendingPaywall) {
-        router.replace({
-          pathname: "/paywall",
-          params: { source: "post_auth", variant: paywallVariant },
-        });
-      } else {
-        router.replace("/onboarding");
-      }
+      finishSignUp();
     } catch (caught) {
       setError(registrationErrorMessage(caught, t));
     } finally {
       setLoading(false);
     }
-  }, [email, loading, password, paywallVariant, pendingPaywall, router, signUp, t, username]);
+  }, [email, finishSignUp, loading, password, signUp, t, username]);
 
   const openLogin = useCallback(() => {
     const nextParams = pendingPaywall
@@ -66,6 +71,7 @@ export function useRegisterForm(t: TFunction) {
     loading,
     showConnectionHint,
     submit,
+    finishSignUp,
     openLogin,
   };
 }

@@ -26,9 +26,11 @@ import {
   authenticate,
   clearLocalAuthSession,
   syncBillingInBackground,
+  type AuthenticatePath,
   type AuthenticatedUser,
   type TokenPair,
 } from "../lib/authSessionService";
+import type { AppleCredential } from "../lib/socialSignIn";
 
 type AuthContextValue = {
   token: string | null;
@@ -36,6 +38,10 @@ type AuthContextValue = {
   hydrated: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, username: string, password: string) => Promise<void>;
+  /** Signs in or creates the account linked to this Apple ID. */
+  signInWithApple: (credential: AppleCredential) => Promise<void>;
+  /** Signs in or creates the account linked to this Google account. */
+  signInWithGoogle: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   /** Permanently deletes the account on the server and clears local session data. */
   deleteAccount: () => Promise<void>;
@@ -147,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const completeAuthentication = useCallback(
     async (
-      path: "/auth/login" | "/auth/register",
+      path: AuthenticatePath,
       body: Record<string, string>,
       retries: number,
     ) => {
@@ -182,6 +188,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [completeAuthentication],
   );
 
+  const signInWithApple = useCallback(
+    (credential: AppleCredential) =>
+      completeAuthentication(
+        "/auth/apple",
+        {
+          identity_token: credential.identityToken,
+          ...(credential.authorizationCode ? { authorization_code: credential.authorizationCode } : {}),
+          ...(credential.givenName ? { given_name: credential.givenName } : {}),
+        },
+        0,
+      ),
+    [completeAuthentication],
+  );
+
+  const signInWithGoogle = useCallback(
+    (idToken: string) => completeAuthentication("/auth/google", { id_token: idToken }, 0),
+    [completeAuthentication],
+  );
+
   const signOut = useCallback(async () => {
     const t = (token?.trim() || (await readAccessToken())) ?? "";
     if (t) {
@@ -213,6 +238,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hydrated,
       signIn,
       signUp,
+      signInWithApple,
+      signInWithGoogle,
       signOut,
       deleteAccount,
       refreshUser,
@@ -224,6 +251,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hydrated,
       signIn,
       signUp,
+      signInWithApple,
+      signInWithGoogle,
       signOut,
       deleteAccount,
       refreshUser,

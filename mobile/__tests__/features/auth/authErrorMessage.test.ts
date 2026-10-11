@@ -1,6 +1,10 @@
 import type { TFunction } from "i18next";
 
-import { loginErrorMessage, registrationErrorMessage } from "../../../features/auth/authErrorMessage";
+import {
+  loginErrorMessage,
+  registrationErrorMessage,
+  socialSignInErrorMessage,
+} from "../../../features/auth/authErrorMessage";
 import { ApiError } from "../../../lib/client";
 
 const t = ((key: string) => key) as TFunction;
@@ -39,5 +43,21 @@ describe("auth form error mapping", () => {
 
   it("falls back to the register copy for unknown errors", () => {
     expect(registrationErrorMessage({}, t)).toBe("auth.register.registerFailed");
+  });
+
+  it("asks for email sharing when Apple hid the address on a new account", () => {
+    expect(
+      socialSignInErrorMessage(new ApiError(400, "ignored", null, "SOCIAL_EMAIL_REQUIRED"), t),
+    ).toBe("errors.auth.socialEmailRequired");
+  });
+
+  it("maps a rejected provider token to a retry hint", () => {
+    expect(
+      socialSignInErrorMessage(new ApiError(401, "ignored", null, "SOCIAL_TOKEN_INVALID"), t),
+    ).toBe("errors.auth.socialTokenInvalid");
+  });
+
+  it("falls back to the social copy for unknown errors", () => {
+    expect(socialSignInErrorMessage({}, t)).toBe("auth.social.failed");
   });
 });
