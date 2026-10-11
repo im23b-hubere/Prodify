@@ -1,179 +1,280 @@
 import type { TFunction } from "i18next";
-import { Pressable, Text, View } from "react-native";
+import type { ReactNode } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { AchievementGlyph, glyphRowStyle } from "../../../components/icons/ProdifyGlyphs";
+import {
+  AchievementGlyph,
+  AppFlame,
+  glyphRowStyle,
+  isMoodLevel,
+  MoodIcon,
+} from "../../../components/icons/ProdifyGlyphs";
+import { StatCard } from "../../../components/ui/StatCard";
+import { SESSION_TYPES } from "../../../constants/sessionTypes";
+import { colors } from "../../../constants/theme";
+import { normalizeSessionTypeId, sessionTypeLabel } from "../../../lib/sessionI18n";
+import { formatDurationWords, formatSessionListDate } from "../../../lib/sessionTime";
+import type { FriendCommitmentDto } from "../../../types/friends";
+import {
+  achievementShowcase,
+  focusSlices,
+  OTHER_FOCUS_TYPE,
+} from "../friendProfilePresentation";
+import { friendProfileStyles as styles } from "../friendProfile.styles";
 import type {
   FriendProfilePayload,
   FriendSessionItem,
   FriendStatsPayload,
 } from "../hooks/useFriendProfile";
-import type { BuddyStatusDto, FriendCommitmentDto, SocialRecapDto } from "../../../types/friends";
-import { sessionTypeLabel } from "../../../lib/sessionI18n";
-import { formatDurationWords, formatSessionListDate } from "../../../lib/sessionTime";
-import { friendProfileStyles as styles } from "../friendProfile.styles";
 
-export function ReliabilityCard({ profile, t }: { profile: FriendProfilePayload; t: TFunction }) {
-  const trendKey =
-    profile.reliability_trend === "up"
-      ? "friendProfile.reliabilityTrendUp"
-      : profile.reliability_trend === "down"
-        ? "friendProfile.reliabilityTrendDown"
-        : "friendProfile.reliabilityTrendStable";
-  return (
-    <View style={styles.statsCard}>
-      <Text style={styles.cardTitle}>{t("friendProfile.reliabilityTitle")}</Text>
-      <Text style={styles.lineStrong}>{(profile.reliability_score ?? 0).toFixed(1)}/10</Text>
-      <Text style={styles.line}>
-        {typeof profile.reliability_rank_percent === "number"
-          ? t("friendProfile.reliabilityRank", { rank: profile.reliability_rank_percent })
-          : t("friendProfile.reliabilityRankUnavailable")}
-      </Text>
-      <Text style={styles.line}>{t(trendKey)}</Text>
-    </View>
-  );
+const RECENT_SESSION_LIMIT = 5;
+const OTHER_FOCUS_COLOR = "#3a3a3a";
+
+const RELIABILITY_TREND_KEYS = {
+  up: "friendProfile.reliabilityTrendUp",
+  down: "friendProfile.reliabilityTrendDown",
+  stable: "friendProfile.reliabilityTrendStable",
+} as const;
+
+function sessionTypeColor(type: string): string {
+  const id = normalizeSessionTypeId(type);
+  return SESSION_TYPES.find((sessionType) => sessionType.id === id)?.color ?? colors.textSecondary;
 }
 
-export function CommitmentCard({
-  commitment,
-  t,
+export function ProfileSection({
+  title,
+  meta,
+  children,
+  testID,
 }: {
-  commitment: FriendCommitmentDto;
-  t: TFunction;
+  title: string;
+  meta?: string | null;
+  children: ReactNode;
+  testID?: string;
 }) {
-  const { current_sessions: current, target_sessions: target, status } = commitment;
-  const progress = t("friendProfile.commitmentProgress", { current, count: target });
-  const statusLabel = t(`friendProfile.commitmentStatus.${status}`);
-  const fillPercent =
-    `${Math.min(100, Math.round((current / Math.max(1, target)) * 100))}%` as const;
-  const isDone = status === "completed";
   return (
-    <View
-      style={styles.statsCard}
-      accessible
-      accessibilityRole="progressbar"
-      accessibilityLabel={t("friendProfile.commitmentA11y", { progress, status: statusLabel })}
-      accessibilityValue={{ min: 0, max: target, now: Math.min(current, target) }}
-      testID="friend-profile-commitment"
-    >
-      <Text style={styles.cardTitle}>{t("friendProfile.commitmentTitle")}</Text>
-      <Text style={styles.commitmentCount}>{progress}</Text>
-      <View style={styles.commitmentTrack}>
-        <View
-          style={[
-            styles.commitmentFill,
-            { width: fillPercent },
-            isDone && styles.commitmentFillDone,
-          ]}
-        />
+    <View style={styles.section} testID={testID}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          {title}
+        </Text>
+        {meta ? <Text style={styles.sectionMeta}>{meta}</Text> : null}
       </View>
-      <Text
-        style={[
-          styles.commitmentStatus,
-          status === "behind" && styles.commitmentStatusBehind,
-          isDone && styles.commitmentStatusDone,
-        ]}
-      >
-        {statusLabel}
-      </Text>
+      {children}
     </View>
   );
 }
 
-export function OverviewCard({
+function ConsistencyValue({ score }: { score: number }) {
+  const fill = `${Math.min(100, Math.max(0, score * 10))}%` as const;
+  return (
+    <View style={styles.consistencyValue}>
+      <Text style={styles.commitmentCount}>{`${score.toFixed(1)}/10`}</Text>
+      <View style={styles.scoreTrack}>
+        <View style={[styles.scoreFill, { width: fill }]} />
+      </View>
+    </View>
+  );
+}
+
+export function FriendStatsGrid({
   profile,
   stats,
-  bestDayLabel,
-  buddyStatus,
+  showTotals,
   t,
 }: {
   profile: FriendProfilePayload;
   stats: FriendStatsPayload;
-  bestDayLabel: string | null;
-  buddyStatus: BuddyStatusDto | null;
+  /** Totals are already shown head-to-head on a friend's profile, so only repeat them otherwise. */
+  showTotals: boolean;
   t: TFunction;
 }) {
+  const trend = profile.reliability_trend ?? "stable";
   return (
-    <View style={styles.statsCard}>
-      <Text style={styles.cardTitle}>{t("friendProfile.overview")}</Text>
-      <Text style={styles.line}>{t("friendProfile.totalTime", { hours: stats.total_hours })}</Text>
-      <Text style={styles.line}>
-        {t("friendProfile.sessionsLine", { count: stats.total_sessions })}
-      </Text>
-      {stats.best_day && bestDayLabel ? (
-        <Text style={styles.line}>{t("friendProfile.bestDay", { date: bestDayLabel })}</Text>
+    <View style={styles.statsGrid} testID="friend-profile-stats">
+      {showTotals ? (
+        <>
+          <StatCard
+            label={t("friendProfile.currentStreakLabel")}
+            value={
+              <View style={glyphRowStyle}>
+                <AppFlame size={18} />
+                <Text style={styles.commitmentCount}>{stats.current_streak}</Text>
+              </View>
+            }
+          />
+          <StatCard label={t("friendProfile.sessionsLabel")} value={stats.total_sessions} />
+          <StatCard
+            label={t("friendProfile.totalHoursLabel")}
+            value={t("friendProfile.hoursValue", { hours: stats.total_hours })}
+          />
+        </>
       ) : null}
-      <Text style={styles.line}>
-        {buddyStatus?.buddy_user_id === profile.id
-          ? t("friendProfile.activeBuddy")
-          : t("friendProfile.socialFriend")}
-      </Text>
+      <StatCard
+        label={t("friendProfile.bestStreakLabel")}
+        value={t("friendProfile.daysValue", { count: stats.longest_streak })}
+      />
+      <StatCard
+        label={t("friendProfile.reliabilityTitle")}
+        value={<ConsistencyValue score={profile.reliability_score ?? 0} />}
+        sublabel={t(RELIABILITY_TREND_KEYS[trend])}
+        subPositive={trend !== "down"}
+      />
     </View>
   );
 }
 
-export function SharedMomentumCard({
-  isOwnProfile,
-  yourStreak,
-  theirStreak,
-  socialRecap,
+export function CommitmentCard({ commitment, t }: { commitment: FriendCommitmentDto; t: TFunction }) {
+  const { current_sessions: current, target_sessions: target, status } = commitment;
+  const progress = t("friendProfile.commitmentProgress", { current, count: target });
+  const statusLabel = t(`friendProfile.commitmentStatus.${status}`);
+  const fillPercent = `${Math.min(100, Math.round((current / Math.max(1, target)) * 100))}%` as const;
+  const isDone = status === "completed";
+  return (
+    <ProfileSection title={t("friendProfile.commitmentTitle")}>
+      <View
+        style={styles.card}
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel={t("friendProfile.commitmentA11y", { progress, status: statusLabel })}
+        accessibilityValue={{ min: 0, max: target, now: Math.min(current, target) }}
+        testID="friend-profile-commitment"
+      >
+        <View style={styles.commitmentHeader}>
+          <Text style={styles.commitmentCount}>{progress}</Text>
+          <Text
+            style={[
+              styles.commitmentStatus,
+              status === "behind" && styles.commitmentStatusBehind,
+              isDone && styles.commitmentStatusDone,
+            ]}
+          >
+            {statusLabel}
+          </Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: fillPercent }, isDone && styles.progressFillDone]} />
+        </View>
+      </View>
+    </ProfileSection>
+  );
+}
+
+export function FocusCard({
+  breakdown,
+  bestDayLabel,
   t,
 }: {
-  isOwnProfile: boolean;
-  yourStreak: number;
-  theirStreak: number;
-  socialRecap: SocialRecapDto | null;
+  breakdown: Record<string, number>;
+  bestDayLabel: string | null;
   t: TFunction;
 }) {
+  const slices = focusSlices(breakdown);
+  const label = (type: string) =>
+    type === OTHER_FOCUS_TYPE ? t("friendProfile.focusOther") : sessionTypeLabel(type, t);
+  const color = (type: string) => (type === OTHER_FOCUS_TYPE ? OTHER_FOCUS_COLOR : sessionTypeColor(type));
   return (
-    <View style={styles.statsCard}>
-      <Text style={styles.cardTitle}>{t("friendProfile.sharedMomentumTitle")}</Text>
-      <Text style={styles.line}>
-        {t("friendProfile.creativeRunLine", { yours: yourStreak, theirs: theirStreak })}
-      </Text>
-      {isOwnProfile ? (
-        <>
-          <Text style={styles.line}>
-            {socialRecap
-              ? t("friendProfile.teamSessionsLine", {
-                  sessions: socialRecap.team_sessions,
-                  sign: socialRecap.wow_delta_sessions >= 0 ? "+" : "",
-                  wow: socialRecap.wow_delta_sessions,
-                })
-              : t("friendProfile.comparisonHint")}
-          </Text>
-          {socialRecap?.identity_tag ? (
-            <Text style={styles.lineStrong}>
-              {t(`friendsScreen.identityTag.${socialRecap.identity_tag}`)}
-            </Text>
-          ) : null}
-        </>
-      ) : (
-        <>
-          <Text style={styles.lineMuted}>{t("friendProfile.sharedMomentumFriendHint")}</Text>
-          <Text style={styles.line}>{t("friendProfile.comparisonHint")}</Text>
-        </>
-      )}
-    </View>
+    <ProfileSection
+      title={t("friendProfile.focusTitle")}
+      meta={bestDayLabel ? t("friendProfile.focusBestDay", { day: bestDayLabel }) : null}
+      testID="friend-profile-focus"
+    >
+      <View style={styles.card}>
+        {slices.length === 0 ? (
+          <Text style={styles.muted}>{t("friendProfile.focusEmpty")}</Text>
+        ) : (
+          <>
+            <View style={styles.focusBar} accessible={false}>
+              {slices.map((slice) => (
+                <View
+                  key={slice.type}
+                  style={[styles.focusSegment, { flex: slice.share, backgroundColor: color(slice.type) }]}
+                />
+              ))}
+            </View>
+            {slices.map((slice) => (
+              <View key={slice.type} style={styles.focusLegendRow}>
+                <View style={[styles.focusDot, { backgroundColor: color(slice.type) }]} />
+                <Text style={styles.focusLabel}>{label(slice.type)}</Text>
+                <Text style={styles.focusShare}>{`${Math.round(slice.share * 100)}%`}</Text>
+              </View>
+            ))}
+          </>
+        )}
+      </View>
+    </ProfileSection>
   );
 }
 
-export function AchievementsCard({ stats, t }: { stats: FriendStatsPayload; t: TFunction }) {
+export function AchievementsRow({ stats, t }: { stats: FriendStatsPayload; t: TFunction }) {
+  const items = achievementShowcase(stats.achievements);
+  const unlockedCount = items.filter((item) => item.unlocked).length;
   return (
-    <View style={styles.statsCard}>
-      <Text style={styles.cardTitle}>{t("friendProfile.achievementsTitle")}</Text>
-      {stats.achievements.length === 0 ? (
-        <Text style={styles.muted}>{t("friendProfile.noneUnlocked")}</Text>
-      ) : (
-        stats.achievements.map((achievement) => (
-          <View key={achievement.id} style={[glyphRowStyle, styles.achRow]}>
-            <AchievementGlyph achievementId={achievement.id} size={18} />
-            <Text style={styles.ach}>
-              {t(`friendProfile.achievements.${achievement.id}`, { defaultValue: achievement.id })}
-            </Text>
-          </View>
-        ))
-      )}
-    </View>
+    <ProfileSection
+      title={t("friendProfile.achievementsTitle")}
+      meta={t("friendProfile.achievementsCount", { unlocked: unlockedCount, total: items.length })}
+    >
+      <ScrollView
+        horizontal
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.achievementsRow}
+      >
+        {items.map((item) => {
+          const name = t(`friendProfile.achievements.${item.id}`, { defaultValue: item.id });
+          return (
+            <View
+              key={item.id}
+              accessible
+              accessibilityLabel={t(
+                item.unlocked ? "friendProfile.achievementUnlockedA11y" : "friendProfile.achievementLockedA11y",
+                { name },
+              )}
+              style={[styles.achievement, item.unlocked ? styles.achievementUnlocked : styles.achievementLocked]}
+            >
+              <AchievementGlyph
+                achievementId={item.id}
+                size={22}
+                color={item.unlocked ? colors.primary : colors.textSecondary}
+              />
+              <Text style={styles.achievementLabel} numberOfLines={2}>
+                {name}
+              </Text>
+            </View>
+          );
+        })}
+      </ScrollView>
+    </ProfileSection>
+  );
+}
+
+function SessionRow({
+  session,
+  onPress,
+  t,
+}: {
+  session: FriendSessionItem;
+  onPress: () => void;
+  t: TFunction;
+}) {
+  const typeLabel = sessionTypeLabel(session.session_type, t);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t("friendProfile.openSessionA11y", { type: typeLabel })}
+      style={({ pressed }) => [styles.sessionRow, pressed && styles.pressed]}
+      onPress={onPress}
+    >
+      <View style={[styles.sessionAccent, { backgroundColor: sessionTypeColor(session.session_type) }]} />
+      <View style={styles.sessionText}>
+        <Text style={styles.sessionType}>{typeLabel}</Text>
+        <Text style={styles.sessionDate}>{formatSessionListDate(session.started_at)}</Text>
+      </View>
+      {session.mood_level != null && isMoodLevel(session.mood_level) ? (
+        <MoodIcon level={session.mood_level} size={16} />
+      ) : null}
+      <Text style={styles.sessionDuration}>{formatDurationWords(session.duration_seconds)}</Text>
+    </Pressable>
   );
 }
 
@@ -188,30 +289,21 @@ export function RecentSessionsCard({
   onOpenSession: (id: number, ownerName: string) => void;
   t: TFunction;
 }) {
+  const visible = sessions.slice(0, RECENT_SESSION_LIMIT);
   return (
-    <View style={styles.statsCard}>
-      <Text style={styles.cardTitle}>{t("friendProfile.recentSessions")}</Text>
-      {sessions.length === 0 ? (
-        <Text style={styles.muted}>{t("friendProfile.noSessionsYet")}</Text>
-      ) : (
-        sessions.map((session) => (
-          <Pressable
-            key={session.id}
-            accessibilityRole="button"
-            accessibilityLabel={t("friendProfile.openSessionA11y", {
-              type: sessionTypeLabel(session.session_type, t),
-            })}
-            style={({ pressed }) => [styles.sessRow, pressed && styles.sessRowPressed]}
-            onPress={() => onOpenSession(session.id, ownerName)}
-          >
-            <View style={styles.sessCol}>
-              <Text style={styles.sessType}>{sessionTypeLabel(session.session_type, t)}</Text>
-              <Text style={styles.sessDate}>{formatSessionListDate(session.started_at)}</Text>
+    <ProfileSection title={t("friendProfile.recentSessions")}>
+      <View style={styles.card}>
+        {visible.length === 0 ? (
+          <Text style={styles.muted}>{t("friendProfile.noSessionsYet")}</Text>
+        ) : (
+          visible.map((session, index) => (
+            <View key={session.id}>
+              {index > 0 ? <View style={styles.sessionDivider} /> : null}
+              <SessionRow session={session} onPress={() => onOpenSession(session.id, ownerName)} t={t} />
             </View>
-            <Text style={styles.sessMeta}>{formatDurationWords(session.duration_seconds)}</Text>
-          </Pressable>
-        ))
-      )}
-    </View>
+          ))
+        )}
+      </View>
+    </ProfileSection>
   );
 }

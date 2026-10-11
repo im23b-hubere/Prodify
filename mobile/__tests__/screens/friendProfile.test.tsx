@@ -1,5 +1,5 @@
 import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import FriendProfileScreen from "../../app/profile/[id]";
 
@@ -10,6 +10,8 @@ const translate = (key: string) => key;
 
 jest.mock("expo-haptics", () => ({
   selectionAsync: jest.fn().mockResolvedValue(undefined),
+  notificationAsync: jest.fn().mockResolvedValue(undefined),
+  NotificationFeedbackType: { Success: "success" },
 }));
 
 jest.mock("react-native-safe-area-context", () => {
@@ -50,36 +52,20 @@ jest.mock("../../lib/client", () => ({
 
 jest.mock("../../lib/social", () => ({
   fetchBuddyStatus: jest.fn().mockResolvedValue(null),
-  fetchWeeklyRecap: jest.fn().mockResolvedValue(null),
 }));
 
-describe("FriendProfileScreen loading UX", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockApiJson.mockImplementation(() => new Promise(() => undefined));
-  });
+const profile = {
+  id: 9,
+  username: "carol",
+  total_sessions: 12,
+  current_streak: 3,
+  longest_streak: 5,
+  friends_count: 2,
+  created_at: "2026-01-01T00:00:00Z",
+};
 
-  it("shows loading state with back navigation while profile loads", async () => {
-    const { getByText } = render(<FriendProfileScreen />);
-
-    expect(getByText("common.backArrow")).toBeTruthy();
-    await waitFor(() => {
-      expect(getByText("friendProfile.loadingProfile")).toBeTruthy();
-    });
-  });
-});
-
-describe("FriendProfileScreen commitment", () => {
-  const profile = {
-    id: 9,
-    username: "carol",
-    total_sessions: 12,
-    current_streak: 3,
-    longest_streak: 5,
-    friends_count: 2,
-    created_at: "2026-01-01T00:00:00Z",
-  };
-  const stats = {
+function statsWith(overrides: Record<string, unknown> = {}) {
+  return {
     total_hours: 10,
     total_sessions: 12,
     current_streak: 3,
@@ -88,30 +74,58 @@ describe("FriendProfileScreen commitment", () => {
     best_day: null,
     heatmap_days: [],
     achievements: [],
+    ...overrides,
   };
+}
 
-  function respondWith(commitment: () => Promise<unknown>) {
-    mockApiJson.mockImplementation((path: string) => {
-      if (path === "/friends/status/9") return Promise.resolve({ status: "accepted" });
-      if (path === "/users/9/profile") return Promise.resolve(profile);
-      if (path === "/users/9/stats") return Promise.resolve(stats);
-      if (path.startsWith("/users/9/sessions")) return Promise.resolve([]);
-      if (path === "/users/9/commitment") return commitment();
-      return Promise.resolve(null);
+type Responses = {
+  status?: Record<string, unknown>;
+  commitment?: () => Promise<unknown>;
+  yourStats?: () => Promise<unknown>;
+};
+
+function respondWith({
+  status = { status: "accepted" },
+  commitment = () => Promise.resolve(null),
+  yourStats = () => Promise.resolve(statsWith({ current_streak: 1, total_sessions: 20 })),
+}: Responses = {}) {
+  mockApiJson.mockImplementation((path: string) => {
+    if (path === "/friends/status/9") return Promise.resolve(status);
+    if (path === "/friends/request") return Promise.resolve({});
+    if (path === "/users/9/profile") return Promise.resolve(profile);
+    if (path === "/users/9/stats") return Promise.resolve(statsWith());
+    if (path === "/users/5/stats") return yourStats();
+    if (path.startsWith("/users/9/sessions")) return Promise.resolve([]);
+    if (path === "/users/9/commitment") return commitment();
+    return Promise.resolve(null);
+  });
+}
+
+beforeEach(() => jest.clearAllMocks());
+
+describe("FriendProfileScreen loading UX", () => {
+  it("shows a labelled skeleton with back navigation while the profile loads", async () => {
+    mockApiJson.mockImplementation(() => new Promise(() => undefined));
+    const { getByText, getByLabelText } = render(<FriendProfileScreen />);
+
+    expect(getByText("common.backArrow")).toBeTruthy();
+    await waitFor(() => {
+      expect(getByLabelText("friendProfile.loadingProfile")).toBeTruthy();
     });
-  }
+  });
+});
 
-  beforeEach(() => jest.clearAllMocks());
-
+describe("FriendProfileScreen commitment", () => {
   it("shows this week's commitment progress", async () => {
-    respondWith(() =>
-      Promise.resolve({
-        week_start: "2026-09-28",
-        target_sessions: 4,
-        current_sessions: 1,
-        status: "behind",
-      }),
-    );
+    respondWith({
+      commitment: () =>
+        Promise.resolve({
+          week_start: "2026-09-28",
+          target_sessions: 4,
+          current_sessions: 1,
+          status: "behind",
+        }),
+    });
     const { findByTestId, getByText } = render(<FriendProfileScreen />);
 
     const card = await findByTestId("friend-profile-commitment");
@@ -120,10 +134,46 @@ describe("FriendProfileScreen commitment", () => {
   });
 
   it("still shows the profile when the commitment cannot be loaded", async () => {
-    respondWith(() => Promise.reject(new Error("offline")));
+    respondWith({ commitment: () => Promise.reject(new Error("offline")) });
     const { findByText, queryByTestId } = render(<FriendProfileScreen />);
 
     expect(await findByText("friendProfile.recentSessions")).toBeTruthy();
     expect(queryByTestId("friend-profile-commitment")).toBeNull();
+  });
+});
+
+describe("FriendProfileScreen head to head", () => {
+  it("compares the friend against your own stats", async () => {
+    respondWith();
+    const { findByTestId, getByText } = render(<FriendProfileScreen />);
+
+    expect(await findByTestId("friend-profile-head-to-head")).toBeTruthy();
+    expect(getByText("friendProfile.verdict.tied")).toBeTruthy();
+  });
+
+  it("falls back to the totals grid when your own stats are unavailable", async () => {
+    respondWith({ yourStats: () => Promise.reject(new Error("offline")) });
+    const { findByTestId, queryByTestId, getByText } = render(<FriendProfileScreen />);
+
+    expect(await findByTestId("friend-profile-stats")).toBeTruthy();
+    expect(queryByTestId("friend-profile-head-to-head")).toBeNull();
+    expect(getByText("friendProfile.sessionsLabel")).toBeTruthy();
+  });
+});
+
+describe("FriendProfileScreen locked profile", () => {
+  it("sends a friend request straight from the profile", async () => {
+    respondWith({ status: { status: "none", username: "carol" } });
+    const { findByTestId } = render(<FriendProfileScreen />);
+
+    fireEvent.press(await findByTestId("friend-profile-add-friend"));
+
+    await waitFor(() => {
+      expect(mockApiJson).toHaveBeenCalledWith("/friends/request", {
+        token: "token-123",
+        method: "POST",
+        body: { username: "carol" },
+      });
+    });
   });
 });

@@ -3,16 +3,16 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
 import { apiJson } from "../../../lib/client";
-import { fetchBuddyStatus, fetchWeeklyRecap } from "../../../lib/social";
-import type { BuddyStatusDto, FriendCommitmentDto, SocialRecapDto } from "../../../types/friends";
-import type { StreakOverviewDto } from "../../../types/streak";
+import { fetchBuddyStatus } from "../../../lib/social";
+import type { FriendCommitmentDto } from "../../../types/friends";
 
 export type FriendStatus = "self" | "none" | "pending" | "accepted";
+export type PendingDirection = "outgoing" | "incoming";
 
 type FriendStatusPayload = {
   status: FriendStatus;
   username?: string | null;
-  pending_direction?: "outgoing" | "incoming" | null;
+  pending_direction?: PendingDirection | null;
 };
 
 export type FriendProfilePayload = {
@@ -53,38 +53,74 @@ export type FriendSessionItem = {
   mood_level: number | null;
 };
 
-async function loadFriendContext(token: string, userId: number) {
-  const [friendStatus, overview, buddyStatus, socialRecap] = await Promise.all([
-    apiJson<FriendStatusPayload>(`/friends/status/${userId}`, { token }),
-    apiJson<StreakOverviewDto>("/streak/overview", { token }).catch(() => null),
-    fetchBuddyStatus(token).catch(() => null),
-    fetchWeeklyRecap(token).catch(() => null),
-  ]);
-  return { friendStatus, overview, buddyStatus, socialRecap };
-}
+type VisibleProfile = {
+  profile: FriendProfilePayload;
+  stats: FriendStatsPayload;
+  sessions: FriendSessionItem[];
+  commitment: FriendCommitmentDto | null;
+  /** The viewer's own stats, used for the head-to-head card; null on your own profile. */
+  yourStats: FriendStatsPayload | null;
+  isBuddy: boolean;
+};
 
-async function loadVisibleProfile(token: string, userId: number) {
-  const [profile, stats, sessions, commitment] = await Promise.all([
+type ProfileData = {
+  status: FriendStatus;
+  targetUsername: string | null;
+  pendingDirection: PendingDirection | null;
+  visible: VisibleProfile | null;
+};
+
+type LoadState = "loading" | "ready" | "error";
+
+async function loadVisibleProfile(
+  token: string,
+  userId: number,
+  viewerId: number | null,
+): Promise<VisibleProfile> {
+  const isOwnProfile = viewerId === userId;
+  const [profile, stats, sessions, commitment, yourStats, buddy] = await Promise.all([
     apiJson<FriendProfilePayload>(`/users/${userId}/profile`, { token }),
     apiJson<FriendStatsPayload>(`/users/${userId}/stats`, { token }),
     apiJson<FriendSessionItem[]>(`/users/${userId}/sessions?limit=10`, { token }),
     apiJson<FriendCommitmentDto | null>(`/users/${userId}/commitment`, { token }).catch(() => null),
+    isOwnProfile || viewerId == null
+      ? null
+      : apiJson<FriendStatsPayload>(`/users/${viewerId}/stats`, { token }).catch(() => null),
+    isOwnProfile ? null : fetchBuddyStatus(token).catch(() => null),
   ]);
-  return { profile, stats, sessions: Array.isArray(sessions) ? sessions : [], commitment };
+  return {
+    profile,
+    stats,
+    sessions: Array.isArray(sessions) ? sessions : [],
+    commitment,
+    yourStats,
+    isBuddy: buddy?.buddy_user_id === userId,
+  };
 }
 
-function useFriendProfileLifecycle(load: (options?: { silent?: boolean }) => Promise<void>) {
-  useEffect(() => {
-    void load();
-  }, [load]);
-}
-
-function canViewProfile(status: FriendStatus): boolean {
-  return status === "self" || status === "accepted";
+async function loadProfileData(
+  token: string,
+  userId: number,
+  viewerId: number | null,
+): Promise<ProfileData> {
+  const friendStatus = await apiJson<FriendStatusPayload>(`/friends/status/${userId}`, { token });
+  const canView = friendStatus.status === "self" || friendStatus.status === "accepted";
+  return {
+    status: friendStatus.status,
+    targetUsername: friendStatus.username ?? null,
+    pendingDirection: friendStatus.pending_direction ?? null,
+    visible: canView ? await loadVisibleProfile(token, userId, viewerId) : null,
+  };
 }
 
 function loadErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+function useFriendProfileLifecycle(load: () => Promise<void>) {
+  useEffect(() => {
+    void load();
+  }, [load]);
 }
 
 function useFriendProfileRefresh(load: (options?: { silent?: boolean }) => Promise<void>) {
@@ -99,18 +135,10 @@ function useFriendProfileRefresh(load: (options?: { silent?: boolean }) => Promi
 export function useFriendProfile(userId: number | null) {
   const { t } = useTranslation();
   const { token, user } = useAuth();
-  const [status, setStatus] = useState<FriendStatus | null>(null);
-  const [targetUsername, setTargetUsername] = useState<string | null>(null);
-  const [pendingDirection, setPendingDirection] = useState<"outgoing" | "incoming" | null>(null);
-  const [profile, setProfile] = useState<FriendProfilePayload | null>(null);
-  const [stats, setStats] = useState<FriendStatsPayload | null>(null);
-  const [sessions, setSessions] = useState<FriendSessionItem[]>([]);
-  const [commitment, setCommitment] = useState<FriendCommitmentDto | null>(null);
-  const [yourStreak, setYourStreak] = useState(0);
-  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const viewerId = user?.id ?? null;
+  const [data, setData] = useState<ProfileData | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
-  const [buddyStatus, setBuddyStatus] = useState<BuddyStatusDto | null>(null);
-  const [socialRecap, setSocialRecap] = useState<SocialRecapDto | null>(null);
   const target = useMemo(
     () => (token && userId != null ? { token, userId } : null),
     [token, userId],
@@ -126,57 +154,28 @@ export function useFriendProfile(userId: number | null) {
       if (!options?.silent) setLoadState("loading");
       setError(null);
       try {
-        const { friendStatus, overview, buddyStatus, socialRecap } = await loadFriendContext(
-          target.token,
-          target.userId,
-        );
-        setStatus(friendStatus.status);
-        setTargetUsername(friendStatus.username ?? null);
-        setPendingDirection(friendStatus.pending_direction ?? null);
-        setYourStreak(overview?.current_streak ?? 0);
-        setBuddyStatus(buddyStatus);
-        setSocialRecap(socialRecap);
-
-        if (!canViewProfile(friendStatus.status)) {
-          setProfile(null);
-          setStats(null);
-          setSessions([]);
-          setCommitment(null);
-          setLoadState("ready");
-          return;
-        }
-        const visibleProfile = await loadVisibleProfile(target.token, target.userId);
-        setProfile(visibleProfile.profile);
-        setStats(visibleProfile.stats);
-        setSessions(visibleProfile.sessions);
-        setCommitment(visibleProfile.commitment);
+        setData(await loadProfileData(target.token, target.userId, viewerId));
         setLoadState("ready");
       } catch (loadError) {
         setLoadState("error");
         setError(loadErrorMessage(loadError, t("friendProfile.loadError")));
       }
     },
-    [t, target],
+    [t, target, viewerId],
   );
 
   useFriendProfileLifecycle(load);
   const { refreshing, refresh } = useFriendProfileRefresh(load);
 
   return {
-    status,
-    targetUsername,
-    pendingDirection,
-    profile,
-    stats,
-    sessions,
-    commitment,
-    yourStreak,
+    status: data?.status ?? null,
+    targetUsername: data?.targetUsername ?? null,
+    pendingDirection: data?.pendingDirection ?? null,
+    visible: data?.visible ?? null,
     loadState,
     error,
-    buddyStatus,
-    socialRecap,
     refreshing,
-    isOwnProfile: user?.id != null && user.id === userId,
+    isOwnProfile: viewerId != null && viewerId === userId,
     load,
     refresh,
   };

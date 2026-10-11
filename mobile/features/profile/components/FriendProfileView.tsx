@@ -1,112 +1,90 @@
 import { LinearGradient } from "expo-linear-gradient";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, Text, View } from "react-native";
+import Animated, {
+  Extrapolation,
+  FadeInDown,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ProfileHeader } from "../../../components/profile/ProfileHeader";
-import { StreakComparison } from "../../../components/profile/StreakComparison";
 import { ErrorState } from "../../../components/states/ErrorState";
-import { LoadingState } from "../../../components/states/LoadingState";
 import { BackButton } from "../../../components/ui/BackButton";
-import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { colors } from "../../../constants/theme";
 import { StatsHeatmapSection } from "../../stats/components/StatsHeatmapSection";
-import { profilePictureUrl, translatedWeekday } from "../friendProfilePresentation";
+import { translatedWeekday } from "../friendProfilePresentation";
 import { friendProfileStyles as styles } from "../friendProfile.styles";
 import type { FriendProfileState } from "../hooks/useFriendProfile";
 import {
-  AchievementsCard,
+  AchievementsRow,
   CommitmentCard,
-  OverviewCard,
+  FocusCard,
+  FriendStatsGrid,
   RecentSessionsCard,
-  ReliabilityCard,
-  SharedMomentumCard,
 } from "./FriendProfileCards";
+import { FriendProfileHero } from "./FriendProfileHero";
+import { FriendProfileSkeleton, LockedProfile } from "./FriendProfileStates";
+import { HeadToHeadCard } from "./HeadToHeadCard";
+
+/** Scroll distance over which the username fades into the top bar, roughly when the hero name leaves. */
+const TITLE_FADE_RANGE = [150, 200];
+const SECTION_STAGGER_MS = 60;
+const AMBIENT_GLOW = ["rgba(255,61,0,0.18)", "rgba(255,61,0,0.05)", "rgba(10,10,10,0)"] as const;
 
 type Props = {
   state: FriendProfileState;
+  isSendingRequest: boolean;
   onBack: () => void;
   onOpenFriends: () => void;
   onOpenSession: (id: number, ownerName: string) => void;
   onChallenge: (friendId: number) => void;
+  onSendRequest: (username: string) => void;
 };
 
-export function FriendProfileView({
-  state,
-  onBack,
-  onOpenFriends,
-  onOpenSession,
-  onChallenge,
-}: Props) {
-  const { t } = useTranslation();
-  if (state.loadState === "loading" && !state.refreshing) {
-    return (
-      <ProfileShell onBack={onBack}>
-        <LoadingState
-          message={t(
-            state.isOwnProfile ? "friendProfile.loadingOwnProfile" : "friendProfile.loadingProfile",
-          )}
-        />
-      </ProfileShell>
-    );
-  }
-  if (state.loadState === "error") {
-    return (
-      <ProfileShell onBack={onBack}>
-        <ErrorState
-          title={t("friendProfile.couldNotLoadTitle")}
-          message={state.error ?? t("friendProfile.loadError")}
-          retryLabel={t("friendProfile.retry")}
-          onRetry={() => void state.load()}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("friendProfile.backA11y")}
-          style={styles.bootBackBtn}
-          onPress={onBack}
-        >
-          <Text style={styles.bootBackTxt}>{t("friendProfile.back")}</Text>
-        </Pressable>
-      </ProfileShell>
-    );
-  }
-  return (
-    <ReadyProfile
-      state={state}
-      onBack={onBack}
-      onOpenFriends={onOpenFriends}
-      onOpenSession={onOpenSession}
-      onChallenge={onChallenge}
-    />
-  );
-}
+type VisibleData = NonNullable<FriendProfileState["visible"]>;
 
-function ProfileShell({ children, onBack }: { children: React.ReactNode; onBack: () => void }) {
-  return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.topRow}>
-        <BackButton onPress={onBack} style={styles.back} />
-      </View>
-      <View style={styles.bootWrap}>{children}</View>
-    </SafeAreaView>
-  );
-}
+export function FriendProfileView(props: Props) {
+  const { state, onBack } = props;
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.set(event.contentOffset.y);
+    },
+  });
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.get(), TITLE_FADE_RANGE, [0, 1], Extrapolation.CLAMP),
+  }));
+  const title = state.visible?.profile.username ?? state.targetUsername ?? "";
 
-function ReadyProfile({ state, onBack, onOpenFriends, onOpenSession, onChallenge }: Props) {
-  const locked = state.status === "none" || state.status === "pending";
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      {/* The same warm glow as the Profile tab, so the header reads as a heading, not a card. */}
+    <SafeAreaView style={styles.safe} edges={["top"]} testID="friend-profile-screen">
       <LinearGradient
         pointerEvents="none"
-        colors={["rgba(255,61,0,0.18)", "rgba(255,61,0,0.05)", "rgba(10,10,10,0)"]}
+        colors={AMBIENT_GLOW}
         locations={[0, 0.42, 1]}
         style={styles.ambient}
       />
-      <View style={styles.topRow}>
-        <BackButton onPress={onBack} style={styles.back} />
+      <View style={styles.topBar}>
+        <View style={styles.topBarSide}>
+          <BackButton onPress={onBack} />
+        </View>
+        <Animated.Text
+          style={[styles.topBarTitle, titleStyle]}
+          numberOfLines={1}
+          importantForAccessibility="no"
+          accessibilityElementsHidden
+        >
+          {title}
+        </Animated.Text>
+        <View style={styles.topBarSide} />
       </View>
-      <ScrollView
+      <Animated.ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -117,114 +95,138 @@ function ReadyProfile({ state, onBack, onOpenFriends, onOpenSession, onChallenge
           />
         }
       >
-        {locked ? <LockedProfile state={state} onOpenFriends={onOpenFriends} /> : null}
-        {!locked && state.profile && state.stats ? (
-          <VisibleProfile state={state} onOpenSession={onOpenSession} onChallenge={onChallenge} />
-        ) : null}
-      </ScrollView>
+        <ProfileBody {...props} />
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
 
-function LockedProfile({
+function ProfileBody({
   state,
+  isSendingRequest,
+  onBack,
   onOpenFriends,
-}: {
-  state: FriendProfileState;
-  onOpenFriends: () => void;
-}) {
+  onOpenSession,
+  onChallenge,
+  onSendRequest,
+}: Props) {
   const { t } = useTranslation();
-  const message =
-    state.status === "pending"
-      ? t(
-          state.pendingDirection === "incoming"
-            ? "friendProfile.lockedPendingIncoming"
-            : "friendProfile.lockedPendingOutgoing",
-        )
-      : t("friendProfile.lockedNone");
+  if (state.loadState === "loading" && !state.refreshing) {
+    return (
+      <FriendProfileSkeleton
+        label={t(state.isOwnProfile ? "friendProfile.loadingOwnProfile" : "friendProfile.loadingProfile")}
+      />
+    );
+  }
+  if (state.loadState === "error") {
+    return (
+      <View style={styles.centered}>
+        <ErrorState
+          title={t("friendProfile.couldNotLoadTitle")}
+          message={state.error ?? t("friendProfile.loadError")}
+          retryLabel={t("friendProfile.retry")}
+          onRetry={() => void state.load()}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("friendProfile.backA11y")}
+          style={styles.textAction}
+          onPress={onBack}
+        >
+          <Text style={styles.textActionLabel}>{t("friendProfile.back")}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+  if (state.status === "none" || state.status === "pending") {
+    return (
+      <LockedProfile
+        username={state.targetUsername}
+        isPending={state.status === "pending"}
+        pendingDirection={state.pendingDirection}
+        isSending={isSendingRequest}
+        onSendRequest={onSendRequest}
+        onOpenFriends={onOpenFriends}
+      />
+    );
+  }
+  if (!state.visible) return null;
   return (
-    <View style={styles.locked}>
-      <Text
-        style={styles.lockedMainTitle}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.6}
-      >
-        {state.targetUsername
-          ? t("friendProfile.lockedUserHeading", { name: state.targetUsername })
-          : t("friendProfile.lockedTitle")}
-      </Text>
-      <Text style={styles.lockedSub}>{message}</Text>
-      <PrimaryButton label={t("friendProfile.friendsTab")} onPress={onOpenFriends} />
-    </View>
+    <VisibleProfile
+      visible={state.visible}
+      isOwnProfile={state.status === "self"}
+      onOpenSession={onOpenSession}
+      onChallenge={onChallenge}
+    />
+  );
+}
+
+function StaggeredSection({ order, children }: { order: number; children: ReactNode }) {
+  return (
+    <Animated.View entering={FadeInDown.duration(320).delay(order * SECTION_STAGGER_MS)}>
+      {children}
+    </Animated.View>
   );
 }
 
 function VisibleProfile({
-  state,
+  visible,
+  isOwnProfile,
   onOpenSession,
   onChallenge,
 }: {
-  state: FriendProfileState;
+  visible: VisibleData;
+  isOwnProfile: boolean;
   onOpenSession: Props["onOpenSession"];
   onChallenge: Props["onChallenge"];
 }) {
   const { t } = useTranslation();
-  const { profile, stats } = state;
-  if (!profile || !stats) return null;
+  const { profile, stats, sessions, commitment, yourStats, isBuddy } = visible;
+  const showHeadToHead = !isOwnProfile && yourStats != null;
   return (
     <>
-      <ProfileHeader
-        username={profile.username}
-        totalSessions={profile.total_sessions}
-        currentStreak={profile.current_streak}
-        friendsCount={profile.friends_count}
-        status={state.status === "self" ? "self" : "accepted"}
-        identityTags={profile.identity_tags ?? []}
-        streakStatusLabel={profile.streak_status_label}
-        streakStatusEmoji={profile.streak_status_emoji}
-        profilePictureUrl={profilePictureUrl(profile.profile_picture_url)}
-      />
-      {state.status !== "self" ? (
-        <View style={styles.block}>
-          <StreakComparison yourStreak={state.yourStreak} theirStreak={stats.current_streak} />
-        </View>
+      <StaggeredSection order={0}>
+        <FriendProfileHero
+          profile={profile}
+          isOwnProfile={isOwnProfile}
+          isBuddy={isBuddy}
+          onChallenge={() => onChallenge(profile.id)}
+        />
+      </StaggeredSection>
+      {showHeadToHead ? (
+        <StaggeredSection order={1}>
+          <HeadToHeadCard you={yourStats} them={stats} friendName={profile.username} t={t} />
+        </StaggeredSection>
       ) : null}
-      {state.status === "accepted" ? (
-        <View style={styles.block}>
-          <PrimaryButton
-            label={t("friendProfile.challengeCta", { name: profile.username })}
-            onPress={() => onChallenge(profile.id)}
-            testID="friend-profile-challenge"
-          />
-        </View>
+      <StaggeredSection order={2}>
+        <FriendStatsGrid profile={profile} stats={stats} showTotals={!showHeadToHead} t={t} />
+      </StaggeredSection>
+      {commitment ? (
+        <StaggeredSection order={3}>
+          <CommitmentCard commitment={commitment} t={t} />
+        </StaggeredSection>
       ) : null}
-      {state.commitment ? <CommitmentCard commitment={state.commitment} t={t} /> : null}
-      <ReliabilityCard profile={profile} t={t} />
-      <OverviewCard
-        profile={profile}
-        stats={stats}
-        bestDayLabel={translatedWeekday(stats.best_day, t)}
-        buddyStatus={state.buddyStatus}
-        t={t}
-      />
-      <SharedMomentumCard
-        isOwnProfile={state.status === "self"}
-        yourStreak={state.yourStreak}
-        theirStreak={stats.current_streak}
-        socialRecap={state.socialRecap}
-        t={t}
-      />
-      <View style={styles.block}>
+      <StaggeredSection order={4}>
         <StatsHeatmapSection t={t} days={stats.heatmap_days} />
-      </View>
-      <AchievementsCard stats={stats} t={t} />
-      <RecentSessionsCard
-        sessions={state.sessions}
-        ownerName={profile.username}
-        onOpenSession={onOpenSession}
-        t={t}
-      />
+      </StaggeredSection>
+      <StaggeredSection order={5}>
+        <FocusCard
+          breakdown={stats.type_breakdown}
+          bestDayLabel={translatedWeekday(stats.best_day, t)}
+          t={t}
+        />
+      </StaggeredSection>
+      <StaggeredSection order={6}>
+        <AchievementsRow stats={stats} t={t} />
+      </StaggeredSection>
+      <StaggeredSection order={7}>
+        <RecentSessionsCard
+          sessions={sessions}
+          ownerName={profile.username}
+          onOpenSession={onOpenSession}
+          t={t}
+        />
+      </StaggeredSection>
     </>
   );
 }

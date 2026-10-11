@@ -12,7 +12,7 @@ const LEGACY_TO_ID: Record<string, SessionType> = {
   "Sound Design": "sound_design",
 };
 
-function normalizeSessionTypeId(type: string): SessionType | string {
+export function normalizeSessionTypeId(type: string): SessionType | string {
   const trimmed = type.trim();
   const normalized = trimmed.toLowerCase().replace(/[\s-]+/g, "_");
   if (trimmed in LEGACY_TO_ID) {
