@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import type { CSSTransitionProperties } from "react-native-reanimated";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
@@ -7,6 +8,12 @@ export const LOCKED_NODE_FILL = "#111111";
 export const LOCKED_NODE_BORDER = "#262626";
 export const LOCKED_ICON_COLOR = "#3d3d3d";
 export const LOCKED_EDGE_COLOR = "#2a2a2a";
+
+/** Reanimated CSS transition for Animated views that dim when another skill is selected. */
+export const dimTransition: CSSTransitionProperties = {
+  transitionProperty: "opacity",
+  transitionDuration: 220,
+};
 
 const glassSurface = {
   backgroundColor: "rgba(20,20,20,0.92)",
@@ -130,7 +137,6 @@ export const styles = StyleSheet.create({
 
   node: { position: "absolute", alignItems: "center" },
   nodeBody: { alignItems: "center" },
-  dimmable: { transitionProperty: "opacity", transitionDuration: 220 },
   nodeRing: { position: "absolute" },
   nodeCircle: {
     alignItems: "center",

@@ -20,7 +20,7 @@ import Svg, {
 import { sessionTypeAccent } from "../../../components/session/SkillFocusChips";
 import { colors, motion } from "../../../constants/theme";
 import { isSkillBranch } from "../../../constants/skills";
-import { LOCKED_EDGE_COLOR, styles } from "../skillTree.styles";
+import { dimTransition, LOCKED_EDGE_COLOR, styles } from "../skillTree.styles";
 import type { SkillTreeEdgeLayout, SkillTreeLayout } from "../skillTreeLayout";
 import {
   isEdgeUnlocked,
@@ -77,7 +77,7 @@ export const SkillTreeLinks = memo(function SkillTreeLinks({
       <Animated.View
         style={[
           styles.layerFill,
-          styles.dimmable,
+          dimTransition,
           { width: layout.size, height: layout.size, opacity: highlighted ? DIMMED_OPACITY : 1 },
         ]}
         pointerEvents="none"
