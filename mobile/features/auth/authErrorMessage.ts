@@ -26,6 +26,8 @@ function mapAuthFormError(caught: unknown, t: TFunction, fallbackKey: string): s
 function mapKnownAuthError(code: string | null, message: string, t: TFunction): string | null {
   if (code === "EMAIL_TAKEN") return t("errors.auth.emailTaken");
   if (code === "USERNAME_TAKEN") return t("errors.auth.usernameTaken");
+  if (code === "USERNAME_REJECTED") return t("errors.auth.usernameRejected");
+  if (code === "ACCOUNT_SUSPENDED") return t("errors.auth.accountSuspended");
   if (code === "REGISTRATION_CONFLICT") return t("errors.auth.registerConflict");
   if (code === "INVALID_CREDENTIALS") return t("errors.auth.invalidCredentials");
   if (code === "SOCIAL_EMAIL_REQUIRED") return t("errors.auth.socialEmailRequired");

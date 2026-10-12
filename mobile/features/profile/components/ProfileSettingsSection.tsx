@@ -5,6 +5,7 @@ import {
   LogOut,
   Shield,
   Trash2,
+  UserX,
   type LucideIcon,
 } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
@@ -17,7 +18,7 @@ type Props = {
   controller: Pick<SettingsScreenController, "t" | "accountActions"> & {
     navigation: Pick<
       SettingsScreenController["navigation"],
-      "openNotifications" | "openPrivacy" | "openTerms"
+      "openNotifications" | "openPrivacy" | "openTerms" | "openBlockedUsers"
     >;
   };
 };
@@ -64,6 +65,12 @@ export function ProfileSettingsSection({ controller }: Props) {
           label={t("profile.manageNotifications")}
           Icon={Bell}
           onPress={navigation.openNotifications}
+        />
+        <View style={styles.legalDivider} />
+        <SettingsLink
+          label={t("safety.blocked.title")}
+          Icon={UserX}
+          onPress={navigation.openBlockedUsers}
         />
         <View style={styles.legalDivider} />
         <SettingsLink

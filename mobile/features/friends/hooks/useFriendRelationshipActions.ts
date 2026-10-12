@@ -4,6 +4,8 @@ import { useCallback, useRef } from "react";
 import { Alert } from "react-native";
 
 import { apiJson } from "../../../lib/client";
+import type { FriendIncomingDto } from "../../../types/friends";
+import { useBlockUser } from "../../safety/hooks/useBlockUser";
 import type { FriendsScreenState } from "./useFriendsScreenState";
 
 type ActionContext = {
@@ -109,5 +111,14 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
     [beginAnswer, endAnswer, load, t, token],
   );
 
-  return { sendRequest, acceptRequest, declineRequest };
+  const requestBlock = useBlockUser(token, t);
+  const declineAndBlock = useCallback(
+    (request: Pick<FriendIncomingDto, "id" | "user_id" | "username">) => {
+      // Blocking removes the pending request on the server as well.
+      requestBlock({ userId: request.user_id, name: request.username }, () => void load({ force: true }));
+    },
+    [load, requestBlock],
+  );
+
+  return { sendRequest, acceptRequest, declineRequest, declineAndBlock };
 }

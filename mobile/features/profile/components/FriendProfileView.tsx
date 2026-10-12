@@ -1,4 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { Ellipsis } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, RefreshControl, Text, View } from "react-native";
@@ -39,6 +40,8 @@ type Props = {
   state: FriendProfileState;
   isSendingRequest: boolean;
   onBack: () => void;
+  /** Report / block menu; absent on your own profile. */
+  onOpenMenu?: () => void;
   onOpenFriends: () => void;
   onOpenSession: (id: number, ownerName: string) => void;
   onChallenge: (friendId: number) => void;
@@ -80,7 +83,9 @@ export function FriendProfileView(props: Props) {
         >
           {title}
         </Animated.Text>
-        <View style={styles.topBarSide} />
+        <View style={[styles.topBarSide, styles.topBarSideEnd]}>
+          {props.onOpenMenu ? <ProfileMenuButton name={title} onPress={props.onOpenMenu} /> : null}
+        </View>
       </View>
       <Animated.ScrollView
         onScroll={onScroll}
@@ -158,6 +163,22 @@ function ProfileBody({
       onOpenSession={onOpenSession}
       onChallenge={onChallenge}
     />
+  );
+}
+
+function ProfileMenuButton({ name, onPress }: { name: string; onPress: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t("safety.menu.profileA11y", { name })}
+      hitSlop={10}
+      style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]}
+      onPress={onPress}
+      testID="friend-profile-menu"
+    >
+      <Ellipsis color={colors.textPrimary} size={22} strokeWidth={2.2} />
+    </Pressable>
   );
 }
 

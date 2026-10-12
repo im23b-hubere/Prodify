@@ -26,6 +26,7 @@ function createController(): SettingsScreenController {
       openNotifications: jest.fn(),
       openPrivacy: jest.fn(),
       openTerms: jest.fn(),
+      openBlockedUsers: jest.fn(),
     },
   } as unknown as SettingsScreenController;
 }
@@ -47,6 +48,15 @@ describe("SettingsScreenView", () => {
     expect(controller.navigation.openTerms).toHaveBeenCalledTimes(1);
     expect(controller.accountActions.confirmSignOut).toHaveBeenCalledTimes(1);
     expect(controller.accountActions.confirmDeleteAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("leads to the list of blocked users", () => {
+    const controller = createController();
+    render(<SettingsScreenView controller={controller} />);
+
+    fireEvent.press(screen.getByLabelText("safety.blocked.title"));
+
+    expect(controller.navigation.openBlockedUsers).toHaveBeenCalledTimes(1);
   });
 
   it("goes back from the top bar", () => {

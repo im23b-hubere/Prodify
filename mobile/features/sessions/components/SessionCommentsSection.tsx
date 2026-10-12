@@ -1,6 +1,7 @@
+import * as Haptics from "expo-haptics";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Image, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -19,6 +20,8 @@ type Props = {
   loading: boolean;
   error: string | null;
   highlightedCommentId: number | null;
+  /** Long press (or the screen reader action) on a comment: delete, report or block. */
+  onCommentOptions: (comment: SocialCommentDto) => void;
 };
 
 /** The comment thread. Writing happens in SessionCommentComposer, pinned to the screen bottom. */
@@ -36,6 +39,7 @@ export function SessionCommentsSection(props: Props) {
         comments={props.comments}
         loading={props.loading}
         highlightedCommentId={props.highlightedCommentId}
+        onCommentOptions={props.onCommentOptions}
       />
       {props.error ? <Text style={styles.errorText}>{props.error}</Text> : null}
     </View>
@@ -46,7 +50,8 @@ function CommentsList({
   comments,
   loading,
   highlightedCommentId,
-}: Pick<Props, "comments" | "loading" | "highlightedCommentId">) {
+  onCommentOptions,
+}: Pick<Props, "comments" | "loading" | "highlightedCommentId" | "onCommentOptions">) {
   const { t } = useTranslation();
   if (loading) return <Text style={styles.mutedNote}>{t("friendsScreen.loading")}</Text>;
   if (comments.length === 0) {
@@ -57,11 +62,20 @@ function CommentsList({
       key={comment.id}
       comment={comment}
       highlighted={highlightedCommentId === comment.id}
+      onOptions={onCommentOptions}
     />
   ));
 }
 
-function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highlighted: boolean }) {
+function CommentRow({
+  comment,
+  highlighted,
+  onOptions,
+}: {
+  comment: SocialCommentDto;
+  highlighted: boolean;
+  onOptions: (comment: SocialCommentDto) => void;
+}) {
   const { t } = useTranslation();
   const pulse = useSharedValue(highlighted ? 1 : 0);
 
@@ -82,7 +96,22 @@ function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highl
     ),
   }));
   const avatarUri = resolveAvatarUri(comment.author_profile_picture_url);
+  const openOptions = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    onOptions(comment);
+  };
   return (
+    <Pressable
+      onLongPress={openOptions}
+      delayLongPress={350}
+      accessibilityHint={t("safety.menu.commentHint")}
+      accessibilityActions={[{ name: "longpress", label: t("safety.menu.commentOptions") }]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === "longpress") openOptions();
+      }}
+      style={({ pressed }) => pressed && styles.commentPressed}
+      testID={`session-comment-${comment.id}`}
+    >
     <Animated.View style={[styles.commentItem, animatedStyle]}>
       {avatarUri ? (
         <Image source={{ uri: avatarUri }} style={styles.commentAvatarImage} />
@@ -101,6 +130,7 @@ function CommentRow({ comment, highlighted }: { comment: SocialCommentDto; highl
         <Text style={styles.commentBody}>{comment.body}</Text>
       </View>
     </Animated.View>
+    </Pressable>
   );
 }
 

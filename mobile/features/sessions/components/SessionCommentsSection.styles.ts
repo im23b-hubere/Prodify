@@ -22,6 +22,10 @@ export const styles = StyleSheet.create({
   },
   mutedNote: { color: colors.textSecondary, ...typography.caption },
   errorText: { color: colors.danger, fontFamily: fontFamily.body, ...typography.caption },
+  commentPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.99 }],
+  },
   commentItem: {
     flexDirection: "row",
     alignItems: "flex-start",

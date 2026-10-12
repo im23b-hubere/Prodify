@@ -58,6 +58,11 @@ jest.mock("@react-native-community/netinfo", () => ({
 
 const mockAcceptRequest = jest.fn();
 const mockDeclineRequest = jest.fn();
+const mockShowActionMenu = jest.fn();
+
+jest.mock("../../features/safety/showActionMenu", () => ({
+  showActionMenu: (menu: unknown) => mockShowActionMenu(menu),
+}));
 
 const createFriendsActions = (overrides: Record<string, unknown> = {}) => ({
   hasOtherFriends: false,
@@ -664,6 +669,29 @@ describe("Friends Screen", () => {
     const { getByText } = render(<FriendsScreen />);
     fireEvent.press(getByText("friendsScreen.accept"));
     expect(mockAcceptRequest).toHaveBeenCalledWith(42);
+  });
+
+  it("asks whether to just decline or also block the sender", () => {
+    const declineAndBlock = jest.fn();
+    const request = { id: 42, user_id: 3, username: "carol", created_at: "2026-07-01T10:00:00Z" };
+    mockUseFriendsScreenState.mockReturnValue(createFriendsState({ loading: false, incoming: [request] }));
+    mockUseFriendsScreenActions.mockReturnValue(
+      createFriendsActions({ hasOtherFriends: true, declineAndBlock }),
+    );
+    const { getByTestId } = render(<FriendsScreen />);
+
+    fireEvent.press(getByTestId("friend-request-42-decline"));
+    const menu = mockShowActionMenu.mock.calls[0][0] as {
+      items: { label: string; onSelect: () => void }[];
+    };
+    menu.items.forEach((item) => item.onSelect());
+
+    expect(menu.items.map((item) => item.label)).toEqual([
+      "safety.menu.decline",
+      "safety.menu.declineAndBlock",
+    ]);
+    expect(mockDeclineRequest).toHaveBeenCalledWith(42);
+    expect(declineAndBlock).toHaveBeenCalledWith(request);
   });
 
   it.each([

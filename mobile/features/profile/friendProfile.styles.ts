@@ -28,6 +28,16 @@ export const friendProfileStyles = StyleSheet.create({
     minHeight: 40,
   },
   topBarSide: { flex: 1 },
+  topBarSideEnd: { alignItems: "flex-end" },
+  menuButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  menuButtonPressed: { opacity: 0.6, transform: [{ scale: 0.94 }] },
   topBarTitle: {
     flex: 2,
     textAlign: "center",

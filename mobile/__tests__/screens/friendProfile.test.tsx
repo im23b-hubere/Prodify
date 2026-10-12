@@ -1,5 +1,6 @@
 import React from "react";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import FriendProfileScreen from "../../app/profile/[id]";
 
@@ -54,6 +55,18 @@ jest.mock("../../lib/social", () => ({
   fetchBuddyStatus: jest.fn().mockResolvedValue(null),
 }));
 
+type MenuItem = { label: string; onSelect: () => void };
+const mockShowActionMenu = jest.fn();
+
+jest.mock("../../features/safety/showActionMenu", () => ({
+  showActionMenu: (menu: unknown) => mockShowActionMenu(menu),
+}));
+
+function pickMenuItem(label: string) {
+  const menu = mockShowActionMenu.mock.calls.at(-1)?.[0] as { items: MenuItem[] };
+  menu.items.find((item) => item.label === label)?.onSelect();
+}
+
 const profile = {
   id: 9,
   username: "carol",
@@ -102,6 +115,7 @@ function respondWith({
 }
 
 beforeEach(() => jest.clearAllMocks());
+afterEach(() => jest.restoreAllMocks());
 
 describe("FriendProfileScreen loading UX", () => {
   it("shows a labelled skeleton with back navigation while the profile loads", async () => {
@@ -158,6 +172,48 @@ describe("FriendProfileScreen head to head", () => {
     expect(await findByTestId("friend-profile-stats")).toBeTruthy();
     expect(queryByTestId("friend-profile-head-to-head")).toBeNull();
     expect(getByText("friendProfile.sessionsLabel")).toBeTruthy();
+  });
+});
+
+describe("FriendProfileScreen safety menu", () => {
+  it("reports the person through the menu", async () => {
+    respondWith();
+    const { findByLabelText, findByText, getByTestId } = render(<FriendProfileScreen />);
+
+    fireEvent.press(await findByLabelText("safety.menu.profileA11y"));
+    act(() => pickMenuItem("safety.menu.report"));
+    fireEvent.press(getByTestId("report-reason-spam"));
+    fireEvent.press(getByTestId("report-submit"));
+
+    await waitFor(() => {
+      expect(mockApiJson).toHaveBeenCalledWith("/reports", {
+        token: "token-123",
+        method: "POST",
+        body: { target_type: "user", user_id: 9, reason: "spam", note: null },
+      });
+    });
+    expect(await findByText("safety.report.doneTitle")).toBeTruthy();
+  });
+
+  it("blocks after confirmation and leaves the profile", async () => {
+    jest.spyOn(Alert, "alert").mockImplementation((_title, _body, buttons) => {
+      buttons?.find((button) => button.style === "destructive")?.onPress?.();
+    });
+    respondWith();
+    const { findByLabelText } = render(<FriendProfileScreen />);
+
+    fireEvent.press(await findByLabelText("safety.menu.profileA11y"));
+    act(() => pickMenuItem("safety.menu.block"));
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    expect(mockApiJson).toHaveBeenCalledWith("/users/9/block", { token: "token-123", method: "POST" });
+  });
+
+  it("offers the menu on profiles you are not friends with", async () => {
+    respondWith({ status: { status: "none", username: "carol" } });
+    const { findByLabelText } = render(<FriendProfileScreen />);
+
+    expect(await findByLabelText("safety.menu.profileA11y")).toBeTruthy();
   });
 });
 
