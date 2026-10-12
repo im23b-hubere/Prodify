@@ -45,6 +45,7 @@ REQUIRED_TABLES = {
     "notification_read_states",
     "session_skill_focuses",
     "user_identities",
+    "user_blocks",
 }
 REQUIRED_COLUMNS = {
     "streaks": {"frozen_day_keys", "freezes_remaining", "billing_month"},

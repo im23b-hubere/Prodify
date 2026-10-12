@@ -11,6 +11,7 @@ from app.schemas import (
 )
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp
+from app.services.user_block_service import is_blocked_between
 
 
 class FriendshipOperationError(ValueError):
@@ -52,7 +53,7 @@ class FriendshipAccessDeniedError(FriendshipOperationError):
 def send_friend_request(db: Session, user_id: int, username: str) -> Friendship:
     normalized_username = username.strip().lower()
     target = db.scalar(select(User).where(func.lower(User.username) == normalized_username))
-    if target is None:
+    if target is None or is_blocked_between(db, user_id, target.id):
         raise FriendUserNotFoundError
     if target.id == user_id:
         raise SelfFriendRequestError
