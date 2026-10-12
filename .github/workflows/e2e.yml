@@ -69,7 +69,8 @@ env:
 
 jobs:
   build-ios:
-    runs-on: macos-15
+    # Expo SDK 57 native modules need Swift tools 6.2 (Xcode 26).
+    runs-on: macos-26
     timeout-minutes: 45
     defaults:
       run:
