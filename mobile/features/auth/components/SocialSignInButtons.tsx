@@ -7,8 +7,16 @@ import Svg, { Path } from "react-native-svg";
 
 import { pressFeedbackStyle } from "../../../components/ui/pressFeedback";
 import { fontFamily } from "../../../constants/fonts";
-import { colors, motion, spacing, typography, ui } from "../../../constants/theme";
+import { colors, motion, radii, spacing, typography } from "../../../constants/theme";
 import type { SocialSignInController } from "../hooks/useSocialSignIn";
+
+/** Secondary to the email CTA (56 pt), but above Apple's 44 pt minimum touch target. */
+const SOCIAL_BUTTON_HEIGHT = 44;
+const SOCIAL_BUTTON_RADIUS = radii.sm;
+const SOCIAL_BUTTON_BORDER_WIDTH = 1;
+/** Apple's black style and Google's dark theme share a black fill; the outline lifts it off the near-black screen. */
+const SOCIAL_BUTTON_FILL = "#000000";
+const SOCIAL_BUTTON_BORDER = "#2a2a2a";
 
 type SocialSignInButtonsProps = {
   controller: SocialSignInController;
@@ -39,14 +47,14 @@ export function SocialSignInButtons({ controller, disabled = false }: SocialSign
           <AppleAuthentication.AppleAuthenticationButton
             testID="apple-sign-in-button"
             buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-            cornerRadius={ui.cardRadius}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+            cornerRadius={SOCIAL_BUTTON_RADIUS - SOCIAL_BUTTON_BORDER_WIDTH}
             style={styles.appleButton}
             onPress={controller.continueWithApple}
           />
           {controller.pendingProvider === "apple" ? (
             <View style={styles.appleSpinner} pointerEvents="none">
-              <ActivityIndicator color={colors.background} />
+              <ActivityIndicator color={colors.textPrimary} />
             </View>
           ) : null}
         </View>
@@ -70,7 +78,7 @@ export function SocialSignInButtons({ controller, disabled = false }: SocialSign
           ]}
         >
           {controller.pendingProvider === "google" ? (
-            <ActivityIndicator color={colors.background} />
+            <ActivityIndicator color={colors.textPrimary} />
           ) : (
             <>
               <GoogleLogo />
@@ -97,7 +105,7 @@ export function SocialSignInButtons({ controller, disabled = false }: SocialSign
 /** Official multi-color "G" mark (Google Sign-In branding guidelines). */
 function GoogleLogo() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 48 48" accessibilityElementsHidden importantForAccessibility="no">
+    <Svg width={18} height={18} viewBox="0 0 48 48" accessibilityElementsHidden importantForAccessibility="no">
       <Path
         fill="#EA4335"
         d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
@@ -119,39 +127,45 @@ function GoogleLogo() {
 }
 
 const styles = StyleSheet.create({
-  root: { marginTop: spacing.lg, gap: spacing.sm + 4 },
-  divider: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.xs },
-  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.textSecondary, opacity: 0.4 },
+  root: { marginTop: spacing.lg, gap: spacing.sm + 2 },
+  divider: { flexDirection: "row", alignItems: "center", gap: spacing.sm + 4, marginBottom: spacing.xs },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.textSecondary, opacity: 0.3 },
   dividerLabel: {
     color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
+    fontFamily: fontFamily.body,
     ...typography.meta,
   },
-  appleWrap: { height: ui.buttonHeight },
-  appleButton: { width: "100%", height: ui.buttonHeight },
+  appleWrap: {
+    height: SOCIAL_BUTTON_HEIGHT,
+    borderRadius: SOCIAL_BUTTON_RADIUS,
+    borderCurve: "continuous",
+    borderWidth: SOCIAL_BUTTON_BORDER_WIDTH,
+    borderColor: SOCIAL_BUTTON_BORDER,
+    backgroundColor: SOCIAL_BUTTON_FILL,
+    overflow: "hidden",
+  },
+  appleButton: { width: "100%", height: "100%" },
   appleSpinner: {
     ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: ui.cardRadius,
-    borderCurve: "continuous",
-    backgroundColor: colors.textPrimary,
+    backgroundColor: SOCIAL_BUTTON_FILL,
   },
   googleButton: {
-    height: ui.buttonHeight,
-    borderRadius: ui.cardRadius,
+    height: SOCIAL_BUTTON_HEIGHT,
+    borderRadius: SOCIAL_BUTTON_RADIUS,
     borderCurve: "continuous",
-    backgroundColor: colors.textPrimary,
+    borderWidth: SOCIAL_BUTTON_BORDER_WIDTH,
+    borderColor: SOCIAL_BUTTON_BORDER,
+    backgroundColor: SOCIAL_BUTTON_FILL,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.sm + 4,
-    paddingHorizontal: spacing.lg,
+    gap: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
   },
   googleLabel: {
-    color: colors.background,
+    color: colors.textPrimary,
     fontFamily: fontFamily.bodyBold,
     ...typography.bodyStrong,
   },
