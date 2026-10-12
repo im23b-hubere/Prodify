@@ -46,6 +46,12 @@ def _register_push_token(user_id: int) -> None:
         db.commit()
 
 
+def _run_job() -> dict:
+    # An unclosed session stays idle in transaction on Postgres and blocks the next test's drop_all.
+    with SessionLocal() as db:
+        return run_session_presence_job(db, settings)
+
+
 def test_job_nudges_after_three_hours_and_leaves_the_session_running(client, monkeypatch):
     headers = auth_headers(client, "presence-nudge@example.com", "presence-nudge")
     user_id = _user_id(client, headers)
@@ -58,7 +64,7 @@ def test_job_nudges_after_three_hours_and_leaves_the_session_running(client, mon
         lambda settings, db, uid, title, body, data=None: pushes.append((title, body)) or (1, 1, None),
     )
 
-    result = run_session_presence_job(SessionLocal(), settings)
+    result = _run_job()
 
     assert result["nudged"] == 1
     assert result["stopped"] == 0
@@ -86,7 +92,7 @@ def test_job_does_not_repeat_the_nudge(client, monkeypatch):
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not push")),
     )
 
-    result = run_session_presence_job(SessionLocal(), settings)
+    result = _run_job()
 
     assert result["nudged"] == 0
     assert result["stopped"] == 0
@@ -104,7 +110,7 @@ def test_job_stops_after_eight_hours_even_when_late(client, monkeypatch):
         lambda settings, db, uid, title, body, data=None: pushes.append((title, body)) or (1, 1, None),
     )
 
-    result = run_session_presence_job(SessionLocal(), settings)
+    result = _run_job()
 
     assert result["stopped"] == 1
     assert pushes == [("Session ended", "Your session was stopped after 8 hours.")]
@@ -126,7 +132,7 @@ def test_job_skips_paused_sessions(client, monkeypatch):
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not push")),
     )
 
-    result = run_session_presence_job(SessionLocal(), settings)
+    result = _run_job()
 
     assert result["nudged"] == 0
     assert result["stopped"] == 0
@@ -162,7 +168,7 @@ def test_job_still_stops_the_next_session_when_one_auto_stop_fails(client, monke
         lambda *args, **kwargs: (0, 0, None),
     )
 
-    result = run_session_presence_job(SessionLocal(), settings)
+    result = _run_job()
 
     assert result["stopped"] == 1
     with SessionLocal() as db:
