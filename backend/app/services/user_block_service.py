@@ -65,13 +65,15 @@ def list_blocked_users(db: Session, blocker_id: int) -> list[BlockedUserPublic]:
 
 
 def hidden_user_ids(db: Session, user_id: int) -> set[int]:
-    """Users hidden from `user_id` in either direction: blocked by them, or blocking them."""
+    """Users hidden from `user_id`: blocked by them, blocking them, or suspended by a moderator."""
     rows = db.execute(
         select(UserBlock.blocker_id, UserBlock.blocked_id).where(
             or_(UserBlock.blocker_id == user_id, UserBlock.blocked_id == user_id)
         )
     ).all()
-    return {blocked_id if blocker_id == user_id else blocker_id for blocker_id, blocked_id in rows}
+    blocked = {blocked_id if blocker_id == user_id else blocker_id for blocker_id, blocked_id in rows}
+    suspended = set(db.scalars(select(User.id).where(User.suspended_at.is_not(None), User.id != user_id)).all())
+    return blocked | suspended
 
 
 def is_blocked_between(db: Session, first_user_id: int, second_user_id: int) -> bool:

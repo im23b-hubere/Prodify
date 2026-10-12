@@ -33,6 +33,7 @@ def test_slurs_hidden_inside_usernames_are_objectionable(username):
         "Fagott sample in the intro",
         "Shiitake beats",
         "Schwanensee remix",
+        "Kikeriki im Hintergrund",
         "",
     ],
 )

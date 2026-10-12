@@ -282,6 +282,34 @@ def test_lifting_a_suspension_allows_signing_in_again(client, moderator):
     assert login.status_code == 200
 
 
+def test_suspended_users_comments_disappear_until_the_suspension_is_lifted(client, thread, moderator):
+    guest_id = _user_id(client, thread["guest"])
+
+    client.post(f"/moderation/users/{guest_id}/suspend", headers=moderator)
+    hidden = _comment_bodies(client, thread["host"], thread["session_id"])
+    client.delete(f"/moderation/users/{guest_id}/suspend", headers=moderator)
+
+    assert hidden == []
+    assert _comment_bodies(client, thread["host"], thread["session_id"]) == ["from guest"]
+
+
+def test_suspended_users_cannot_be_found_for_friend_requests(client, moderator):
+    alice = auth_headers(client, "mod-find-a@example.com", "mod-find-alice")
+    bob_id = _user_id(client, auth_headers(client, "mod-find-b@example.com", "mod-find-bob"))
+    client.post(f"/moderation/users/{bob_id}/suspend", headers=moderator)
+
+    response = client.post("/friends/request", headers=alice, json={"username": "mod-find-bob"})
+
+    assert response.status_code == 404
+
+
+def test_moderators_cannot_suspend_themselves(client, moderator):
+    response = client.post(f"/moderation/users/{_user_id(client, moderator)}/suspend", headers=moderator)
+
+    assert response.status_code == 400
+    assert client.get("/auth/me", headers=moderator).status_code == 200
+
+
 def test_suspended_social_account_cannot_sign_in(client, moderator, apple_identity):  # noqa: F811
     first = client.post("/auth/apple", json={"identity_token": FAKE_TOKEN})
     user_id = client.get("/auth/me", headers={"Authorization": f"Bearer {first.json()['access_token']}"}).json()["id"]

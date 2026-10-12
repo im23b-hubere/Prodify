@@ -15,6 +15,10 @@ class ModerationTargetNotFoundError(ValueError):
     pass
 
 
+class SelfSuspensionError(ValueError):
+    pass
+
+
 def list_reports(db: Session, status: ReportStatus) -> list[ContentReportPublic]:
     reports = db.scalars(
         select(ContentReport)
@@ -49,8 +53,10 @@ def remove_profile_picture(db: Session, user_id: int) -> None:
     db.commit()
 
 
-def suspend_user(db: Session, user_id: int) -> None:
+def suspend_user(db: Session, user_id: int, moderator_id: int) -> None:
     """Signs the user out everywhere; sign-in stays refused until the suspension is lifted."""
+    if user_id == moderator_id:
+        raise SelfSuspensionError
     user = _require(db, User, user_id)
     if user.suspended_at is None:
         user.suspended_at = utcnow()
