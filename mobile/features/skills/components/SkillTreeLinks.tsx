@@ -32,8 +32,8 @@ import {
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 /** Parts of the intro progress in which each ring of edges traces itself in. */
-const BRANCH_EDGE_WINDOW = [0, 0.5];
-const FOCUS_EDGE_WINDOW = [0.35, 1];
+const BRANCH_EDGE_WINDOW = [0, 0.5] as const;
+const FOCUS_EDGE_WINDOW = [0.35, 1] as const;
 const DIMMED_OPACITY = 0.3;
 const HIGHLIGHTED_LOCKED_EDGE = "#5a5a5a";
 

@@ -18,7 +18,7 @@ export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   viewport: { flex: 1, overflow: "hidden" },
   canvas: { position: "absolute" },
-  nodesOverlay: { ...StyleSheet.absoluteFillObject, pointerEvents: "none" },
+  nodesOverlay: { ...StyleSheet.absoluteFill, pointerEvents: "none" },
   layerFill: { position: "absolute", left: 0, top: 0 },
 
   header: {
