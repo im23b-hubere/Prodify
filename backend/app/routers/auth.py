@@ -57,6 +57,13 @@ _REGISTRATION_ERRORS: dict[str, tuple[int, dict[str, str]]] = {
             "message": "This username is already taken.",
         },
     ),
+    "username_objectionable": (
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
+        {
+            "code": "USERNAME_REJECTED",
+            "message": "This username isn't allowed. Please choose another one.",
+        },
+    ),
 }
 
 

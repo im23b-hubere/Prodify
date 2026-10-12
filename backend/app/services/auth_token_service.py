@@ -14,7 +14,13 @@ class RefreshTokenRejected(Exception):
     """Raised when a refresh token cannot be safely rotated."""
 
 
+class AccountSuspendedError(Exception):
+    """Raised instead of issuing tokens to an account a moderator has suspended."""
+
+
 def issue_tokens_for_user(db: Session, user: User, *, replace_all: bool) -> TokenPair:
+    if user.suspended_at is not None:
+        raise AccountSuspendedError
     if replace_all:
         db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
 

@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: float = 20.0
     # Comma-separated user IDs allowed to read internal KPI endpoints.
     kpi_admin_user_ids: list[int] = []
+    # Comma-separated user IDs who receive report pushes and may use the /moderation endpoints.
+    moderator_user_ids: list[int] = []
     # Comma-separated trusted reverse-proxy IPs/CIDRs for x-forwarded-for.
     trusted_proxy_ips: list[str] = []
     # Push async dispatch backend:
@@ -119,9 +121,9 @@ class Settings(BaseSettings):
             return [str(item).strip() for item in value if str(item).strip()]
         return value
 
-    @field_validator("kpi_admin_user_ids", mode="before")
+    @field_validator("kpi_admin_user_ids", "moderator_user_ids", mode="before")
     @classmethod
-    def parse_kpi_admin_user_ids(cls, value: object) -> object:
+    def parse_user_id_list(cls, value: object) -> object:
         if value is None:
             return []
         if isinstance(value, str):

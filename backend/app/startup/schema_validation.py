@@ -46,6 +46,7 @@ REQUIRED_TABLES = {
     "session_skill_focuses",
     "user_identities",
     "user_blocks",
+    "content_reports",
 }
 REQUIRED_COLUMNS = {
     "streaks": {"frozen_day_keys", "freezes_remaining", "billing_month"},
@@ -70,6 +71,7 @@ REQUIRED_COLUMNS = {
         "bonus_challenge_slots",
         "access_token_version",
         "timezone",
+        "suspended_at",
     },
     "session_skill_focuses": {"is_primary", "assigned_seconds"},
 }

@@ -46,6 +46,8 @@ class User(Base):
     bonus_challenge_slots: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # Incremented on logout (and similar events) to invalidate outstanding access JWTs (`tv` claim).
     access_token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Set by a moderator; a suspended account cannot sign in until it is cleared again.
+    suspended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     sessions: Mapped[list["ProductionSession"]] = relationship(
@@ -329,4 +331,5 @@ from app.models_social import (
     SocialReaction,
     StreakRescue,
     UserBlock,
+    ContentReport,
 )

@@ -167,6 +167,38 @@ class UserBlock(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class ContentReport(Base):
+    """A user flagging another user or a comment for moderators.
+
+    The reported content is copied into `content_snapshot`, so the evidence survives edits and deletion.
+    """
+
+    __tablename__ = "content_reports"
+    __table_args__ = (Index("idx_content_reports_status_created", "status", "created_at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    reporter_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True
+    )
+    reported_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    # "user" | "comment"
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    comment_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    content_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    # "spam" | "harassment" | "hate" | "sexual" | "other"
+    reason: Mapped[str] = mapped_column(String(32), nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # "open" | "resolved"
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="open")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
 class FriendNudge(Base):
     """A one-tap "time for a session" push from one friend to another, at most once per UTC day."""
 

@@ -46,6 +46,14 @@ def get_current_user(
     return user
 
 
+def require_moderator(
+    current: Annotated[User, Depends(get_current_user)],
+) -> User:
+    if current.id not in set(settings.moderator_user_ids):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Moderators only.")
+    return current
+
+
 def require_kpi_admin(
     current: Annotated[User, Depends(get_current_user)],
 ) -> User:

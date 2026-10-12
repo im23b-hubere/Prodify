@@ -12,7 +12,8 @@ from sqlalchemy import text
 from app.config import is_sqlite_database_url, settings
 from app.database import engine
 from app.dependencies_subscription import require_subscriber
-from app.errors import APIError, api_error_handler, http_exception_handler
+from app.errors import APIError, account_suspended_handler, api_error_handler, http_exception_handler
+from app.services.auth_token_service import AccountSuspendedError
 from app.middleware.security import SecurityHeadersMiddleware
 from app.observability import init_observability
 from app.rate_limit import limiter
@@ -29,10 +30,12 @@ from app.routers import (
     goals as goals_router,
     jobs as jobs_router,
     legal as legal_router,
+    moderation as moderation_router,
     motivation,
     outcomes as outcomes_router,
     notifications as notifications_router,
     progression as progression_router,
+    reports as reports_router,
     social as social_router,
     sessions,
     skills as skills_router,
@@ -83,6 +86,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_exception_handler(APIError, api_error_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(AccountSuspendedError, account_suspended_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -106,6 +110,9 @@ app.include_router(feature_flags_router.router)
 app.include_router(billing_router.router)
 app.include_router(legal_router.router)
 app.include_router(jobs_router.router)
+# Reporting and moderation must keep working for accounts without a subscription.
+app.include_router(reports_router.router)
+app.include_router(moderation_router.router)
 # DELETE /users/me is ungated so an unpaid account can still leave. Other /users
 # routes pick up the subscriber dependency in the users package.
 app.include_router(users_router.router)

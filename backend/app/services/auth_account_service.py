@@ -4,12 +4,13 @@ from sqlalchemy.orm import Session
 
 from app.models import Streak, User
 from app.security import hash_password, verify_password
+from app.services.content_filter import is_objectionable
 
 
 class RegistrationRejectedError(ValueError):
     """Raised when a new account cannot be created.
 
-    reason is one of: email_taken, username_taken, conflict.
+    reason is one of: email_taken, username_taken, username_objectionable, conflict.
     """
 
     def __init__(self, reason: str = "conflict") -> None:
@@ -29,6 +30,8 @@ def register_account(
 ) -> User:
     normalized_email = email.strip().lower()
     normalized_username = username.strip().lower()
+    if is_objectionable(normalized_username):
+        raise RegistrationRejectedError("username_objectionable")
     email_taken = _email_exists(db, normalized_email)
     username_taken = _username_exists(db, normalized_username)
     if email_taken:

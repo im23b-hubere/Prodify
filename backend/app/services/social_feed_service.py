@@ -9,6 +9,7 @@ from app.contracts.social import (
     SocialReactionUserPublic,
 )
 from app.models import ProductionSession, SocialComment, SocialReaction, User
+from app.services.content_filter import is_objectionable
 from app.services.friend_graph import friend_user_ids
 from app.services.user_block_service import hidden_user_ids
 
@@ -21,6 +22,14 @@ class FeedAccessDeniedError(ValueError):
     pass
 
 
+class FeedCommentNotFoundError(ValueError):
+    pass
+
+
+class ObjectionableCommentError(ValueError):
+    pass
+
+
 def add_session_comment(
     db: Session,
     session_id: int,
@@ -28,6 +37,8 @@ def add_session_comment(
     body: str,
 ) -> SocialCommentPublic:
     _require_visible_session(db, session_id, author.id)
+    if is_objectionable(body):
+        raise ObjectionableCommentError
     comment = SocialComment(
         target_type="session",
         target_id=session_id,
@@ -63,6 +74,31 @@ def list_session_comments(
         ).all()
     }
     return [_comment_response(comment, authors.get(comment.author_id)) for comment in comments]
+
+
+def visible_session_comment(db: Session, comment_id: int, viewer_id: int) -> SocialComment:
+    comment = db.get(SocialComment, comment_id)
+    if comment is None or comment.target_type != "session":
+        raise FeedCommentNotFoundError
+    try:
+        _require_visible_session(db, comment.target_id, viewer_id)
+    except (FeedSessionNotFoundError, FeedAccessDeniedError) as error:
+        raise FeedCommentNotFoundError from error
+    if comment.author_id in hidden_user_ids(db, viewer_id):
+        raise FeedCommentNotFoundError
+    return comment
+
+
+def delete_session_comment(db: Session, session_id: int, comment_id: int, actor_id: int) -> None:
+    """The comment's author and the owner of the session may remove it."""
+    session = _require_visible_session(db, session_id, actor_id)
+    comment = db.get(SocialComment, comment_id)
+    if comment is None or comment.target_type != "session" or comment.target_id != session_id:
+        raise FeedCommentNotFoundError
+    if actor_id not in (comment.author_id, session.user_id):
+        raise FeedAccessDeniedError
+    db.delete(comment)
+    db.commit()
 
 
 def toggle_session_reaction(
@@ -138,13 +174,14 @@ def list_session_reaction_users(
     ]
 
 
-def _require_visible_session(db: Session, session_id: int, viewer_id: int) -> None:
+def _require_visible_session(db: Session, session_id: int, viewer_id: int) -> ProductionSession:
     session = db.get(ProductionSession, session_id)
     if session is None or session.deleted_at is not None:
         raise FeedSessionNotFoundError
     visible_user_ids = {viewer_id, *friend_user_ids(db, viewer_id)}
     if session.user_id not in visible_user_ids:
         raise FeedAccessDeniedError
+    return session
 
 
 def _comment_response(comment: SocialComment, author: User | None) -> SocialCommentPublic:
