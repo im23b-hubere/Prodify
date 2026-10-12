@@ -1,2 +1,4 @@
 [tool.pytest.ini_options]
 pythonpath = ["."]
+# A test blocked on a database lock fails with a traceback instead of stalling CI until its job timeout.
+timeout = 120
