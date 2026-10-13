@@ -132,6 +132,13 @@ class SocialReactionPublic(BaseModel):
     reacted_by_me: bool = False
 
 
+class BlockedUserPublic(BaseModel):
+    user_id: int
+    username: str
+    profile_picture_url: str | None = None
+    blocked_at: datetime
+
+
 class SocialReactionUserPublic(BaseModel):
     user_id: int
     username: str

@@ -10,6 +10,7 @@ from app.contracts.social import (
 )
 from app.models import ProductionSession, SocialComment, SocialReaction, User
 from app.services.friend_graph import friend_user_ids
+from app.services.user_block_service import hidden_user_ids
 
 
 class FeedSessionNotFoundError(ValueError):
@@ -47,7 +48,11 @@ def list_session_comments(
     _require_visible_session(db, session_id, viewer_id)
     comments = db.scalars(
         select(SocialComment)
-        .where(SocialComment.target_type == "session", SocialComment.target_id == session_id)
+        .where(
+            SocialComment.target_type == "session",
+            SocialComment.target_id == session_id,
+            SocialComment.author_id.not_in(hidden_user_ids(db, viewer_id)),
+        )
         .order_by(SocialComment.created_at.asc())
         .limit(80)
     ).all()
@@ -108,7 +113,11 @@ def list_session_reaction_users(
     _require_visible_session(db, session_id, viewer_id)
     reactions = db.scalars(
         select(SocialReaction)
-        .where(SocialReaction.target_type == "session", SocialReaction.target_id == session_id)
+        .where(
+            SocialReaction.target_type == "session",
+            SocialReaction.target_id == session_id,
+            SocialReaction.user_id.not_in(hidden_user_ids(db, viewer_id)),
+        )
         .order_by(SocialReaction.created_at.desc())
         .limit(60)
     ).all()
@@ -160,6 +169,7 @@ def _reaction_summary(
         select(SocialReaction).where(
             SocialReaction.target_type == "session",
             SocialReaction.target_id == session_id,
+            SocialReaction.user_id.not_in(hidden_user_ids(db, viewer_id)),
         )
     ).all()
     counts_by_emoji: dict[str, int] = defaultdict(int)

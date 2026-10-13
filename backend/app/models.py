@@ -328,4 +328,5 @@ from app.models_social import (
     SocialCommitment,
     SocialReaction,
     StreakRescue,
+    UserBlock,
 )

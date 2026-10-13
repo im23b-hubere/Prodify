@@ -23,6 +23,7 @@ from app.contracts.notifications import NotificationInboxItemPublic
 from app.services.friend_graph import friend_user_ids
 from app.services.social_challenge_messages import challenge_messages
 from app.services.social_challenge_service import invite_expires_at, invite_is_expired, load_challenge_meta
+from app.services.user_block_service import hidden_user_ids
 
 CHALLENGE_OUTCOME_NEWS_WINDOW = timedelta(days=3)
 
@@ -240,6 +241,7 @@ def _comment_items(db: Session, user_id: int) -> Iterable[NotificationInboxItemP
             ProductionSession.user_id == user_id,
             ProductionSession.deleted_at.is_(None),
             SocialComment.author_id != user_id,
+            SocialComment.author_id.not_in(hidden_user_ids(db, user_id)),
         )
         .order_by(desc(SocialComment.created_at))
         .limit(25)
