@@ -9,28 +9,25 @@ type Options = {
   today?: Date;
 };
 
+type StoredCelebration = { userId: number; weekStart: string | null };
+
 export function useFullWeekCelebrate(
   userId: number | null | undefined,
   heatmapDays: HeatmapDay[],
   options: Options = {},
 ) {
   const today = options.today;
-  const [celebratedWeekStart, setCelebratedWeekStart] = useState<string | null>(null);
-  const [storageReady, setStorageReady] = useState(false);
+  const [stored, setStored] = useState<StoredCelebration | null>(null);
   const firedForWeek = useRef<string | null>(null);
+  const storageReady = userId != null && stored?.userId === userId;
+  const celebratedWeekStart = storageReady ? stored.weekStart : null;
 
   useEffect(() => {
-    if (userId == null) {
-      setStorageReady(false);
-      setCelebratedWeekStart(null);
-      return;
-    }
+    if (userId == null) return;
     let cancelled = false;
-    setStorageReady(false);
     loadCelebratedFullWeek(userId).then((weekStart) => {
       if (cancelled) return;
-      setCelebratedWeekStart(weekStart);
-      setStorageReady(true);
+      setStored({ userId, weekStart });
     });
     return () => {
       cancelled = true;
@@ -47,7 +44,6 @@ export function useFullWeekCelebrate(
     );
     if (!weekStart || firedForWeek.current === weekStart) return;
     firedForWeek.current = weekStart;
-    setCelebratedWeekStart(weekStart);
     void saveCelebratedFullWeek(userId, weekStart);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   }, [celebratedWeekStart, heatmapDays, storageReady, today, userId]);

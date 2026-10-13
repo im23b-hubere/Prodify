@@ -3,6 +3,10 @@ import { spawnSync } from "node:child_process";
 const allowedBuildOnlyAdvisories = new Set([
   "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr",
   "https://github.com/advisories/GHSA-5p2g-fcmc-qvqq",
+  // braces <= 3.0.3 (no patch yet): only parses our own glob patterns in Metro/Expo CLI at build time.
+  "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+  // node-forge <= 1.4.0 (no patch yet): Expo CLI code-signing tooling, never bundled into the app.
+  "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
 ]);
 
 const npmCli = process.env.npm_execpath;
@@ -72,6 +76,6 @@ if (blocked.length > 0) {
 
 console.log("No unaccepted high or critical production dependency vulnerabilities found.");
 if (accepted.size > 0) {
-  console.log("Accepted build-only Metro image parser advisories:");
+  console.log("Accepted build-only advisories:");
   for (const url of accepted) console.log(`- ${url}`);
 }

@@ -40,7 +40,8 @@ describe("useFullWeekCelebrate", () => {
 
   it("fires one success haptic the first time this week is full", async () => {
     const { rerender } = renderHook(
-      ({ days }) => useFullWeekCelebrate(4, days, { today: wednesday }),
+      ({ days }: { days: typeof fullDays }) =>
+        useFullWeekCelebrate(4, days, { today: wednesday }),
       { initialProps: { days: fullDays.slice(0, 6) } },
     );
     await flushEffects();
