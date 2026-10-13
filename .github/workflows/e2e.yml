@@ -69,7 +69,8 @@ env:
 
 jobs:
   build-ios:
-    runs-on: macos-15
+    # Expo SDK 57 native modules need Swift tools 6.2 (Xcode 26).
+    runs-on: macos-26
     timeout-minutes: 45
     defaults:
       run:
@@ -148,9 +149,8 @@ jobs:
         id: pods-cache
         with:
           path: mobile/ios/Pods
-          key: e2e-pods-${{ steps.native-hash.outputs.hash }}
-          restore-keys: |
-            e2e-pods-
+          # Exact match only: a Pods folder from older native deps makes `pod install` fail.
+          key: e2e-pods-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/app.config.js') }}
 
       - name: Install CocoaPods
         if: steps.pods-cache.outputs.cache-hit != 'true'
@@ -176,7 +176,10 @@ jobs:
             -scheme Prodify \
             -configuration Debug \
             -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
             -derivedDataPath build \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO

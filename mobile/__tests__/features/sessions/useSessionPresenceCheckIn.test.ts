@@ -66,13 +66,15 @@ function renderPresence(
   overrides: Partial<Parameters<typeof useSessionPresenceCheckIn>[0]> = {},
 ) {
   const endSession = jest.fn();
-  const initialProps = {
+  const initialProps: Parameters<typeof useSessionPresenceCheckIn>[0] = {
     session: runningSession as SessionDto | null,
     sessionResolved: true,
     endSession,
     ...overrides,
   };
-  const view = renderHook((props) => useSessionPresenceCheckIn(props), { initialProps });
+  const view = renderHook((props: typeof initialProps) => useSessionPresenceCheckIn(props), {
+    initialProps,
+  });
   return { ...view, endSession };
 }
 

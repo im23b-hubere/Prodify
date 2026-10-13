@@ -27,6 +27,7 @@ import {
   type SkillTreeLabelBox,
 } from "../skillTreeLayout";
 import {
+  dimTransition,
   LOCKED_ICON_COLOR,
   LOCKED_NODE_BORDER,
   LOCKED_NODE_FILL,
@@ -215,7 +216,7 @@ export const SkillTreeNode = memo(function SkillTreeNode({
     >
       <Animated.View entering={nodeEntering(enterDelay)}>
         <Animated.View
-          style={[styles.nodeBody, styles.dimmable, { opacity: isDimmed ? DIMMED_OPACITY : 1 }]}
+          style={[styles.nodeBody, dimTransition, { opacity: isDimmed ? DIMMED_OPACITY : 1 }]}
         >
           {isNew ? <UnlockPulse size={size} accent={accent} /> : null}
           <Animated.View
