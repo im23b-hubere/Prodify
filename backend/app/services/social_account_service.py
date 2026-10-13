@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Streak, User, UserIdentity
+from app.services.content_filter import is_objectionable
 from app.services.social_identity_service import VerifiedIdentity
 
 _USERNAME_MAX_BASE_LENGTH = 20
@@ -80,7 +81,7 @@ def _linked_identity(db: Session, identity: VerifiedIdentity) -> UserIdentity | 
 def _username_base(given_name: str | None, email: str) -> str:
     for candidate in (given_name, email.split("@", 1)[0]):
         slug = re.sub(r"[^a-z0-9_]+", "", (candidate or "").strip().lower())[:_USERNAME_MAX_BASE_LENGTH]
-        if len(slug) >= 2:
+        if len(slug) >= 2 and not is_objectionable(slug):
             return slug
     return _FALLBACK_USERNAME_BASE
 

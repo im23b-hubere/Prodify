@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -17,8 +17,11 @@ from app.contracts.social import (
 )
 from app.services.social_feed_service import (
     FeedAccessDeniedError,
+    FeedCommentNotFoundError,
     FeedSessionNotFoundError,
+    ObjectionableCommentError,
     add_session_comment as create_comment,
+    delete_session_comment as remove_comment,
     list_session_comments as get_comments,
     list_session_reaction_users as get_reaction_users,
     list_session_reactions as get_reactions,
@@ -37,6 +40,16 @@ def add_session_comment(
     db: Annotated[Session, Depends(get_db)],
 ):
     return _translate_feed_errors(create_comment, db, session_id, current, body.body)
+
+
+@router.delete("/{session_id}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_session_comment(
+    session_id: int,
+    comment_id: int,
+    current: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> None:
+    _translate_feed_errors(remove_comment, db, session_id, comment_id, current.id)
 
 
 @router.get("/{session_id}/comments", response_model=list[SocialCommentPublic])
@@ -87,5 +100,12 @@ def _translate_feed_errors(operation, *args):
         return operation(*args)
     except FeedSessionNotFoundError as error:
         raise HTTPException(status_code=404, detail="Session not found") from error
+    except FeedCommentNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Comment not found") from error
     except FeedAccessDeniedError as error:
         raise HTTPException(status_code=403, detail="Not allowed") from error
+    except ObjectionableCommentError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "CONTENT_REJECTED", "message": "This comment contains language that isn't allowed."},
+        ) from error

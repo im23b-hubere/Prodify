@@ -57,6 +57,12 @@ async def api_error_handler(_: Request, exc: APIError) -> JSONResponse:
     return error_response(exc.status_code, exc.message, exc.code, exc.details)
 
 
+async def account_suspended_handler(_: Request, __: Exception) -> JSONResponse:
+    return error_response(
+        403, "This account has been suspended for violating the community guidelines.", "ACCOUNT_SUSPENDED"
+    )
+
+
 async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
     message, code, details = _normalize_http_exception_detail(exc.detail, exc.status_code)
     return error_response(exc.status_code, message, code, details)
