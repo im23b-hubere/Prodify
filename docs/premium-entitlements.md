@@ -8,8 +8,25 @@ must match this document.
 
 | Check | Meaning |
 |-------|---------|
-| **Subscriber** | `users.is_premium` or an active RevenueCat `premium` entitlement |
+| **Subscriber** | An unexpired `users.is_premium` grant or an active RevenueCat `app_access` entitlement |
 | **Gated API** | Requires a subscriber (`require_subscriber`) |
+
+The entitlement identifier must be identical in RevenueCat, the backend
+(`PREMIUM_ENTITLEMENT_NAME`) and the app (`EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID`).
+
+## Source of truth
+
+RevenueCat owns purchase state. The backend never interprets webhook event types: every
+webhook and every `POST /billing/sync` re-reads the customer via `GET /v1/subscribers/{id}`
+and stores the result. A billing grace period counts as active; a cancelled subscription
+stays active until its paid period ends.
+
+Access granted outside RevenueCat (manual review accounts, screenshot seeds, legacy
+`users.is_premium` flags without a RevenueCat row) is never revoked or replaced by
+RevenueCat while it is still valid.
+
+Webhooks authenticate with the `Authorization` header configured in RevenueCat
+(`REVENUECAT_WEBHOOK_AUTH`) and/or HMAC signing (`REVENUECAT_WEBHOOK_SIGNING_SECRET`).
 
 A signed-in user without an entitlement can authenticate, restore or buy a plan, read
 legal documents, and delete their account. Every other authenticated product route returns

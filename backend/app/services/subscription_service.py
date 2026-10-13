@@ -1,6 +1,13 @@
+"""Subscription state: RevenueCat is the source of truth for purchases.
+
+Access granted outside RevenueCat (manual review accounts, screenshot seeds, legacy
+`users.is_premium` flags) is never revoked or replaced by RevenueCat while it is still valid.
+"""
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote
 
 import requests
 from sqlalchemy import select
@@ -9,7 +16,23 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.contracts.billing import BillingSyncBody, EntitlementPublic
 from app.models import User, UserSubscription, utcnow
+from app.services.entitlements import EntitlementService
 from app.services.kpi_tracker import track_event
+
+REVENUECAT_PROVIDER = "revenuecat"
+
+
+class RevenueCatNotConfiguredError(Exception):
+    """Raised when RevenueCat must be asked for the subscription state but no secret is set."""
+
+
+@dataclass(frozen=True)
+class BillingVerificationResult:
+    app_user_id: str
+    entitlement: str
+    trial_active: bool
+    expires_at: datetime | None
+    verification_source: str
 
 
 def is_revenuecat_secret_configured(secret: str | None) -> bool:
@@ -26,211 +49,27 @@ def is_revenuecat_secret_configured(secret: str | None) -> bool:
     return True
 
 
-def upsert_subscription(db: Session, user_id: int, body: BillingSyncBody) -> UserSubscription:
-    row = db.scalar(select(UserSubscription).where(UserSubscription.user_id == user_id))
-    if row is None:
-        row = UserSubscription(user_id=user_id)
-        db.add(row)
-    row.provider = "revenuecat"
-    row.entitlement = body.entitlement
-    row.trial_active = 1 if body.trial_active else 0
-    row.expires_at = body.expires_at
-    row.rc_app_user_id = body.app_user_id
-    row.updated_at = utcnow()
-    return row
+# --- Effective access ------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class BillingVerificationResult:
-    app_user_id: str
-    entitlement: str
-    trial_active: bool
-    expires_at: datetime | None
-    verification_source: str
-
-
-def _parse_iso_datetime(value: Any) -> datetime | None:
-    if not isinstance(value, str) or not value.strip():
-        return None
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        if parsed.tzinfo is None:
-            return parsed.replace(tzinfo=timezone.utc)
-        return parsed.astimezone(timezone.utc)
-    except ValueError:
-        return None
-
-
-def _verification_from_client_body(body: BillingSyncBody) -> BillingVerificationResult:
-    return BillingVerificationResult(
-        app_user_id=body.app_user_id,
-        entitlement=body.entitlement,
-        trial_active=body.trial_active,
-        expires_at=body.expires_at,
-        verification_source="client_asserted",
-    )
-
-
-def _verification_from_revenuecat(body: BillingSyncBody) -> BillingVerificationResult:
-    if not is_revenuecat_secret_configured(settings.revenuecat_secret_key):
-        # Never trust client-asserted entitlements on public / staging hosts.
-        if settings.environment != "development":
-            raise ValueError("RevenueCat secret is required when ENVIRONMENT is not development")
-        return _verification_from_client_body(body)
-
-    response = requests.get(
-        f"https://api.revenuecat.com/v1/subscribers/{body.app_user_id}",
-        headers={
-            "Authorization": f"Bearer {settings.revenuecat_secret_key}",
-            "Accept": "application/json",
-        },
-        timeout=8,
-    )
-    response.raise_for_status()
-    parsed_payload = response.json()
-    payload = parsed_payload if isinstance(parsed_payload, dict) else {}
-    subscriber = payload.get("subscriber", {}) if isinstance(payload, dict) else {}
-    entitlements = subscriber.get("entitlements", {}) if isinstance(subscriber, dict) else {}
-    ent_key = settings.premium_entitlement_name
-    active_ent = entitlements.get(ent_key) if isinstance(entitlements, dict) else None
-    if not isinstance(active_ent, dict):
-        return BillingVerificationResult(
-            app_user_id=body.app_user_id,
-            entitlement="free",
-            trial_active=False,
-            expires_at=None,
-            verification_source="revenuecat_api",
+def resolve_effective_entitlement(user: User, db: Session) -> EntitlementPublic:
+    """Single source of truth for billing + access checks."""
+    row = _subscription_row(db, user.id)
+    if EntitlementService.is_premium(user):
+        return EntitlementPublic(
+            provider=row.provider if row is not None else "legacy",
+            entitlement="premium",
+            expires_at=user.premium_until,
         )
-
-    expires_at = _parse_iso_datetime(active_ent.get("expires_date"))
-    now = datetime.now(timezone.utc)
-    still_active = expires_at is None or expires_at > now
-    return BillingVerificationResult(
-        app_user_id=body.app_user_id,
-        entitlement="premium" if still_active else "free",
-        trial_active=False,
-        expires_at=expires_at if still_active else None,
-        verification_source="revenuecat_api",
-    )
-
-
-def verify_billing_sync(body: BillingSyncBody) -> BillingVerificationResult:
-    return _verification_from_revenuecat(body)
-
-
-def save_verified_subscription(
-    db: Session,
-    user: User,
-    verified: BillingVerificationResult,
-) -> EntitlementPublic:
-    verified_body = BillingSyncBody(
-        app_user_id=verified.app_user_id,
-        entitlement="premium" if verified.entitlement == "premium" else "free",
-        trial_active=verified.trial_active,
-        expires_at=verified.expires_at,
-    )
-    row = upsert_subscription(db, user.id, verified_body)
-    apply_subscription_to_user(user, row)
-    track_event(
-        db,
-        "trial_started" if verified_body.trial_active else "billing_sync",
-        user.id,
-        {
-            "entitlement": verified_body.entitlement,
-            "verified_by": verified.verification_source,
-        },
-    )
-    db.commit()
-    db.refresh(row)
-    return to_entitlement_public(row)
-
-
-def sync_from_webhook_payload(db: Session, payload: dict) -> tuple[int | None, UserSubscription | None]:
-    event = _webhook_event(payload)
-    user_id_raw = event.get("app_user_id") or event.get("user_id")
-    if user_id_raw is None:
-        return None, None
-    user_id = _resolve_webhook_user_id(db, user_id_raw)
-    if user_id is None:
-        return None, None
-    body = BillingSyncBody(
-        app_user_id=str(user_id_raw),
-        entitlement=_webhook_entitlement(event),
-        trial_active=False,
-        expires_at=_webhook_expiration(event),
-    )
-    return user_id, upsert_subscription(db, user_id, body)
-
-
-def process_webhook_payload(db: Session, payload: dict) -> UserSubscription | None:
-    user_id, row = sync_from_webhook_payload(db, payload)
-    if row is None:
-        return None
-
-    if user_id is not None:
-        user = db.get(User, user_id)
-        if user is not None:
-            apply_subscription_to_user(user, row)
-    track_event(
-        db,
-        "trial_converted_paid"
-        if row.entitlement == "premium" and not bool(row.trial_active)
-        else "billing_webhook",
-        user_id,
-        {"entitlement": row.entitlement},
-    )
-    db.commit()
-    return row
-
-
-def apply_subscription_to_user(user: User, subscription: UserSubscription) -> None:
-    user.is_premium = (
-        1 if subscription.entitlement == "premium" or bool(subscription.trial_active) else 0
-    )
-    user.premium_until = subscription.expires_at
-
-
-def _webhook_event(payload: dict) -> dict:
-    nested_event = payload.get("event")
-    return nested_event if isinstance(nested_event, dict) else payload
-
-
-def _resolve_webhook_user_id(db: Session, raw_user_id: object) -> int | None:
-    try:
-        return int(str(raw_user_id))
-    except ValueError:
-        existing = db.scalar(
-            select(UserSubscription).where(UserSubscription.rc_app_user_id == str(raw_user_id))
+    if row is not None and _is_live_premium(row):
+        return EntitlementPublic(
+            provider=row.provider,
+            entitlement="premium",
+            expires_at=row.expires_at,
         )
-        return int(existing.user_id) if existing is not None else None
-
-
-def _webhook_entitlement(event: dict) -> str:
-    event_type = str(event.get("type") or "").strip().upper()
-    is_trial_period = bool(event.get("is_trial_period"))
-    if "CANCELLATION" in event_type or "EXPIRATION" in event_type:
-        return "free"
-    if not is_trial_period and (
-        "PURCHASE" in event_type or "RENEWAL" in event_type or bool(event.get("is_active"))
-    ):
-        return "premium"
-    # Unknown and trial events must never accidentally grant premium access.
-    return "free"
-
-
-def _webhook_expiration(event: dict) -> datetime | None:
-    expires = event.get("expires_at") or event.get("expiration_at_ms")
-    if isinstance(expires, str):
-        try:
-            return datetime.fromisoformat(expires.replace("Z", "+00:00"))
-        except ValueError:
-            return None
-    if isinstance(expires, (int, float)):
-        try:
-            return datetime.fromtimestamp(float(expires) / 1000.0, tz=timezone.utc)
-        except (OverflowError, OSError, ValueError):
-            return None
-    return None
+    if row is not None:
+        return EntitlementPublic(provider=row.provider, entitlement="free")
+    return EntitlementPublic()
 
 
 def to_entitlement_public(row: UserSubscription | None) -> EntitlementPublic:
@@ -242,3 +81,197 @@ def to_entitlement_public(row: UserSubscription | None) -> EntitlementPublic:
         trial_active=bool(row.trial_active),
         expires_at=row.expires_at,
     )
+
+
+# --- Verification ----------------------------------------------------------------------------
+
+
+def fetch_revenuecat_subscriber(app_user_id: str) -> dict:
+    response = requests.get(
+        f"https://api.revenuecat.com/v1/subscribers/{quote(app_user_id, safe='')}",
+        headers={
+            "Authorization": f"Bearer {settings.revenuecat_secret_key}",
+            "Accept": "application/json",
+        },
+        timeout=8,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    return payload if isinstance(payload, dict) else {}
+
+
+def verify_billing_sync(body: BillingSyncBody) -> BillingVerificationResult:
+    if is_revenuecat_secret_configured(settings.revenuecat_secret_key):
+        return verify_with_revenuecat(body.app_user_id)
+    # Never trust client-asserted entitlements on public / staging hosts.
+    if settings.environment != "development":
+        raise ValueError("RevenueCat secret is required when ENVIRONMENT is not development")
+    return BillingVerificationResult(
+        app_user_id=body.app_user_id,
+        entitlement=body.entitlement,
+        trial_active=body.trial_active,
+        expires_at=body.expires_at,
+        verification_source="client_asserted",
+    )
+
+
+def verify_with_revenuecat(app_user_id: str) -> BillingVerificationResult:
+    payload = fetch_revenuecat_subscriber(app_user_id)
+    is_active, access_until = _entitlement_access(
+        payload, settings.premium_entitlement_name, datetime.now(timezone.utc)
+    )
+    return BillingVerificationResult(
+        app_user_id=app_user_id,
+        entitlement="premium" if is_active else "free",
+        trial_active=False,
+        expires_at=access_until if is_active else None,
+        verification_source="revenuecat_api",
+    )
+
+
+def _entitlement_access(
+    payload: dict, entitlement_id: str, now: datetime
+) -> tuple[bool, datetime | None]:
+    """(is_active, access_until) for one entitlement; a billing grace period extends access."""
+    subscriber = payload.get("subscriber")
+    entitlements = subscriber.get("entitlements") if isinstance(subscriber, dict) else None
+    entitlement = entitlements.get(entitlement_id) if isinstance(entitlements, dict) else None
+    if not isinstance(entitlement, dict):
+        return False, None
+
+    expires_at = _parse_iso_datetime(entitlement.get("expires_date"))
+    if expires_at is None:
+        return True, None
+    grace_until = _parse_iso_datetime(entitlement.get("grace_period_expires_date"))
+    access_until = max(expires_at, grace_until) if grace_until is not None else expires_at
+    return access_until > now, access_until
+
+
+# --- Persistence -----------------------------------------------------------------------------
+
+
+def save_verified_subscription(
+    db: Session,
+    user: User,
+    verified: BillingVerificationResult,
+    event_name: str = "billing_sync",
+) -> EntitlementPublic:
+    row = _subscription_row(db, user.id)
+    if _has_access_granted_outside_revenuecat(user, row):
+        return resolve_effective_entitlement(user, db)
+
+    if row is None:
+        row = UserSubscription(user_id=user.id)
+        db.add(row)
+    row.provider = REVENUECAT_PROVIDER
+    row.entitlement = "premium" if verified.entitlement == "premium" else "free"
+    row.trial_active = 1 if verified.trial_active else 0
+    row.expires_at = verified.expires_at
+    row.rc_app_user_id = verified.app_user_id
+    row.updated_at = utcnow()
+    apply_subscription_to_user(user, row)
+    track_event(
+        db,
+        event_name,
+        user.id,
+        {"entitlement": row.entitlement, "verified_by": verified.verification_source},
+    )
+    db.commit()
+    db.refresh(row)
+    return to_entitlement_public(row)
+
+
+def apply_subscription_to_user(user: User, subscription: UserSubscription) -> None:
+    user.is_premium = (
+        1 if subscription.entitlement == "premium" or bool(subscription.trial_active) else 0
+    )
+    user.premium_until = subscription.expires_at
+
+
+def _has_access_granted_outside_revenuecat(user: User, row: UserSubscription | None) -> bool:
+    if row is None:
+        return EntitlementService.is_premium(user)
+    return row.provider != REVENUECAT_PROVIDER and _is_live_premium(row)
+
+
+# --- Webhooks --------------------------------------------------------------------------------
+
+_EVENT_USER_ID_FIELDS = ("app_user_id", "original_app_user_id")
+_EVENT_USER_ID_LIST_FIELDS = ("aliases", "transferred_from", "transferred_to")
+
+
+def process_revenuecat_webhook(db: Session, payload: dict) -> list[int]:
+    """Re-read every customer named in the event from RevenueCat; returns the synced user ids.
+
+    Event types are deliberately not interpreted: RevenueCat recommends fetching the subscriber
+    after any webhook, which also makes duplicate and out-of-order deliveries harmless.
+    """
+    if not is_revenuecat_secret_configured(settings.revenuecat_secret_key):
+        raise RevenueCatNotConfiguredError("RevenueCat secret is not configured")
+
+    nested_event = payload.get("event")
+    event = nested_event if isinstance(nested_event, dict) else payload
+    synced_user_ids: list[int] = []
+    for user in _users_named_in_event(db, event):
+        verified = verify_with_revenuecat(str(user.id))
+        save_verified_subscription(db, user, verified, event_name="billing_webhook")
+        synced_user_ids.append(user.id)
+    return synced_user_ids
+
+
+def _users_named_in_event(db: Session, event: dict) -> list[User]:
+    users: dict[int, User] = {}
+    for app_user_id in _app_user_ids_in_event(event):
+        user = _user_for_app_user_id(db, app_user_id)
+        if user is not None:
+            users.setdefault(user.id, user)
+    return list(users.values())
+
+
+def _app_user_ids_in_event(event: dict) -> list[str]:
+    candidates: list[Any] = [event.get(field) for field in _EVENT_USER_ID_FIELDS]
+    for field in _EVENT_USER_ID_LIST_FIELDS:
+        values = event.get(field)
+        if isinstance(values, list):
+            candidates.extend(values)
+    cleaned = (str(value).strip() for value in candidates if value is not None)
+    return list(dict.fromkeys(value for value in cleaned if value))
+
+
+def _user_for_app_user_id(db: Session, app_user_id: str) -> User | None:
+    if app_user_id.isdigit():
+        return db.get(User, int(app_user_id))
+    row = db.scalar(
+        select(UserSubscription).where(UserSubscription.rc_app_user_id == app_user_id)
+    )
+    return db.get(User, row.user_id) if row is not None else None
+
+
+# --- Helpers ---------------------------------------------------------------------------------
+
+
+def _subscription_row(db: Session, user_id: int) -> UserSubscription | None:
+    return db.scalar(select(UserSubscription).where(UserSubscription.user_id == user_id))
+
+
+def _is_live_premium(row: UserSubscription) -> bool:
+    if row.entitlement != "premium":
+        return False
+    if row.expires_at is None:
+        return True
+    expires_at = row.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at > datetime.now(timezone.utc)
+
+
+def _parse_iso_datetime(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
