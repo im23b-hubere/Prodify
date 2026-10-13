@@ -11,20 +11,25 @@ export function useBlockedUsers(token: string | null | undefined, t: TFunction) 
   const [status, setStatus] = useState<BlockedUsersStatus>("loading");
   const [unblockingIds, setUnblockingIds] = useState<number[]>([]);
 
-  const load = useCallback(async () => {
-    if (!token) return;
-    setStatus("loading");
-    try {
-      setUsers(await fetchBlockedUsers(token));
-      setStatus("ready");
-    } catch {
-      setStatus("error");
-    }
+  const fetchUsers = useCallback(() => {
+    if (!token) return Promise.resolve();
+    return fetchBlockedUsers(token).then(
+      (blockedUsers) => {
+        setUsers(blockedUsers);
+        setStatus("ready");
+      },
+      () => setStatus("error"),
+    );
   }, [token]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchUsers();
+  }, [fetchUsers]);
+
+  const reload = useCallback(() => {
+    setStatus("loading");
+    void fetchUsers();
+  }, [fetchUsers]);
 
   const unblock = useCallback(
     async (user: BlockedUserDto) => {
@@ -42,5 +47,5 @@ export function useBlockedUsers(token: string | null | undefined, t: TFunction) 
     [t, token],
   );
 
-  return { users, status, unblockingIds, reload: load, unblock };
+  return { users, status, unblockingIds, reload, unblock };
 }
