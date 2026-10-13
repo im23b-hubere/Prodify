@@ -19,7 +19,7 @@ def test_billing_entitlement_sync_and_get(client, monkeypatch):
     r = client.get("/billing/entitlement", headers=headers)
     assert r.status_code == 200
     data = r.json()
-    assert data["entitlement"] == "free"
+    assert data["entitlement"] == "inactive"
     assert data["trial_active"] is False
 
     synced = client.post(

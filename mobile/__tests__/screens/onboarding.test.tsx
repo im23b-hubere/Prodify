@@ -223,7 +223,7 @@ describe("Onboarding completion routing", () => {
     });
   });
 
-  it("finishes onboarding for a signed-in free user when goal sync is temporarily unavailable", async () => {
+  it("finishes onboarding for a signed-in unsubscribed user when goal sync is temporarily unavailable", async () => {
     mockUseAuth.mockReturnValue({
       token: "access-token",
       user: { id: 42, is_premium: false },

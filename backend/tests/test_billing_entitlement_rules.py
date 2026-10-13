@@ -25,13 +25,13 @@ def _unpaid_user(client, name: str) -> tuple[dict[str, str], int]:
 # --- Expired subscriptions ------------------------------------------------------------------
 
 
-def test_expired_subscription_reports_free_entitlement(client):
+def test_expired_subscription_reports_inactive_entitlement(client):
     headers, user_id = _unpaid_user(client, "expired-ent")
     store_subscription(user_id, provider="revenuecat", entitlement="premium", expires_at=in_days(-1))
 
     entitlement = client.get("/billing/entitlement", headers=headers).json()
 
-    assert entitlement["entitlement"] == "free"
+    assert entitlement["entitlement"] == "inactive"
 
 
 def test_expired_subscription_is_blocked_from_gated_routes(client):
@@ -68,7 +68,7 @@ def test_sync_grants_premium_when_revenuecat_reports_an_active_entitlement(clien
     headers, user_id = _unpaid_user(client, "sync-rc-premium")
     use_revenuecat(monkeypatch, {str(user_id): rc_subscriber(in_days(7))})
 
-    synced = _sync(client, headers, user_id, "free")
+    synced = _sync(client, headers, user_id, "inactive")
 
     assert synced.status_code == 200
     assert synced.json()["entitlement"] == "premium"
@@ -82,7 +82,7 @@ def test_sync_ignores_entitlements_with_a_different_identifier(client, monkeypat
 
     synced = _sync(client, headers, user_id, "premium")
 
-    assert synced.json()["entitlement"] == "free"
+    assert synced.json()["entitlement"] == "inactive"
 
 
 def test_sync_revokes_an_expired_revenuecat_subscription(client, monkeypatch):
@@ -92,8 +92,18 @@ def test_sync_revokes_an_expired_revenuecat_subscription(client, monkeypatch):
 
     synced = _sync(client, headers, user_id, "premium")
 
-    assert synced.json()["entitlement"] == "free"
+    assert synced.json()["entitlement"] == "inactive"
     assert client.get("/auth/me", headers=headers).json()["is_premium"] is False
+
+
+def test_sync_accepts_the_legacy_free_value_from_older_app_builds(client, monkeypatch):
+    headers, user_id = _unpaid_user(client, "sync-legacy-free")
+    use_revenuecat(monkeypatch, {str(user_id): rc_subscriber_without_entitlement()})
+
+    synced = _sync(client, headers, user_id, "free")
+
+    assert synced.status_code == 200
+    assert synced.json()["entitlement"] == "inactive"
 
 
 # --- Access granted outside RevenueCat ------------------------------------------------------
@@ -104,7 +114,7 @@ def test_revenuecat_cannot_revoke_a_manually_granted_account(client, monkeypatch
     user_id = user_id_of(client, headers)
     use_revenuecat(monkeypatch, {str(user_id): rc_subscriber_without_entitlement()})
 
-    synced = _sync(client, headers, user_id, "free")
+    synced = _sync(client, headers, user_id, "inactive")
 
     assert synced.status_code == 200
     assert synced.json()["entitlement"] == "premium"
@@ -116,7 +126,7 @@ def test_revenuecat_cannot_revoke_a_seeded_subscription(client, monkeypatch):
     store_subscription(user_id, provider="seed", entitlement="premium", expires_at=in_days(300))
     use_revenuecat(monkeypatch, {str(user_id): rc_subscriber_without_entitlement()})
 
-    _sync(client, headers, user_id, "free")
+    _sync(client, headers, user_id, "inactive")
 
     assert client.get("/billing/entitlement", headers=headers).json()["entitlement"] == "premium"
 

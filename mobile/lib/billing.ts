@@ -6,7 +6,7 @@ import {
   persistEntitlement,
 } from "./entitlementStorage";
 import { tryParseEntitlementDto } from "./outcomesDto";
-import type { EntitlementDto } from "../types/outcomes";
+import type { Entitlement, EntitlementDto } from "../types/outcomes";
 
 type EntitlementCacheEntry = {
   token: string;
@@ -165,13 +165,13 @@ export async function fetchEntitlement(
         parsed ??
         ({
           provider: "revenuecat",
-          entitlement: "free",
+          entitlement: "inactive",
           trial_active: false,
           expires_at: null,
         } as const);
 
       // A RevenueCat grant may arrive while this server request is still in flight. The server
-      // can briefly remain "free" until its sync finishes; do not let that older response revoke
+      // can briefly remain "inactive" until its sync finishes; do not let that older response revoke
       // the newer local premium grant and send navigation back into the paywall.
       const newerCached = getCachedEntitlement(token);
       if (
@@ -199,7 +199,7 @@ export async function syncEntitlement(
   token: string,
   body: {
     app_user_id: string;
-    entitlement: "free" | "premium";
+    entitlement: Entitlement;
     trial_active: boolean;
     expires_at?: string | null;
   },

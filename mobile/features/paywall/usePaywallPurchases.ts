@@ -113,7 +113,7 @@ function useRestoreAction(context: PurchaseActionContext) {
       if (token && appUserId) {
         await syncEntitlement(token, {
           app_user_id: appUserId,
-          entitlement: premium ? "premium" : "free",
+          entitlement: premium ? "premium" : "inactive",
           trial_active: false,
           expires_at: activeEntitlementExpiration(info),
         }).catch(() => undefined);

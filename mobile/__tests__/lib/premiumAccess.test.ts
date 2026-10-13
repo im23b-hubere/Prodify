@@ -55,10 +55,10 @@ describe("resolvePremiumAccess", () => {
     expect(getRevenueCatCustomerInfo).not.toHaveBeenCalled();
   });
 
-  it("probes RevenueCat only after the server reports free", async () => {
+  it("probes RevenueCat only after the server reports no active subscription", async () => {
     (fetchEntitlement as jest.Mock).mockResolvedValue({
       provider: "revenuecat",
-      entitlement: "free",
+      entitlement: "inactive",
       trial_active: false,
       expires_at: null,
     });
@@ -81,10 +81,10 @@ describe("resolvePremiumAccess", () => {
     );
   });
 
-  it("returns false for free users without waiting on a hanging RevenueCat call forever", async () => {
+  it("returns false for users without a subscription and without waiting on a hanging RevenueCat call forever", async () => {
     (fetchEntitlement as jest.Mock).mockResolvedValue({
       provider: "revenuecat",
-      entitlement: "free",
+      entitlement: "inactive",
       trial_active: false,
       expires_at: null,
     });
@@ -93,7 +93,7 @@ describe("resolvePremiumAccess", () => {
     const started = Date.now();
     await expect(resolvePremiumAccess("tok", "42")).resolves.toBe(false);
     expect(Date.now() - started).toBeLessThan(8_000);
-    expect(hasPremiumAccess({ entitlement: "free" } as never)).toBe(false);
+    expect(hasPremiumAccess({ entitlement: "inactive" } as never)).toBe(false);
     expect(seedEntitlementCache).not.toHaveBeenCalled();
   }, 12_000);
 });

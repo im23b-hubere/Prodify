@@ -68,7 +68,7 @@ def resolve_effective_entitlement(user: User, db: Session) -> EntitlementPublic:
             expires_at=row.expires_at,
         )
     if row is not None:
-        return EntitlementPublic(provider=row.provider, entitlement="free")
+        return EntitlementPublic(provider=row.provider, entitlement="inactive")
     return EntitlementPublic()
 
 
@@ -77,7 +77,7 @@ def to_entitlement_public(row: UserSubscription | None) -> EntitlementPublic:
         return EntitlementPublic()
     return EntitlementPublic(
         provider=row.provider,
-        entitlement="premium" if row.entitlement == "premium" else "free",
+        entitlement="premium" if row.entitlement == "premium" else "inactive",
         trial_active=bool(row.trial_active),
         expires_at=row.expires_at,
     )
@@ -122,7 +122,7 @@ def verify_with_revenuecat(app_user_id: str) -> BillingVerificationResult:
     )
     return BillingVerificationResult(
         app_user_id=app_user_id,
-        entitlement="premium" if is_active else "free",
+        entitlement="premium" if is_active else "inactive",
         trial_active=False,
         expires_at=access_until if is_active else None,
         verification_source="revenuecat_api",
@@ -164,7 +164,7 @@ def save_verified_subscription(
         row = UserSubscription(user_id=user.id)
         db.add(row)
     row.provider = REVENUECAT_PROVIDER
-    row.entitlement = "premium" if verified.entitlement == "premium" else "free"
+    row.entitlement = "premium" if verified.entitlement == "premium" else "inactive"
     row.trial_active = 1 if verified.trial_active else 0
     row.expires_at = verified.expires_at
     row.rc_app_user_id = verified.app_user_id

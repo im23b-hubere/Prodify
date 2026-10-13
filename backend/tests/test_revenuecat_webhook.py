@@ -143,7 +143,7 @@ def test_expiration_webhook_revokes_access(client, monkeypatch):
 
     post_webhook(client, {"type": "EXPIRATION", "app_user_id": str(user_id)})
 
-    assert _entitlement(client, headers) == "free"
+    assert _entitlement(client, headers) == "inactive"
 
 
 def test_billing_issue_during_grace_period_keeps_access(client, monkeypatch):
@@ -205,7 +205,7 @@ def test_transfer_moves_access_between_accounts(client, monkeypatch):
         },
     )
 
-    assert _entitlement(client, old_headers) == "free"
+    assert _entitlement(client, old_headers) == "inactive"
     assert _entitlement(client, new_headers) == "premium"
 
 

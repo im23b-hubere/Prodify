@@ -1,4 +1,5 @@
 import type {
+  Entitlement,
   EntitlementDto,
   GoalForecastDto,
   ProgressionDto,
@@ -9,12 +10,20 @@ function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
 
+function parseEntitlement(raw: unknown): Entitlement | null {
+  if (raw === "premium" || raw === "inactive") return raw;
+  // Backends deployed before the rename still answer "free".
+  if (raw === "free") return "inactive";
+  return null;
+}
+
 export function tryParseEntitlementDto(raw: unknown): EntitlementDto | null {
   if (!isObj(raw)) return null;
-  if (raw.entitlement !== "free" && raw.entitlement !== "premium") return null;
+  const entitlement = parseEntitlement(raw.entitlement);
+  if (!entitlement) return null;
   return {
     provider: typeof raw.provider === "string" ? raw.provider : "revenuecat",
-    entitlement: raw.entitlement,
+    entitlement,
     trial_active: Boolean(raw.trial_active),
     expires_at: typeof raw.expires_at === "string" ? raw.expires_at : null,
   };

@@ -55,7 +55,7 @@ describe("billing entitlement cache subscription", () => {
     unsubscribe();
   });
 
-  it("does not let an older free response overwrite a newer premium grant", async () => {
+  it("does not let an older inactive response overwrite a newer premium grant", async () => {
     let resolveServer!: (value: unknown) => void;
     (apiJson as jest.Mock).mockReturnValueOnce(
       new Promise((resolve) => {
@@ -67,7 +67,7 @@ describe("billing entitlement cache subscription", () => {
     seedEntitlementCache("token", premium, 1);
     resolveServer({
       provider: "revenuecat",
-      entitlement: "free",
+      entitlement: "inactive",
       trial_active: false,
       expires_at: null,
     });

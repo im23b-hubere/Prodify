@@ -32,7 +32,7 @@ def test_unpaid_account_can_still_subscribe_or_leave(client):
     assert me.status_code == 200
     assert me.json()["is_premium"] is False
     assert entitlement.status_code == 200
-    assert entitlement.json()["entitlement"] == "free"
+    assert entitlement.json()["entitlement"] == "inactive"
     assert legal.status_code == 200
     assert flags.status_code == 200
     assert deleted.status_code == 204
