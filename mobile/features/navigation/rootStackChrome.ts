@@ -40,6 +40,7 @@ export function rootStackScreenOptions(name: string): Record<string, unknown> {
     case "weekly-recap":
       return { animationTypeForReplace: "pop" };
     case "settings":
+    case "blocked-users":
       return { ...HORIZONTAL_CARD_SWIPE };
     case "challenge/new":
       return {

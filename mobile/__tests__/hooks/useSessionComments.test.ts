@@ -1,8 +1,10 @@
-import { renderHook, waitFor } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 import { useSessionComments } from "../../features/sessions/hooks/useSessionComments";
 import { mockTFunction } from "../helpers/mockTFunction";
-import { fetchSessionComments } from "../../lib/social";
+import { ApiError } from "../../lib/client";
+import { createSessionComment, fetchSessionComments } from "../../lib/social";
 import type { SocialCommentDto } from "../../types/friends";
 
 jest.mock("../../lib/social", () => ({
@@ -52,6 +54,22 @@ describe("useSessionComments", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetchSessionComments.mockResolvedValue(userAComments);
+  });
+
+  it("explains a comment the language filter rejected and keeps the draft", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    jest
+      .mocked(createSessionComment)
+      .mockRejectedValue(new ApiError(422, "ignored", null, "CONTENT_REJECTED"));
+    const { result } = renderCommentsHook("token-a", 1);
+    await waitFor(() => expect(result.current.comments).toEqual(userAComments));
+
+    act(() => result.current.setCommentInput("rude words"));
+    await act(() => result.current.submitComment());
+
+    expect(alert).toHaveBeenCalledWith("friendsScreen.couldNotSendComment", "safety.comment.rejected");
+    expect(result.current.commentInput).toBe("rude words");
+    alert.mockRestore();
   });
 
   it("clears comments when token becomes null", async () => {

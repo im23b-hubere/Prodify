@@ -85,6 +85,10 @@ export default function RootLayout() {
               />
               <Stack.Screen name="settings" options={rootStackScreenOptions("settings")} />
               <Stack.Screen
+                name="blocked-users"
+                options={rootStackScreenOptions("blocked-users")}
+              />
+              <Stack.Screen
                 name="weekly-recap"
                 options={rootStackScreenOptions("weekly-recap")}
               />

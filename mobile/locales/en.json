@@ -197,7 +197,8 @@
     "tryAgain": "Try again",
     "reload": "Reload",
     "startSession": "Start a session",
-    "weekdaysFull": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    "weekdaysFull": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    "retry": "Retry"
   },
   "legal": {
     "linksPrivacy": "Privacy",
@@ -2318,7 +2319,9 @@
       "invalidCredentials": "Incorrect email or password.",
       "socialEmailRequired": "Prodify needs your email address to create an account. Please allow email sharing and try again.",
       "socialTokenInvalid": "We couldn't verify your sign-in. Please try again.",
-      "socialProviderUnavailable": "This sign-in option isn't available right now. Please use email instead."
+      "socialProviderUnavailable": "This sign-in option isn't available right now. Please use email instead.",
+      "usernameRejected": "This username isn't allowed. Please choose another one.",
+      "accountSuspended": "This account has been suspended for violating our community guidelines. Contact support@prodify.app if you think this is a mistake."
     },
     "requestTimeout": "Connection timed out. Check your network and try again.",
     "network": "Network error. Check your connection and try again.",
@@ -2333,5 +2336,78 @@
     "body": "Some features may be temporarily unavailable.",
     "limitedTitle": "Limited connectivity",
     "limitedBody": "We couldn't confirm internet access. A local network or offline tools may still work."
+  },
+  "safety": {
+    "menu": {
+      "profileA11y": "More options for {{name}}",
+      "report": "Report",
+      "block": "Block",
+      "deleteComment": "Delete comment",
+      "decline": "Decline",
+      "declineAndBlock": "Decline and block",
+      "commentHint": "Hold for options like report, block or delete",
+      "commentOptions": "Comment options"
+    },
+    "report": {
+      "userTitle": "Report {{name}}",
+      "commentTitle": "Report comment by {{name}}",
+      "subtitle": "Your report is anonymous. We review every report within 24 hours.",
+      "reasons": {
+        "harassment": {
+          "label": "Harassment or bullying",
+          "hint": "Insults, threats or targeting someone"
+        },
+        "hate": {
+          "label": "Hate speech",
+          "hint": "Attacks on identity, slurs or extremism"
+        },
+        "sexual": {
+          "label": "Sexual content",
+          "hint": "Nudity or sexual messages"
+        },
+        "spam": {
+          "label": "Spam or scam",
+          "hint": "Ads, fake accounts or misleading links"
+        },
+        "other": {
+          "label": "Something else",
+          "hint": "Anything that breaks the community guidelines"
+        }
+      },
+      "noteLabel": "Additional details",
+      "notePlaceholder": "Add details (optional)",
+      "submit": "Send report",
+      "failed": "Your report couldn't be sent. Please try again.",
+      "limitReached": "You've sent a lot of reports today. Please try again tomorrow.",
+      "doneTitle": "Thanks for letting us know",
+      "doneBody": "We'll review this within 24 hours and remove anything that breaks our guidelines.",
+      "alsoBlock": "Also block {{name}}",
+      "done": "Done"
+    },
+    "block": {
+      "confirmTitle": "Block {{name}}?",
+      "confirmBody": "You'll stop being friends and won't see each other's comments, reactions or requests. They won't be notified.",
+      "confirmAction": "Block",
+      "failedTitle": "Couldn't block this user"
+    },
+    "comment": {
+      "deleteTitle": "Delete comment?",
+      "deleteBody": "This can't be undone.",
+      "deleteAction": "Delete",
+      "deleteFailed": "Couldn't delete the comment",
+      "rejected": "This comment contains language that isn't allowed. Please rephrase it."
+    },
+    "blocked": {
+      "title": "Blocked users",
+      "subtitle": "People you block can't find you, add you or see your activity.",
+      "loading": "Loading blocked users",
+      "loadFailedTitle": "Couldn't load blocked users",
+      "loadFailedBody": "Check your connection and try again.",
+      "emptyTitle": "No one blocked",
+      "emptyBody": "You can block someone from their profile or from a comment.",
+      "unblock": "Unblock",
+      "unblockA11y": "Unblock {{name}}",
+      "unblockFailed": "Couldn't unblock this user"
+    }
   }
 }

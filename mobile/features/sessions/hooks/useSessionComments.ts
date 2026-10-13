@@ -5,6 +5,7 @@ import { Alert } from "react-native";
 
 import { useLatestRef } from "../../../hooks/useLatestRef";
 import { useAuthScopedReset } from "../../../lib/authScopedReset";
+import { ApiError } from "../../../lib/client";
 import { createSessionComment, fetchSessionComments } from "../../../lib/social";
 import type { SocialCommentDto } from "../../../types/friends";
 import { validSessionId } from "./sessionSocialUtils";
@@ -87,10 +88,7 @@ export function useSessionComments(
       success.show(created.id);
       Haptics.selectionAsync().catch(() => undefined);
     } catch (error) {
-      Alert.alert(
-        t("friendsScreen.couldNotSendComment"),
-        error instanceof Error ? error.message : t("common.tryAgain"),
-      );
+      Alert.alert(t("friendsScreen.couldNotSendComment"), commentErrorMessage(error, t));
     } finally {
       setCommentSending(false);
     }
@@ -108,6 +106,11 @@ export function useSessionComments(
     loadComments,
     submitComment,
   };
+}
+
+function commentErrorMessage(error: unknown, t: TFunction): string {
+  if (error instanceof ApiError && error.code === "CONTENT_REJECTED") return t("safety.comment.rejected");
+  return error instanceof Error ? error.message : t("common.tryAgain");
 }
 
 function useCommentSuccessFeedback() {

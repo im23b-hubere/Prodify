@@ -10,6 +10,8 @@ import {
   buildSessionDetailPresentation,
   resolveSessionDetailParams,
 } from "../sessionDetailPresentation";
+import { useCommentSafety } from "../../safety/hooks/useCommentSafety";
+import { validSessionId } from "./sessionSocialUtils";
 import { useSessionDetailData } from "./useSessionDetailData";
 import { useSessionEditor } from "./useSessionEditor";
 import { useSessionSocial } from "./useSessionSocial";
@@ -56,6 +58,16 @@ export function useSessionDetailController() {
     onError: data.setError,
   });
   const isOwnSession = Boolean(user?.id != null && data.session?.user_id === user.id);
+  const { loadComments } = social;
+  const reloadComments = useCallback(() => void loadComments(), [loadComments]);
+  const commentSafety = useCommentSafety({
+    token,
+    t,
+    sessionId: validSessionId(sessionId),
+    currentUserId: user?.id,
+    isOwnSession,
+    onChanged: reloadComments,
+  });
   const producerName =
     ownerName?.trim() ||
     (isOwnSession ? user?.username : undefined) ||
@@ -69,6 +81,7 @@ export function useSessionDetailController() {
     shareOpen,
     scrollRef,
     isOwnSession,
+    commentSafety,
     producerName,
     presentation: data.session
       ? buildSessionDetailPresentation(data.session, data.insights, t)

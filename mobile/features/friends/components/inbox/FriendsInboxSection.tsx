@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { ListSection } from "../../../../components/ui/list/ListSection";
 import type { FriendIncomingDto, SocialChallengeDto } from "../../../../types/friends";
 import { profilePictureUrl } from "../../../profile/friendProfilePresentation";
+import { showActionMenu } from "../../../safety/showActionMenu";
 import type { FriendRequestsInFlight } from "../../hooks/useFriendsScreenState";
 import { friendsInboxStyles as styles } from "../../styles/friendsInbox.styles";
 import { isIncomingDuelInvite } from "../../utils/duelInvites";
@@ -17,6 +18,7 @@ type Props = {
   requestsInFlight: FriendRequestsInFlight;
   onAcceptRequest: (id: number) => void;
   onDeclineRequest: (id: number) => void;
+  onDeclineAndBlock: (request: FriendIncomingDto) => void;
   duelActions: DuelInviteActions;
 };
 
@@ -28,8 +30,18 @@ export function FriendsInboxSection({
   requestsInFlight,
   onAcceptRequest,
   onDeclineRequest,
+  onDeclineAndBlock,
   duelActions,
 }: Props) {
+  const chooseDecline = (request: FriendIncomingDto) =>
+    showActionMenu({
+      title: request.username,
+      cancelLabel: t("common.cancel"),
+      items: [
+        { label: t("safety.menu.decline"), onSelect: () => onDeclineRequest(request.id) },
+        { label: t("safety.menu.declineAndBlock"), destructive: true, onSelect: () => onDeclineAndBlock(request) },
+      ],
+    });
   const duelInvites = challenges.filter((challenge) =>
     isIncomingDuelInvite(challenge, duelActions.currentUserId),
   );
@@ -57,7 +69,7 @@ export function FriendsInboxSection({
             pendingAction={requestsInFlight[request.id] ?? null}
             divided={duelInvites.length + index > 0}
             onAccept={() => onAcceptRequest(request.id)}
-            onDecline={() => onDeclineRequest(request.id)}
+            onDecline={() => chooseDecline(request)}
             testID={`friend-request-${request.id}`}
           />
         ))}

@@ -22,6 +22,18 @@ describe("auth form error mapping", () => {
     ).toBe("errors.auth.usernameTaken");
   });
 
+  it("asks for another username when the filter rejects it", () => {
+    expect(registrationErrorMessage(new ApiError(422, "ignored", null, "USERNAME_REJECTED"), t)).toBe(
+      "errors.auth.usernameRejected",
+    );
+  });
+
+  it("explains a suspension on password and social sign-in", () => {
+    const suspended = new ApiError(403, "ignored", null, "ACCOUNT_SUSPENDED");
+    expect(loginErrorMessage(suspended, t)).toBe("errors.auth.accountSuspended");
+    expect(socialSignInErrorMessage(suspended, t)).toBe("errors.auth.accountSuspended");
+  });
+
   it("maps the legacy generic register message to a conflict hint", () => {
     expect(
       registrationErrorMessage(

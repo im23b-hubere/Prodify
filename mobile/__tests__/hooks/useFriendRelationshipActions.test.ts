@@ -1,5 +1,6 @@
-import { act, renderHook } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { useState } from "react";
+import { Alert } from "react-native";
 
 import { useFriendRelationshipActions } from "../../features/friends/hooks/useFriendRelationshipActions";
 import type {
@@ -76,5 +77,20 @@ describe("useFriendRelationshipActions", () => {
 
     await act(async () => pending.get("/friends/42/accept")?.resolve({}));
     expect(result.current.requestsInFlight).toEqual({ 43: "decline" });
+  });
+
+  it("declines and blocks the sender after confirming", async () => {
+    jest.spyOn(Alert, "alert").mockImplementation((_title, _body, buttons) => {
+      buttons?.find((button) => button.style === "destructive")?.onPress?.();
+    });
+    mockApiJson.mockResolvedValue(null);
+    const { result } = renderActions();
+
+    act(() => result.current.actions.declineAndBlock({ id: 42, user_id: 3, username: "carol" }));
+
+    await waitFor(() =>
+      expect(mockApiJson).toHaveBeenCalledWith("/users/3/block", { token: "token", method: "POST" }),
+    );
+    jest.restoreAllMocks();
   });
 });

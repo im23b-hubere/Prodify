@@ -27,6 +27,7 @@ export function SessionDetailContent({ controller }: { controller: SessionDetail
         loading={controller.commentsLoading}
         error={controller.commentsError}
         highlightedCommentId={controller.newCommentId}
+        onCommentOptions={controller.commentSafety.openCommentMenu}
       />
       {controller.error ? <Text style={styles.errorText}>{controller.error}</Text> : null}
     </>

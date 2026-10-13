@@ -13,6 +13,8 @@ import { SessionShareImageModal } from "../../../components/session/SessionShare
 import { BackButton } from "../../../components/ui/BackButton";
 import { ScrollRevealProvider, useScrollRevealSource } from "../../../components/ui/ScrollReveal";
 import { colors } from "../../../constants/theme";
+import { ReportSheet } from "../../safety/components/ReportSheet";
+import type { CommentSafety } from "../../safety/hooks/useCommentSafety";
 import type { SessionDetailController } from "../hooks/useSessionDetailController";
 import { sessionDetailStyles as styles } from "../sessionDetail.styles";
 import { SessionCommentComposer } from "./SessionCommentComposer";
@@ -38,6 +40,7 @@ export function SessionDetailView({ controller }: { controller: SessionDetailCon
         focusScore={session.focus_score ?? null}
         producerName={controller.isOwnSession ? controller.user?.username : controller.producerName}
       />
+      <CommentReportSheet safety={controller.commentSafety} />
       <KeyboardAvoidingView
         style={styles.keyboardWrap}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -117,5 +120,21 @@ export function SessionDetailView({ controller }: { controller: SessionDetailCon
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function CommentReportSheet({ safety }: { safety: CommentSafety }) {
+  const { report } = safety;
+  return (
+    <ReportSheet
+      visible={report.target !== null}
+      kind="comment"
+      targetName={report.target?.name ?? ""}
+      phase={report.phase}
+      error={report.error}
+      onSubmit={(draft) => void report.submit(draft)}
+      onBlock={safety.blockAfterReport}
+      onClose={report.close}
+    />
   );
 }
