@@ -51,7 +51,6 @@ def validate_runtime_config() -> None:
     required_values = {
         "DATABASE_URL": settings.database_url,
         "SECRET_KEY": settings.secret_key,
-        "WEBHOOK_SECRET": settings.webhook_secret,
     }
 
     missing = [name for name, value in required_values.items() if not str(value or "").strip()]

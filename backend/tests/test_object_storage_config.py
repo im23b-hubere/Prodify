@@ -9,7 +9,6 @@ from app.config import Settings
 def _production_kwargs(**overrides) -> dict:
     base = {
         "secret_key": "production-secret-key-at-least-32-characters-long",
-        "webhook_secret": "production-webhook-secret-at-least-32-chars",
         "internal_job_key": "production-internal-job-key-24",
         "environment": "production",
         "cors_origins": ["https://prodify.app"],
