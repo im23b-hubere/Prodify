@@ -20,7 +20,7 @@ import Svg, {
 import { sessionTypeAccent } from "../../../components/session/SkillFocusChips";
 import { colors, motion } from "../../../constants/theme";
 import { isSkillBranch } from "../../../constants/skills";
-import { LOCKED_EDGE_COLOR, styles } from "../skillTree.styles";
+import { dimTransition, LOCKED_EDGE_COLOR, styles } from "../skillTree.styles";
 import type { SkillTreeEdgeLayout, SkillTreeLayout } from "../skillTreeLayout";
 import {
   isEdgeUnlocked,
@@ -32,8 +32,8 @@ import {
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 /** Parts of the intro progress in which each ring of edges traces itself in. */
-const BRANCH_EDGE_WINDOW = [0, 0.5];
-const FOCUS_EDGE_WINDOW = [0.35, 1];
+const BRANCH_EDGE_WINDOW = [0, 0.5] as const;
+const FOCUS_EDGE_WINDOW = [0.35, 1] as const;
 const DIMMED_OPACITY = 0.3;
 const HIGHLIGHTED_LOCKED_EDGE = "#5a5a5a";
 
@@ -77,7 +77,7 @@ export const SkillTreeLinks = memo(function SkillTreeLinks({
       <Animated.View
         style={[
           styles.layerFill,
-          styles.dimmable,
+          dimTransition,
           { width: layout.size, height: layout.size, opacity: highlighted ? DIMMED_OPACITY : 1 },
         ]}
         pointerEvents="none"

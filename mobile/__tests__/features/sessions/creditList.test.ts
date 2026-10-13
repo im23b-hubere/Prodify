@@ -76,7 +76,7 @@ describe("credit list", () => {
   });
 
   it("leaves stored assigned minutes alone", () => {
-    const stored = {
+    const stored: FocusReflection = {
       ...empty,
       focusIds: ["mixing.eq"],
       assignedSeconds: { "mixing.eq": 20 * 60 },
