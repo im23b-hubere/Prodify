@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { EmptyState } from "../../../components/states/EmptyState";
@@ -22,11 +22,8 @@ type Props = {
 };
 
 export function StatsTrendsSection({ t, chartData, recordMarks, period, totalSeconds }: Props) {
-  const [pickedLabel, setPickedLabel] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPickedLabel(null);
-  }, [period]);
+  const [picked, setPicked] = useState<{ period: StatsPeriod; label: string } | null>(null);
+  const pickedLabel = picked?.period === period ? picked.label : null;
 
   const hero = buildChartHero(chartData, period, totalSeconds);
   const selectedPoint = chartData.find((point) => point.label === pickedLabel) ?? null;
@@ -70,7 +67,9 @@ export function StatsTrendsSection({ t, chartData, recordMarks, period, totalSec
             marks={recordMarks}
             selectedBarLabel={pickedLabel}
             recordHint={t("stats.chartRecordHint")}
-            onSelectBar={(label) => setPickedLabel((current) => (current === label ? null : label))}
+            onSelectBar={(label) =>
+              setPicked(pickedLabel === label ? null : { period, label })
+            }
           />
         </View>
       )}

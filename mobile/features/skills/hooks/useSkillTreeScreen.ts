@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isSkillBranch, type SkillFocusId } from "../../../constants/skills";
 import { useAuth } from "../../../context/AuthContext";
@@ -31,24 +31,17 @@ function lightSnap() {
 /** The You-node count starts on last visit's total, then ticks up once seen is known. */
 function useDisplayedUnlockCount(unlocked: number, newCount: number, hasResolved: boolean) {
   const from = unlockCountStart(unlocked, newCount);
-  const [shown, setShown] = useState<number | null>(null);
-
-  useLayoutEffect(() => {
-    if (!hasResolved) {
-      setShown(null);
-      return;
-    }
-    setShown(newCount > 0 ? from : unlocked);
-  }, [from, hasResolved, newCount, unlocked]);
+  const [tickedTo, setTickedTo] = useState<number | null>(null);
 
   useEffect(() => {
     if (!hasResolved || newCount === 0 || from === unlocked) return;
-    const id = setTimeout(() => setShown(unlocked), UNLOCK_COUNT_TICK_MS);
+    const id = setTimeout(() => setTickedTo(unlocked), UNLOCK_COUNT_TICK_MS);
     return () => clearTimeout(id);
   }, [from, hasResolved, newCount, unlocked]);
 
   if (!hasResolved) return null;
-  return shown ?? (newCount > 0 ? from : unlocked);
+  if (newCount === 0 || tickedTo === unlocked) return unlocked;
+  return from;
 }
 
 export function useSkillTreeScreen(initialBranch: string | undefined) {
