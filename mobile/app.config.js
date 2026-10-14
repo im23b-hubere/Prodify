@@ -46,8 +46,10 @@ module.exports = ({ config }) => {
 
   const updatesEnabled = appEnv === "production" || appEnv === "staging";
   const isEasBuild = process.env.EAS_BUILD === "true";
+  // Only the `development` profile builds a dev client; store and staging builds must not ship it.
+  const isDevelopmentClientBuild = isEasBuild && process.env.EAS_BUILD_PROFILE === "development";
   const plugins = [...(appJson.expo.plugins ?? [])];
-  if (isEasBuild && !plugins.includes("expo-dev-client")) {
+  if (isDevelopmentClientBuild && !plugins.includes("expo-dev-client")) {
     plugins.push("expo-dev-client");
   }
   if (googleIosClientId) {
