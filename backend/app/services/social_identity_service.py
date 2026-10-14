@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 import jwt
+from google.auth.exceptions import GoogleAuthError
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 
@@ -11,10 +12,16 @@ from app.models import SocialProvider
 APPLE_ISSUER = "https://appleid.apple.com"
 _apple_signing_keys = jwt.PyJWKClient(f"{APPLE_ISSUER}/auth/keys", cache_keys=True)
 _google_transport = google_requests.Request()
+# Fresh tokens must not be rejected as "used too early" when our clock trails the provider's.
+_CLOCK_SKEW_SECONDS = 10
 
 
 class SocialTokenRejectedError(ValueError):
     pass
+
+
+class SocialProviderUnavailableError(Exception):
+    """The provider's verification keys could not be fetched; the token itself may be fine."""
 
 
 @dataclass(frozen=True)
@@ -35,7 +42,10 @@ def verify_apple_identity_token(identity_token: str, bundle_ids: list[str]) -> V
             audience=bundle_ids,
             issuer=APPLE_ISSUER,
             options={"require": ["sub", "exp", "iat"]},
+            leeway=_CLOCK_SKEW_SECONDS,
         )
+    except jwt.PyJWKClientConnectionError as error:
+        raise SocialProviderUnavailableError("apple signing keys unavailable") from error
     except jwt.PyJWTError as error:
         raise SocialTokenRejectedError("apple identity token rejected") from error
     return VerifiedIdentity(
@@ -49,9 +59,16 @@ def verify_apple_identity_token(identity_token: str, bundle_ids: list[str]) -> V
 
 def verify_google_id_token(id_token: str, client_ids: list[str]) -> VerifiedIdentity:
     try:
-        claims = google_id_token.verify_oauth2_token(id_token, _google_transport, audience=client_ids)
+        claims = google_id_token.verify_oauth2_token(
+            id_token,
+            _google_transport,
+            audience=client_ids,
+            clock_skew_in_seconds=_CLOCK_SKEW_SECONDS,
+        )
     except ValueError as error:
         raise SocialTokenRejectedError("google id token rejected") from error
+    except GoogleAuthError as error:
+        raise SocialProviderUnavailableError("google certificates unavailable") from error
     if not claims.get("sub"):
         raise SocialTokenRejectedError("google id token has no subject")
     return VerifiedIdentity(

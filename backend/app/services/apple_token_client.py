@@ -16,6 +16,9 @@ from app.services.social_identity_service import APPLE_ISSUER
 _log = logging.getLogger(__name__)
 _REQUEST_TIMEOUT_SECONDS = 10.0
 _CLIENT_SECRET_LIFETIME_SECONDS = 300
+# Network failures, a malformed private key (ValueError/PyJWTError while signing the client
+# secret) and non-JSON responses (ValueError) must all degrade to "no Apple token".
+_BEST_EFFORT_ERRORS = (httpx.HTTPError, jwt.PyJWTError, ValueError)
 
 
 def is_apple_revocation_configured() -> bool:
@@ -41,10 +44,11 @@ def exchange_authorization_code(authorization_code: str, client_id: str) -> str 
             timeout=_REQUEST_TIMEOUT_SECONDS,
         )
         response.raise_for_status()
-    except httpx.HTTPError:
+        payload = response.json()
+    except _BEST_EFFORT_ERRORS:
         _log.warning("apple_code_exchange_failed", exc_info=True)
         return None
-    refresh_token = response.json().get("refresh_token")
+    refresh_token = payload.get("refresh_token") if isinstance(payload, dict) else None
     return refresh_token if isinstance(refresh_token, str) and refresh_token else None
 
 
@@ -62,7 +66,7 @@ def revoke_refresh_token(refresh_token: str, client_id: str) -> None:
             },
             timeout=_REQUEST_TIMEOUT_SECONDS,
         ).raise_for_status()
-    except httpx.HTTPError:
+    except _BEST_EFFORT_ERRORS:
         _log.warning("apple_token_revoke_failed", exc_info=True)
 
 
