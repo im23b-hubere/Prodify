@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import ProductionSession, User
+from app.models import ProductionSession, User, utcnow
 from app.contracts.sessions import SessionPause, SessionPublic, SessionQuickStart, SessionStart, SessionStop
 from app.services.push_dispatch import schedule_notify_session_complete
 from app.services.session_lifecycle_service import (
@@ -18,6 +18,7 @@ from app.services.session_lifecycle_service import (
     pause_active_session,
     resume_active_session,
 )
+from app.services.session_presence import stop_deadline
 from app.services.social_challenge_notifications import PushChallengeEvents
 from app.services.social_consequence import maybe_notify_streak_break_on_transition
 
@@ -65,10 +66,10 @@ def stop_session(
     db: Annotated[Session, Depends(get_db)],
     body: SessionStop,
 ) -> ProductionSession:
-    session = _owned_session(db, current.id, body.session_id)
+    session = _owned_session(db, current.id, body.session_id, for_update=True)
     if session.stopped_at is not None:
-        raise HTTPException(status_code=400, detail="Session already stopped")
-    completion = complete_session(db, current.id, session)
+        return session
+    completion = complete_session(db, current.id, session, stopped_at=stop_deadline(session, utcnow()))
     maybe_notify_streak_break_on_transition(
         completion.previous_streak,
         completion.current_streak,
@@ -124,8 +125,8 @@ def quick_start_session(
         _raise_active_conflict(error.session_id)
 
 
-def _owned_session(db: Session, user_id: int, session_id: int) -> ProductionSession:
-    session = db.get(ProductionSession, session_id)
+def _owned_session(db: Session, user_id: int, session_id: int, *, for_update: bool = False) -> ProductionSession:
+    session = db.get(ProductionSession, session_id, with_for_update=for_update)
     if session is None or session.user_id != user_id or session.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Session not found")
     return session

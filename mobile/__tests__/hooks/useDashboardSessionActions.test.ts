@@ -10,6 +10,7 @@ const mockT = ((key: string) => key) as TFunction;
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn() }),
+  useFocusEffect: (effect: () => void | (() => void)) => jest.requireActual("react").useEffect(effect, [effect]),
 }));
 
 jest.mock("expo-haptics", () => ({
