@@ -83,6 +83,19 @@ def get_friend_commitment(db: Session, viewer_id: int, owner: User) -> FriendCom
     )
 
 
+def is_commitment_visible_to(
+    db: Session,
+    *,
+    owner_id: int,
+    week_start: str,
+    commitment_key: str,
+    viewer_id: int,
+) -> bool:
+    """Whether the viewer may see this commitment; unknown commitments count as private."""
+    commitment = _find_commitment(db, owner_id, week_start, commitment_key)
+    return commitment is not None and _is_visible_to(db, commitment, viewer_id)
+
+
 def list_current_commitments(db: Session, user: User) -> list[CommitmentPublic]:
     commitments = db.scalars(
         select(SocialCommitment).where(

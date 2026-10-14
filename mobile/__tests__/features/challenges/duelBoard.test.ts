@@ -91,6 +91,18 @@ describe("buildDuelBoard", () => {
     expect(isDuelBoardEmpty(board)).toBe(false);
   });
 
+  it("keeps a joined group challenge out of the head-to-head arena", () => {
+    const board = buildDuelBoard(
+      [
+        duel({ id: 20, challenge_kind: "team", days_remaining: 1 }),
+        duel({ id: 21, days_remaining: 5 }),
+      ],
+      1,
+    );
+    expect(board.arena?.id).toBe(21);
+    expect(board.live.map((challenge) => challenge.id)).toEqual([20]);
+  });
+
   it("keeps a declined invite in the history so the sender knows what happened", () => {
     const board = buildDuelBoard(
       [duel({ id: 8, status: "cancelled", completion_reason: "declined" })],
@@ -159,6 +171,11 @@ describe("rematchableDuelIds", () => {
   it("never offers a rematch for a duel that was called off", () => {
     const calledOff = [duel({ id: 13, status: "cancelled", completion_reason: "declined" })];
     expect([...rematchableDuelIds(calledOff, 1, () => true)]).toEqual([]);
+  });
+
+  it("never offers a rematch for a finished group challenge", () => {
+    const group = [duel({ id: 14, status: "completed", challenge_kind: "team" })];
+    expect([...rematchableDuelIds(group, 1, () => true)]).toEqual([]);
   });
 });
 

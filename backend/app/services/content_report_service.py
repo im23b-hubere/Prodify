@@ -65,6 +65,9 @@ def report_user(
 def _file_report(
     db: Session, settings: Settings, report: ContentReport, reporter_id: int, reason: str, note: str | None
 ) -> ContentReport:
+    already_open = _open_report_for_same_target(db, reporter_id, report)
+    if already_open is not None:
+        return already_open
     if _reports_in_last_day(db, reporter_id) >= DAILY_REPORT_LIMIT:
         raise ReportLimitReachedError
     report.reporter_id = reporter_id
@@ -76,6 +79,21 @@ def _file_report(
     db.refresh(report)
     _alert_moderators(settings, report)
     return report
+
+
+def _open_report_for_same_target(db: Session, reporter_id: int, report: ContentReport) -> ContentReport | None:
+    """Repeating a report while moderators still have it open must not re-alert them."""
+    return db.scalar(
+        select(ContentReport).where(
+            ContentReport.reporter_id == reporter_id,
+            ContentReport.status == "open",
+            ContentReport.target_type == report.target_type,
+            ContentReport.reported_user_id == report.reported_user_id,
+            ContentReport.comment_id.is_(None)
+            if report.comment_id is None
+            else ContentReport.comment_id == report.comment_id,
+        )
+    )
 
 
 def _reports_in_last_day(db: Session, reporter_id: int) -> int:

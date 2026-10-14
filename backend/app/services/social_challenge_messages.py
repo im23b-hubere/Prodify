@@ -128,6 +128,7 @@ _CANCELLED_COPY: dict[str, tuple[str, str, str]] = {
     "withdrawn": ("challengeWithdrawn", "Invite withdrawn", "{username} withdrew their duel invite."),
     "member_left": ("challengeMemberLeft", "Challenge ended", "{username} left “{title}”."),
     "cancelled": ("challengeEnded", "Challenge ended", "{username} ended “{title}”."),
+    # "blocked" is deliberately silent: telling the blocked user who ended the duel reveals the block.
 }
 
 

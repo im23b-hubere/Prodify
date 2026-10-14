@@ -2,7 +2,7 @@ import pytest
 
 from app.config import settings
 from app.database import SessionLocal
-from app.models import User
+from app.models import ContentReport, User
 from app.services import content_report_service, moderation_service
 from tests.auth_helpers import DEFAULT_PASSWORD, auth_headers
 from tests.test_social import _complete_long_session, _make_friends
@@ -204,13 +204,25 @@ def test_unknown_report_reason_is_rejected(client, pushes):
 
 def test_reports_per_day_are_capped(client, pushes):
     alice = auth_headers(client, "report-cap-a@example.com", "report-cap-alice")
+    alice_id = _user_id(client, alice)
     bob_id = _user_id(client, auth_headers(client, "report-cap-b@example.com", "report-cap-bob"))
-    payload = {"target_type": "user", "user_id": bob_id, "reason": "spam"}
+    with SessionLocal() as db:
+        db.add_all(
+            ContentReport(
+                reporter_id=alice_id,
+                reported_user_id=bob_id,
+                target_type="user",
+                content_snapshot="-",
+                reason="spam",
+                status="resolved",
+            )
+            for _ in range(content_report_service.DAILY_REPORT_LIMIT)
+        )
+        db.commit()
 
-    statuses = [client.post("/reports", headers=alice, json=payload).status_code for _ in range(21)]
+    response = client.post("/reports", headers=alice, json={"target_type": "user", "user_id": bob_id, "reason": "spam"})
 
-    assert statuses[:20] == [201] * 20
-    assert statuses[20] == 429
+    assert response.status_code == 429
 
 
 # --- moderation --------------------------------------------------------------------------------
