@@ -12,6 +12,7 @@ import {
 import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { colors } from "../../constants/theme";
+import { LegalConsentNotice } from "../../features/auth/components/LegalConsentNotice";
 import { SocialSignInButtons } from "../../features/auth/components/SocialSignInButtons";
 import { useLoginForm } from "../../features/auth/hooks/useLoginForm";
 import { useSocialSignIn } from "../../features/auth/hooks/useSocialSignIn";
@@ -87,6 +88,7 @@ export default function LoginScreen() {
         </View>
 
         <SocialSignInButtons controller={socialSignIn} disabled={form.loading} />
+        <LegalConsentNotice />
 
         <Pressable
           style={styles.linkWrap}

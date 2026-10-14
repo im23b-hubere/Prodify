@@ -11,6 +11,7 @@ router = APIRouter(prefix="/legal", tags=["legal"])
 PRIVACY_SECTIONS = (
     ("Data we process", "We process account data, technical data needed to operate and secure the service, studio-session content you create, streak and friendship data, subscription status, and push tokens when notifications are enabled."),
     ("Why we process it", "We use this data to provide the service, maintain account security, prevent abuse, process subscriptions, and send notifications you have enabled."),
+    ("Safety and moderation", "When you report or block someone, we store the report (reason, optional note, the reported user or comment, and your account) and the block. Moderators use reports and blocks only to review reports, remove violating content and suspend accounts. The reported user is never told who reported them."),
     ("Retention and deletion", "We retain account data while your account exists. You can permanently delete your account in the app. We remove associated personal data unless a legal retention obligation applies."),
     ("Your choices and rights", "You may request access, correction, deletion, restriction, portability, or object to eligible processing. Notification permission can be withdrawn in device settings."),
     ("Service providers", "Prodify uses infrastructure, crash-reporting, push-notification, and subscription providers only as needed to operate the service."),
@@ -19,6 +20,8 @@ PRIVACY_SECTIONS = (
 TERMS_SECTIONS = (
     ("Service", "Prodify helps users track studio sessions, streaks, goals, and optional social activity. Features and availability may evolve."),
     ("Account", "You are responsible for keeping your credentials secure and for content submitted through your account. Content must not violate applicable law or third-party rights."),
+    ("Community guidelines", "Prodify has zero tolerance for objectionable content and abusive users. Do not post or send content that harasses, threatens or bullies others, promotes hate or discrimination, is sexual, violent or illegal, or is spam or impersonation. Comments containing prohibited language are filtered automatically."),
+    ("Reporting and blocking", "You can report users and comments and block users directly in the app. We review every report within 24 hours, remove content that violates these terms, and suspend or permanently ban the accounts responsible. Blocked users can no longer find you, add you or see your activity."),
     ("Subscriptions", "Payment is charged to your Apple ID when a purchase is confirmed. Subscriptions renew automatically unless cancelled at least 24 hours before the current period ends. You can manage or cancel them in Apple ID subscription settings."),
     ("Availability", "We work to keep Prodify available and secure but cannot guarantee uninterrupted operation, including during maintenance or events outside our control."),
     ("Liability and changes", "Mandatory consumer rights remain unaffected. We may update these terms and will provide notice of material changes when required."),
