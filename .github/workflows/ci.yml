@@ -83,15 +83,18 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
-      - name: Validate production public env defaults
+      # Production values live only in the EAS "production" environment; app.config.js rejects
+      # incomplete production builds and `npm run update:production` rejects incomplete OTA updates.
+      - name: Validate production build profile
         run: >
           node -e "const fs=require('fs');
-          const eas=JSON.parse(fs.readFileSync('eas.json','utf8'));
-          const env=eas?.build?.production?.env||{};
-          const required=['EXPO_PUBLIC_APP_ENV','EXPO_PUBLIC_ENV','EXPO_PUBLIC_API_URL'];
-          const missing=required.filter((k)=>!String(env[k]||'').trim());
-          if(missing.length){console.error('Missing production env values in eas.json: '+missing.join(', '));process.exit(1);}
-          console.log('Production env defaults configured in eas.json.');"
+          const profile=JSON.parse(fs.readFileSync('eas.json','utf8'))?.build?.production??{};
+          const problems=[];
+          if(profile.environment!=='production')problems.push('environment must be \"production\"');
+          if(profile.channel!=='production')problems.push('channel must be \"production\"');
+          if(profile.env)problems.push('env overrides bypass the EAS production environment');
+          if(problems.length){console.error('eas.json production profile: '+problems.join('; '));process.exit(1);}
+          console.log('Production profile reads the EAS production environment.');"
 
       - name: Install dependencies
         run: npm ci

@@ -4,8 +4,11 @@ type AppConfigFactory = (context: { config: Record<string, unknown> }) => ExpoCo
 const releaseEnv = {
   EAS_BUILD: "true",
   EXPO_PUBLIC_APP_ENV: "production",
+  EXPO_PUBLIC_API_URL: "https://api.prodify.app",
   EXPO_PUBLIC_REVENUECAT_API_KEY: "appl_test_key",
   EXPO_PUBLIC_SENTRY_DSN: "https://key@o0.ingest.sentry.io/1",
+  EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: "web.apps.googleusercontent.com",
+  EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: "ios.apps.googleusercontent.com",
 };
 
 function loadAppConfig(env: Record<string, string>): ExpoConfig {
@@ -37,6 +40,16 @@ describe("app.config.js", () => {
     });
 
     expect(config.plugins).not.toContain("expo-dev-client");
+  });
+
+  it("refuses a production store build with incomplete release configuration", () => {
+    expect(() =>
+      loadAppConfig({
+        ...releaseEnv,
+        EAS_BUILD_PROFILE: "production",
+        EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: "",
+      }),
+    ).toThrow(/EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID/);
   });
 
   it("includes the development client in development builds", () => {

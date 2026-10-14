@@ -31,6 +31,10 @@ the app would not be a production config (wrong `EXPO_PUBLIC_APP_ENV`/runtime, m
 client ids, placeholder RevenueCat key, non-https API URL). Run it with `-- --check` to validate
 without publishing. Do not call `eas update` directly for production.
 
+Production store builds run the same check in `app.config.js` and fail early instead of shipping
+an incomplete binary. CI verifies that the `production` profile in `eas.json` reads the EAS
+environment and does not override it with an `env` block.
+
 ## Development client
 
 `expo-dev-client` is added only to the `development` build profile. Production and staging builds

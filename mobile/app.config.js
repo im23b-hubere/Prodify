@@ -1,3 +1,5 @@
+const { findReleaseConfigProblems } = require("./scripts/releaseConfigCheck");
+
 /** @type {import("@expo/config").ConfigContext} */
 module.exports = ({ config }) => {
   const appJson = require("./app.json");
@@ -59,7 +61,7 @@ module.exports = ({ config }) => {
     ]);
   }
 
-  return {
+  const resolvedConfig = {
     ...appJson.expo,
     ...config,
     // Expo Go matches `exposdk:57.0.0`. `appVersion` (`1.0.1`) is only for EAS OTA.
@@ -84,6 +86,17 @@ module.exports = ({ config }) => {
       googleIosClientId,
     },
   };
+
+  if (isEasBuild && process.env.EAS_BUILD_PROFILE === "production") {
+    const problems = findReleaseConfigProblems({ config: resolvedConfig, env: process.env });
+    if (problems.length > 0) {
+      throw new Error(
+        `Production build is missing release configuration (EAS environment "production"):\n- ${problems.join("\n- ")}`,
+      );
+    }
+  }
+
+  return resolvedConfig;
 };
 
 /** "123-abc.apps.googleusercontent.com" -> "com.googleusercontent.apps.123-abc" */
