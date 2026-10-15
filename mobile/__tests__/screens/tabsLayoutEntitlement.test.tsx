@@ -41,6 +41,10 @@ jest.mock("../../hooks/useStreakForegroundSync", () => ({
   useStreakForegroundSync: jest.fn(),
 }));
 
+jest.mock("../../hooks/useAppOpenReporting", () => ({
+  useAppOpenReporting: jest.fn(),
+}));
+
 jest.mock("../../lib/billing", () => ({
   getEntitlementCacheRevision: () => mockRevision,
   peekCachedHasPremiumAccess: () => mockCachedAccess,
