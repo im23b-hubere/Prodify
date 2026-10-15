@@ -43,8 +43,10 @@ class Settings(BaseSettings):
     sentry_traces_sample_rate: float = 0.15
     # RevenueCat integration (optional in dev).
     revenuecat_secret_key: str | None = None
+    # Webhook authentication: the exact Authorization header value configured in RevenueCat,
+    # and/or the HMAC signing secret RevenueCat shows once when signing is enabled.
     revenuecat_webhook_auth: str | None = None
-    webhook_secret: str = "change_me_in_production"
+    revenuecat_webhook_signing_secret: str | None = None
     revenuecat_default_offering: str = "default"
     premium_entitlement_name: str = "app_access"
     # Optional emergency fallback trial before RevenueCat rows exist: grant access for N days after signup.
@@ -155,17 +157,6 @@ class Settings(BaseSettings):
         for origin in self.cors_origins:
             if origin == "*" or origin.strip() == "*":
                 raise ValueError("Wildcard CORS origin '*' is not allowed when ENVIRONMENT=production.")
-        return self
-
-    @model_validator(mode="after")
-    def validate_webhook_secret(self):
-        normalized = self.webhook_secret.strip()
-        if self.environment != "production":
-            return self
-        if not normalized or normalized == "change_me_in_production":
-            raise ValueError("WEBHOOK_SECRET must be set and cannot use placeholder value in production.")
-        if len(normalized) < 32:
-            raise ValueError("WEBHOOK_SECRET must be at least 32 characters long in production.")
         return self
 
     @model_validator(mode="after")

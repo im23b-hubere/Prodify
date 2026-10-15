@@ -16,6 +16,7 @@ from app.contracts.auth import (
 )
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.dependencies_subscription import user_has_premium_access
 from app.models import User
 from app.rate_limit import limiter
 from app.services.auth_account_service import (
@@ -209,5 +210,7 @@ def logout(current: Annotated[User, Depends(get_current_user)], db: Annotated[Se
 
 
 @router.get("/me", response_model=UserAccountPublic)
-def me(current: Annotated[User, Depends(get_current_user)]):
-    return current
+def me(current: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    # The raw users.is_premium flag outlives expired subscriptions; report effective access.
+    account = UserAccountPublic.model_validate(current)
+    return account.model_copy(update={"is_premium": user_has_premium_access(db, current)})

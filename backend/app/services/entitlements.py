@@ -19,6 +19,6 @@ class EntitlementService:
 
     @staticmethod
     def get_streak_freeze_limit(user: User) -> int:
-        # HTTP callers are already subscribers. The free cap only remains for leftover
+        # HTTP callers are already subscribers. The non-subscriber cap only remains for leftover
         # unpaid rows that a background job might still touch.
         return 999 if EntitlementService.is_premium(user) else 1

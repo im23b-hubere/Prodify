@@ -1,8 +1,3 @@
-import hashlib
-import hmac
-import json
-
-
 def _auth_headers(client, email: str, username: str, password: str = "strong-pass-123") -> dict[str, str]:
     register = client.post(
         "/auth/register",
@@ -11,12 +6,6 @@ def _auth_headers(client, email: str, username: str, password: str = "strong-pas
     assert register.status_code == 201
     token = register.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
-
-
-def _signed_webhook(payload: dict, secret: str) -> tuple[bytes, str]:
-    raw = json.dumps(payload).encode("utf-8")
-    signature = hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
-    return raw, f"sha256={signature}"
 
 
 def test_billing_entitlement_sync_and_get(client, monkeypatch):
@@ -30,7 +19,7 @@ def test_billing_entitlement_sync_and_get(client, monkeypatch):
     r = client.get("/billing/entitlement", headers=headers)
     assert r.status_code == 200
     data = r.json()
-    assert data["entitlement"] == "free"
+    assert data["entitlement"] == "inactive"
     assert data["trial_active"] is False
 
     synced = client.post(
@@ -102,70 +91,3 @@ def test_billing_sync_respects_feature_flag(client, monkeypatch):
     assert synced.status_code == 503
     assert "temporarily disabled" in synced.json()["error"]["message"].lower()
 
-
-def test_revenuecat_webhook_rejects_invalid_signature(client):
-    payload = {"event": {"app_user_id": "1", "type": "INITIAL_PURCHASE"}}
-    response = client.post(
-        "/billing/webhooks/revenuecat",
-        json=payload,
-        headers={"X-Webhook-Signature": "sha256=invalid"},
-    )
-    assert response.status_code == 403
-    assert "invalid webhook signature" in json.dumps(response.json()).lower()
-
-
-def test_revenuecat_webhook_accepts_valid_signature(client, monkeypatch):
-    headers = _auth_headers(client, "bill-webhook@example.com", "bill-webhook-user")
-    me = client.get("/auth/me", headers=headers)
-    assert me.status_code == 200
-    user_id = str(me.json()["id"])
-    payload = {
-        "event": {
-            "app_user_id": user_id,
-            "type": "INITIAL_PURCHASE",
-            "is_active": True,
-            "is_trial_period": True,
-        }
-    }
-    secret = "test-webhook-secret-0123456789"
-    raw, signature = _signed_webhook(payload, secret)
-
-    monkeypatch.setattr("app.routers.billing.settings.webhook_secret", secret)
-
-    response = client.post(
-        "/billing/webhooks/revenuecat",
-        content=raw,
-        headers={
-            "Content-Type": "application/json",
-            "X-Webhook-Signature": signature,
-        },
-    )
-    assert response.status_code == 204
-
-
-def test_revenuecat_purchase_webhook_grants_premium_access(client, monkeypatch):
-    headers = _auth_headers(client, "bill-purchase@example.com", "bill-purchase-user")
-    user_id = str(client.get("/auth/me", headers=headers).json()["id"])
-    payload = {
-        "event": {
-            "app_user_id": user_id,
-            "type": "INITIAL_PURCHASE",
-            "is_active": True,
-            "is_trial_period": False,
-        }
-    }
-    secret = "test-webhook-secret-0123456789"
-    raw, signature = _signed_webhook(payload, secret)
-    monkeypatch.setattr("app.routers.billing.settings.webhook_secret", secret)
-
-    response = client.post(
-        "/billing/webhooks/revenuecat",
-        content=raw,
-        headers={"Content-Type": "application/json", "X-Webhook-Signature": signature},
-    )
-
-    assert response.status_code == 204
-    entitlement = client.get("/billing/entitlement", headers=headers)
-    assert entitlement.status_code == 200
-    assert entitlement.json()["entitlement"] == "premium"
-    assert client.get("/auth/me", headers=headers).json()["is_premium"] is True

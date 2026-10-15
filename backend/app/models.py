@@ -299,7 +299,7 @@ class UserSubscription(Base):
         ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True, nullable=False
     )
     provider: Mapped[str] = mapped_column(String(32), nullable=False, default="revenuecat")
-    entitlement: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
+    entitlement: Mapped[str] = mapped_column(String(32), nullable=False, default="inactive")
     trial_active: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     rc_app_user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

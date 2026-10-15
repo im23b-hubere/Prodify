@@ -77,7 +77,7 @@ export function syncBillingInBackground(accessToken: string, user: Authenticated
       const premium = isPremiumActive(customerInfo);
       const synced = await syncEntitlement(accessToken, {
         app_user_id: String(user.id),
-        entitlement: premium ? "premium" : "free",
+        entitlement: premium ? "premium" : "inactive",
         trial_active: false,
         expires_at: activeEntitlementExpiration(customerInfo),
       }).catch(() => null);

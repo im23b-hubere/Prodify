@@ -1,6 +1,9 @@
+/** Prodify has no free tier: "inactive" means no paid access, which leads to the paywall. */
+export type Entitlement = "inactive" | "premium";
+
 export type EntitlementDto = {
   provider: string;
-  entitlement: "free" | "premium";
+  entitlement: Entitlement;
   trial_active: boolean;
   expires_at: string | null;
 };

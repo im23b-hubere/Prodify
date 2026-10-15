@@ -10,7 +10,7 @@ def test_billing_entitlement_has_no_server_trial(client):
     r = client.get("/billing/entitlement", headers=headers)
     assert r.status_code == 200
     body = r.json()
-    assert body["entitlement"] == "free"
+    assert body["entitlement"] == "inactive"
     assert body["trial_active"] is False
     assert body["expires_at"] is None
 
@@ -23,7 +23,7 @@ def test_outcomes_blocked_without_premium(client):
     assert review.status_code == 402
 
 
-def test_outcomes_blocked_for_new_free_user(client):
+def test_outcomes_blocked_for_new_unsubscribed_user(client):
     headers = _auth_headers(client, "notrial@example.com", "notrial-user")
     r = client.get("/outcomes/goal-forecast/current", headers=headers)
     assert r.status_code == 402

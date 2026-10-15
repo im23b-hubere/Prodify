@@ -86,7 +86,7 @@ describe("TabsLayout entitlement updates", () => {
     jest.useRealTimers();
   });
 
-  it("does not redirect a cached free user before the authoritative check finishes", async () => {
+  it("does not redirect a cached unsubscribed user before the authoritative check finishes", async () => {
     const screen = render(<TabsLayout />);
 
     await act(async () => {
@@ -112,7 +112,7 @@ describe("TabsLayout entitlement updates", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("redirects only after the authoritative check confirms free access", async () => {
+  it("redirects only after the authoritative check confirms no active subscription", async () => {
     render(<TabsLayout />);
 
     act(() => mockResolveAccess(false));

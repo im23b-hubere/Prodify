@@ -1,4 +1,25 @@
-import { tryParseProgressionDto } from "../../lib/outcomesDto";
+import { tryParseEntitlementDto, tryParseProgressionDto } from "../../lib/outcomesDto";
+
+describe("tryParseEntitlementDto", () => {
+  it("parses an account without an active subscription as inactive", () => {
+    expect(
+      tryParseEntitlementDto({ provider: "revenuecat", entitlement: "inactive", trial_active: false }),
+    ).toEqual({
+      provider: "revenuecat",
+      entitlement: "inactive",
+      trial_active: false,
+      expires_at: null,
+    });
+  });
+
+  it("reads the legacy free value from older backends as inactive", () => {
+    expect(tryParseEntitlementDto({ entitlement: "free" })?.entitlement).toBe("inactive");
+  });
+
+  it("rejects unknown entitlement values", () => {
+    expect(tryParseEntitlementDto({ entitlement: "trial" })).toBeNull();
+  });
+});
 
 describe("tryParseProgressionDto", () => {
   it("parses genuine Level 1 / 0 XP progression", () => {

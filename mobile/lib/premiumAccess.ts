@@ -136,7 +136,7 @@ async function refreshPremiumAccess(token: string, appUserId?: string | null): P
     return true;
   }
 
-  // 2) Short RC probe only when server is free/unavailable (covers recent sandbox purchases).
+  // 2) Short RC probe only when server is inactive/unavailable (covers recent sandbox purchases).
   if (userId) {
     const rcPremium = await withTimeout(
       probeRevenueCatPremium(token, userId, numericUserId),
