@@ -14,6 +14,7 @@ import { ProdifyWordmark } from "../../components/brand/ProdifyWordmark";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { fontFamily } from "../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../constants/theme";
+import { LegalConsentNotice } from "../../features/auth/components/LegalConsentNotice";
 import { SocialSignInButtons } from "../../features/auth/components/SocialSignInButtons";
 import {
   type RegisterFormController,
@@ -109,6 +110,7 @@ export default function RegisterScreen() {
         </View>
         <RegisterCard form={form} isSocialSignInPending={socialSignIn.pendingProvider !== null} />
         <SocialSignInButtons controller={socialSignIn} disabled={form.loading} />
+        <LegalConsentNotice />
 
         <Pressable
           style={styles.linkWrap}

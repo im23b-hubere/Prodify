@@ -30,6 +30,28 @@ def test_the_privacy_policy_explains_personalised_reminders(client):
     assert "We do not use your location, WiFi, contacts or data from other apps" in text
 
 
+def test_terms_commit_to_zero_tolerance_for_objectionable_content(client):
+    terms = client.get("/legal/terms").text
+
+    assert "Community guidelines" in terms
+    assert "zero tolerance" in terms
+
+
+def test_terms_explain_reporting_blocking_and_review_deadline(client):
+    terms = client.get("/legal/terms").text
+
+    assert "Reporting and blocking" in terms
+    assert "within 24 hours" in terms
+    assert "suspend" in terms
+
+
+def test_privacy_policy_covers_safety_reports(client):
+    privacy = client.get("/legal/privacy").text
+
+    assert "reports" in privacy
+    assert "blocks" in privacy
+
+
 def test_health_reports_release_version(client):
     response = client.get("/health")
     assert response.status_code == 200
