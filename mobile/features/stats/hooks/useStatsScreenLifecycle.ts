@@ -4,7 +4,7 @@ import { Animated, Easing, type LayoutChangeEvent, type ScrollView } from "react
 
 import { spacing } from "../../../constants/theme";
 import { subscribeSuccessfulMutations } from "../../../lib/client";
-import { affectsCountedSessions } from "../../sessions/sessionMutations";
+import { affectsSessionStats } from "../../sessions/sessionMutations";
 
 type LoadStats = (options?: { force?: boolean }) => Promise<void>;
 
@@ -52,7 +52,7 @@ export function useStatsScreenLifecycle({
 
   useEffect(() => {
     return subscribeSuccessfulMutations((mutation) => {
-      if (affectsCountedSessions(mutation)) {
+      if (affectsSessionStats(mutation)) {
         loadStats({ force: true }).catch(() => undefined);
       }
     });

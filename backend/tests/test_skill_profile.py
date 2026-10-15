@@ -1,6 +1,6 @@
 from app.services.skill_profile_service import branch_seconds_for_session
 from tests.auth_helpers import auth_headers as _auth_headers
-from tests.test_session_skill_focuses import _finished_session, _progress_by_skill, _reflect
+from tests.test_session_skill_focuses import _assign, _finished_session, _progress_by_skill, _reflect
 
 HOUR = 3600
 
@@ -82,6 +82,22 @@ def test_focus_totals_match_the_session_progress(client):
         assert _focus(profile, skill_id)["total_seconds"] == session_progress[skill_id]["total_seconds"]
         assert _focus(profile, skill_id)["level"] == session_progress[skill_id]["level"]
     assert _focus(profile, "mixing.saturation")["total_seconds"] == 0
+
+
+def test_a_focus_given_zero_minutes_was_not_trained(client):
+    headers = _auth_headers(client, "tree-zero@example.com", "tree-zero")
+    session_id = _finished_session(client, headers, duration_minutes=60, session_type="mixing")
+    _assign(
+        client,
+        headers,
+        session_id,
+        ["mixing.eq", "mixing.space"],
+        [("mixing.eq", 60 * 60), ("mixing.space", 0)],
+    )
+
+    space = _focus(_profile(client, headers), "mixing.space")
+
+    assert (space["session_count"], space["last_trained_at"]) == (0, None)
 
 
 def test_deleted_and_short_sessions_do_not_count(client):
