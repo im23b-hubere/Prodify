@@ -30,6 +30,8 @@ def delete_my_account(
 
 
 def _revoke_apple_authorizations(db: Session, user: User) -> None:
+    if not settings.apple_audiences:
+        return
     refresh_tokens = db.scalars(
         select(UserIdentity.provider_refresh_token).where(
             UserIdentity.user_id == user.id,

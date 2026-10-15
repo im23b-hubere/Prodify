@@ -34,6 +34,7 @@ from app.services.auth_token_service import (
 )
 from app.services.social_account_service import SocialAccountRejectedError, find_or_create_social_account
 from app.services.social_identity_service import (
+    SocialProviderUnavailableError,
     SocialTokenRejectedError,
     VerifiedIdentity,
     verify_apple_identity_token,
@@ -113,13 +114,24 @@ def _social_sign_in(
         status_code, detail = _SOCIAL_ACCOUNT_ERRORS[error.reason]
         raise HTTPException(status_code=status_code, detail=detail) from error
 
-    if apple_authorization_code:
+    if apple_authorization_code and settings.apple_audiences:
         refresh_token = exchange_authorization_code(apple_authorization_code, settings.apple_audiences[0])
         if refresh_token:
             linked.provider_refresh_token = refresh_token
             db.commit()
 
     return issue_tokens_for_user(db, linked.user, replace_all=True)
+
+
+def _social_provider_unavailable(provider: str) -> HTTPException:
+    _log.warning("auth_social_provider_unavailable", extra={"provider": provider})
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "code": "SOCIAL_PROVIDER_UNAVAILABLE",
+            "message": "Sign-in is temporarily unavailable. Please try again in a moment.",
+        },
+    )
 
 
 def _social_token_rejected() -> HTTPException:
@@ -165,6 +177,8 @@ def login(request: Request, payload: UserLogin, db: Annotated[Session, Depends(g
 def sign_in_with_apple(request: Request, payload: AppleSignIn, db: Annotated[Session, Depends(get_db)]):
     try:
         identity = verify_apple_identity_token(payload.identity_token, settings.apple_audiences)
+    except SocialProviderUnavailableError as error:
+        raise _social_provider_unavailable("apple") from error
     except SocialTokenRejectedError as error:
         raise _social_token_rejected() from error
     return _social_sign_in(
@@ -185,6 +199,8 @@ def sign_in_with_google(request: Request, payload: GoogleSignIn, db: Annotated[S
         )
     try:
         identity = verify_google_id_token(payload.id_token, settings.google_audiences)
+    except SocialProviderUnavailableError as error:
+        raise _social_provider_unavailable("google") from error
     except SocialTokenRejectedError as error:
         raise _social_token_rejected() from error
     return _social_sign_in(db, identity)
