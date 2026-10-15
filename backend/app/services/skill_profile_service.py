@@ -54,6 +54,8 @@ class _Tally:
     last_trained_at: datetime | None = None
 
     def add(self, seconds: int, trained_at: datetime) -> None:
+        if seconds <= 0:
+            return
         self.seconds += seconds
         self.session_count += 1
         if self.last_trained_at is None or trained_at > self.last_trained_at:

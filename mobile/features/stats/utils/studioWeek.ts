@@ -20,7 +20,11 @@ export function studioWeekFill(days: DaySeconds[], weekKeys: string[]) {
   };
 }
 
-/** Newest full week that has not been celebrated yet — this week first, then last week. */
+/**
+ * The newest full week (this week, else last week) if it has not been celebrated yet.
+ * Only the newest one counts: falling back to an older week after celebrating the newer one
+ * would make two full weeks in a row take turns being celebrated on every visit.
+ */
 export function uncelebratedFullWeekStart(
   days: DaySeconds[],
   celebratedWeekStart: string | null,
@@ -32,8 +36,7 @@ export function uncelebratedFullWeekStart(
     const keys = weekDateKeys(offset, today);
     const weekStart = keys[0];
     if (!weekStart || !studioWeekFill(days, keys).isComplete) continue;
-    if (celebratedWeekStart === weekStart) continue;
-    return weekStart;
+    return celebratedWeekStart === weekStart ? null : weekStart;
   }
   return null;
 }

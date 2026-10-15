@@ -62,6 +62,12 @@ describe("uncelebratedFullWeekStart", () => {
     expect(uncelebratedFullWeekStart(days, last[0], true, monday)).toBeNull();
   });
 
+  it("stays quiet after two full weeks in a row once the newer one was celebrated", () => {
+    const lastWeek = weekDateKeys(-1, wednesday);
+    const days = [...lastWeek, ...thisWeek].map((date) => day(date, 600));
+    expect(uncelebratedFullWeekStart(days, thisWeek[0], true, wednesday)).toBeNull();
+  });
+
   it("does not celebrate an incomplete week", () => {
     const days = thisWeek.slice(0, 5).map((date) => day(date, 600));
     expect(uncelebratedFullWeekStart(days, null, true, wednesday)).toBeNull();
