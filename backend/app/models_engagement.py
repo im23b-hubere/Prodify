@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -51,3 +51,27 @@ class NotificationDelivery(Base):
             return None
         elapsed = as_utc_aware(self.session_started_at) - as_utc_aware(self.sent_at)
         return int(elapsed.total_seconds() // 60)
+
+
+DEFAULT_QUIET_START_MINUTE = 22 * 60 + 30
+DEFAULT_QUIET_END_MINUTE = 8 * 60
+
+
+class UserNotificationPreferences(Base):
+    """
+    Which pushes a producer wants. Quiet minutes are local minutes since midnight; equal start
+    and end mean no quiet window. Producers without a row get the defaults.
+    """
+
+    __tablename__ = "user_notification_preferences"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    smart_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    streak_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    social_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    challenge_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    rank_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    reengagement_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    quiet_start_minute: Mapped[int] = mapped_column(Integer, nullable=False, default=DEFAULT_QUIET_START_MINUTE)
+    quiet_end_minute: Mapped[int] = mapped_column(Integer, nullable=False, default=DEFAULT_QUIET_END_MINUTE)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

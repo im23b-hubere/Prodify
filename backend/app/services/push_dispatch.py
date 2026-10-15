@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 import threading
 
@@ -14,6 +15,7 @@ from app.config import Settings
 from app.models import PushToken, utcnow
 from app.services import expo_client, fcm_client, push_templates
 from app.services.engagement.deliveries import create_delivery, notification_type_of, record_dispatch_result
+from app.services.engagement.preferences import is_push_allowed
 from app.services.push_links import push_data_dashboard
 
 logger = logging.getLogger(__name__)
@@ -62,18 +64,24 @@ def dispatch_to_user(
     title: str,
     body: str,
     data: dict[str, str] | None = None,
+    now: datetime | None = None,
 ) -> tuple[int, int, str | None]:
     """
-    Send a notification to every unique active token for a user.
+    Send a notification to every unique active token for a user, unless their notification
+    preferences hold this kind of push back right now.
 
     Every send is recorded as a `NotificationDelivery` whose id travels as `data.nid`, so the
     app can report the open and the next session can be attributed to this push.
     """
+    sent_at = now or utcnow()
+    notification_type = notification_type_of(data)
+    if not is_push_allowed(db, user_id, notification_type, sent_at):
+        return 0, 0, "held back by notification preferences"
     channels = _load_push_channels(db, user_id)
     if channels.attempted == 0:
         return 0, 0, "no push tokens registered"
 
-    delivery = create_delivery(db, user_id, notification_type_of(data), utcnow())
+    delivery = create_delivery(db, user_id, notification_type, sent_at)
     tracked_data = {**(data or {}), "nid": delivery.id}
     channel_results = [
         _deliver_expo(settings, db, channels.expo, title, body, tracked_data),

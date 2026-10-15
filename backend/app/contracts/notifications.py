@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -61,6 +61,31 @@ class NotificationInboxItemPublic(BaseModel):
 
 class NotificationInboxReadBody(BaseModel):
     up_to_ms: int | None = Field(default=None, ge=0)
+
+
+MinuteOfDay = Annotated[int, Field(ge=0, le=1439)]
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    """Quiet minutes are local minutes since midnight; equal start and end turn quiet hours off."""
+
+    smart_enabled: bool
+    streak: bool
+    social: bool
+    challenge: bool
+    rank: bool
+    reengagement: bool
+    quiet_start_minute: MinuteOfDay
+    quiet_end_minute: MinuteOfDay
+
+
+class NotificationPreferencesPublic(NotificationPreferencesUpdate):
+    # False until the producer saves preferences once; clients upload legacy device settings then.
+    customized: bool
+
+
+class NotificationPermissionBody(BaseModel):
+    granted: bool
 
 
 class SmartNudgeBody(BaseModel):

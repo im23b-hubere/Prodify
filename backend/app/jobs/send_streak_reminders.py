@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.config import Settings
 from app.models import PushToken, StreakReminderDispatchLog, User, utcnow
 from app.services import push_templates
+from app.services.engagement.preferences import is_push_allowed
 from app.services.push_dispatch import dispatch_to_user
 from app.services.push_links import push_data_dashboard
 from app.services.streak_state import streak_snapshot
@@ -41,6 +42,7 @@ class ReminderCounts:
     duplicate: int = 0
     not_at_risk: int = 0
     outside_window: int = 0
+    muted: int = 0
 
     def record(self, outcome: str) -> None:
         if outcome == "sent":
@@ -51,6 +53,8 @@ class ReminderCounts:
             self.not_at_risk += 1
         elif outcome == "outside_window":
             self.outside_window += 1
+        elif outcome == "muted":
+            self.muted += 1
 
 
 def pick_reminder_slot(local_now: datetime) -> str | None:
@@ -75,6 +79,7 @@ def run_streak_reminder_job(db: DBSession, settings: Settings, now: datetime | N
         "skipped_already_sent_or_duplicate": counts.duplicate,
         "skipped_not_at_risk": counts.not_at_risk,
         "skipped_outside_window": counts.outside_window,
+        "skipped_muted": counts.muted,
     }
 
 
@@ -99,13 +104,16 @@ def _process_user(
     slot = pick_reminder_slot(local_now)
     if slot is None:
         return "outside_window"
+    if not is_push_allowed(db, user_id, slot, run_at):
+        return "muted"
     day_key = local_now.date().isoformat()
     if _was_already_reminded(db, user_id, day_key, slot):
         return "duplicate"
     current_streak, at_risk = streak_snapshot(db, user_id, today=local_now.date())
     if not at_risk:
         return "not_at_risk"
-    return "sent" if _send_reminder(db, settings, user_id, day_key, slot, current_streak) else "failed"
+    sent = _send_reminder(db, settings, user_id, day_key, slot, current_streak, run_at)
+    return "sent" if sent else "failed"
 
 
 def _was_already_reminded(db: DBSession, user_id: int, day_key: str, slot: str) -> bool:
@@ -128,6 +136,7 @@ def _send_reminder(
     day_key: str,
     slot: str,
     current_streak: int,
+    run_at: datetime,
 ) -> bool:
     title, body = push_templates.streak_reminder_slot(slot, current_streak)
     try:
@@ -138,6 +147,7 @@ def _send_reminder(
             title,
             body,
             data={**push_data_dashboard(), "kind": slot},
+            now=run_at,
         )
         db.commit()
     except Exception:

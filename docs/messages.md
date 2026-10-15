@@ -6,7 +6,7 @@ What the producer is told, on which channel, and when. Copy follows [studio voic
 
 | Channel | What it is |
 |---------|------------|
-| **Push** | Server send to the device (Expo / FCM). Needs a registered token. Ignores in-app notification preferences. |
+| **Push** | Server send to the device (Expo / FCM). Needs a registered token. Honours the server-side notification preferences (see below). |
 | **Local** | Scheduled or immediate notification on the device (`expo-notifications`). Needs OS permission. |
 | **Inbox** | In-app notification list. Server feed plus local prepends. Filtered by category, frequency, quiet hours, and first-week quiet. |
 | **In-app** | Alert or HUD in the running app. Not a notification. |
@@ -108,6 +108,15 @@ These strings exist. Nothing currently sends them on a schedule or from the mobi
 
 ## Preferences that change delivery
 
-In-app **Inbox** and **local social prepends** respect notification settings: category toggles (streak / achievements / social / tips), frequency `all | important | off`, quiet hours 23:00–07:00 (critical still goes through), and a first-week quiet for social/tips.
+**Server push** reads the producer's preferences (`GET/PUT /users/me/notification-preferences`) before every send, in `engagement/preferences.py`:
 
-**Server push** and **local streak / presence DATE triggers** do not read those settings. Local weekly recap does check tips + frequency.
+- Transactional pushes (session saved, still there?, auto-stopped, moderation, QA pings) always go out.
+- Everything else needs the **Smart notifications** master toggle and its category toggle: streak, social, challenge, rank, re-engagement.
+- Quiet hours (default 22:30–08:00 in the producer's timezone) hold back every category except streak reminders, whose deadline is midnight.
+- A push held back is dropped, not delayed, and leaves no delivery row.
+
+Accounts without saved preferences get these defaults. The first time the app sees such an account, it uploads the settings older versions kept on the device (tips maps to challenge, rank and re-engagement).
+
+In-app **Inbox** and **local social prepends** respect the device settings: category toggles (streak / achievements / social / tips, with streak and social mirrored from the server), frequency `all | important | off`, the server's quiet hours (critical still goes through), and a first-week quiet for social/tips.
+
+**Local streak / presence DATE triggers** do not read those settings. Local weekly recap does check tips + frequency. A notification permission denied on the device is reported once a day as `notifications_disabled`.

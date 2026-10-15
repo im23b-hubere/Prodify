@@ -26,3 +26,4 @@ class EngagementEvent(StrEnum):
     NOTIFICATION_SENT = "notification_sent"
     NOTIFICATION_OPENED = "notification_opened"
     SESSION_STARTED_AFTER_NOTIFICATION = "session_started_after_notification"
+    NOTIFICATIONS_DISABLED = "notifications_disabled"

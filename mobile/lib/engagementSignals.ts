@@ -17,3 +17,12 @@ export async function reportNotificationOpened(authToken: string, notificationId
 export async function reportAppOpen(authToken: string): Promise<void> {
   await apiJson("/engagement/app-open", { method: "POST", token: authToken });
 }
+
+/** Only a denied permission is worth reporting: it is the producer opting out of pushes. */
+export async function reportNotificationsDisabled(authToken: string): Promise<void> {
+  await apiJson("/engagement/notification-permission", {
+    method: "POST",
+    token: authToken,
+    body: { granted: false },
+  });
+}

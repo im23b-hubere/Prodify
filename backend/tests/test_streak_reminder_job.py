@@ -25,7 +25,7 @@ def test_reminder_slots_follow_the_local_wall_clock():
 def sent_pushes(client, monkeypatch):
     sent: list[int] = []
 
-    def fake_dispatch(_settings, _db, user_id, _title, _body, data=None):
+    def fake_dispatch(_settings, _db, user_id, _title, _body, data=None, now=None):
         sent.append(user_id)
         return 1, 1, None
 

@@ -26,7 +26,8 @@ function useNotificationSettings(token?: string | null) {
   const updateSetting = useCallback(
     async (patch: Partial<NotificationSettings>) => {
       if (!settings) return;
-      const updated = { ...settings, ...patch };
+      // Server preferences mirror into the same storage, so merge into what is stored now.
+      const updated = { ...(await loadSettings()), ...patch };
       setSettings(updated);
       await saveSettings(updated);
       if ("tips" in patch || "frequency" in patch) {

@@ -19,7 +19,8 @@ export type NotificationSettings = {
   achievements: boolean;
   social: boolean;
   tips: boolean;
-  quietStartHour: number;
-  quietEndHour: number;
+  /** Local minutes since midnight; equal start and end mean no quiet window. */
+  quietStartMinute: number;
+  quietEndMinute: number;
   frequency: "all" | "important" | "off";
 };

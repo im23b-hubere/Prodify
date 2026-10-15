@@ -84,8 +84,8 @@ const defaultSettings = {
   achievements: true,
   social: true,
   tips: true,
-  quietStartHour: 23,
-  quietEndHour: 7,
+  quietStartMinute: 23 * 60,
+  quietEndMinute: 7 * 60,
   frequency: "all" as const,
 };
 
