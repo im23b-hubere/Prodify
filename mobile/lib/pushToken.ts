@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 
 import { apiJson } from "./client";
 import { isE2eModeEnabled } from "./e2eMode";
+import { markServerPushChannel } from "./serverPushChannel";
 
 /** Best-effort: register Expo push token + (Android) native FCM token with API. */
 export async function registerPushTokenWithBackend(authToken: string): Promise<void> {
@@ -24,6 +25,7 @@ export async function registerPushTokenWithBackend(authToken: string): Promise<v
         body: { token: expoStr, platform: Platform.OS, channel: "expo" },
       });
     }
+    await markServerPushChannel(Boolean(expoStr));
 
     if (Platform.OS === "android") {
       try {
@@ -42,5 +44,6 @@ export async function registerPushTokenWithBackend(authToken: string): Promise<v
     }
   } catch {
     /* simulator / no project id / network */
+    await markServerPushChannel(false);
   }
 }

@@ -9,6 +9,7 @@ export {
   getActiveNotificationUserId,
   getNotificationServerSyncMs,
   getUnreadCount,
+  hasSavedSettings,
   loadInbox,
   loadSettings,
   markAllRead,

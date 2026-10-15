@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 import threading
 
@@ -13,6 +14,13 @@ from sqlalchemy.orm import Session as DBSession
 from app.config import Settings
 from app.models import PushToken, utcnow
 from app.services import expo_client, fcm_client, push_templates
+from app.services.engagement.deliveries import (
+    EngineChoice,
+    create_delivery,
+    notification_type_of,
+    record_dispatch_result,
+)
+from app.services.engagement.preferences import is_push_allowed
 from app.services.push_links import push_data_dashboard
 
 logger = logging.getLogger(__name__)
@@ -61,19 +69,36 @@ def dispatch_to_user(
     title: str,
     body: str,
     data: dict[str, str] | None = None,
+    now: datetime | None = None,
+    *,
+    choice: EngineChoice | None = None,
 ) -> tuple[int, int, str | None]:
-    """Send a notification to every unique active token for a user."""
+    """
+    Send a notification to every unique active token for a user, unless their notification
+    preferences hold this kind of push back right now.
+
+    Every send is recorded as a `NotificationDelivery` whose id travels as `data.nid`, so the
+    app can report the open and the next session can be attributed to this push. Engine sends
+    pass their `choice` so the delivery remembers why it went out.
+    """
+    sent_at = now or utcnow()
+    notification_type = notification_type_of(data)
+    if not is_push_allowed(db, user_id, notification_type, sent_at):
+        return 0, 0, "held back by notification preferences"
     channels = _load_push_channels(db, user_id)
     if channels.attempted == 0:
         return 0, 0, "no push tokens registered"
 
-    deliveries = [
-        _deliver_expo(settings, db, channels.expo, title, body, data),
-        _deliver_fcm(settings, db, channels.fcm, title, body, data),
+    delivery = create_delivery(db, user_id, notification_type, sent_at, choice=choice)
+    tracked_data = {**(data or {}), "nid": delivery.id}
+    channel_results = [
+        _deliver_expo(settings, db, channels.expo, title, body, tracked_data),
+        _deliver_fcm(settings, db, channels.fcm, title, body, tracked_data),
     ]
     _touch_attempted_tokens(db, user_id, channels.all_tokens)
-    delivered = sum(result.delivered for result in deliveries)
-    summary_parts = [part for result in deliveries for part in result.summary_parts]
+    delivered = sum(result.delivered for result in channel_results)
+    record_dispatch_result(db, delivery, delivered)
+    summary_parts = [part for result in channel_results for part in result.summary_parts]
     return channels.attempted, delivered, " · ".join(summary_parts) if summary_parts else None
 
 
@@ -242,7 +267,7 @@ def schedule_notify_session_complete(
         except Exception:
             logger.exception("deferred push session-complete failed")
 
-    _submit_deferred(settings, run_notification, "session-complete")
+    submit_deferred(settings, run_notification, "session-complete")
 
 
 def schedule_push_to_user(
@@ -266,10 +291,10 @@ def schedule_push_to_user(
         except Exception:
             logger.exception("deferred push %s failed", label)
 
-    _submit_deferred(settings, run_notification, label)
+    submit_deferred(settings, run_notification, label)
 
 
-def _submit_deferred(settings: Settings, run_notification, label: str) -> None:
+def submit_deferred(settings: Settings, run_notification, label: str) -> None:
     backend = (settings.push_async_backend or "threadpool").strip().lower()
     if backend == "inline":
         run_notification()

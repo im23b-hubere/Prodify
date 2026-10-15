@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import AnalyticsEventDedupe, GrowthEvent, ProductionSession, PushToken, User, UserSubscription, utcnow
+from app.contracts.engagement import EngagementMetricsPublic
 from app.contracts.outcomes import KpiDashboardPublic, KpiSummaryPublic, KpiTrendPointPublic
 
 _log = logging.getLogger(__name__)
@@ -92,7 +93,7 @@ def kpi_summary(db: Session) -> KpiSummaryPublic:
     )
 
 
-def kpi_dashboard(db: Session, window_days: int = 7) -> KpiDashboardPublic:
+def kpi_dashboard(db: Session, *, window_days: int, engagement: EngagementMetricsPublic) -> KpiDashboardPublic:
     now = utcnow()
     since = now - timedelta(days=window_days)
     counts = _dashboard_counts(db, since)
@@ -110,6 +111,7 @@ def kpi_dashboard(db: Session, window_days: int = 7) -> KpiDashboardPublic:
         push_tokens_active=counts.active_push_tokens,
         push_tokens_inactive=counts.inactive_push_tokens,
         trend=_dashboard_trend(db, since, window_days),
+        engagement=engagement,
     )
 
 

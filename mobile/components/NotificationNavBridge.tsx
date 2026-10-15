@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { deepLinkRequiresAuth, isAllowedDeepLinkPath, toRoutableHref } from "../lib/deepLinkGuard";
 import { useAuth } from "../context/AuthContext";
 import { debugNav } from "../lib/debugLog";
+import { notificationIdOf, reportNotificationOpened } from "../lib/engagementSignals";
 import { setPendingDeepLinkPath } from "../lib/pendingDeepLink";
 import {
   readOnboardingComplete,
@@ -27,7 +28,8 @@ function parsePathFromNotificationData(data: Record<string, unknown> | undefined
 }
 
 /**
- * Opens an in-app route when the user taps a push that includes `data.path` (Expo Router href).
+ * Opens an in-app route when the user taps a push that includes `data.path` (Expo Router href),
+ * and reports the tap of server pushes (`data.nid`) so the engagement engine can learn from it.
  * Clears the last notification response after handling so the same tap cannot re-route on next launch.
  */
 export function NotificationNavBridge() {
@@ -59,6 +61,10 @@ export function NotificationNavBridge() {
             raw && typeof raw === "object" && !Array.isArray(raw)
               ? (raw as Record<string, unknown>)
               : undefined;
+          const notificationId = notificationIdOf(data);
+          if (notificationId && token) {
+            void reportNotificationOpened(token, notificationId).catch(() => undefined);
+          }
           const path = parsePathFromNotificationData(data);
           if (!path) return;
           const normalizedPath = path.startsWith("/") ? path.slice(1) : path;

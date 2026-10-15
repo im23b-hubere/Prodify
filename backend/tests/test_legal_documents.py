@@ -22,6 +22,14 @@ def test_public_legal_pages_are_renderable_html(client):
         assert "mailto:" in response.text
 
 
+def test_the_privacy_policy_explains_personalised_reminders(client):
+    text = client.get("/legal/privacy").text
+
+    assert "Personalised reminders" in text
+    assert "uses your activity patterns to personalize reminders" in text
+    assert "We do not use your location, WiFi, contacts or data from other apps" in text
+
+
 def test_health_reports_release_version(client):
     response = client.get("/health")
     assert response.status_code == 200

@@ -200,6 +200,48 @@
     "weekdaysFull": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
     "retry": "Retry"
   },
+  "engagementDebug": {
+    "title": "Engine debug",
+    "subtitle": "Why Prodify would or wouldn't nudge you right now",
+    "loading": "Evaluating the engagement engine",
+    "errorTitle": "Couldn't evaluate the engine",
+    "errorBody": "Check that the backend runs in development and try again.",
+    "coldStartTitle": "Still learning your rhythm",
+    "coldStartBody": "Fewer than {{count}} sessions so far, so the engine relies on default timing and priors.",
+    "decisionTitle": "Decision",
+    "nothingChosen": "No push",
+    "send": "Would send",
+    "skip": "Would wait",
+    "scheduledAt": "Next send moment {{time}}",
+    "evaluate": "Evaluate engine now",
+    "candidatesTitle": "Candidates",
+    "noCandidates": "No trigger applies right now.",
+    "verdict": "Verdict",
+    "learningTitle": "Learning",
+    "fatigue": "Fatigue",
+    "ignoredStreak": "Ignored in a row",
+    "sendHour": "Learned send hour",
+    "segment": "Segment",
+    "returnProbability": "Return within 24h",
+    "previousReturnProbability": "Yesterday's estimate",
+    "profileTitle": "Profile",
+    "stage": "Stage",
+    "sessions": "Sessions",
+    "perWeek": "Sessions per week",
+    "avgDuration": "Average session",
+    "lastDuration": "Last session",
+    "minutes": "{{count}} min",
+    "lastTwoWeeks": "Last 7 / previous 7 days",
+    "daysSince": "Days since last session",
+    "usualHours": "Usual hours",
+    "window": "Production window",
+    "defaultWindow": "{{window}} (default)",
+    "lastPushTitle": "Last smart push",
+    "noPush": "No smart push sent yet.",
+    "outcome": "Outcome",
+    "score": "Score",
+    "none": "–"
+  },
   "legal": {
     "linksPrivacy": "Privacy",
     "linksTerms": "Terms of use",
@@ -215,7 +257,7 @@
     },
     "privacy": {
       "screenTitle": "Privacy policy",
-      "updated": "Last updated: April 2026",
+      "updated": "Last updated: October 2026",
       "intro": "This notice explains how Prodify processes personal data. It is not legal advice.",
       "blocks": [
         {
@@ -231,15 +273,19 @@
           "body": "Processing is necessary to perform the contract (GDPR Art. 6(1)(b)), to protect security and prevent abuse (legitimate interests, Art. 6(1)(f)), and — where you consented — for push messages (Art. 6(1)(a))."
         },
         {
-          "heading": "4. Retention",
+          "heading": "4. Personalised reminders",
+          "body": "Prodify uses your activity patterns to personalize reminders and help you maintain your production routine. For this we only use first-party data from your use of Prodify: when and how long you produce, your streaks, challenges and friend activity on Prodify, and whether a reminder was opened or followed by a session. We do not use your location, WiFi, contacts or data from other apps, and we do not fingerprint your device. You can turn smart notifications or single categories off at any time in the notification settings."
+        },
+        {
+          "heading": "5. Retention",
           "body": "We store data while your account exists. After deletion, we remove associated personal data unless a legal retention obligation applies."
         },
         {
-          "heading": "5. Your rights",
+          "heading": "6. Your rights",
           "body": "You have the right to access, rectification, erasure, restriction, portability, and objection where processing relies on legitimate interests. You may withdraw consent at any time with future effect. You may lodge a complaint with a supervisory authority."
         },
         {
-          "heading": "6. Contact",
+          "heading": "7. Contact",
           "body": "To exercise your rights or ask questions, use the support address shown in the App Store or in the app."
         }
       ]
@@ -1386,14 +1432,25 @@
     "socialUpdates": "Social updates",
     "tipsAndNudges": "Tips & Sunday recap",
     "tipsAndNudgesHint": "Includes your Sunday evening weekly recap reminder.",
-    "quietHours": "Quiet hours (23:00–07:00)",
+    "smartNotifications": "Smart notifications",
+    "smartNotificationsHint": "Pushes timed to when you usually produce. Session updates always come through.",
+    "personalisationNotice": "Prodify uses your activity patterns to personalize reminders and help you maintain your production routine. Only your activity in Prodify is used — never your location, contacts or other apps.",
+    "challengeUpdates": "Challenges",
+    "rankProgress": "Rank progress",
+    "comebackNudges": "Comeback nudges",
+    "comebackNudgesHint": "A gentle push when your studio has been quiet for a while.",
+    "quietHours": "Quiet hours (22:30–08:00)",
+    "quietHoursHint": "No pushes overnight. Streak reminders before midnight still come through.",
+    "prefsInApp": "In the app",
+    "prefsLoading": "Loading your preferences…",
+    "prefsLoadFailed": "Couldn't load your preferences.",
+    "prefsSaveFailed": "Couldn't save that change. Check your connection and try again.",
     "deliveryMode": "Delivery mode",
     "modeAll": "All",
     "modeImportant": "Important only",
     "modeOff": "Off",
     "settingsA11y": "Notification settings",
-    "prefsNotifyAbout": "Notify me about",
-    "prefsDelivery": "Delivery",
+    "prefsNotifyAbout": "Push notifications",
     "sectionToday": "Today",
     "sectionYesterday": "Yesterday",
     "sectionEarlier": "Earlier",

@@ -15,9 +15,11 @@ import { NotificationPreferences } from "./NotificationPreferences";
 import { notificationStyles as styles } from "./notification.styles";
 import { notificationSections, type NotificationSectionKey } from "./notificationPresentation";
 import type { NotificationInboxState } from "./useNotificationInbox";
+import type { NotificationPreferencesState } from "./useNotificationPreferences";
 
 type Props = {
   inbox: NotificationInboxState;
+  preferences: NotificationPreferencesState;
   onBack: () => void;
   onOpenAction: (route: string) => void;
 };
@@ -40,7 +42,7 @@ function useNewItemIds(items: InboxItem[]) {
   return seenUnread.current;
 }
 
-export function NotificationInboxView({ inbox, onBack, onOpenAction }: Props) {
+export function NotificationInboxView({ inbox, preferences, onBack, onOpenAction }: Props) {
   const { t } = useTranslation();
   const [prefsOpen, setPrefsOpen] = useState(false);
   const newIds = useNewItemIds(inbox.items);
@@ -120,6 +122,7 @@ export function NotificationInboxView({ inbox, onBack, onOpenAction }: Props) {
           onClose={() => setPrefsOpen(false)}
           settings={inbox.settings}
           onUpdate={inbox.updateSetting}
+          server={preferences}
         />
       ) : null}
     </SafeAreaView>

@@ -241,7 +241,7 @@ class NotificationReadState(Base):
 
 
 class StreakReminderDispatchLog(Base):
-    """One row per (user, UTC calendar day, reminder slot) to avoid duplicate server pushes."""
+    """One row per (user, local calendar day, reminder slot) to avoid duplicate server pushes."""
 
     __tablename__ = "streak_reminder_dispatch_log"
     __table_args__ = (
@@ -250,7 +250,8 @@ class StreakReminderDispatchLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    utc_day_key: Mapped[str] = mapped_column(String(10), nullable=False)
+    # The column predates per-user timezones; it now holds the user's local day key.
+    day_key: Mapped[str] = mapped_column("utc_day_key", String(10), nullable=False)
     slot_kind: Mapped[str] = mapped_column(String(32), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -306,6 +307,13 @@ class UserSubscription(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+from app.models_engagement import (
+    DeliveryOutcome,
+    LeaderboardSnapshot,
+    NotificationDelivery,
+    UserEngagementProfile,
+    UserNotificationPreferences,
+)
 from app.models_growth import (
     AnalyticsEventDedupe,
     ChallengeParticipant,

@@ -48,7 +48,7 @@ def test_dispatch_deactivates_invalid_tokens_and_tracks_last_used(client, monkey
     monkeypatch.setattr(settings, "expo_access_token", "test-token")
 
     with SessionLocal() as db:
-        attempted, ok, message = dispatch_to_user(settings, db, user_id, "Title", "Body", data={"kind": "test"})
+        attempted, ok, message = dispatch_to_user(settings, db, user_id, "Title", "Body", data={"kind": "test_ping"})
         assert attempted == 2
         assert ok == 1
         assert message is not None

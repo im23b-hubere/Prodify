@@ -21,6 +21,7 @@ export function useSettingsScreenController() {
       openPrivacy: () => router.push("/legal/privacy" as never),
       openTerms: () => router.push("/legal/terms" as never),
       openBlockedUsers: () => router.push("/blocked-users" as never),
+      openEngagementDebug: () => router.push("/engagement-debug" as never),
     },
   };
 }

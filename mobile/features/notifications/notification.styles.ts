@@ -164,6 +164,18 @@ export const notificationStyles = StyleSheet.create({
     ...typography.body,
   },
   prefsRowHint: { color: colors.textSecondary, ...typography.meta },
+  prefsRowDisabled: { opacity: 0.45 },
+  prefsError: {
+    color: colors.danger,
+    ...typography.meta,
+    marginTop: spacing.xs,
+  },
+  prefsFootnote: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
   segment: {
     flexDirection: "row",
     padding: 3,

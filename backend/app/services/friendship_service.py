@@ -9,6 +9,7 @@ from app.schemas import (
     FriendPostAcceptActionPublic,
     FriendStatusPublic,
 )
+from app.services.engagement.events import EngagementEvent
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp
 from app.services.user_block_service import is_blocked_between
@@ -131,6 +132,8 @@ def accept_friend_request(db: Session, user: User, friendship_id: int) -> Friend
     if requester is not None:
         _grant_friendship_bonuses(requester)
     _grant_friendship_bonuses(user)
+    track_event(db, EngagementEvent.FRIEND_ADDED, user.id, {"friend_id": friendship.user_id})
+    track_event(db, EngagementEvent.FRIEND_ADDED, friendship.user_id, {"friend_id": user.id})
     grant_xp(
         db,
         user.id,

@@ -56,36 +56,16 @@ def session_demo() -> tuple[str, str]:
 
 
 def streak_reminder_slot(slot_kind: str, streak_days: int) -> tuple[str, str]:
-    """
-    slot_kind: streak_utc_22 | streak_utc_23 | streak_utc_2330 (UTC windows).
-    """
+    """slot_kind: streak_2h_left | streak_1h_left | streak_30m_left (user's local evening)."""
     title = "Streak at risk"
-    if slot_kind == "streak_utc_22":
+    if slot_kind == "streak_2h_left":
         body = f"Your {streak_days}-day streak needs a session — about 2 hours left today."
-    elif slot_kind == "streak_utc_23":
+    elif slot_kind == "streak_1h_left":
         body = f"One hour left today to keep your {streak_days}-day streak."
-    elif slot_kind == "streak_utc_2330":
+    elif slot_kind == "streak_30m_left":
         body = f"About 30 minutes left to keep your {streak_days}-day streak."
     else:
         body = streak_reminder(streak_days, hours_left=1)[1]
-    return title, body
-
-
-def inactivity_nudge(days_inactive: int) -> tuple[str, str]:
-    title = "Your studio is waiting"
-    body = f"No session in {days_inactive} day(s). Open Prodify and start one."
-    return title, body
-
-
-def best_time_nudge(hour: int) -> tuple[str, str]:
-    title = "Your usual studio hour"
-    body = f"You usually start around {hour:02d}:00. Start a session now."
-    return title, body
-
-
-def forecast_risk_nudge(remaining_sessions: int, days_left: int) -> tuple[str, str]:
-    title = "Weekly goal at risk"
-    body = f"{remaining_sessions} session(s) left with {days_left} day(s) in the week."
     return title, body
 
 
@@ -102,3 +82,88 @@ def session_still_there() -> tuple[str, str]:
 
 def session_auto_stopped() -> tuple[str, str]:
     return "Session ended", "Your session was stopped after 8 hours."
+
+
+# Keep in sync with `progression.levelNames` in mobile/locales/en.json.
+RANK_NAMES: dict[int, str] = {
+    1: "Bedroom Producer",
+    2: "Loop Sketcher",
+    3: "Beat Builder",
+    4: "Crate Digger",
+    5: "Hook Writer",
+    6: "Arrangement Brain",
+    7: "Synth Tweaker",
+    8: "DAW Demon",
+    9: "Drum Pocket",
+    10: "Sub Sculptor",
+    11: "Mix Engineer",
+    12: "Sidechain Surgeon",
+    13: "Stereo Architect",
+    14: "Bus Compressor",
+    15: "Pre-Master",
+    16: "Final Bounce",
+    17: "Release Ready",
+    18: "Platinum Ears",
+    19: "Studio Legend",
+    20: "Hall of Sound",
+}
+
+
+def _minutes_phrase(minutes: int) -> str:
+    if minutes < 60:
+        return f"{minutes} minutes"
+    hours = round(minutes / 60)
+    return "about 1 hour" if hours == 1 else f"about {hours} hours"
+
+
+def streak_at_risk(streak_days: int, minutes_to_goal: int) -> tuple[str, str]:
+    return (
+        "Keep the streak alive",
+        f"Your {streak_days}-day streak needs one session — {_minutes_phrase(minutes_to_goal)} left today.",
+    )
+
+
+def reengagement(days_inactive: int) -> tuple[str, str]:
+    return (
+        "Your studio misses you",
+        f"It's been {days_inactive} days. Even a short session gets the ideas moving again.",
+    )
+
+
+def return_slipping() -> tuple[str, str]:
+    return (
+        "Keep your rhythm going",
+        "You've been in a good flow. A short session today keeps it that way.",
+    )
+
+
+def rank_close(xp_remaining: int, rank_name: str) -> tuple[str, str]:
+    return (
+        f"{rank_name} is within reach",
+        f"Only {xp_remaining} XP to go — one solid session could get you there.",
+    )
+
+
+def challenge_close(challenge_name: str, sessions_remaining: int) -> tuple[str, str]:
+    sessions = "1 more session" if sessions_remaining == 1 else f"{sessions_remaining} more sessions"
+    return "Almost there", f"{sessions} and you finish “{challenge_name}”."
+
+
+def challenge_deadline(challenge_name: str, sessions_remaining: int) -> tuple[str, str]:
+    sessions = "1 session" if sessions_remaining == 1 else f"{sessions_remaining} sessions"
+    return "Challenge ends soon", f"“{challenge_name}” wraps up soon — {sessions} still to go."
+
+
+def challenge_stalled(challenge_name: str) -> tuple[str, str]:
+    return "Back to the challenge?", f"“{challenge_name}” is waiting on your next session."
+
+
+def friend_finished_session(friend_name: str, duration_minutes: int) -> tuple[str, str]:
+    return (
+        f"{friend_name} just finished a session",
+        f"{duration_minutes} minutes in the studio. Your turn?",
+    )
+
+
+def friend_overtook(friend_name: str) -> tuple[str, str]:
+    return f"{friend_name} passed you", "They just moved ahead of you this week. One session to win it back."

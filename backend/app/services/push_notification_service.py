@@ -6,9 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.models import PushToken, utcnow
-from app.contracts.notifications import PushBulkResultPublic, PushPingBody, PushTokenRegister, SmartNudgeBody
+from app.contracts.notifications import PushBulkResultPublic, PushPingBody, PushTokenRegister
 from app.services import push_templates
-from app.services.kpi_tracker import track_event
 from app.services.push_dispatch import send_ping
 from app.services.push_links import push_data_dashboard
 
@@ -48,31 +47,6 @@ def send_self_ping(
 ) -> PushBulkResultPublic:
     title, body, data = _ping_content(request)
     attempted, delivered, message = send_ping(settings, db, user_id, title, body, data=data)
-    db.commit()
-    return PushBulkResultPublic(attempted=attempted, delivered_ok=delivered, message=message)
-
-
-def send_smart_nudge(
-    settings: Settings,
-    db: Session,
-    user_id: int,
-    request: SmartNudgeBody,
-) -> PushBulkResultPublic:
-    title, body = _nudge_content(request)
-    attempted, delivered, message = send_ping(
-        settings,
-        db,
-        user_id,
-        title,
-        body,
-        data=push_data_dashboard(),
-    )
-    track_event(
-        db,
-        "smart_notification_sent",
-        user_id,
-        {"kind": request.kind, "attempted": attempted, "delivered": delivered},
-    )
     db.commit()
     return PushBulkResultPublic(attempted=attempted, delivered_ok=delivered, message=message)
 
@@ -121,16 +95,4 @@ def _ping_content(request: PushPingBody) -> tuple[str, str, dict[str, str]]:
         request.title or default_title,
         request.body or default_body,
         {**push_data_dashboard(), "kind": "test_ping"},
-    )
-
-
-def _nudge_content(request: SmartNudgeBody) -> tuple[str, str]:
-    if request.kind == "best_time":
-        return push_templates.best_time_nudge(request.hour if request.hour is not None else 20)
-    if request.kind == "forecast_risk":
-        remaining = request.remaining_sessions if request.remaining_sessions is not None else 2
-        days_left = request.days_left if request.days_left is not None else 2
-        return push_templates.forecast_risk_nudge(remaining, days_left)
-    return push_templates.inactivity_nudge(
-        request.days_inactive if request.days_inactive is not None else 3
     )

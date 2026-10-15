@@ -25,6 +25,7 @@ from app.routers import (
     auth,
     billing as billing_router,
     challenges as challenges_router,
+    engagement as engagement_router,
     feature_flags as feature_flags_router,
     friends,
     goals as goals_router,
@@ -130,6 +131,7 @@ app.include_router(outcomes_router.router, dependencies=_subscriber)
 app.include_router(progression_router.router, dependencies=_subscriber)
 app.include_router(challenges_router.router, dependencies=_subscriber)
 app.include_router(social_router.router, dependencies=_subscriber)
+app.include_router(engagement_router.router, dependencies=_subscriber)
 
 
 @app.get("/health")

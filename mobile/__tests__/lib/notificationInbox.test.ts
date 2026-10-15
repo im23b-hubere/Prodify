@@ -13,6 +13,7 @@ import {
   clearNotificationInbox,
   getNotificationServerSyncMs,
   getUnreadCount,
+  hasSavedSettings,
   loadInbox,
   loadSettings,
   markAllRead,
@@ -184,7 +185,28 @@ describe("notification inbox account scope", () => {
 
   it("starts with quiet hours off until the user turns them on", async () => {
     const settings = await loadSettings();
-    expect(settings.quietStartHour).toBe(settings.quietEndHour);
+    expect(settings.quietStartMinute).toBe(settings.quietEndMinute);
+  });
+
+  it("reads quiet hours saved by older app versions as minutes", async () => {
+    await AsyncStorage.setItem(
+      NOTIFICATION_SETTINGS_KEY,
+      JSON.stringify({ streak: false, quietStartHour: 23, quietEndHour: 7 }),
+    );
+
+    expect(await loadSettings()).toMatchObject({
+      streak: false,
+      quietStartMinute: 23 * 60,
+      quietEndMinute: 7 * 60,
+    });
+  });
+
+  it("knows whether the producer ever saved settings on this device", async () => {
+    expect(await hasSavedSettings()).toBe(false);
+
+    await saveSettings(await loadSettings());
+
+    expect(await hasSavedSettings()).toBe(true);
   });
 
   it("keeps notification settings device-scoped across account switches", async () => {
@@ -193,8 +215,8 @@ describe("notification inbox account scope", () => {
       achievements: true,
       social: false,
       tips: true,
-      quietStartHour: 22,
-      quietEndHour: 6,
+      quietStartMinute: 22 * 60,
+      quietEndMinute: 6 * 60,
       frequency: "important" as const,
     };
 

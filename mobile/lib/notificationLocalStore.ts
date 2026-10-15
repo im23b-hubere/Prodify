@@ -32,11 +32,23 @@ const defaultSettings: NotificationSettings = {
   achievements: true,
   social: true,
   tips: true,
-  // Quiet hours start off; equal start and end hours mean no quiet window.
-  quietStartHour: 0,
-  quietEndHour: 0,
+  // Quiet hours start off until the server's preferences arrive.
+  quietStartMinute: 0,
+  quietEndMinute: 0,
   frequency: "all",
 };
+
+/** Settings saved before quiet hours moved to minutes stored whole hours. */
+type StoredSettings = Partial<NotificationSettings> & { quietStartHour?: number; quietEndHour?: number };
+
+function settingsFromStorage(stored: StoredSettings): NotificationSettings {
+  const { quietStartHour, quietEndHour, ...rest } = stored;
+  const legacyQuietHours =
+    typeof quietStartHour === "number" && typeof quietEndHour === "number"
+      ? { quietStartMinute: quietStartHour * 60, quietEndMinute: quietEndHour * 60 }
+      : {};
+  return { ...defaultSettings, ...legacyQuietHours, ...rest };
+}
 
 export function getActiveNotificationUserId(): number | null {
   return activeNotificationUserId;
@@ -85,9 +97,18 @@ export async function loadSettings(): Promise<NotificationSettings> {
   try {
     const raw = await AsyncStorage.getItem(NOTIFICATION_SETTINGS_KEY);
     if (!raw) return defaultSettings;
-    return { ...defaultSettings, ...JSON.parse(raw) };
+    return settingsFromStorage(JSON.parse(raw) as StoredSettings);
   } catch {
     return defaultSettings;
+  }
+}
+
+/** False on a device where the producer never changed a notification setting. */
+export async function hasSavedSettings(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(NOTIFICATION_SETTINGS_KEY)) != null;
+  } catch {
+    return false;
   }
 }
 
@@ -324,12 +345,13 @@ function isImportantPriority(priority: NotificationPriority): boolean {
 }
 
 function isWithinQuietHours(settings: NotificationSettings): boolean {
-  const nowHour = new Date().getHours();
-  const start = settings.quietStartHour;
-  const end = settings.quietEndHour;
+  const now = new Date();
+  const minute = now.getHours() * 60 + now.getMinutes();
+  const start = settings.quietStartMinute;
+  const end = settings.quietEndMinute;
   if (start === end) return false;
-  if (start < end) return nowHour >= start && nowHour < end;
-  return nowHour >= start || nowHour < end;
+  if (start < end) return minute >= start && minute < end;
+  return minute >= start || minute < end;
 }
 
 async function shouldSuppressForFirstWeek(

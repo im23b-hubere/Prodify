@@ -1,11 +1,9 @@
 from app.contracts.notifications import PushTokenRegister as PushTokenContract
-from app.contracts.notifications import SmartNudgeBody as SmartNudgeContract
-from app.schemas import PushTokenRegister, SmartNudgeBody
+from app.schemas import PushTokenRegister
 
 
 def test_legacy_schema_exports_reference_notification_contracts():
     assert PushTokenRegister is PushTokenContract
-    assert SmartNudgeBody is SmartNudgeContract
 
 
 def test_push_contract_normalizes_provider_values():

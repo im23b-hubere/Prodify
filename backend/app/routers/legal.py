@@ -8,9 +8,12 @@ from app.schemas import LegalDocumentMetaPublic, LegalDocumentsPublic
 
 router = APIRouter(prefix="/legal", tags=["legal"])
 
+PERSONALISATION_NOTICE = "Prodify uses your activity patterns to personalize reminders and help you maintain your production routine."
+
 PRIVACY_SECTIONS = (
     ("Data we process", "We process account data, technical data needed to operate and secure the service, studio-session content you create, streak and friendship data, subscription status, and push tokens when notifications are enabled."),
     ("Why we process it", "We use this data to provide the service, maintain account security, prevent abuse, process subscriptions, and send notifications you have enabled."),
+    ("Personalised reminders", f"{PERSONALISATION_NOTICE} For this we only use first-party data from your use of Prodify: when and how long you produce, your streaks, challenges and friend activity on Prodify, and whether a reminder was opened or followed by a session. We do not use your location, WiFi, contacts or data from other apps, and we do not fingerprint your device. You can turn smart notifications or single categories off at any time in the notification settings."),
     ("Retention and deletion", "We retain account data while your account exists. You can permanently delete your account in the app. We remove associated personal data unless a legal retention obligation applies."),
     ("Your choices and rights", "You may request access, correction, deletion, restriction, portability, or object to eligible processing. Notification permission can be withdrawn in device settings."),
     ("Service providers", "Prodify uses infrastructure, crash-reporting, push-notification, and subscription providers only as needed to operate the service."),

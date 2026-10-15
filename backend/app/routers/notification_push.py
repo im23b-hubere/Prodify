@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import User
-from app.contracts.notifications import PushBulkResultPublic, PushPingBody, PushTokenRegister, SmartNudgeBody
-from app.services.push_notification_service import register_token, send_self_ping, send_smart_nudge
+from app.models import User, utcnow
+from app.contracts.notifications import PushBulkResultPublic, PushPingBody, PushTokenRegister
+from app.services.engagement.deliveries import DeliveryNotFoundError, mark_opened
+from app.services.push_notification_service import register_token, send_self_ping
 
 router = APIRouter()
 
@@ -45,13 +46,15 @@ def ping_self_push(
     return result
 
 
-@router.post("/smart-nudge", response_model=PushBulkResultPublic)
-def smart_nudge(
-    body: SmartNudgeBody,
+@router.post("/{notification_id}/opened", status_code=status.HTTP_204_NO_CONTENT)
+def report_notification_opened(
+    notification_id: str,
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
-) -> PushBulkResultPublic:
-    _require_push_enabled()
-    if not settings.feature_flag_smart_nudges_enabled:
-        raise HTTPException(status_code=503, detail="Smart nudges are temporarily disabled")
-    return send_smart_nudge(settings, db, current.id, body)
+) -> None:
+    """The app reports a tap on a push (its `data.nid`); repeated reports are no-ops."""
+    try:
+        mark_opened(db, current.id, notification_id, utcnow())
+    except DeliveryNotFoundError:
+        raise HTTPException(status_code=404, detail="Notification not found") from None
+    db.commit()

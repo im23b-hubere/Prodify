@@ -41,6 +41,7 @@ export function rootStackScreenOptions(name: string): Record<string, unknown> {
       return { animationTypeForReplace: "pop" };
     case "settings":
     case "blocked-users":
+    case "engagement-debug":
       return { ...HORIZONTAL_CARD_SWIPE };
     case "challenge/new":
       return {

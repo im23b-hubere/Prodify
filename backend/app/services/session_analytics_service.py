@@ -18,6 +18,7 @@ from app.contracts.insights import RelatedSessionPublic, SessionDetailInsightsPu
 from app.models import ProductionSession, Streak, UserGoal, utcnow
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 from app.skill_catalog import SKILL_BRANCHES
+from app.services.engagement.profile import start_pattern
 from app.services.skill_profile_service import area_seconds_for_session
 from app.services.stats_period import StatsPeriod
 from app.services.streak_calendar import StreakCalendar, load_calendar, session_day_keys
@@ -159,14 +160,12 @@ def productivity_hint(
     if len(rows) < 10:
         return None
 
-    local_starts = [calendar.local_time_of(row.started_at) for row in rows]
-    weekdays = Counter(moment.weekday() for moment in local_starts)
-    hours = Counter(moment.hour for moment in local_starts)
+    pattern = start_pattern(rows, calendar)
     return InsightItemPublic(
         key="prod_peak_pattern",
         params={
-            "weekday": weekdays.most_common(1)[0][0],
-            "hour": hours.most_common(1)[0][0],
+            "weekday": pattern.weekdays.most_common(1)[0][0],
+            "hour": pattern.hours.most_common(1)[0][0],
         },
     )
 
