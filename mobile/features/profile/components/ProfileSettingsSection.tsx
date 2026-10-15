@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bell,
   ChevronRight,
   FileText,
@@ -18,7 +19,7 @@ type Props = {
   controller: Pick<SettingsScreenController, "t" | "accountActions"> & {
     navigation: Pick<
       SettingsScreenController["navigation"],
-      "openNotifications" | "openPrivacy" | "openTerms" | "openBlockedUsers"
+      "openNotifications" | "openPrivacy" | "openTerms" | "openBlockedUsers" | "openEngagementDebug"
     >;
   };
 };
@@ -49,9 +50,7 @@ function SettingsLink({
         <Icon color={iconTint} size={18} strokeWidth={2.2} />
         <Text style={[styles.legalRowText, { color: tint }]}>{label}</Text>
       </View>
-      {chevron ? (
-        <ChevronRight color={colors.textSecondary} size={18} strokeWidth={2.2} />
-      ) : null}
+      {chevron ? <ChevronRight color={colors.textSecondary} size={18} strokeWidth={2.2} /> : null}
     </Pressable>
   );
 }
@@ -84,6 +83,16 @@ export function ProfileSettingsSection({ controller }: Props) {
           Icon={FileText}
           onPress={navigation.openTerms}
         />
+        {__DEV__ ? (
+          <>
+            <View style={styles.legalDivider} />
+            <SettingsLink
+              label={t("engagementDebug.title")}
+              Icon={Activity}
+              onPress={navigation.openEngagementDebug}
+            />
+          </>
+        ) : null}
       </View>
       <View style={styles.settingsCard}>
         <SettingsLink

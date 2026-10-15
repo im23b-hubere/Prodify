@@ -27,6 +27,7 @@ function createController(): SettingsScreenController {
       openPrivacy: jest.fn(),
       openTerms: jest.fn(),
       openBlockedUsers: jest.fn(),
+      openEngagementDebug: jest.fn(),
     },
   } as unknown as SettingsScreenController;
 }
@@ -57,6 +58,15 @@ describe("SettingsScreenView", () => {
     fireEvent.press(screen.getByLabelText("safety.blocked.title"));
 
     expect(controller.navigation.openBlockedUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it("leads to the engine debug screen in development builds", () => {
+    const controller = createController();
+    render(<SettingsScreenView controller={controller} />);
+
+    fireEvent.press(screen.getByLabelText("engagementDebug.title"));
+
+    expect(controller.navigation.openEngagementDebug).toHaveBeenCalledTimes(1);
   });
 
   it("goes back from the top bar", () => {
