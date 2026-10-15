@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -74,4 +74,31 @@ class UserNotificationPreferences(Base):
     reengagement_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     quiet_start_minute: Mapped[int] = mapped_column(Integer, nullable=False, default=DEFAULT_QUIET_START_MINUTE)
     quiet_end_minute: Mapped[int] = mapped_column(Integer, nullable=False, default=DEFAULT_QUIET_END_MINUTE)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class UserEngagementProfile(Base):
+    """
+    The stored `BehaviorProfile` of one producer, recomputed after each completed session and
+    whenever the engine finds it stale. Histograms are in the producer's local time.
+    """
+
+    __tablename__ = "user_engagement_profiles"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    total_sessions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    stage: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    session_hour_histogram_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    weekday_histogram_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    avg_sessions_per_week: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    avg_session_duration_minutes: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    last_session_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sessions_last_7_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sessions_previous_7_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Filled by later engine steps (motivation, fatigue, segments, return probability).
+    motivation_scores_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    fatigue_score: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    ignored_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    segment: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    return_probability_24h: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

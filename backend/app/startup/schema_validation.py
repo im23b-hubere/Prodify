@@ -49,6 +49,7 @@ REQUIRED_TABLES = {
     "content_reports",
     "notification_deliveries",
     "user_notification_preferences",
+    "user_engagement_profiles",
 }
 REQUIRED_COLUMNS = {
     "streaks": {"frozen_day_keys", "freezes_remaining", "billing_month"},

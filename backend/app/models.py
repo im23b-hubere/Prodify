@@ -310,6 +310,7 @@ class UserSubscription(Base):
 from app.models_engagement import (
     DeliveryOutcome,
     NotificationDelivery,
+    UserEngagementProfile,
     UserNotificationPreferences,
 )
 from app.models_growth import (

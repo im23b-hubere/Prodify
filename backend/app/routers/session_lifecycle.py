@@ -9,6 +9,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import ProductionSession, User
 from app.contracts.sessions import SessionPause, SessionPublic, SessionQuickStart, SessionStart, SessionStop
+from app.services.engagement.profile_store import schedule_profile_refresh
 from app.services.push_dispatch import schedule_notify_session_complete
 from app.services.session_lifecycle_service import (
     ActiveSessionExistsError,
@@ -75,6 +76,7 @@ def stop_session(
         current.id,
     )
     _schedule_completion_push(current.id, completion.session)
+    schedule_profile_refresh(settings, current.id)
     challenge_events = PushChallengeEvents(db, settings)
     for challenge_id in completion.finished_challenge_ids:
         challenge_events.challenge_finished(challenge_id)

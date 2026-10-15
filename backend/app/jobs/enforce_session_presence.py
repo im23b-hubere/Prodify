@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.config import Settings
 from app.models import ProductionSession, utcnow
 from app.services import push_templates
+from app.services.engagement.profile_store import refresh_profile
 from app.services.push_dispatch import dispatch_to_user
 from app.services.push_links import push_data_dashboard
 from app.services.session_lifecycle_service import complete_session
@@ -100,6 +101,12 @@ def _stop(db: DBSession, settings: Settings, session: ProductionSession, now) ->
             events.challenge_finished(challenge_id)
     except Exception:
         logger.exception("session auto-stop challenge notify failed session_id=%s", session.id)
+    try:
+        refresh_profile(db, user_id, now)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("engagement profile refresh failed user_id=%s", user_id)
     return True
 
 

@@ -259,7 +259,7 @@ def schedule_notify_session_complete(
         except Exception:
             logger.exception("deferred push session-complete failed")
 
-    _submit_deferred(settings, run_notification, "session-complete")
+    submit_deferred(settings, run_notification, "session-complete")
 
 
 def schedule_push_to_user(
@@ -283,10 +283,10 @@ def schedule_push_to_user(
         except Exception:
             logger.exception("deferred push %s failed", label)
 
-    _submit_deferred(settings, run_notification, label)
+    submit_deferred(settings, run_notification, label)
 
 
-def _submit_deferred(settings: Settings, run_notification, label: str) -> None:
+def submit_deferred(settings: Settings, run_notification, label: str) -> None:
     backend = (settings.push_async_backend or "threadpool").strip().lower()
     if backend == "inline":
         run_notification()
