@@ -309,6 +309,7 @@ class UserSubscription(Base):
 
 from app.models_engagement import (
     DeliveryOutcome,
+    LeaderboardSnapshot,
     NotificationDelivery,
     UserEngagementProfile,
     UserNotificationPreferences,

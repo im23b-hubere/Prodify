@@ -102,3 +102,18 @@ class UserEngagementProfile(Base):
     segment: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     return_probability_24h: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class LeaderboardSnapshot(Base):
+    """
+    The producer's last seen place on their friend leaderboard for one local week, so the next
+    engine run can tell that a friend has moved ahead of them.
+    """
+
+    __tablename__ = "leaderboard_snapshots"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    week_start: Mapped[str] = mapped_column(String(10), primary_key=True)
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    session_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

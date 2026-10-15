@@ -91,6 +91,25 @@ Local streak slots that are already past today are not scheduled until the next 
 
 ---
 
+## Engagement engine candidates
+
+`engagement/candidates.py` turns each producer's context into at most one candidate per trigger. Copy lives in `push_templates.py`; every candidate also carries its variables and a `path` the app opens on tap. Not sent yet — the engine job that scores them and sends one comes next.
+
+| Message | Category | Trigger | Opens |
+|---------|----------|---------|-------|
+| **Keep the streak alive** · Your {streakDays}-day streak needs one session — {time} left today. | Streak | Streak running, no session today, after 18:00 local | Dashboard |
+| **Your studio misses you** · It's been {daysInactive} days. Even a short session gets the ideas moving again. | Re-engagement | 3+ days without a session and at most half the usual weekly pace | Dashboard |
+| **{rankName} is within reach** · Only {xpRemaining} XP to go — one solid session could get you there. | Rank | A session of the producer's usual length (at least 30 min) would reach the next rank | Dashboard |
+| **Challenge ends soon** · “{challengeName}” wraps up soon — {n} sessions still to go. | Challenge | Active challenge ends within 48h, not yet finished | Challenge |
+| **Almost there** · {n} more sessions and you finish “{challengeName}”. | Challenge | 1–2 sessions left | Challenge |
+| **Back to the challenge?** · “{challengeName}” is waiting on your next session. | Challenge | No progress for 3+ days | Challenge |
+| **{friendName} passed you** · They just moved ahead of you this week. One session to win it back. | Social | Lower place on the weekly friend leaderboard than at the last run (`leaderboard_snapshots`) | Friends |
+| **{friendName} just finished a session** · {n} minutes in the studio. Your turn? | Social | A friend ended a session of 15+ minutes in the last hour | Friends |
+
+Friends' data is limited to name, session length and time. Blocked users (either direction) and suspended users never appear. Rank names mirror `progression.levelNames` in the app's English locale.
+
+---
+
 ## Not wired (templates exist)
 
 These strings exist. Nothing currently sends them on a schedule or from the mobile app.
