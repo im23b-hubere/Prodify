@@ -56,15 +56,13 @@ def session_demo() -> tuple[str, str]:
 
 
 def streak_reminder_slot(slot_kind: str, streak_days: int) -> tuple[str, str]:
-    """
-    slot_kind: streak_utc_22 | streak_utc_23 | streak_utc_2330 (UTC windows).
-    """
+    """slot_kind: streak_2h_left | streak_1h_left | streak_30m_left (user's local evening)."""
     title = "Streak at risk"
-    if slot_kind == "streak_utc_22":
+    if slot_kind == "streak_2h_left":
         body = f"Your {streak_days}-day streak needs a session — about 2 hours left today."
-    elif slot_kind == "streak_utc_23":
+    elif slot_kind == "streak_1h_left":
         body = f"One hour left today to keep your {streak_days}-day streak."
-    elif slot_kind == "streak_utc_2330":
+    elif slot_kind == "streak_30m_left":
         body = f"About 30 minutes left to keep your {streak_days}-day streak."
     else:
         body = streak_reminder(streak_days, hours_left=1)[1]

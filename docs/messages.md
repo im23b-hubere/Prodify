@@ -17,7 +17,7 @@ Jobs that actually fire time-based pushes: `POST /jobs/streak-reminders`, `POST 
 
 Some events can hit more than one channel at once. That is current behavior, not a bug to paper over.
 
-- **Streak at risk** — local slots on device time *and* server slots on UTC *and* inbox while the day is still open.
+- **Streak at risk** — server push in the producer's local evening (local slots only when the device has no push token) *and* inbox while the day is still open.
 - **Still there? / 8h stop** — local DATE trigger *and* server job. Foreground also shows an alert.
 - **Friend request / session comment** — inbox on the server feed *and* a local notification when the friends screen sees the new row.
 
@@ -43,16 +43,16 @@ Streak day = the producer's local calendar day. A streak is at risk when `curren
 | Message | Channel | Trigger | When |
 |---------|---------|---------|------|
 | **Streak at risk** · Start a session today to keep your streak. | Inbox | Streak at risk | While the inbox is loaded, until midnight or a session/freeze lands |
-| **Streak at risk** · Your {n}-day streak needs a session today — about 2 hours left. | Local | Streak at risk | **22:00 device local**, if that time is still ahead when the app syncs |
-| **Streak at risk** · One hour left today to keep your {n}-day streak. | Local | Streak at risk | **23:00 device local** |
-| **Streak at risk** · About 30 minutes left to keep your {n}-day streak. | Local | Streak at risk | **23:30 device local** |
-| **Streak at risk** · Your {n}-day streak needs a session — about 2 hours left today. | Push | Streak at risk + registered token | **22:00–22:20 UTC** (`/jobs/streak-reminders`) |
-| **Streak at risk** · One hour left today to keep your {n}-day streak. | Push | Same | **23:00–23:15 UTC** |
-| **Streak at risk** · About 30 minutes left to keep your {n}-day streak. | Push | Same | **23:25–23:45 UTC** |
+| **Streak at risk** · Your {n}-day streak needs a session today — about 2 hours left. | Local | Streak at risk + this device has no registered push token | **22:00 device local**, if that time is still ahead when the app syncs |
+| **Streak at risk** · One hour left today to keep your {n}-day streak. | Local | Same | **23:00 device local** |
+| **Streak at risk** · About 30 minutes left to keep your {n}-day streak. | Local | Same | **23:30 device local** |
+| **Streak at risk** · Your {n}-day streak needs a session — about 2 hours left today. | Push | Streak at risk + active push token | **22:00–22:20 in the producer's timezone** (`/jobs/streak-reminders`, every 15 min) |
+| **Streak at risk** · One hour left today to keep your {n}-day streak. | Push | Same | **23:00–23:15 local** |
+| **Streak at risk** · About 30 minutes left to keep your {n}-day streak. | Push | Same | **23:25–23:45 local** |
 | **{username}'s streak just ended** · {username}'s {n}-day streak just ended 💔 Send support to restart strong. | Push (to friends) | Producer's streak drops from >0 to 0 | On that transition, once per friend per UTC day |
 | **Your crew has your back** · {username} sent support after your streak break. Start fresh today. | Push | A friend sends streak encouragement | Immediately |
 
-Local streak slots that are already past today are not scheduled until the next sync. Server slots are UTC on purpose; they will not line up with local 22:00 for most timezones.
+Local streak slots that are already past today are not scheduled until the next sync. A device gets either the local or the push reminders, never both: once its push token reaches the server, local streak reminders stop. Users without a stored timezone get the push slots in UTC.
 
 ---
 

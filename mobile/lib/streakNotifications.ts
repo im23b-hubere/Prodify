@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 
 import { isE2eModeEnabled } from "./e2eMode";
 import i18n from "./i18n";
+import { hasServerPushChannel } from "./serverPushChannel";
 
 const DATA_KIND = "streak-risk";
 
@@ -75,13 +76,41 @@ function streakSlots(streakCount: number) {
   ];
 }
 
+type StreakReminder = { fireAt: Date; title: string; body: string };
+
+/**
+ * Local streak reminders still to fire today. The server sends the same reminders as push,
+ * so a device it can reach gets none locally.
+ */
+export function streakReminderPlan(input: {
+  atRisk: boolean;
+  streakCount: number;
+  serverCanPush: boolean;
+  now: Date;
+}): StreakReminder[] {
+  if (!input.atRisk || input.streakCount <= 0 || input.serverCanPush) return [];
+  return streakSlots(input.streakCount)
+    .map((slot) => {
+      const fireAt = new Date(input.now);
+      fireAt.setHours(slot.h, slot.m, 0, 0);
+      return { fireAt, title: slot.title, body: slot.body };
+    })
+    .filter((reminder) => reminder.fireAt.getTime() > input.now.getTime());
+}
+
 export async function syncStreakRiskNotifications(atRisk: boolean, streakCount: number) {
   if (isE2eModeEnabled()) return;
 
   await ensureAndroidChannel();
   await cancelStreakRiskScheduled();
 
-  if (!atRisk || streakCount <= 0) return;
+  const plan = streakReminderPlan({
+    atRisk,
+    streakCount,
+    serverCanPush: await hasServerPushChannel(),
+    now: new Date(),
+  });
+  if (plan.length === 0) return;
 
   const Notifications = await import("expo-notifications");
   const { status } = await Notifications.getPermissionsAsync();
@@ -89,24 +118,18 @@ export async function syncStreakRiskNotifications(atRisk: boolean, streakCount: 
     return;
   }
 
-  const now = new Date();
-
-  for (const slot of streakSlots(streakCount)) {
-    const fire = new Date(now);
-    fire.setHours(slot.h, slot.m, 0, 0);
-    if (fire.getTime() <= now.getTime()) continue;
-
+  for (const reminder of plan) {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: slot.title,
-        body: slot.body,
+        title: reminder.title,
+        body: reminder.body,
         sound: true,
         data: { kind: DATA_KIND },
         ...(Platform.OS === "android" ? { channelId: "streak" } : {}),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: fire,
+        date: reminder.fireAt,
       },
     });
   }

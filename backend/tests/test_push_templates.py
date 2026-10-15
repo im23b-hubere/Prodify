@@ -9,17 +9,17 @@ def test_session_complete_names_the_work_without_filler() -> None:
 
 
 def test_streak_reminder_slots_do_not_leak_utc_or_emoji() -> None:
-    title, body = push_templates.streak_reminder_slot("streak_utc_22", 12)
+    title, body = push_templates.streak_reminder_slot("streak_2h_left", 12)
     assert title == "Streak at risk"
     assert "UTC" not in body
     assert "⚠️" not in body
     assert "12-day streak" in body
 
-    _, last_hour = push_templates.streak_reminder_slot("streak_utc_23", 12)
+    _, last_hour = push_templates.streak_reminder_slot("streak_1h_left", 12)
     assert "UTC" not in last_hour
     assert "🔥" not in last_hour
 
-    _, last_half = push_templates.streak_reminder_slot("streak_utc_2330", 12)
+    _, last_half = push_templates.streak_reminder_slot("streak_30m_left", 12)
     assert "UTC" not in last_half
     assert "⏰" not in last_half
 
