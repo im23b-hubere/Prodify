@@ -1,11 +1,46 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
+
+_COMMA_SEPARATED_ID_FIELDS = frozenset({"kpi_admin_user_ids", "moderator_user_ids"})
+
+
+def _keep_raw_comma_separated_ids(
+    source: PydanticBaseSettingsSource,
+) -> PydanticBaseSettingsSource:
+    """Leave "31" and "31,44" as text. pydantic-settings otherwise JSON-decodes them."""
+    original = source.prepare_field_value
+
+    def prepare_field_value(
+        field_name: str, field: Any, value: Any, value_is_complex: bool
+    ) -> Any:
+        if field_name in _COMMA_SEPARATED_ID_FIELDS and isinstance(value, str):
+            return value
+        return original(field_name, field, value, value_is_complex)
+
+    source.prepare_field_value = prepare_field_value  # type: ignore[method-assign]
+    return source
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            _keep_raw_comma_separated_ids(env_settings),
+            _keep_raw_comma_separated_ids(dotenv_settings),
+            file_secret_settings,
+        )
 
     app_name: str = "Prodify API"
     app_version: str = "1.0.1"
@@ -129,6 +164,9 @@ class Settings(BaseSettings):
     def parse_user_id_list(cls, value: object) -> object:
         if value is None:
             return []
+        if isinstance(value, int):
+            # A single id has no comma, so pydantic-settings JSON-decodes "31" into an int.
+            return [value]
         if isinstance(value, str):
             if not value.strip():
                 return []
