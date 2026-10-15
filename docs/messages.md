@@ -105,10 +105,16 @@ The engine learns from pushes that reached a device, recomputed whenever one con
 - **Motivation** — conversion rate per category, smoothed towards a prior (streak 25%, social 30%, challenge 25%, rank 20%, re-engagement 15%) so one lucky push does not count as certain. Feeds the `motivation` score part.
 - **Send hour** — once an established producer has three or more pushes at a local hour that convert better than the 25% baseline, that hour's first half hour replaces the slot before the production window.
 
+Every run also estimates and stores, per producer (`engagement/return_probability.py`, `engagement/segments.py`):
+
+- **Return probability** — how likely a session starts within 24h, from a hand-weighted logistic function over recency, weekly pace, momentum, usual hour and weekday, streak, challenges, friends' activity, push response and the last session's length. Above 70% a candidate loses up to 15 points (`likelyReturn`): the producer comes anyway. A drop of 30 points or more against the previous local day's value raises a re-engagement candidate ("Keep your rhythm going").
+- **Segment** — `dormant` (14+ days away), `new_user` (cold start), `at_risk` (last week under half of the week before, which had 2+ sessions), `power_user` (7+ per week), `active_producer` (3+), otherwise `casual_producer`. Re-engagement weighs ×0.5 for power users, ×1.3 at risk (social ×1.2) and ×1.5 for dormant producers.
+
 | Message | Category | Trigger | Opens |
 |---------|----------|---------|-------|
 | **Keep the streak alive** · Your {streakDays}-day streak needs one session — {time} left today. | Streak | Streak running, no session today, after 18:00 local | Dashboard |
 | **Your studio misses you** · It's been {daysInactive} days. Even a short session gets the ideas moving again. | Re-engagement | 3+ days without a session and at most half the usual weekly pace | Dashboard |
+| **Keep your rhythm going** · You've been in a good flow. A short session today keeps it that way. | Re-engagement | Return probability fell by 30+ points since the previous day | Dashboard |
 | **{rankName} is within reach** · Only {xpRemaining} XP to go — one solid session could get you there. | Rank | A session of the producer's usual length (at least 30 min) would reach the next rank | Dashboard |
 | **Challenge ends soon** · “{challengeName}” wraps up soon — {n} sessions still to go. | Challenge | Active challenge ends within 48h, not yet finished | Challenge |
 | **Almost there** · {n} more sessions and you finish “{challengeName}”. | Challenge | 1–2 sessions left | Challenge |

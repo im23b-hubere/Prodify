@@ -15,7 +15,7 @@ from app.contracts.engagement import (
     LastDeliveryDebug,
     ProductionWindowDebug,
 )
-from app.models import NotificationDelivery, UserEngagementProfile
+from app.models import NotificationDelivery
 from app.services.engagement.context import EngagementContext, load_engagement_context
 from app.services.engagement.deliveries import TRANSACTIONAL_TYPES
 from app.services.engagement.engine import EngagementDecision, ScoredCandidate, decide
@@ -27,14 +27,14 @@ def engagement_debug(db: Session, user_id: int, now: datetime) -> EngagementDebu
     """Nothing is sent and nothing is stored; the caller must not commit."""
     context = load_engagement_context(db, user_id, now)
     decision = decide(context, load_preferences(db, user_id), now)
-    row = db.get(UserEngagementProfile, user_id)
     return EngagementDebugPublic(
         evaluated_at=now,
         profile=_profile(context, now),
         production_window=_window(context),
         preferred_notification_hour=context.preferred_notification_hour,
-        segment=row.segment if row else None,
-        return_probability_24h=row.return_probability_24h if row else None,
+        segment=context.segment.value if context.segment else None,
+        return_probability_24h=_rounded(context.return_probability),
+        previous_return_probability=_rounded(context.previous_return_probability),
         fatigue_score=context.fatigue_score,
         ignored_streak=context.ignored_streak,
         motivation={category.value: rate for category, rate in context.motivation.items()},
@@ -44,6 +44,10 @@ def engagement_debug(db: Session, user_id: int, now: datetime) -> EngagementDebu
     )
 
 
+def _rounded(probability: float | None) -> float | None:
+    return round(probability, 3) if probability is not None else None
+
+
 def _profile(context: EngagementContext, now: datetime) -> EngagementProfileDebug:
     profile = context.profile
     return EngagementProfileDebug(
@@ -51,6 +55,7 @@ def _profile(context: EngagementContext, now: datetime) -> EngagementProfileDebu
         total_sessions=profile.total_sessions,
         avg_sessions_per_week=profile.avg_sessions_per_week,
         avg_session_duration_minutes=profile.avg_session_duration_minutes,
+        last_session_duration_minutes=profile.last_session_duration_minutes,
         sessions_last_7_days=profile.sessions_last_7_days,
         sessions_previous_7_days=profile.sessions_previous_7_days,
         days_since_last_session=profile.days_since_last_session(now),

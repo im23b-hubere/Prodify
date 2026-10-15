@@ -48,6 +48,8 @@ def test_the_debug_view_explains_the_current_decision(client):
     body = response.json()
     assert body["profile"]["total_sessions"] == 1
     assert body["production_window"]["is_default"] is True
+    assert body["segment"] == "new_user"
+    assert 0 < body["return_probability_24h"] < 1
     assert set(body["decision"]) == {"should_send", "chosen_type", "score", "reason", "scheduled_at"}
     for candidate in body["candidates"]:
         assert candidate["total"] == sum(candidate["parts"].values())

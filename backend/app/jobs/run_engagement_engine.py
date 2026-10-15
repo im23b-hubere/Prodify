@@ -19,6 +19,7 @@ from app.services.engagement.context import (
     EngagementContext,
     load_engagement_context,
     record_leaderboard_snapshot,
+    record_return_outlook,
 )
 from app.services.engagement.deliveries import EngineChoice, settle_expired_deliveries
 from app.services.engagement.engine import EngagementDecision, decide, log_decision
@@ -75,6 +76,7 @@ def _evaluate_and_send(db: DBSession, settings: Settings, user_id: int, run_at: 
     if settings.environment == "development":
         log_decision(user_id, decision)
     _remember_leaderboard_place(db, context, run_at)
+    record_return_outlook(db, context, run_at)
     if not decision.should_send:
         return 0
     return _send(db, settings, user_id, decision, run_at)

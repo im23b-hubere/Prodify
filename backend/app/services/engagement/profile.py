@@ -59,6 +59,7 @@ class BehaviorProfile:
     last_session_at: datetime | None
     sessions_last_7_days: int
     sessions_previous_7_days: int
+    last_session_duration_minutes: float = 0
 
     def preferred_hours(self, limit: int = 3) -> list[int]:
         """The local hours the producer starts most often, busiest first."""
@@ -97,6 +98,7 @@ def compute_profile(
         last_session_at=max(starts, default=None),
         sessions_last_7_days=_count_between(starts, now - _WEEK, now),
         sessions_previous_7_days=_count_between(starts, now - 2 * _WEEK, now - _WEEK),
+        last_session_duration_minutes=_last_session_minutes(sessions),
     )
 
 
@@ -109,3 +111,10 @@ def _average_minutes(sessions: Sequence[CompletedSession]) -> float:
         return 0
     total_seconds = sum(session.duration_seconds or 0 for session in sessions)
     return round(total_seconds / len(sessions) / 60, 1)
+
+
+def _last_session_minutes(sessions: Sequence[CompletedSession]) -> float:
+    if not sessions:
+        return 0
+    last = max(sessions, key=lambda session: as_utc_aware(session.started_at))
+    return round((last.duration_seconds or 0) / 60, 1)

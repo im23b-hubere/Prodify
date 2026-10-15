@@ -8,7 +8,7 @@ decision can be explained in logs and the debug view.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -28,6 +28,7 @@ from app.services.engagement.scoring import (
     score,
 )
 from app.services.engagement.fatigue import fatigue_gate
+from app.services.engagement.segments import SEGMENT_CATEGORY_MULTIPLIERS, Segment
 from app.services.engagement.timing import (
     ProductionWindow,
     is_learned_send_moment,
@@ -103,6 +104,7 @@ def decide(
     now: datetime,
     weights: ScoringWeights = DEFAULT_WEIGHTS,
 ) -> EngagementDecision:
+    weights = weights_for_segment(context.segment, weights)
     window = production_window(context.profile)
     signals = _signals(context, window, now)
     timing = _send_timing(context, window, now)
@@ -191,7 +193,18 @@ def _signals(context: EngagementContext, window: ProductionWindow, now: datetime
         last_smart_sent_at=max(smart_sent, default=None),
         motivation=context.motivation,
         fatigue_score=context.fatigue_score,
+        return_probability=context.return_probability,
     )
+
+
+def weights_for_segment(segment: Segment | None, weights: ScoringWeights) -> ScoringWeights:
+    adjustments = SEGMENT_CATEGORY_MULTIPLIERS.get(segment, {}) if segment else {}
+    if not adjustments:
+        return weights
+    multipliers = dict(weights.category_multipliers)
+    for category, factor in adjustments.items():
+        multipliers[category] = multipliers.get(category, 1.0) * factor
+    return replace(weights, category_multipliers=multipliers)
 
 
 def _chosen_reason(chosen: ScoredCandidate) -> str:

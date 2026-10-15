@@ -35,6 +35,7 @@ PART_NAMES = (
     "motivation",
     "fatigue",
     "recentNotificationPenalty",
+    "likelyReturn",
 )
 
 
@@ -51,6 +52,9 @@ class ScoringWeights:
     fatigue: float = 1.0
     recent_notification: int = 30
     recent_notification_fade: timedelta = timedelta(hours=24)
+    # A producer this likely to return anyway needs the push less; the penalty grows to 1.0.
+    likely_return: int = 15
+    likely_return_from: float = 0.7
     category_multipliers: Mapping[NotificationCategory, float] = field(default_factory=dict)
 
 
@@ -67,6 +71,7 @@ class ScoringSignals:
     last_smart_sent_at: datetime | None
     motivation: Mapping[NotificationCategory, float]
     fatigue_score: float
+    return_probability: float | None = None
 
 
 @dataclass(frozen=True)
@@ -97,6 +102,7 @@ def score(
     parts["motivation"] = _motivation(candidate.category, signals, weights)
     parts["fatigue"] = -round(signals.fatigue_score * weights.fatigue)
     parts["recentNotificationPenalty"] = -_recent_notification_penalty(signals, now, weights)
+    parts["likelyReturn"] = -_likely_return_penalty(signals, weights)
     return ScoreBreakdown(parts)
 
 
@@ -132,3 +138,11 @@ def _recent_notification_penalty(signals: ScoringSignals, now: datetime, weights
     elapsed = as_utc_aware(now) - as_utc_aware(signals.last_smart_sent_at)
     remaining_share = 1 - elapsed / weights.recent_notification_fade
     return max(0, round(weights.recent_notification * remaining_share))
+
+
+def _likely_return_penalty(signals: ScoringSignals, weights: ScoringWeights) -> int:
+    probability = signals.return_probability
+    if probability is None or probability <= weights.likely_return_from:
+        return 0
+    share = (probability - weights.likely_return_from) / (1 - weights.likely_return_from)
+    return round(weights.likely_return * share)

@@ -24,6 +24,7 @@ const establishedDebug: EngagementDebug = {
     total_sessions: 24,
     avg_sessions_per_week: 4.5,
     avg_session_duration_minutes: 52,
+    last_session_duration_minutes: 45,
     sessions_last_7_days: 4,
     sessions_previous_7_days: 5,
     days_since_last_session: 1,
@@ -31,8 +32,9 @@ const establishedDebug: EngagementDebug = {
   },
   production_window: { weekdays: [0, 2, 4], start_hour: 19, end_hour: 21, is_default: false },
   preferred_notification_hour: 19,
-  segment: null,
-  return_probability_24h: null,
+  segment: "active_producer",
+  return_probability_24h: 0.82,
+  previous_return_probability: 0.79,
   fatigue_score: 10,
   ignored_streak: 1,
   motivation: { streak: 0.4, social: 0.3 },
@@ -120,6 +122,13 @@ describe("EngagementDebugView", () => {
     expect(screen.getByLabelText("timeMatch: +25")).toBeTruthy();
     expect(screen.getByLabelText("fatigue: -10")).toBeTruthy();
     expect(screen.queryByLabelText("rank: 0")).toBeNull();
+  });
+
+  it("shows the segment and the return probability", () => {
+    renderView();
+
+    expect(screen.getByLabelText("engagementDebug.segment: active_producer")).toBeTruthy();
+    expect(screen.getByLabelText("engagementDebug.returnProbability: 82%")).toBeTruthy();
   });
 
   it("says so when no trigger applies", () => {

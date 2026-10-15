@@ -5,7 +5,7 @@ generators themselves stay pure. Friends' data is reduced to name, duration and 
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -27,6 +27,8 @@ from app.services.engagement.learning_store import learned_signals
 from app.services.engagement.preferences import NotificationCategory
 from app.services.engagement.profile import BehaviorProfile
 from app.services.engagement.profile_store import load_fresh_profile
+from app.services.engagement.return_probability import return_features, return_probability
+from app.services.engagement.segments import Segment, segment_of
 from app.services.friend_graph import friend_user_ids
 from app.services.friend_metrics_service import session_counts_since
 from app.services.social_challenge_service import (
@@ -89,15 +91,38 @@ class EngagementContext:
     fatigue_score: float = 0
     ignored_streak: int = 0
     preferred_notification_hour: int | None = None
+    segment: Segment | None = None
+    return_probability: float | None = None
+    # The last value stored on an earlier local day; None until the engine has run on one.
+    previous_return_probability: float | None = None
+
+    @property
+    def return_probability_drop(self) -> float:
+        if self.return_probability is None or self.previous_return_probability is None:
+            return 0
+        return self.previous_return_probability - self.return_probability
 
 
 def load_engagement_context(db: Session, user_id: int, now: datetime) -> EngagementContext:
     calendar = load_calendar(db, user_id)
+    local_now = calendar.local_time_of(now)
     friend_ids = _visible_friend_ids(db, user_id)
-    streak_days, streak_at_risk = streak_snapshot(db, user_id, today=calendar.local_time_of(now).date())
+    streak_days, streak_at_risk = streak_snapshot(db, user_id, today=local_now.date())
     progression = db.get(UserProgression, user_id)
     profile = load_fresh_profile(db, user_id, now)
-    learned = learned_signals(db.get(UserEngagementProfile, user_id))
+    row = db.get(UserEngagementProfile, user_id)
+    learned = learned_signals(row)
+    challenges = _active_challenges(db, user_id)
+    friend_sessions = _recent_friend_sessions(db, friend_ids, now)
+    features = return_features(
+        profile,
+        local_now,
+        streak_days=streak_days,
+        streak_at_risk=streak_at_risk,
+        has_active_challenge=bool(challenges),
+        has_friend_activity=bool(friend_sessions),
+        notification_response_rate=_mean(learned.motivation.values()),
+    )
     return EngagementContext(
         user_id=user_id,
         zone=calendar.zone,
@@ -106,15 +131,45 @@ def load_engagement_context(db: Session, user_id: int, now: datetime) -> Engagem
         streak_at_risk=streak_at_risk,
         current_level=progression.current_level if progression else 1,
         xp_to_next_level=progression.xp_to_next_level if progression else _FIRST_LEVEL_XP_GAP,
-        challenges=_active_challenges(db, user_id),
-        friend_sessions=_recent_friend_sessions(db, friend_ids, now),
+        challenges=challenges,
+        friend_sessions=friend_sessions,
         leaderboard=_leaderboard_standing(db, user_id, friend_ids, calendar, now),
         recent_deliveries=_recent_deliveries(db, user_id, now),
         motivation=learned.motivation,
         fatigue_score=learned.fatigue_score,
         ignored_streak=learned.ignored_streak,
         preferred_notification_hour=learned.preferred_notification_hour,
+        segment=segment_of(profile, now),
+        return_probability=return_probability(features),
+        previous_return_probability=_previous_return_probability(row, calendar.day_key_of(now)),
     )
+
+
+def record_return_outlook(db: Session, context: EngagementContext, now: datetime) -> None:
+    """Store segment and probability; the first run on a new local day keeps the old one as baseline."""
+    row = db.get(UserEngagementProfile, context.user_id)
+    if row is None:
+        return
+    today = StreakCalendar(context.zone).day_key_of(now)
+    if row.return_probability_day != today:
+        row.previous_return_probability = row.return_probability_24h
+        row.return_probability_day = today
+    row.segment = context.segment.value if context.segment else None
+    row.return_probability_24h = context.return_probability
+    db.flush()
+
+
+def _previous_return_probability(row: UserEngagementProfile | None, today: str) -> float | None:
+    if row is None:
+        return None
+    if row.return_probability_day == today:
+        return row.previous_return_probability
+    return row.return_probability_24h
+
+
+def _mean(values: Iterable[float]) -> float | None:
+    values = list(values)
+    return sum(values) / len(values) if values else None
 
 
 def record_leaderboard_snapshot(

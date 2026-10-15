@@ -37,6 +37,7 @@ def refresh_profile(db: Session, user_id: int, now: datetime) -> UserEngagementP
     row.last_session_at = behavior.last_session_at
     row.sessions_last_7_days = behavior.sessions_last_7_days
     row.sessions_previous_7_days = behavior.sessions_previous_7_days
+    row.last_session_duration_minutes = behavior.last_session_duration_minutes
     row.updated_at = now
     db.flush()
     return row
@@ -53,6 +54,7 @@ def behavior_of(row: UserEngagementProfile) -> BehaviorProfile:
         last_session_at=row.last_session_at,
         sessions_last_7_days=row.sessions_last_7_days,
         sessions_previous_7_days=row.sessions_previous_7_days,
+        last_session_duration_minutes=row.last_session_duration_minutes,
     )
 
 

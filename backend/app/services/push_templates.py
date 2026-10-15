@@ -130,6 +130,13 @@ def reengagement(days_inactive: int) -> tuple[str, str]:
     )
 
 
+def return_slipping() -> tuple[str, str]:
+    return (
+        "Keep your rhythm going",
+        "You've been in a good flow. A short session today keeps it that way.",
+    )
+
+
 def rank_close(xp_remaining: int, rank_name: str) -> tuple[str, str]:
     return (
         f"{rank_name} is within reach",

@@ -224,6 +224,14 @@ function LearningSection({ debug }: { debug: EngagementDebug }) {
               : formatPercent(debug.return_probability_24h)
           }
         />
+        <Row
+          label={t("engagementDebug.previousReturnProbability")}
+          value={
+            debug.previous_return_probability === null
+              ? none
+              : formatPercent(debug.previous_return_probability)
+          }
+        />
         <View style={styles.divider} />
         {Object.entries(debug.motivation).map(([category, rate]) => (
           <Row key={category} label={category} value={formatPercent(rate)} />
@@ -250,6 +258,12 @@ function ProfileSection({ debug }: { debug: EngagementDebug }) {
           label={t("engagementDebug.avgDuration")}
           value={t("engagementDebug.minutes", {
             count: Math.round(profile.avg_session_duration_minutes),
+          })}
+        />
+        <Row
+          label={t("engagementDebug.lastDuration")}
+          value={t("engagementDebug.minutes", {
+            count: Math.round(profile.last_session_duration_minutes),
           })}
         />
         <Row

@@ -10,6 +10,7 @@ class EngagementProfileDebug(BaseModel):
     total_sessions: int
     avg_sessions_per_week: float
     avg_session_duration_minutes: float
+    last_session_duration_minutes: float
     sessions_last_7_days: int
     sessions_previous_7_days: int
     days_since_last_session: int | None
@@ -59,6 +60,7 @@ class EngagementDebugPublic(BaseModel):
     preferred_notification_hour: int | None
     segment: str | None
     return_probability_24h: float | None
+    previous_return_probability: float | None
     fatigue_score: float
     ignored_streak: int
     motivation: dict[str, float]

@@ -21,6 +21,7 @@ export type EngagementDebug = {
     total_sessions: number;
     avg_sessions_per_week: number;
     avg_session_duration_minutes: number;
+    last_session_duration_minutes: number;
     sessions_last_7_days: number;
     sessions_previous_7_days: number;
     days_since_last_session: number | null;
@@ -35,6 +36,7 @@ export type EngagementDebug = {
   preferred_notification_hour: number | null;
   segment: string | null;
   return_probability_24h: number | null;
+  previous_return_probability: number | null;
   fatigue_score: number;
   ignored_streak: number;
   motivation: Record<string, number>;

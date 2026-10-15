@@ -18,6 +18,7 @@ from app.timeutil import as_utc_aware, in_zone
 
 STREAK_EVENING_START_HOUR = 18
 REENGAGEMENT_MIN_DAYS = 3
+RETURN_DROP_THRESHOLD = 0.3
 TYPICAL_SESSION_FLOOR_MINUTES = 30
 CHALLENGE_CLOSE_SESSIONS = 2
 CHALLENGE_DEADLINE_WINDOW = timedelta(hours=48)
@@ -85,6 +86,10 @@ def streak_candidate(context: EngagementContext, now: datetime) -> Candidate | N
 
 
 def reengagement_candidate(context: EngagementContext, now: datetime) -> Candidate | None:
+    return _inactivity_candidate(context, now) or _slipping_candidate(context)
+
+
+def _inactivity_candidate(context: EngagementContext, now: datetime) -> Candidate | None:
     profile = context.profile
     days_inactive = profile.days_since_last_session(now)
     if days_inactive is None or days_inactive < REENGAGEMENT_MIN_DAYS:
@@ -101,6 +106,24 @@ def reengagement_candidate(context: EngagementContext, now: datetime) -> Candida
         path=DASHBOARD_PATH,
         reason=f"no session for {days_inactive} days, below the usual {profile.avg_sessions_per_week:g}/week",
         variables={"daysInactive": str(days_inactive)},
+    )
+
+
+def _slipping_candidate(context: EngagementContext) -> Candidate | None:
+    if context.return_probability_drop < RETURN_DROP_THRESHOLD:
+        return None
+    title, body = push_templates.return_slipping()
+    return Candidate(
+        type=CandidateType.REENGAGEMENT,
+        category=NotificationCategory.REENGAGEMENT,
+        base_score=35,
+        title=title,
+        body=body,
+        path=DASHBOARD_PATH,
+        reason=(
+            f"return probability fell from {context.previous_return_probability:.0%} "
+            f"to {context.return_probability:.0%} since yesterday"
+        ),
     )
 
 

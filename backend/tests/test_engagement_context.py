@@ -11,11 +11,13 @@ from app.models import (
     SocialChallenge,
     SocialChallengeMember,
     UserBlock,
+    UserEngagementProfile,
 )
 from app.services.engagement.context import (
     LeaderboardStanding,
     load_engagement_context,
     record_leaderboard_snapshot,
+    record_return_outlook,
 )
 from app.services.streak_calendar import StreakCalendar
 from tests.auth_helpers import auth_headers
@@ -169,3 +171,27 @@ def test_recent_deliveries_feed_the_send_limits(client):
         db.commit()
 
     assert [d.notification_type for d in _load(me).recent_deliveries] == ["streak_at_risk"]
+
+
+# --- return outlook ---------------------------------------------------------------------------
+
+
+def test_the_return_outlook_is_stored_with_yesterdays_value_as_baseline(client):
+    me = _producer(client, "ctxoutlook")
+    _add_session(me, NOW - timedelta(days=2))
+    yesterday, later_today = NOW - timedelta(days=1), NOW + timedelta(hours=1)
+    with SessionLocal() as db:
+        first = load_engagement_context(db, me, yesterday)
+        record_return_outlook(db, first, yesterday)
+        db.commit()
+        today = load_engagement_context(db, me, NOW)
+        record_return_outlook(db, today, NOW)
+        db.commit()
+        again = load_engagement_context(db, me, later_today)
+        row = db.get(UserEngagementProfile, me)
+
+    assert first.previous_return_probability is None
+    assert today.previous_return_probability == first.return_probability
+    assert again.previous_return_probability == first.return_probability
+    assert row.return_probability_24h == today.return_probability
+    assert row.segment == today.segment.value == "new_user"
