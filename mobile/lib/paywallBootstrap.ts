@@ -2,14 +2,8 @@ import type { CustomerInfo, PurchasesPackage } from "react-native-purchases";
 import type { TFunction } from "i18next";
 
 import { resolvePaywallPackages } from "./billingProducts";
-import { resolveOfferingsLoadError } from "./paywallErrors";
 import { resolvePremiumGrant } from "./premiumAccess";
-import {
-  getPaywallBillingSnapshot,
-  getRevenueCatCustomerInfo,
-  isPremiumActive,
-  restoreRevenueCatPurchases,
-} from "./revenuecat";
+import { getPaywallBillingSnapshot, getRevenueCatCustomerInfo, isPremiumActive } from "./revenuecat";
 
 export type PaywallBootstrapResult =
   | { kind: "premium_unlock"; customerInfo: CustomerInfo | null }
@@ -33,22 +27,17 @@ function mapPackages(offeringPackages: PurchasesPackage[]) {
   return { weekly, sixMonth, purchasable };
 }
 
-async function tryRecoverExistingSubscription(
+/**
+ * Offering plans to a subscriber is the bug we must never ship, so an unreadable customer state
+ * gets one more read. Restoring is deliberately left to the user: it can prompt for the store
+ * account and may move purchases between app accounts.
+ */
+async function readCustomerInfoIfUnknown(
+  snapshotInfo: CustomerInfo | null,
   appUserId: string | null,
 ): Promise<CustomerInfo | null> {
-  if (!appUserId) return null;
-
-  const existing = await getRevenueCatCustomerInfo(appUserId).catch(() => null);
-  if (existing && isPremiumActive(existing)) {
-    return existing;
-  }
-
-  const restored = await restoreRevenueCatPurchases(appUserId).catch(() => null);
-  if (restored && isPremiumActive(restored)) {
-    return restored;
-  }
-
-  return null;
+  if (snapshotInfo || !appUserId) return snapshotInfo;
+  return getRevenueCatCustomerInfo(appUserId).catch(() => null);
 }
 
 /** Resolve paywall state: premium unlock, purchasable plans, or actionable error. */
@@ -61,27 +50,18 @@ export async function bootstrapPaywall(input: BootstrapInput): Promise<PaywallBo
     }),
     getPaywallBillingSnapshot(input.appUserId ?? undefined),
   ]);
-  // RevenueCat customer state is already part of snapshot. Avoid a second SDK read here.
+  // The snapshot already carries RevenueCat state; the server grant only checks the backend.
   if (grant?.source === "entitlement") {
     return { kind: "premium_unlock", customerInfo: null };
   }
 
-  if (snapshot.customerInfo && isPremiumActive(snapshot.customerInfo)) {
-    return { kind: "premium_unlock", customerInfo: snapshot.customerInfo };
+  const customerInfo = await readCustomerInfoIfUnknown(snapshot.customerInfo, input.appUserId);
+  if (customerInfo && isPremiumActive(customerInfo)) {
+    return { kind: "premium_unlock", customerInfo };
   }
 
-  const offeringPackages = snapshot.offering?.availablePackages ?? [];
-  let resolved = mapPackages(offeringPackages);
-  if (resolved.purchasable.length > 0) {
-    return { kind: "plans_ready", ...resolved };
-  }
-
-  const recovered = await tryRecoverExistingSubscription(input.appUserId);
-  if (recovered) {
-    return { kind: "premium_unlock", customerInfo: recovered };
-  }
-
-  if (resolved.weekly || resolved.sixMonth) {
+  const resolved = mapPackages(snapshot.offering?.availablePackages ?? []);
+  if (resolved.purchasable.length > 0 || resolved.weekly || resolved.sixMonth) {
     return { kind: "plans_ready", ...resolved };
   }
 

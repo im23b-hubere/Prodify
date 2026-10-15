@@ -11,6 +11,7 @@ import { usePaywallExit } from "./usePaywallExit";
 import { usePaywallOfferings } from "./usePaywallOfferings";
 import { usePaywallPurchases } from "./usePaywallPurchases";
 import { usePremiumUnlockFinalizer } from "./usePremiumUnlockFinalizer";
+import { usePremiumUpdateListener } from "./usePremiumUpdateListener";
 
 export function usePaywallController() {
   const { token, user, signOut, deleteAccount, refreshUser } = useAuth();
@@ -71,6 +72,11 @@ export function usePaywallController() {
     refreshUser,
     requestExit,
     resolveExitAfterUnlock,
+  });
+
+  usePremiumUpdateListener({
+    enabled: !loading && !busy && !expoGoPreviewMode,
+    onPremium: finalizePremiumUnlock,
   });
 
   return {

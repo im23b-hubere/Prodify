@@ -130,6 +130,36 @@ async function ensurePurchasesReady(appUserId?: string): Promise<void> {
   }
 }
 
+function readSdkAppUserId(): Promise<string> {
+  return withRevenueCatTimeout(
+    Purchases.getAppUserID(),
+    "app user id",
+    REVENUECAT_READ_TIMEOUT_MS,
+  );
+}
+
+/**
+ * Customer state, purchases and restores belong to one account. The SDK can lag behind a
+ * sign-in (failed logIn, anonymous session), so verify its identity and re-login once before
+ * acting; otherwise a subscriber would see an empty account or a purchase would land elsewhere.
+ */
+async function ensureSignedInAs(appUserId?: string): Promise<void> {
+  await ensurePurchasesReady(appUserId);
+  const expected = normalizeAppUserId(appUserId);
+  if (!expected) return;
+  if ((await readSdkAppUserId()) === expected) return;
+
+  await withRevenueCatTimeout(
+    Purchases.logIn(expected).then(() => undefined),
+    "log in",
+    REVENUECAT_CONFIGURE_TIMEOUT_MS,
+  );
+  configuredForUser = expected;
+  if ((await readSdkAppUserId()) !== expected) {
+    throw new Error("RevenueCat is signed in as a different account. Please try again.");
+  }
+}
+
 async function fetchOfferingsWithRetry(appUserId?: string) {
   await ensurePurchasesReady(appUserId);
   let lastError: unknown = null;
@@ -157,21 +187,9 @@ export async function getDefaultOffering(appUserId?: string): Promise<PurchasesO
   return allOfferings[0] ?? null;
 }
 
+/** Exact match only: the backend checks the same identifier, so app and server never disagree. */
 export function getActiveEntitlement(info: CustomerInfo): PurchasesEntitlementInfo | null {
-  const configured = configuredEntitlementId();
-  const exact = info.entitlements.active[configured];
-  if (exact) return exact;
-
-  // Fallback for projects that used older entitlement identifiers.
-  const entries = Object.entries(info.entitlements.active);
-  const normalizedTarget = configured.toLowerCase().replace(/\s+/g, "");
-  for (const [identifier, ent] of entries) {
-    const norm = identifier.toLowerCase().replace(/\s+/g, "");
-    if (norm === normalizedTarget || norm.includes("premium") || norm.includes("appaccess")) {
-      return ent;
-    }
-  }
-  return null;
+  return info.entitlements.active[configuredEntitlementId()] ?? null;
 }
 
 export function isPremiumActive(info: CustomerInfo): boolean {
@@ -184,7 +202,7 @@ export function activeEntitlementExpiration(info: CustomerInfo): string | null {
 }
 
 export async function restoreRevenueCatPurchases(appUserId?: string): Promise<CustomerInfo> {
-  await ensurePurchasesReady(appUserId);
+  await ensureSignedInAs(appUserId);
   return withRevenueCatTimeout(
     Purchases.restorePurchases(),
     "restore purchases",
@@ -193,7 +211,7 @@ export async function restoreRevenueCatPurchases(appUserId?: string): Promise<Cu
 }
 
 export async function getRevenueCatCustomerInfo(appUserId?: string): Promise<CustomerInfo> {
-  await ensurePurchasesReady(appUserId);
+  await ensureSignedInAs(appUserId);
   return withRevenueCatTimeout(
     Purchases.getCustomerInfo(),
     "customer info",
@@ -205,7 +223,7 @@ export async function purchaseRevenueCatPackage(
   pkg: PurchasesPackage,
   appUserId?: string,
 ): Promise<MakePurchaseResult> {
-  await ensurePurchasesReady(appUserId);
+  await ensureSignedInAs(appUserId);
   return withRevenueCatTimeout(
     Purchases.purchasePackage(pkg),
     "purchase",
@@ -213,20 +231,30 @@ export async function purchaseRevenueCatPackage(
   );
 }
 
+/** Listen for SDK-pushed customer changes (renewals, purchases finished elsewhere). */
+export function subscribeToCustomerInfoUpdates(
+  onUpdate: (info: CustomerInfo) => void,
+): () => void {
+  if (!sdkConfigured) return () => undefined;
+  const listener = (info: CustomerInfo) => onUpdate(info);
+  Purchases.addCustomerInfoUpdateListener(listener);
+  return () => {
+    Purchases.removeCustomerInfoUpdateListener(listener);
+  };
+}
+
 export type PaywallBillingSnapshot = {
   customerInfo: CustomerInfo | null;
   offering: PurchasesOffering | null;
 };
 
-/** Load customer info and offerings in parallel after SDK configure. */
+/** Load customer info and offerings in parallel; either may fail without hiding the other. */
 export async function getPaywallBillingSnapshot(
   appUserId?: string,
 ): Promise<PaywallBillingSnapshot> {
   if (!isRevenueCatRuntimeAvailable()) {
     return { customerInfo: null, offering: null };
   }
-
-  await ensurePurchasesReady(appUserId);
 
   const [customerInfoResult, offeringResult] = await Promise.allSettled([
     getRevenueCatCustomerInfo(appUserId),

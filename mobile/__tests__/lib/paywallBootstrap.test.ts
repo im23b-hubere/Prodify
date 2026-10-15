@@ -33,6 +33,7 @@ function makePackage(productId: string, priceString: string) {
 describe("bootstrapPaywall", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getRevenueCatCustomerInfo as jest.Mock).mockResolvedValue({ entitlements: { active: {} } });
   });
 
   it("returns premium_unlock when the server entitlement is active", async () => {
@@ -84,22 +85,57 @@ describe("bootstrapPaywall", () => {
     }
   });
 
-  it("auto-restores an existing subscription when offerings are empty", async () => {
+  it("unlocks a subscriber whose first customer read failed instead of offering plans", async () => {
+    (resolvePremiumGrant as jest.Mock).mockResolvedValue(null);
+    (getPaywallBillingSnapshot as jest.Mock).mockResolvedValue({
+      customerInfo: null,
+      offering: { availablePackages: [makePackage("prodify_weekly_access", "CHF 10.00")] },
+    });
+    const customerInfo = { entitlements: { active: { app_access: {} } } };
+    (getRevenueCatCustomerInfo as jest.Mock).mockResolvedValue(customerInfo);
+
+    await expect(bootstrapPaywall({ token: "tok", appUserId: "1", t })).resolves.toEqual({
+      kind: "premium_unlock",
+      customerInfo,
+    });
+  });
+
+  it("offers plans when the customer state stays unreadable", async () => {
+    (resolvePremiumGrant as jest.Mock).mockResolvedValue(null);
+    (getPaywallBillingSnapshot as jest.Mock).mockResolvedValue({
+      customerInfo: null,
+      offering: { availablePackages: [makePackage("prodify_weekly_access", "CHF 10.00")] },
+    });
+    (getRevenueCatCustomerInfo as jest.Mock).mockRejectedValue(new Error("timeout"));
+
+    const result = await bootstrapPaywall({ token: "tok", appUserId: "1", t });
+
+    expect(result.kind).toBe("plans_ready");
+  });
+
+  it("does not re-read RevenueCat when the snapshot already shows no access", async () => {
+    (resolvePremiumGrant as jest.Mock).mockResolvedValue(null);
+    (getPaywallBillingSnapshot as jest.Mock).mockResolvedValue({
+      customerInfo: { entitlements: { active: {} } },
+      offering: { availablePackages: [makePackage("prodify_weekly_access", "CHF 10.00")] },
+    });
+
+    await bootstrapPaywall({ token: "tok", appUserId: "1", t });
+
+    expect(getRevenueCatCustomerInfo).not.toHaveBeenCalled();
+  });
+
+  it("never restores purchases on its own because restore can prompt for the store account", async () => {
     (resolvePremiumGrant as jest.Mock).mockResolvedValue(null);
     (getPaywallBillingSnapshot as jest.Mock).mockResolvedValue({
       customerInfo: null,
       offering: { availablePackages: [] },
     });
-    (getRevenueCatCustomerInfo as jest.Mock).mockResolvedValue({
-      entitlements: { active: {} },
-    });
-    (restoreRevenueCatPurchases as jest.Mock).mockResolvedValue({
-      entitlements: { active: { app_access: {} } },
-    });
+    (getRevenueCatCustomerInfo as jest.Mock).mockResolvedValue({ entitlements: { active: {} } });
 
-    await expect(bootstrapPaywall({ token: "tok", appUserId: "1", t })).resolves.toEqual({
-      kind: "premium_unlock",
-      customerInfo: { entitlements: { active: { app_access: {} } } },
-    });
+    const result = await bootstrapPaywall({ token: "tok", appUserId: "1", t });
+
+    expect(result).toMatchObject({ kind: "error", errorKey: "appleProductsUnavailable" });
+    expect(restoreRevenueCatPurchases).not.toHaveBeenCalled();
   });
 });
