@@ -8,7 +8,11 @@ appId: com.prodify.app
     commands:
       - tapOn:
           id: dashboard-stop-session
-      - tapOn: "End session"
+      # The dashboard button behind the alert has the same label.
+      - tapOn:
+          text: "End session"
+          rightOf:
+            text: "Keep going"
       - extendedWaitUntil:
           visible:
             id: session-complete-screen
