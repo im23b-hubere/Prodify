@@ -144,6 +144,7 @@ function ServerPreferencesGroup({
       <View style={styles.prefsCard}>
         <ServerPreferencesRows t={t} server={server} />
       </View>
+      <Text style={styles.prefsFootnote}>{t("notificationsUi.personalisationNotice")}</Text>
       {server.saveFailed ? (
         <Text style={styles.prefsError} accessibilityLiveRegion="polite" accessibilityRole="alert">
           {t("notificationsUi.prefsSaveFailed")}

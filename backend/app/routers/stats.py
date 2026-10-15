@@ -7,13 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_kpi_admin
-from app.models import User
+from app.models import User, utcnow
 from app.contracts.insights import (
     HeatmapPublic,
     PersonalRecordsPublic,
     StatsInsightsPublic,
 )
 from app.contracts.outcomes import KpiDashboardPublic, KpiSummaryPublic
+from app.services.engagement.metrics import engagement_metrics
 from app.services.kpi_tracker import kpi_dashboard, kpi_summary
 from app.services.stats_service import build_heatmap, build_personal_records, build_stats_insights
 
@@ -57,4 +58,6 @@ def stats_kpi_dashboard(
     _current: Annotated[User, Depends(require_kpi_admin)],
     db: Annotated[Session, Depends(get_db)],
 ) -> KpiDashboardPublic:
-    return kpi_dashboard(db, window_days=7)
+    window_days = 7
+    engagement = engagement_metrics(db, utcnow(), window_days)
+    return kpi_dashboard(db, window_days=window_days, engagement=engagement)

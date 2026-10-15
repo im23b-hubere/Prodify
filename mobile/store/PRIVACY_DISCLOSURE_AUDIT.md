@@ -20,7 +20,8 @@ Scope: Prodify iOS 1.0.1 source and installed native dependencies.
 - Identifiers: internal account/user identifier and push token.
 - Purchases: subscription status and product/entitlement information through Apple and RevenueCat.
 - Usage Data / Product Interaction: sessions, streaks, goals, screen-related breadcrumbs,
-  and feature events used to provide and improve the product.
+  feature events, and whether a push was opened or followed by a session, used to provide
+  and improve the product and to personalise reminder timing (App Functionality).
 - Diagnostics: crash and performance data through Sentry.
 
 Purposes should be limited to App Functionality, Analytics, and Developer Communications
@@ -33,6 +34,9 @@ where actually applicable. Do not select Third-Party Advertising or Developer Ad
 - RevenueCat is configured with the authenticated internal user ID and handles subscription
   offerings, purchases, restore, and entitlement state (`lib/revenuecat.ts`).
 - Push tokens are registered only for notifications and can be disabled by the user.
+- Smart reminders are personalised server-side from first-party Prodify activity only
+  (`backend/app/services/engagement/`); no location, WiFi, contacts, other apps' data, or
+  device fingerprinting. Users can switch them off per category in notification settings.
 - Permanent in-app account deletion calls `DELETE /users/me`, clears local credentials,
   and the backend removes account-owned and related records.
 

@@ -257,7 +257,7 @@
     },
     "privacy": {
       "screenTitle": "Privacy policy",
-      "updated": "Last updated: April 2026",
+      "updated": "Last updated: October 2026",
       "intro": "This notice explains how Prodify processes personal data. It is not legal advice.",
       "blocks": [
         {
@@ -273,15 +273,19 @@
           "body": "Processing is necessary to perform the contract (GDPR Art. 6(1)(b)), to protect security and prevent abuse (legitimate interests, Art. 6(1)(f)), and — where you consented — for push messages (Art. 6(1)(a))."
         },
         {
-          "heading": "4. Retention",
+          "heading": "4. Personalised reminders",
+          "body": "Prodify uses your activity patterns to personalize reminders and help you maintain your production routine. For this we only use first-party data from your use of Prodify: when and how long you produce, your streaks, challenges and friend activity on Prodify, and whether a reminder was opened or followed by a session. We do not use your location, WiFi, contacts or data from other apps, and we do not fingerprint your device. You can turn smart notifications or single categories off at any time in the notification settings."
+        },
+        {
+          "heading": "5. Retention",
           "body": "We store data while your account exists. After deletion, we remove associated personal data unless a legal retention obligation applies."
         },
         {
-          "heading": "5. Your rights",
+          "heading": "6. Your rights",
           "body": "You have the right to access, rectification, erasure, restriction, portability, and objection where processing relies on legitimate interests. You may withdraw consent at any time with future effect. You may lodge a complaint with a supervisory authority."
         },
         {
-          "heading": "6. Contact",
+          "heading": "7. Contact",
           "body": "To exercise your rights or ask questions, use the support address shown in the App Store or in the app."
         }
       ]
@@ -1430,6 +1434,7 @@
     "tipsAndNudgesHint": "Includes your Sunday evening weekly recap reminder.",
     "smartNotifications": "Smart notifications",
     "smartNotificationsHint": "Pushes timed to when you usually produce. Session updates always come through.",
+    "personalisationNotice": "Prodify uses your activity patterns to personalize reminders and help you maintain your production routine. Only your activity in Prodify is used — never your location, contacts or other apps.",
     "challengeUpdates": "Challenges",
     "rankProgress": "Rank progress",
     "comebackNudges": "Comeback nudges",

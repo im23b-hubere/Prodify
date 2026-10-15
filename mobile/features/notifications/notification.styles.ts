@@ -170,6 +170,12 @@ export const notificationStyles = StyleSheet.create({
     ...typography.meta,
     marginTop: spacing.xs,
   },
+  prefsFootnote: {
+    color: colors.textSecondary,
+    ...typography.meta,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
   segment: {
     flexDirection: "row",
     padding: 3,

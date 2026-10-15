@@ -67,6 +67,10 @@ def test_kpi_dashboard_contract(client):
     assert body["push_tokens_inactive"] >= 1
     assert len(body["trend"]) == 7
     assert isinstance(body["totals"]["trial_to_paid_conversion_rate"], float)
+    engagement = body["engagement"]
+    assert engagement["primary"]["weekly_active_producers"] >= 1
+    assert "notification_conversion_rate" in engagement["primary"]
+    assert engagement["negative"]["push_token_inactive_rate"] == 0.5
 
 
 def test_kpi_dashboard_forbidden_for_non_admin(client):

@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.contracts.engagement import EngagementMetricsPublic
+
 
 class SeedScreenshotAccountBody(BaseModel):
     """
@@ -104,3 +106,4 @@ class KpiDashboardPublic(BaseModel):
     push_tokens_active: int
     push_tokens_inactive: int
     trend: list[KpiTrendPointPublic] = Field(default_factory=list)
+    engagement: EngagementMetricsPublic

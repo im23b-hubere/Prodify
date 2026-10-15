@@ -53,6 +53,40 @@ class EngagementDecisionDebug(BaseModel):
     scheduled_at: datetime | None
 
 
+class EngagementPrimaryMetrics(BaseModel):
+    notification_conversion_rate: float
+    sessions_per_active_user: float
+    weekly_active_producers: int
+    retention_d1: float
+    retention_d7: float
+    retention_d30: float
+
+
+class EngagementSecondaryMetrics(BaseModel):
+    notification_open_rate: float
+    avg_session_duration_minutes: float
+    streak_retention_rate: float
+    challenge_completion_rate: float
+    social_conversion_rate: float
+
+
+class EngagementNegativeMetrics(BaseModel):
+    smart_opt_out_rate: float
+    push_token_inactive_rate: float
+    notifications_ignored: int
+    notification_ignore_rate: float
+    session_abandon_rate: float
+
+
+class EngagementMetricsPublic(BaseModel):
+    """Whether the engine helps or hurts; rates are 0.0–1.0 over the dashboard window unless named otherwise."""
+
+    smart_notifications_delivered: int
+    primary: EngagementPrimaryMetrics
+    secondary: EngagementSecondaryMetrics
+    negative: EngagementNegativeMetrics
+
+
 class EngagementDebugPublic(BaseModel):
     evaluated_at: datetime
     profile: EngagementProfileDebug
