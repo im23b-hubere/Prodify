@@ -42,6 +42,7 @@ _CATEGORY_BY_TYPE = {
     "duel_invite": NotificationCategory.CHALLENGE,
     "duel_accepted": NotificationCategory.CHALLENGE,
     "dashboard": NotificationCategory.REENGAGEMENT,
+    "reengagement": NotificationCategory.REENGAGEMENT,
 }
 _CHALLENGE_TYPE_PREFIX = "challenge_"
 _QUIET_HOURS_EXEMPT = frozenset({NotificationCategory.STREAK})
@@ -121,18 +122,33 @@ def is_within_quiet_hours(prefs: UserNotificationPreferences, local_time: time) 
     return minute >= start or minute < end
 
 
+class PreferenceBlock(StrEnum):
+    SMART_DISABLED = "smart_disabled"
+    CATEGORY_DISABLED = "category_disabled"
+    QUIET_HOURS = "quiet_hours"
+
+
+def preference_block(
+    prefs: UserNotificationPreferences,
+    category: NotificationCategory | None,
+    local_time: time,
+) -> PreferenceBlock | None:
+    """Why the producer's preferences hold this push back right now, or None if they allow it."""
+    if not prefs.smart_enabled:
+        return PreferenceBlock.SMART_DISABLED
+    if category is not None and not getattr(prefs, f"{category.value}_enabled"):
+        return PreferenceBlock.CATEGORY_DISABLED
+    if category not in _QUIET_HOURS_EXEMPT and is_within_quiet_hours(prefs, local_time):
+        return PreferenceBlock.QUIET_HOURS
+    return None
+
+
 def is_category_allowed(
     prefs: UserNotificationPreferences,
     category: NotificationCategory | None,
     local_time: time,
 ) -> bool:
-    if not prefs.smart_enabled:
-        return False
-    if category is not None and not getattr(prefs, f"{category.value}_enabled"):
-        return False
-    if category in _QUIET_HOURS_EXEMPT:
-        return True
-    return not is_within_quiet_hours(prefs, local_time)
+    return preference_block(prefs, category, local_time) is None
 
 
 def is_push_allowed(db: Session, user_id: int, notification_type: str, now: datetime) -> bool:
