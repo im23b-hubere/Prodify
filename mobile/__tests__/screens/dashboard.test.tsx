@@ -14,9 +14,8 @@ jest.mock("expo-linear-gradient", () => {
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn() }),
-  useFocusEffect: (effect: () => void | (() => void)) => {
-    effect();
-  },
+  useFocusEffect: (effect: () => void | (() => void)) =>
+    jest.requireActual("react").useEffect(effect, [effect]),
 }));
 
 jest.mock("react-native-safe-area-context", () => {

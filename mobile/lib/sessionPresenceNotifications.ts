@@ -8,6 +8,7 @@ import {
   isSessionRunning,
   presenceFireDate,
 } from "./sessionPresence";
+import { serializeAsync } from "./serializeAsync";
 import { parseSessionDate } from "./sessionTime";
 import type { SessionDto } from "../types/session";
 
@@ -52,7 +53,10 @@ export async function cancelSessionPresenceScheduled() {
   );
 }
 
-export async function syncSessionPresenceNotifications(session: SessionDto | null) {
+/** Serialized: two screens syncing at once would otherwise both cancel, then both schedule. */
+export const syncSessionPresenceNotifications = serializeAsync(replacePresenceNotifications);
+
+async function replacePresenceNotifications(session: SessionDto | null) {
   if (isE2eModeEnabled()) return;
 
   await ensureAndroidChannel();

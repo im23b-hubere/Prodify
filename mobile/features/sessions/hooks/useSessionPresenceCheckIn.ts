@@ -24,6 +24,8 @@ type SessionPresenceCheckInOptions = {
   session: SessionDto | null;
   sessionResolved: boolean;
   endSession: () => void | boolean | Promise<void | boolean>;
+  /** Off while the screen is covered: its session copy may be stale (e.g. paused elsewhere). */
+  enabled?: boolean;
 };
 
 export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions) {
@@ -32,10 +34,12 @@ export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions
   optionsRef.current = options;
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const reconcileRef = useRef(() => Promise.resolve());
+  const enabled = options.enabled ?? true;
+  const watchedSession = enabled ? options.session : null;
 
   reconcileRef.current = async () => {
-    const { session } = optionsRef.current;
-    if (!session || !isSessionRunning(session)) return;
+    const { session, enabled: isEnabled = true } = optionsRef.current;
+    if (!isEnabled || !session || !isSessionRunning(session)) return;
     if (isBackgroundAppState(String(AppState.currentState))) return;
 
     const decision = decideSessionPresence({
@@ -92,21 +96,33 @@ export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions
 
   useEffect(() => {
     void reconcileRef.current();
-  }, [options.session, options.sessionResolved]);
+  }, [watchedSession, options.sessionResolved]);
 
+  const watchedSessionRef = useRef(watchedSession);
+  watchedSessionRef.current = watchedSession;
+  const scheduleKey = presenceScheduleKey(watchedSession);
   useEffect(() => {
-    void syncSessionPresenceNotifications(options.session);
-  }, [
-    options.session?.id,
-    options.session?.started_at,
-    options.session?.pause_started_at,
-    options.session?.stopped_at,
-    options.session?.paused_duration_seconds,
-  ]);
+    if (!enabled) return;
+    void syncSessionPresenceNotifications(watchedSessionRef.current);
+  }, [enabled, scheduleKey]);
 
+  const isRunning = isSessionRunning(watchedSession);
+  const watchedSessionId = watchedSession?.id;
   useEffect(() => {
-    if (!isSessionRunning(options.session)) return;
+    if (!isRunning) return;
     const interval = setInterval(() => void reconcileRef.current(), PRESENCE_POLL_MS);
     return () => clearInterval(interval);
-  }, [options.session?.id, options.session?.pause_started_at, options.session?.stopped_at]);
+  }, [isRunning, watchedSessionId]);
+}
+
+/** Changes exactly when the local presence reminders would fire at different times. */
+function presenceScheduleKey(session: SessionDto | null) {
+  if (!session) return "none";
+  return [
+    session.id,
+    session.started_at,
+    session.pause_started_at,
+    session.stopped_at,
+    session.paused_duration_seconds,
+  ].join("|");
 }

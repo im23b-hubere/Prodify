@@ -69,9 +69,11 @@ def _nudge(db: DBSession, settings: Settings, session: ProductionSession, now) -
 
 def _stop(db: DBSession, settings: Settings, session: ProductionSession, now) -> bool:
     user_id = session.user_id
-    deadline = stop_deadline(session, now)
     try:
-        completion = complete_session(db, user_id, session, stopped_at=deadline)
+        if not _still_running_after_lock(db, session):
+            db.rollback()
+            return False
+        completion = complete_session(db, user_id, session, stopped_at=stop_deadline(session, now))
     except Exception:
         db.rollback()
         logger.exception("session auto-stop failed session_id=%s", session.id)
@@ -108,6 +110,12 @@ def _stop(db: DBSession, settings: Settings, session: ProductionSession, now) ->
         db.rollback()
         logger.exception("engagement profile refresh failed user_id=%s", user_id)
     return True
+
+
+def _still_running_after_lock(db: DBSession, session: ProductionSession) -> bool:
+    """The scan is a snapshot; the user may have stopped, paused or deleted the session since."""
+    db.refresh(session, with_for_update=True)
+    return session.stopped_at is None and session.pause_started_at is None and session.deleted_at is None
 
 
 def main() -> None:

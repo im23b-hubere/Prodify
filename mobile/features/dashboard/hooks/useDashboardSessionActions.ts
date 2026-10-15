@@ -4,6 +4,7 @@ import type { TFunction } from "i18next";
 import { useCallback, useRef, useState } from "react";
 import { Alert } from "react-native";
 
+import { useIsScreenFocused } from "../../../hooks/useIsScreenFocused";
 import { apiJson } from "../../../lib/client";
 import { sessionSummaryHref } from "../../../lib/stackNavigation";
 import { debugLog } from "../../../lib/debugLog";
@@ -217,7 +218,9 @@ function useDashboardSessionPresence(
   stopSession: (session: SessionDto) => Promise<boolean | void>,
 ) {
   const { active, activeResolved } = options;
+  const isFocused = useIsScreenFocused();
   useSessionPresenceCheckIn({
+    enabled: isFocused,
     session: active,
     sessionResolved: activeResolved,
     endSession: () => {

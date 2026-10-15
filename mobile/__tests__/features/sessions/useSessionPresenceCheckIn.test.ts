@@ -207,6 +207,15 @@ describe("useSessionPresenceCheckIn", () => {
     await waitFor(() => expect(endSession).toHaveBeenCalledTimes(2));
   });
 
+  it("stays silent on a surface that is not on screen", async () => {
+    const { endSession } = renderPresence({ session: autoStopSession, enabled: false });
+    await act(async () => undefined);
+
+    expect(endSession).not.toHaveBeenCalled();
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(syncSessionPresenceNotifications).not.toHaveBeenCalled();
+  });
+
   it("schedules local presence notifications while the session is running", async () => {
     renderPresence();
     await waitFor(() => expect(syncSessionPresenceNotifications).toHaveBeenCalledWith(runningSession));
