@@ -12,6 +12,7 @@ from app.achievementsutil import compute_focus_score_for_session, grant_achievem
 from app.models import CheckinLog, ProductionSession, Streak, utcnow
 from app.services.engagement.deliveries import attribute_session_start
 from app.services.engagement.events import EngagementEvent
+from app.services.engagement.learning_store import refresh_learning
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp, xp_for_completed_session
 from app.services.session_skill_focus_service import replace_skill_focuses
@@ -72,7 +73,8 @@ def create_session(
     replace_skill_focuses(session, focus_ids, primary_focus_id=single_planned_focus)
     db.add(session)
     db.flush()
-    attribute_session_start(db, user_id, session_id=session.id, started_at=session.started_at)
+    if attribute_session_start(db, user_id, session_id=session.id, started_at=session.started_at):
+        refresh_learning(db, user_id, session.started_at)
     suggested = suggested_skill_focus_ids or []
     track_event(
         db,

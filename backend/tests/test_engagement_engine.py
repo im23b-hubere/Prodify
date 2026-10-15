@@ -126,6 +126,42 @@ def test_no_trigger_means_no_push():
     assert decision.reason == "no trigger applies"
 
 
+def test_two_ignored_pushes_pause_smart_pushes_for_a_day():
+    context = _spec_example(ignored_streak=2, recent_deliveries=(_delivery("rank_close", hours_ago=20),))
+
+    decision = decide(context, default_preferences(1), TUESDAY_EVENING)
+
+    assert not decision.should_send
+    assert {scored.limit for scored in decision.candidates} == {LimitReason.FATIGUE_PAUSE}
+
+
+def test_the_pause_ends_after_its_time():
+    context = _spec_example(ignored_streak=2, recent_deliveries=(_delivery("rank_close", hours_ago=25),))
+
+    assert decide(context, default_preferences(1), TUESDAY_EVENING).should_send
+
+
+def test_after_four_ignored_pushes_only_high_priority_goes_out():
+    rank_only = _context(current_level=12, xp_to_next_level=40, ignored_streak=4)
+    at_send_moment = TUESDAY_EVENING.replace(hour=18, minute=40)
+
+    decision = decide(rank_only, default_preferences(1), at_send_moment)
+
+    assert 25 <= decision.candidates[0].total < 70
+    assert not decision.should_send
+    long_quiet = _spec_example(ignored_streak=4, recent_deliveries=(_delivery("rank_close", hours_ago=50),))
+    assert decide(long_quiet, default_preferences(1), TUESDAY_EVENING).should_send
+
+
+def test_a_learned_hour_replaces_the_slot_before_the_window():
+    context = _context(current_level=12, xp_to_next_level=10, preferred_notification_hour=19)
+
+    assert decide(context, default_preferences(1), TUESDAY_EVENING).should_send
+    decision = decide(context, default_preferences(1), TUESDAY_EVENING.replace(hour=18, minute=40))
+    assert not decision.should_send
+    assert decision.scheduled_at == datetime(2026, 6, 9, 19, 0, tzinfo=ZURICH)
+
+
 def test_a_push_that_can_wait_waits_for_the_send_moment():
     context = _context(current_level=12, xp_to_next_level=10)
 

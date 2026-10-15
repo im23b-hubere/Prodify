@@ -99,6 +99,12 @@ With the smart-notifications flag on, the three push slots above stop (`/jobs/st
 
 Each `/jobs/engagement` run (flag on) scores every candidate in `engagement/scoring.py` as a sum of named parts — `timeMatch`, `inactivity`, the trigger's own `streak` / `social` / `challenge` / `rank` urgency, `motivation`, minus `fatigue` and `recentNotificationPenalty`. `engagement/engine.py` then sends **at most one** push per producer and run: the highest-scoring candidate that scores 25 or more (25–44 low, 45–69 good, 70+ high priority), passes the limits and preferences, and is either time-sensitive (streak, social, challenge deadline) or due at the producer's send moment. Its score, reason and variables are stored on the delivery. Only producers with an active push token and smart notifications on are evaluated; in development every decision is logged as `[EngagementEngine]`.
 
+The engine learns from pushes that reached a device, recomputed whenever one converts or settles (`engagement/fatigue.py`, `engagement/motivation.py`):
+
+- **Fatigue** — each ignored push adds to the fatigue score, each converted (or merely opened) one takes some off. Pushes ignored in a row pause smart pushes: 2 for 24h, 3 or more for 48h after the last one, and from 4 on only high-priority candidates (70+) go out.
+- **Motivation** — conversion rate per category, smoothed towards a prior (streak 25%, social 30%, challenge 25%, rank 20%, re-engagement 15%) so one lucky push does not count as certain. Feeds the `motivation` score part.
+- **Send hour** — once an established producer has three or more pushes at a local hour that convert better than the 25% baseline, that hour's first half hour replaces the slot before the production window.
+
 | Message | Category | Trigger | Opens |
 |---------|----------|---------|-------|
 | **Keep the streak alive** · Your {streakDays}-day streak needs one session — {time} left today. | Streak | Streak running, no session today, after 18:00 local | Dashboard |

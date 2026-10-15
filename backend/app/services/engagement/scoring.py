@@ -10,17 +10,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from enum import StrEnum
 from zoneinfo import ZoneInfo
 
 from app.services.engagement.candidates import Candidate
 from app.services.engagement.preferences import NotificationCategory
+from app.services.engagement.priority import Priority, priority_of
 from app.services.engagement.timing import ProductionWindow
 from app.timeutil import as_utc_aware, in_zone
-
-SEND_THRESHOLD = 25
-GOOD_THRESHOLD = 45
-HIGH_THRESHOLD = 70
 
 _TRIGGER_PART = {
     NotificationCategory.STREAK: "streak",
@@ -40,23 +36,6 @@ PART_NAMES = (
     "fatigue",
     "recentNotificationPenalty",
 )
-
-
-class Priority(StrEnum):
-    DO_NOT_SEND = "do_not_send"
-    LOW = "low"
-    GOOD = "good"
-    HIGH = "high"
-
-
-def priority_of(total: int) -> Priority:
-    if total >= HIGH_THRESHOLD:
-        return Priority.HIGH
-    if total >= GOOD_THRESHOLD:
-        return Priority.GOOD
-    if total >= SEND_THRESHOLD:
-        return Priority.LOW
-    return Priority.DO_NOT_SEND
 
 
 @dataclass(frozen=True)

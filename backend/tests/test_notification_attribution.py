@@ -178,7 +178,7 @@ def test_expired_deliveries_settle_as_ignored_or_opened_only(client, sent_messag
         settled = settle_expired_deliveries(db, datetime.now(timezone.utc))
         db.commit()
 
-    assert settled == 2
+    assert len(settled) == 2
     assert _delivery(ignored_id).outcome == "ignored"
     assert _delivery(opened_id).outcome == "opened_only"
     assert _delivery(fresh_id).outcome == "pending"

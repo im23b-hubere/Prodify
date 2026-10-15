@@ -3,14 +3,8 @@ from zoneinfo import ZoneInfo
 
 from app.services.engagement.candidates import Candidate, CandidateType
 from app.services.engagement.preferences import NotificationCategory
-from app.services.engagement.scoring import (
-    DEFAULT_WEIGHTS,
-    Priority,
-    ScoringSignals,
-    ScoringWeights,
-    priority_of,
-    score,
-)
+from app.services.engagement.priority import Priority, priority_of
+from app.services.engagement.scoring import DEFAULT_WEIGHTS, ScoringSignals, ScoringWeights, score
 from app.services.engagement.timing import ProductionWindow
 
 ZURICH = ZoneInfo("Europe/Zurich")

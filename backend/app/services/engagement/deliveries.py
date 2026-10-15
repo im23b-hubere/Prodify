@@ -142,17 +142,19 @@ def attribute_session_start(
     return delivery
 
 
-def settle_expired_deliveries(db: Session, now: datetime) -> int:
+def settle_expired_deliveries(db: Session, now: datetime) -> list[NotificationDelivery]:
     """Close pending deliveries whose attribution window has passed without a session."""
-    expired = db.scalars(
-        select(NotificationDelivery).where(
-            NotificationDelivery.outcome == DeliveryOutcome.PENDING,
-            NotificationDelivery.sent_at < now - ATTRIBUTION_WINDOW,
-        )
-    ).all()
+    expired = list(
+        db.scalars(
+            select(NotificationDelivery).where(
+                NotificationDelivery.outcome == DeliveryOutcome.PENDING,
+                NotificationDelivery.sent_at < now - ATTRIBUTION_WINDOW,
+            )
+        ).all()
+    )
     for delivery in expired:
         delivery.outcome = DeliveryOutcome.OPENED_ONLY if delivery.opened_at else DeliveryOutcome.IGNORED
-    return len(expired)
+    return expired
 
 
 def _latest_attributable_delivery(db: Session, user_id: int, moment: datetime) -> NotificationDelivery | None:

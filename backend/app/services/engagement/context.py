@@ -20,8 +20,10 @@ from app.models import (
     SocialChallenge,
     SocialChallengeMember,
     User,
+    UserEngagementProfile,
     UserProgression,
 )
+from app.services.engagement.learning_store import learned_signals
 from app.services.engagement.preferences import NotificationCategory
 from app.services.engagement.profile import BehaviorProfile
 from app.services.engagement.profile_store import load_fresh_profile
@@ -82,9 +84,11 @@ class EngagementContext:
     friend_sessions: tuple[FriendSession, ...]
     leaderboard: LeaderboardStanding | None
     recent_deliveries: tuple[NotificationDelivery, ...]
-    # Conversion rate per category; a missing category counts as neutral.
+    # Learned from settled pushes; a missing category counts as neutral.
     motivation: Mapping[NotificationCategory, float] = field(default_factory=dict)
     fatigue_score: float = 0
+    ignored_streak: int = 0
+    preferred_notification_hour: int | None = None
 
 
 def load_engagement_context(db: Session, user_id: int, now: datetime) -> EngagementContext:
@@ -92,10 +96,12 @@ def load_engagement_context(db: Session, user_id: int, now: datetime) -> Engagem
     friend_ids = _visible_friend_ids(db, user_id)
     streak_days, streak_at_risk = streak_snapshot(db, user_id, today=calendar.local_time_of(now).date())
     progression = db.get(UserProgression, user_id)
+    profile = load_fresh_profile(db, user_id, now)
+    learned = learned_signals(db.get(UserEngagementProfile, user_id))
     return EngagementContext(
         user_id=user_id,
         zone=calendar.zone,
-        profile=load_fresh_profile(db, user_id, now),
+        profile=profile,
         streak_days=streak_days,
         streak_at_risk=streak_at_risk,
         current_level=progression.current_level if progression else 1,
@@ -104,6 +110,10 @@ def load_engagement_context(db: Session, user_id: int, now: datetime) -> Engagem
         friend_sessions=_recent_friend_sessions(db, friend_ids, now),
         leaderboard=_leaderboard_standing(db, user_id, friend_ids, calendar, now),
         recent_deliveries=_recent_deliveries(db, user_id, now),
+        motivation=learned.motivation,
+        fatigue_score=learned.fatigue_score,
+        ignored_streak=learned.ignored_streak,
+        preferred_notification_hour=learned.preferred_notification_hour,
     )
 
 

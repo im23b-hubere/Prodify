@@ -19,17 +19,20 @@ from app.services.engagement.context import EngagementContext, load_engagement_c
 from app.services.engagement.deliveries import TRANSACTIONAL_TYPES
 from app.services.engagement.limits import LimitReason, is_send_allowed
 from app.services.engagement.preferences import load_preferences
+from app.services.engagement.priority import SEND_THRESHOLD
 from app.services.engagement.scoring import (
     DEFAULT_WEIGHTS,
-    SEND_THRESHOLD,
     ScoreBreakdown,
     ScoringSignals,
     ScoringWeights,
     score,
 )
+from app.services.engagement.fatigue import fatigue_gate
 from app.services.engagement.timing import (
     ProductionWindow,
+    is_learned_send_moment,
     is_send_moment,
+    next_learned_send_time,
     next_send_time,
     production_window,
 )
@@ -44,6 +47,8 @@ class ScoredCandidate:
     breakdown: ScoreBreakdown
     limit: LimitReason
     waits_for_send_moment: bool
+    # Raised above the send threshold while the producer keeps ignoring pushes.
+    min_score: int = SEND_THRESHOLD
 
     @property
     def total(self) -> int:
@@ -51,12 +56,12 @@ class ScoredCandidate:
 
     @property
     def is_eligible(self) -> bool:
-        return self.total >= SEND_THRESHOLD and self.limit == LimitReason.OK and not self.waits_for_send_moment
+        return self.total >= self.min_score and self.limit == LimitReason.OK and not self.waits_for_send_moment
 
     @property
     def verdict(self) -> str:
-        if self.total < SEND_THRESHOLD:
-            return f"below the send threshold of {SEND_THRESHOLD}"
+        if self.total < self.min_score:
+            return f"below the send threshold of {self.min_score}"
         if self.limit != LimitReason.OK:
             return f"held back: {self.limit.value}"
         if self.waits_for_send_moment:
@@ -100,16 +105,22 @@ def decide(
 ) -> EngagementDecision:
     window = production_window(context.profile)
     signals = _signals(context, window, now)
-    at_send_moment = is_send_moment(window, now, context.zone)
+    timing = _send_timing(context, window, now)
+    fatigue = fatigue_gate(context.ignored_streak, signals.last_smart_sent_at)
+
+    def limit_for(candidate: Candidate) -> LimitReason:
+        if fatigue.is_paused(now):
+            return LimitReason.FATIGUE_PAUSE
+        return is_send_allowed(context.recent_deliveries, now, prefs, context.zone, category=candidate.category).reason
+
     scored = sorted(
         (
             ScoredCandidate(
                 candidate=candidate,
                 breakdown=score(candidate, signals, now, weights),
-                limit=is_send_allowed(
-                    context.recent_deliveries, now, prefs, context.zone, category=candidate.category
-                ).reason,
-                waits_for_send_moment=not candidate.is_time_sensitive and not at_send_moment,
+                limit=limit_for(candidate),
+                waits_for_send_moment=not candidate.is_time_sensitive and not timing.is_now,
+                min_score=fatigue.min_score,
             )
             for candidate in generate_candidates(context, now)
         ),
@@ -131,8 +142,22 @@ def decide(
         should_send=False,
         reason=f"best candidate {best.candidate.type.value} ({best.total}) {best.verdict}",
         candidates=tuple(scored),
-        scheduled_at=next_send_time(window, now, context.zone) if best.waits_for_send_moment else None,
+        scheduled_at=timing.next_at if best.waits_for_send_moment else None,
     )
+
+
+@dataclass(frozen=True)
+class _SendTiming:
+    is_now: bool
+    next_at: datetime
+
+
+def _send_timing(context: EngagementContext, window: ProductionWindow, now: datetime) -> _SendTiming:
+    """A learned send hour replaces the slot before the production window once there is one."""
+    hour, zone = context.preferred_notification_hour, context.zone
+    if hour is not None:
+        return _SendTiming(is_learned_send_moment(hour, now, zone), next_learned_send_time(hour, now, zone))
+    return _SendTiming(is_send_moment(window, now, zone), next_send_time(window, now, zone))
 
 
 def log_decision(user_id: int, decision: EngagementDecision) -> None:

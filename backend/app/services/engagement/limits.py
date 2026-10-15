@@ -31,6 +31,7 @@ class LimitReason(StrEnum):
     DAILY_LIMIT = "daily_limit"
     MIN_SPACING = "min_spacing"
     REENGAGEMENT_COOLDOWN = "reengagement_cooldown"
+    FATIGUE_PAUSE = "fatigue_pause"
 
 
 @dataclass(frozen=True)

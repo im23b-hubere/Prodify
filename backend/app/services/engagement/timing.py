@@ -81,6 +81,21 @@ def next_send_time(window: ProductionWindow, now: datetime, zone: ZoneInfo) -> d
     raise ValueError("a production window opens at least once a week")
 
 
+def is_learned_send_moment(hour: int, now: datetime, zone: ZoneInfo) -> bool:
+    """Whether `now` is in the send slot at the start of the producer's learned local hour."""
+    local = in_zone(now, zone)
+    return local.hour == hour and timedelta(minutes=local.minute) < SEND_SLOT
+
+
+def next_learned_send_time(hour: int, now: datetime, zone: ZoneInfo) -> datetime:
+    local_today = in_zone(now, zone).date()
+    for days_ahead in (0, 1):
+        send_at = datetime.combine(local_today + timedelta(days=days_ahead), time(hour), tzinfo=zone)
+        if as_utc_aware(send_at) > as_utc_aware(now):
+            return send_at
+    raise ValueError("a learned hour comes round every day")
+
+
 def _busiest_block(hour_histogram: list[int]) -> tuple[int, int]:
     """Start and length of the busiest run of `WINDOW_HOURS` hours, trimmed of empty edge hours."""
 

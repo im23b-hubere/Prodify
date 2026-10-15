@@ -95,10 +95,12 @@ class UserEngagementProfile(Base):
     last_session_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     sessions_last_7_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     sessions_previous_7_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # Filled by later engine steps (motivation, fatigue, segments, return probability).
+    # Learned from settled deliveries; recomputed whenever a push converts or is ignored.
     motivation_scores_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     fatigue_score: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     ignored_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    preferred_notification_hour: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Filled by later engine steps.
     segment: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     return_probability_24h: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

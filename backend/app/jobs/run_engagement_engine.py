@@ -22,6 +22,7 @@ from app.services.engagement.context import (
 )
 from app.services.engagement.deliveries import EngineChoice, settle_expired_deliveries
 from app.services.engagement.engine import EngagementDecision, decide, log_decision
+from app.services.engagement.learning_store import refresh_learning
 from app.services.engagement.preferences import load_preferences
 from app.services.push_dispatch import dispatch_to_user
 from app.services.streak_calendar import StreakCalendar
@@ -32,9 +33,11 @@ logger = logging.getLogger(__name__)
 def run_engagement_job(db: DBSession, settings: Settings, now: datetime | None = None) -> dict:
     run_at = now or utcnow()
     settled = settle_expired_deliveries(db, run_at)
+    for user_id in {delivery.user_id for delivery in settled}:
+        refresh_learning(db, user_id, run_at)
     db.commit()
     engine = _run_engine(db, settings, run_at) if settings.feature_flag_smart_notifications_enabled else "disabled"
-    return {"deliveries_settled": settled, "engine": engine}
+    return {"deliveries_settled": len(settled), "engine": engine}
 
 
 def _run_engine(db: DBSession, settings: Settings, run_at: datetime) -> dict[str, int]:
