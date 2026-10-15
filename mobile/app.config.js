@@ -1,3 +1,5 @@
+const { findReleaseConfigProblems } = require("./scripts/releaseConfigCheck");
+
 /** @type {import("@expo/config").ConfigContext} */
 module.exports = ({ config }) => {
   const appJson = require("./app.json");
@@ -46,8 +48,10 @@ module.exports = ({ config }) => {
 
   const updatesEnabled = appEnv === "production" || appEnv === "staging";
   const isEasBuild = process.env.EAS_BUILD === "true";
+  // Only the `development` profile builds a dev client; store and staging builds must not ship it.
+  const isDevelopmentClientBuild = isEasBuild && process.env.EAS_BUILD_PROFILE === "development";
   const plugins = [...(appJson.expo.plugins ?? [])];
-  if (isEasBuild && !plugins.includes("expo-dev-client")) {
+  if (isDevelopmentClientBuild && !plugins.includes("expo-dev-client")) {
     plugins.push("expo-dev-client");
   }
   if (googleIosClientId) {
@@ -57,7 +61,7 @@ module.exports = ({ config }) => {
     ]);
   }
 
-  return {
+  const resolvedConfig = {
     ...appJson.expo,
     ...config,
     // Expo Go matches `exposdk:57.0.0`. `appVersion` (`1.0.1`) is only for EAS OTA.
@@ -82,6 +86,17 @@ module.exports = ({ config }) => {
       googleIosClientId,
     },
   };
+
+  if (isEasBuild && process.env.EAS_BUILD_PROFILE === "production") {
+    const problems = findReleaseConfigProblems({ config: resolvedConfig, env: process.env });
+    if (problems.length > 0) {
+      throw new Error(
+        `Production build is missing release configuration (EAS environment "production"):\n- ${problems.join("\n- ")}`,
+      );
+    }
+  }
+
+  return resolvedConfig;
 };
 
 /** "123-abc.apps.googleusercontent.com" -> "com.googleusercontent.apps.123-abc" */

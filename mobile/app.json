@@ -10,7 +10,6 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "1",
       "bundleIdentifier": "com.prodify.app",
       "usesAppleSignIn": true,
       "infoPlist": {
@@ -25,7 +24,6 @@
         "backgroundColor": "#0a0a0a"
       },
       "predictiveBackGestureEnabled": false,
-      "versionCode": 1,
       "package": "com.prodify.app"
     },
     "web": {

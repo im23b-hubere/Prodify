@@ -24,16 +24,7 @@
     "production": {
       "channel": "production",
       "autoIncrement": true,
-      "environment": "production",
-      "env": {
-        "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://prodify-api-46b1.onrender.com",
-        "EXPO_PUBLIC_REVENUECAT_API_KEY": "appl_mnYqBJcSBBUEyNRCfULPzxMqpmX",
-        "EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID": "app_access",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "861016199815-7evbvh8ummhm68b5p7n0bv1p1c0vcsrc.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "861016199815-17e8m4jdm5524rmpom0907kf4jlq1pb4.apps.googleusercontent.com"
-      }
+      "environment": "production"
     }
   },
   "submit": {
