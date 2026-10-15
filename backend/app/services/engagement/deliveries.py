@@ -167,6 +167,7 @@ def _latest_attributable_delivery(db: Session, user_id: int, moment: datetime) -
             NotificationDelivery.notification_type.not_in(TRANSACTIONAL_TYPES),
             NotificationDelivery.sent_at >= moment - ATTRIBUTION_WINDOW,
             NotificationDelivery.sent_at <= moment,
+            NotificationDelivery.delivered_count > 0,
         )
         .order_by(NotificationDelivery.sent_at.desc())
         .limit(1)

@@ -18,6 +18,7 @@ from app.services.engagement.motivation import (
     category_priors_from_counts,
     motivation_scores,
     preferred_notification_hour,
+    preferred_notification_slots,
 )
 from app.services.engagement.preferences import NotificationCategory, category_of
 from app.services.engagement.profile_store import refresh_profile
@@ -32,6 +33,7 @@ class LearnedSignals:
     fatigue_score: float = 0
     ignored_streak: int = 0
     preferred_notification_hour: int | None = None
+    preferred_notification_slots: dict[int, int] = field(default_factory=dict)
 
 
 def refresh_learning(db: Session, user_id: int, now: datetime) -> None:
@@ -48,7 +50,11 @@ def refresh_learning(db: Session, user_id: int, now: datetime) -> None:
             for category, rate in motivation_scores(history, _observed_priors(db, now)).items()
         }
     )
-    row.preferred_notification_hour = preferred_notification_hour(history, load_calendar(db, user_id).zone, row.stage)
+    zone = load_calendar(db, user_id).zone
+    row.preferred_notification_hour = preferred_notification_hour(history, zone, row.stage)
+    row.preferred_notification_slots_json = json.dumps(
+        {str(weekday): hour for weekday, hour in preferred_notification_slots(history, zone, row.stage).items()}
+    )
     db.flush()
 
 
@@ -61,7 +67,13 @@ def learned_signals(row: UserEngagementProfile | None) -> LearnedSignals:
         fatigue_score=row.fatigue_score,
         ignored_streak=row.ignored_streak,
         preferred_notification_hour=row.preferred_notification_hour,
+        preferred_notification_slots=_slots_of(row.preferred_notification_slots_json),
     )
+
+
+def _slots_of(raw: str | None) -> dict[int, int]:
+    stored = json.loads(raw or "{}")
+    return {int(weekday): hour for weekday, hour in stored.items()}
 
 
 def _observed_priors(db: Session, now: datetime) -> dict:

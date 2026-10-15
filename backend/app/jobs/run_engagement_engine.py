@@ -42,16 +42,18 @@ def run_engagement_job(db: DBSession, settings: Settings, now: datetime | None =
 
 
 def _run_engine(db: DBSession, settings: Settings, run_at: datetime) -> dict[str, int]:
-    evaluated = sent = 0
+    evaluated = sent = failed = 0
     for user_id in _reachable_smart_audience(db):
         evaluated += 1
         try:
-            sent += _evaluate_and_send(db, settings, user_id, run_at)
+            outcome = _evaluate_and_send(db, settings, user_id, run_at)
+            sent += outcome == "delivered"
+            failed += outcome == "failed"
             db.commit()
         except Exception:
             db.rollback()
             logger.exception("[EngagementEngine] evaluation failed user_id=%s", user_id)
-    return {"evaluated": evaluated, "sent": sent}
+    return {"evaluated": evaluated, "sent": sent, "attempted": sent + failed, "failed": failed}
 
 
 def _reachable_smart_audience(db: DBSession) -> list[int]:
@@ -70,7 +72,7 @@ def _reachable_smart_audience(db: DBSession) -> list[int]:
     )
 
 
-def _evaluate_and_send(db: DBSession, settings: Settings, user_id: int, run_at: datetime) -> int:
+def _evaluate_and_send(db: DBSession, settings: Settings, user_id: int, run_at: datetime) -> str:
     context = load_engagement_context(db, user_id, run_at)
     decision = decide(context, load_preferences(db, user_id), run_at)
     if settings.environment == "development":
@@ -78,7 +80,7 @@ def _evaluate_and_send(db: DBSession, settings: Settings, user_id: int, run_at: 
     _remember_leaderboard_place(db, context, run_at)
     record_return_outlook(db, context, run_at)
     if not decision.should_send:
-        return 0
+        return "skip"
     return _send(db, settings, user_id, decision, run_at)
 
 
@@ -88,9 +90,9 @@ def _remember_leaderboard_place(db: DBSession, context: EngagementContext, run_a
     record_leaderboard_snapshot(db, context.user_id, context.leaderboard, StreakCalendar(context.zone), run_at)
 
 
-def _send(db: DBSession, settings: Settings, user_id: int, decision: EngagementDecision, run_at: datetime) -> int:
+def _send(db: DBSession, settings: Settings, user_id: int, decision: EngagementDecision, run_at: datetime) -> str:
     candidate = decision.chosen.candidate
-    attempted, _, message = dispatch_to_user(
+    attempted, delivered, message = dispatch_to_user(
         settings,
         db,
         user_id,
@@ -100,9 +102,13 @@ def _send(db: DBSession, settings: Settings, user_id: int, decision: EngagementD
         now=run_at,
         choice=EngineChoice(score=decision.score, reason=decision.reason, variables=candidate.variables),
     )
-    if attempted == 0:
-        logger.info("[EngagementEngine] not sent user_id=%s: %s", user_id, message)
-    return 1 if attempted > 0 else 0
+    if delivered > 0:
+        return "delivered"
+    if attempted > 0:
+        logger.info("[EngagementEngine] delivery failed user_id=%s: %s", user_id, message)
+        return "failed"
+    logger.info("[EngagementEngine] not sent user_id=%s: %s", user_id, message)
+    return "skip"
 
 
 def main() -> None:

@@ -101,6 +101,7 @@ class UserEngagementProfile(Base):
     fatigue_score: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     ignored_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     preferred_notification_hour: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    preferred_notification_slots_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     # Stored by each engine run; the previous local day's value lets the engine spot a sharp drop.
     segment: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     return_probability_24h: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

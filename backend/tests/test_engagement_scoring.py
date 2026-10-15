@@ -105,7 +105,8 @@ def test_weights_scale_a_category():
 
 
 def test_score_bands():
-    assert priority_of(24) == Priority.DO_NOT_SEND
-    assert priority_of(25) == Priority.LOW
-    assert priority_of(45) == Priority.GOOD
+    assert priority_of(34) == Priority.DO_NOT_SEND
+    assert priority_of(35) == Priority.LOW
+    assert priority_of(49) == Priority.LOW
+    assert priority_of(50) == Priority.GOOD
     assert priority_of(70) == Priority.HIGH

@@ -36,8 +36,9 @@ from app.services.engagement.timing import (
     next_learned_send_time,
     next_send_time,
     production_window,
+    send_hour_for,
 )
-from app.timeutil import as_utc_aware
+from app.timeutil import as_utc_aware, in_zone
 
 logger = logging.getLogger(__name__)
 
@@ -156,10 +157,20 @@ class _SendTiming:
 
 def _send_timing(context: EngagementContext, window: ProductionWindow, now: datetime) -> _SendTiming:
     """A learned send hour replaces the slot before the production window once there is one."""
-    hour, zone = context.preferred_notification_hour, context.zone
-    if hour is not None:
-        return _SendTiming(is_learned_send_moment(hour, now, zone), next_learned_send_time(hour, now, zone))
-    return _SendTiming(is_send_moment(window, now, zone), next_send_time(window, now, zone))
+    zone = context.zone
+    local = in_zone(now, zone)
+    base = context.preferred_notification_slots.get(local.weekday(), context.preferred_notification_hour)
+    if base is None:
+        return _SendTiming(is_send_moment(window, now, zone), next_send_time(window, now, zone))
+    hour = send_hour_for(base, context.user_id, local.date(), window)
+    if hour != base:
+        logger.info(
+            "[EngagementEngine] user_id=%s exploring send hour %s instead of %s",
+            context.user_id,
+            hour,
+            base,
+        )
+    return _SendTiming(is_learned_send_moment(hour, now, zone), next_learned_send_time(hour, now, zone))
 
 
 def log_decision(user_id: int, decision: EngagementDecision) -> None:
@@ -184,7 +195,7 @@ def _signals(context: EngagementContext, window: ProductionWindow, now: datetime
     smart_sent = [
         as_utc_aware(delivery.sent_at)
         for delivery in context.recent_deliveries
-        if delivery.notification_type not in TRANSACTIONAL_TYPES
+        if delivery.notification_type not in TRANSACTIONAL_TYPES and getattr(delivery, "delivered_count", 1) > 0
     ]
     return ScoringSignals(
         window=window,
