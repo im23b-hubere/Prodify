@@ -30,6 +30,11 @@
       "registerFailed": "Registration failed",
       "hasAccount": "Already have an account? Sign in"
     },
+    "legalConsent": {
+      "notice": "By continuing, you agree to our Terms of Use and acknowledge our Privacy Policy.",
+      "terms": "Terms of Use",
+      "privacy": "Privacy Policy"
+    },
     "social": {
       "divider": "or",
       "continueWithApple": "Continue with Apple",
@@ -277,22 +282,26 @@
           "body": "Prodify uses your activity patterns to personalize reminders and help you maintain your production routine. For this we only use first-party data from your use of Prodify: when and how long you produce, your streaks, challenges and friend activity on Prodify, and whether a reminder was opened or followed by a session. We do not use your location, WiFi, contacts or data from other apps, and we do not fingerprint your device. You can turn smart notifications or single categories off at any time in the notification settings."
         },
         {
-          "heading": "5. Retention",
+          "heading": "5. Safety and moderation",
+          "body": "When you report or block someone, we store the report (reason, optional note, the reported user or comment, and your account) and the block. Moderators use reports and blocks only to review reports, remove violating content and suspend accounts. The reported user is never told who reported them."
+        },
+        {
+          "heading": "6. Retention",
           "body": "We store data while your account exists. After deletion, we remove associated personal data unless a legal retention obligation applies."
         },
         {
-          "heading": "6. Your rights",
+          "heading": "7. Your rights",
           "body": "You have the right to access, rectification, erasure, restriction, portability, and objection where processing relies on legitimate interests. You may withdraw consent at any time with future effect. You may lodge a complaint with a supervisory authority."
         },
         {
-          "heading": "7. Contact",
-          "body": "To exercise your rights or ask questions, use the support address shown in the App Store or in the app."
+          "heading": "8. Contact",
+          "body": "To exercise your rights or ask questions, contact support@prodify.app."
         }
       ]
     },
     "terms": {
       "screenTitle": "Terms of use",
-      "updated": "Last updated: April 2026",
+      "updated": "Last updated: October 2026",
       "intro": "By using Prodify you agree to these terms. Please read them carefully.",
       "blocks": [
         {
@@ -304,20 +313,32 @@
           "body": "You are responsible for keeping your password secure. Content you submit must not infringe third-party rights or violate applicable law."
         },
         {
-          "heading": "3. Subscriptions",
+          "heading": "3. Community guidelines",
+          "body": "Prodify has zero tolerance for objectionable content and abusive users. Do not post or send content that harasses, threatens or bullies others, promotes hate or discrimination, is sexual, violent or illegal, or is spam or impersonation. Comments containing prohibited language are filtered automatically."
+        },
+        {
+          "heading": "4. Reporting and blocking",
+          "body": "You can report users and comments and block users directly in the app. We review every report within 24 hours, remove content that violates these terms, and suspend or permanently ban the accounts responsible. Blocked users can no longer find you, add you or see your activity."
+        },
+        {
+          "heading": "5. Subscriptions",
           "body": "Prodify requires an active subscription. Payment is charged to your Apple ID account at confirmation of purchase. Subscriptions renew automatically unless canceled at least 24 hours before the end of the current billing period. Manage or cancel in Settings > Apple ID > Subscriptions."
         },
         {
-          "heading": "4. Availability",
+          "heading": "6. Availability",
           "body": "We strive for high availability but cannot guarantee uninterrupted access — for example during maintenance or force majeure."
         },
         {
-          "heading": "5. Liability",
+          "heading": "7. Liability",
           "body": "To the extent permitted by law, we are liable for intent and gross negligence. For slight negligence we are liable only for breaches of essential contractual duties and limited to typical, foreseeable damage."
         },
         {
-          "heading": "6. Changes",
+          "heading": "8. Changes",
           "body": "We may update these terms. We will notify you of material changes in the app or otherwise as appropriate. Continued use after notice may constitute acceptance where permitted by law."
+        },
+        {
+          "heading": "9. Contact",
+          "body": "Questions about these terms or a report: support@prodify.app."
         }
       ]
     }

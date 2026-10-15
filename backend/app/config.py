@@ -89,8 +89,8 @@ class Settings(BaseSettings):
     onboarding_trial_days: int = 0
     legal_privacy_url: str = "https://prodify-api-46b1.onrender.com/legal/privacy"
     legal_terms_url: str = "https://prodify-api-46b1.onrender.com/legal/terms"
-    legal_effective_date: str = "2026-04-20"
-    legal_version: str = "2026.04"
+    legal_effective_date: str = "2026-10-14"
+    legal_version: str = "2026.10"
     support_email: str = "support@prodify.app"
     feature_flag_billing_sync_enabled: bool = True
     feature_flag_push_notifications_enabled: bool = True
