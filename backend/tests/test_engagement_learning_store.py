@@ -4,9 +4,9 @@ from datetime import datetime, timedelta, timezone
 from app.config import settings
 from app.database import SessionLocal
 from app.jobs.run_engagement_engine import run_engagement_job
-from app.models import NotificationDelivery, UserEngagementProfile
+from app.models import DeliveryOutcome, NotificationDelivery, UserEngagementProfile
 from app.services.engagement.learning_store import refresh_learning
-from app.services.engagement.motivation import CATEGORY_PRIORS
+from app.services.engagement.motivation import CATEGORY_PRIORS, MIN_GLOBAL_SENDS
 from app.services.engagement.preferences import NotificationCategory
 from tests.auth_helpers import auth_headers
 
@@ -67,6 +67,28 @@ def test_pushes_that_never_reached_a_device_teach_nothing(client):
     profile = _profile(user_id)
     assert profile.ignored_streak == 0
     assert profile.fatigue_score == 0
+
+
+def test_the_whole_installs_conversion_becomes_the_prior_for_a_new_producer(client):
+    _, crowd = _producer(client, "learn-crowd")
+    _, fresh = _producer(client, "learn-fresh")
+    with SessionLocal() as db:
+        for _ in range(MIN_GLOBAL_SENDS):
+            db.add(
+                NotificationDelivery(
+                    user_id=crowd,
+                    notification_type="social_overtaken",
+                    sent_at=datetime.now(timezone.utc) - timedelta(days=2),
+                    delivered_count=1,
+                    outcome=DeliveryOutcome.CONVERTED,
+                )
+            )
+        db.commit()
+        refresh_learning(db, fresh, datetime.now(timezone.utc))
+        db.commit()
+
+    social = json.loads(_profile(fresh).motivation_scores_json)["social"]
+    assert social > CATEGORY_PRIORS[NotificationCategory.SOCIAL]
 
 
 def test_relearning_from_the_same_history_changes_nothing(client):

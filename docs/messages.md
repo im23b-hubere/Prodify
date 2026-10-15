@@ -102,7 +102,7 @@ Each `/jobs/engagement` run (flag on) scores every candidate in `engagement/scor
 The engine learns from pushes that reached a device, recomputed whenever one converts or settles (`engagement/fatigue.py`, `engagement/motivation.py`):
 
 - **Fatigue** — each ignored push adds to the fatigue score, each converted (or merely opened) one takes some off. Pushes ignored in a row pause smart pushes: 2 for 24h, 3 or more for 48h after the last one, and from 4 on only high-priority candidates (70+) go out.
-- **Motivation** — conversion rate per category, smoothed towards a prior (streak 25%, social 30%, challenge 25%, rank 20%, re-engagement 15%) so one lucky push does not count as certain. Feeds the `motivation` score part.
+- **Motivation** — conversion rate per category, smoothed towards a prior so one lucky push does not count as certain. The prior starts at streak 25%, social 30%, challenge 25%, rank 20%, re-engagement 15%, and becomes the install-wide rate once that category has 30 settled pushes. Feeds the `motivation` score part.
 - **Send hour** — once an established producer has three or more pushes at a local hour that convert better than the 25% baseline, that hour's first half hour replaces the slot before the production window.
 
 Every run also estimates and stores, per producer (`engagement/return_probability.py`, `engagement/segments.py`):

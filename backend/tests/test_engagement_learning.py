@@ -13,6 +13,8 @@ from app.services.engagement.fatigue import (
 )
 from app.services.engagement.motivation import (
     CATEGORY_PRIORS,
+    MIN_GLOBAL_SENDS,
+    category_priors_from_counts,
     motivation_scores,
     preferred_notification_hour,
     smoothed_rate,
@@ -111,6 +113,30 @@ def test_transactional_and_pending_pushes_teach_nothing():
     history = [_sent(CONVERTED, notification_type="session_complete"), _sent(DeliveryOutcome.PENDING)]
 
     assert motivation_scores(history) == CATEGORY_PRIORS
+
+
+def test_a_thin_global_sample_keeps_the_hand_set_prior():
+    sent = {NotificationCategory.SOCIAL: MIN_GLOBAL_SENDS - 1}
+
+    assert category_priors_from_counts(sent, {NotificationCategory.SOCIAL: 0}) == CATEGORY_PRIORS
+
+
+def test_enough_settled_pushes_replace_the_prior_with_the_observed_rate():
+    sent = {NotificationCategory.SOCIAL: MIN_GLOBAL_SENDS}
+    converted = {NotificationCategory.SOCIAL: MIN_GLOBAL_SENDS}
+
+    priors = category_priors_from_counts(sent, converted)
+
+    assert priors[NotificationCategory.SOCIAL] > CATEGORY_PRIORS[NotificationCategory.SOCIAL]
+    assert priors[NotificationCategory.STREAK] == CATEGORY_PRIORS[NotificationCategory.STREAK]
+
+
+def test_an_observed_prior_moves_a_producer_who_has_no_pushes_of_their_own():
+    priors = {**CATEGORY_PRIORS, NotificationCategory.SOCIAL: 0.6}
+
+    scores = motivation_scores([], priors)
+
+    assert scores[NotificationCategory.SOCIAL] == 0.6
 
 
 def test_recomputing_from_the_same_history_gives_the_same_scores():
