@@ -307,6 +307,7 @@ class UserSubscription(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+from app.models_engagement import DeliveryOutcome, NotificationDelivery
 from app.models_growth import (
     AnalyticsEventDedupe,
     ChallengeParticipant,

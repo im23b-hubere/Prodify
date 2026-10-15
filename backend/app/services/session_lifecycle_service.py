@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.achievementsutil import compute_focus_score_for_session, grant_achievements_after_completed_session
 from app.models import CheckinLog, ProductionSession, Streak, utcnow
+from app.services.engagement.deliveries import attribute_session_start
+from app.services.engagement.events import EngagementEvent
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp, xp_for_completed_session
 from app.services.session_skill_focus_service import replace_skill_focuses
@@ -70,10 +72,11 @@ def create_session(
     replace_skill_focuses(session, focus_ids, primary_focus_id=single_planned_focus)
     db.add(session)
     db.flush()
+    attribute_session_start(db, user_id, session_id=session.id, started_at=session.started_at)
     suggested = suggested_skill_focus_ids or []
     track_event(
         db,
-        "session_started",
+        EngagementEvent.SESSION_STARTED,
         user_id,
         {
             "session_id": session.id,
@@ -124,7 +127,7 @@ def complete_session(
     xp_delta = _grant_session_xp(db, user_id, session)
     track_event(
         db,
-        "session_completed",
+        EngagementEvent.SESSION_COMPLETED,
         user_id,
         {
             "session_id": session.id,
@@ -136,6 +139,8 @@ def complete_session(
     grant_achievements_after_completed_session(db, user_id, session, streak)
     _, previous_streak, streak_snapshot = reconcile_streak_row_for_user(db, user_id)
     current_streak = streak_snapshot.current_streak
+    if current_streak > previous_streak:
+        track_event(db, EngagementEvent.STREAK_EXTENDED, user_id, {"streak_days": current_streak})
     finished_challenge_ids = sync_challenge_progress_on_session_complete(
         db,
         user_id=user_id,

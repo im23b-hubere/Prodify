@@ -13,6 +13,8 @@ What the producer is told, on which channel, and when. Copy follows [studio voic
 
 Jobs that actually fire time-based pushes: `POST /jobs/streak-reminders`, `POST /jobs/session-presence`, `POST /jobs/social-challenges`. If a job is not on a schedule in production, that row does not fire until it is.
 
+Every push that reaches a token is logged in `notification_deliveries` and carries its id as `data.nid`. A tap reports `POST /notifications/{nid}/opened`; a session started within two hours of a non-transactional push credits the most recent one (`POST /jobs/engagement` settles the rest as opened-only or ignored).
+
 ## Dual delivery
 
 Some events can hit more than one channel at once. That is current behavior, not a bug to paper over.

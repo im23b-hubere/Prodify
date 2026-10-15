@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.models import UserProgression, XpLedger, utcnow
 from app.contracts.outcomes import ProgressionPublic
+from app.services.engagement.events import EngagementEvent
+from app.services.kpi_tracker import track_event
 
 SESSION_XP_MINUTES_FLOOR = 5
 BASE_SESSION_XP = 5
@@ -238,9 +240,12 @@ def _apply_xp_grant(
     row = _get_or_create_progression(db, user_id)
     if int(xp_delta) > 0:
         apply_inactivity_decay(db, user_id)
+    level_before = int(row.current_level or 1)
     row.xp_total = max(0, int(row.xp_total or 0) + int(xp_delta))
     _recompute_progression_fields(row)
     row.updated_at = utcnow()
+    if row.current_level > level_before:
+        track_event(db, EngagementEvent.RANK_UP, user_id, {"level": row.current_level})
     db.add(
         XpLedger(
             user_id=user_id,

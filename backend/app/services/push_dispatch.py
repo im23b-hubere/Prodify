@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.config import Settings
 from app.models import PushToken, utcnow
 from app.services import expo_client, fcm_client, push_templates
+from app.services.engagement.deliveries import create_delivery, notification_type_of, record_dispatch_result
 from app.services.push_links import push_data_dashboard
 
 logger = logging.getLogger(__name__)
@@ -62,18 +63,26 @@ def dispatch_to_user(
     body: str,
     data: dict[str, str] | None = None,
 ) -> tuple[int, int, str | None]:
-    """Send a notification to every unique active token for a user."""
+    """
+    Send a notification to every unique active token for a user.
+
+    Every send is recorded as a `NotificationDelivery` whose id travels as `data.nid`, so the
+    app can report the open and the next session can be attributed to this push.
+    """
     channels = _load_push_channels(db, user_id)
     if channels.attempted == 0:
         return 0, 0, "no push tokens registered"
 
-    deliveries = [
-        _deliver_expo(settings, db, channels.expo, title, body, data),
-        _deliver_fcm(settings, db, channels.fcm, title, body, data),
+    delivery = create_delivery(db, user_id, notification_type_of(data), utcnow())
+    tracked_data = {**(data or {}), "nid": delivery.id}
+    channel_results = [
+        _deliver_expo(settings, db, channels.expo, title, body, tracked_data),
+        _deliver_fcm(settings, db, channels.fcm, title, body, tracked_data),
     ]
     _touch_attempted_tokens(db, user_id, channels.all_tokens)
-    delivered = sum(result.delivered for result in deliveries)
-    summary_parts = [part for result in deliveries for part in result.summary_parts]
+    delivered = sum(result.delivered for result in channel_results)
+    record_dispatch_result(db, delivery, delivered)
+    summary_parts = [part for result in channel_results for part in result.summary_parts]
     return channels.attempted, delivered, " · ".join(summary_parts) if summary_parts else None
 
 
