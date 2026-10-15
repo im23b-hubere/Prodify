@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-SEND_THRESHOLD = 25
-GOOD_THRESHOLD = 45
+SEND_THRESHOLD = 35
+GOOD_THRESHOLD = 50
 HIGH_THRESHOLD = 70
 
 

@@ -71,8 +71,8 @@ def test_a_producer_without_sessions_is_a_cold_start():
 def test_one_session_fills_its_local_hour_and_weekday():
     profile = compute_profile([_session(NOW.replace(hour=20) - timedelta(days=1), minutes=45)], UTC, NOW)
 
-    assert profile.session_hour_histogram[20] == 1
-    assert profile.weekday_histogram[1] == 1  # Tuesday
+    assert profile.session_hour_histogram[20] == 10
+    assert profile.weekday_histogram[1] == 10  # Tuesday
     assert profile.avg_session_duration_minutes == 45
     assert profile.last_session_at == NOW.replace(hour=20) - timedelta(days=1)
     assert profile.preferred_hours() == [20]
@@ -89,8 +89,8 @@ def test_stage_follows_the_number_of_completed_sessions(count, stage):
 def test_the_same_instant_lands_in_the_producers_local_hour():
     session = _session(datetime(2026, 6, 9, 21, 30, tzinfo=timezone.utc))
 
-    assert compute_profile([session], UTC, NOW).session_hour_histogram[21] == 1
-    assert compute_profile([session], ZURICH, NOW).session_hour_histogram[23] == 1
+    assert compute_profile([session], UTC, NOW).session_hour_histogram[21] == 10
+    assert compute_profile([session], ZURICH, NOW).session_hour_histogram[23] == 10
 
 
 def test_recent_activity_compares_this_week_with_the_week_before():
@@ -172,7 +172,7 @@ def test_refresh_uses_the_producers_timezone(client):
 
     with SessionLocal() as db:
         stored = refresh_profile(db, user_id, NOW)
-        assert behavior_of(stored).session_hour_histogram[23] == 1
+        assert behavior_of(stored).session_hour_histogram[23] == 10
 
 
 def test_a_stale_profile_is_recomputed(client):

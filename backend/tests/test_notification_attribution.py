@@ -220,3 +220,23 @@ def test_attribution_ignores_notifications_sent_after_the_session_started(client
 
     assert attributed is None
     assert _delivery(delivery_id).session_id is None
+
+
+def test_a_push_that_never_arrived_is_not_a_conversion(client):
+    _, user_id = _producer(client, "undelivered-push")
+    sent_at = datetime.now(timezone.utc) - timedelta(minutes=30)
+    with SessionLocal() as db:
+        delivery = NotificationDelivery(
+            user_id=user_id,
+            notification_type="reengagement",
+            sent_at=sent_at,
+            delivered_count=0,
+        )
+        db.add(delivery)
+        db.commit()
+        delivery_id = delivery.id
+        attributed = attribute_session_start(db, user_id, session_id=9, started_at=datetime.now(timezone.utc))
+        db.commit()
+
+    assert attributed is None
+    assert _delivery(delivery_id).outcome == "pending"

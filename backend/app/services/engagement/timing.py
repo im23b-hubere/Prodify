@@ -21,6 +21,10 @@ STRONGEST_WEEKDAYS = 3
 NOTIFY_LEAD = timedelta(minutes=25)
 # The engine job runs every 15-30 minutes; a send moment must be wide enough to be hit once.
 SEND_SLOT = timedelta(minutes=30)
+# About 15% of producer-days try a neighbouring hour instead of the learned one.
+EXPLORATION_BUCKETS = 20
+EXPLORATION_SLOTS = 3
+_EXPLORATION_OFFSETS = (1, -1, 2)
 
 
 @dataclass(frozen=True)
@@ -79,6 +83,25 @@ def next_send_time(window: ProductionWindow, now: datetime, zone: ZoneInfo) -> d
         if as_utc_aware(send_at) > now_utc:
             return send_at
     raise ValueError("a production window opens at least once a week")
+
+
+def send_hour_for(preferred: int, user_id: int, local_day: date, window: ProductionWindow) -> int:
+    """The learned hour, or a nearby hour inside the production window on an exploration day."""
+    if (user_id + local_day.toordinal()) % EXPLORATION_BUCKETS >= EXPLORATION_SLOTS:
+        return preferred
+    for offset in _EXPLORATION_OFFSETS:
+        hour = (preferred + offset) % 24
+        if _hour_in_window(window, local_day.weekday(), hour):
+            return hour
+    return preferred
+
+
+def _hour_in_window(window: ProductionWindow, weekday: int, hour: int) -> bool:
+    if weekday not in window.weekdays:
+        return False
+    if window.start_hour <= window.end_hour:
+        return window.start_hour <= hour < window.end_hour
+    return hour >= window.start_hour or hour < window.end_hour
 
 
 def is_learned_send_moment(hour: int, now: datetime, zone: ZoneInfo) -> bool:

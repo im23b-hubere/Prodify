@@ -97,6 +97,10 @@ With the smart-notifications flag on, the three push slots above stop (`/jobs/st
 
 `engagement/candidates.py` turns each producer's context into at most one candidate per trigger. Copy lives in `push_templates.py`; every candidate also carries its variables and a `path` the app opens on tap.
 
+A push counts as sent, and can be tied to a later session, only when it actually reached a device (`delivered_count > 0`). A failed attempt does not use up the daily limit or the spacing rules. The job reports `sent` as delivered pushes and `failed` separately.
+
+Candidates need 35 points to go out (35–49 low, 50–69 good, 70+ high). Timing weighs the last two weeks fully and older sessions less, and on about 15% of days tries a neighbouring hour inside the production window. An established producer can learn a different hour per weekday.
+
 Each `/jobs/engagement` run (flag on) scores every candidate in `engagement/scoring.py` as a sum of named parts — `timeMatch`, `inactivity`, the trigger's own `streak` / `social` / `challenge` / `rank` urgency, `motivation`, minus `fatigue` and `recentNotificationPenalty`. `engagement/engine.py` then sends **at most one** push per producer and run: the highest-scoring candidate that scores 25 or more (25–44 low, 45–69 good, 70+ high priority), passes the limits and preferences, and is either time-sensitive (streak, social, challenge deadline) or due at the producer's send moment. Its score, reason and variables are stored on the delivery. Only producers with an active push token and smart notifications on are evaluated; in development every decision is logged as `[EngagementEngine]`.
 
 The engine learns from pushes that reached a device, recomputed whenever one converts or settles (`engagement/fatigue.py`, `engagement/motivation.py`):

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 
 from app.services import push_templates
-from app.services.engagement.context import ChallengeStanding, EngagementContext
+from app.services.engagement.context import ChallengeStanding, EngagementContext, FriendSession
 from app.services.engagement.preferences import NotificationCategory
 from app.services.progression_service import XP_LEVEL_CATALOG_MAX, xp_for_completed_session
 from app.services.push_links import DASHBOARD_PATH, FRIENDS_PATH, challenge_path
@@ -24,6 +24,10 @@ CHALLENGE_CLOSE_SESSIONS = 2
 CHALLENGE_DEADLINE_WINDOW = timedelta(hours=48)
 CHALLENGE_STALL_AFTER = timedelta(days=3)
 FRIEND_SESSION_MIN_MINUTES = 15
+FRIEND_SESSION_BASE = 40
+FRIEND_SESSION_LONG_MINUTES = 45
+FRIEND_SESSION_LONG_BONUS = 15
+FRIEND_SESSION_RIVAL_BONUS = 15
 _MINUTES_PER_DAY = 24 * 60
 
 
@@ -247,7 +251,7 @@ def _friend_session_candidate(context: EngagementContext) -> Candidate | None:
     return Candidate(
         type=CandidateType.SOCIAL_FRIEND_SESSION,
         category=NotificationCategory.SOCIAL,
-        base_score=50,
+        base_score=_friend_session_score(session, context),
         title=title,
         body=body,
         path=FRIENDS_PATH,
@@ -255,3 +259,14 @@ def _friend_session_candidate(context: EngagementContext) -> Candidate | None:
         variables={"friendName": session.friend_name, "durationMinutes": str(session.duration_minutes)},
         is_time_sensitive=True,
     )
+
+
+def _friend_session_score(session: FriendSession, context: EngagementContext) -> int:
+    """A long session or the friend just ahead counts more than any friend finishing."""
+    score = FRIEND_SESSION_BASE
+    if session.duration_minutes >= FRIEND_SESSION_LONG_MINUTES:
+        score += FRIEND_SESSION_LONG_BONUS
+    ahead = context.leaderboard.friend_ahead_name if context.leaderboard else None
+    if ahead is not None and session.friend_name == ahead:
+        score += FRIEND_SESSION_RIVAL_BONUS
+    return score

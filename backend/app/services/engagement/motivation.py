@@ -76,6 +76,22 @@ def category_priors_from_counts(
     return priors
 
 
+def preferred_notification_slots(
+    deliveries: Iterable[SettledDelivery], zone: ZoneInfo, stage: int
+) -> dict[int, int]:
+    """Best local hour per weekday, once that weekday has enough evidence. 0 is Monday."""
+    if stage < STAGE_ESTABLISHED:
+        return {}
+    grouped: dict[int, list[SettledDelivery]] = {}
+    for delivery in deliveries:
+        grouped.setdefault(in_zone(delivery.sent_at, zone).weekday(), []).append(delivery)
+    return {
+        weekday: hour
+        for weekday, history in grouped.items()
+        if (hour := preferred_notification_hour(history, zone, stage)) is not None
+    }
+
+
 def preferred_notification_hour(deliveries: Iterable[SettledDelivery], zone: ZoneInfo, stage: int) -> int | None:
     """The local hour whose pushes convert best, once an established producer gives enough evidence."""
     if stage < STAGE_ESTABLISHED:

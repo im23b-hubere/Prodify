@@ -62,13 +62,30 @@ def test_the_engine_sends_its_choice_with_the_reason(engine_on):
     assert delivery.candidate_score >= 25
     assert delivery.reason.startswith("streak_at_risk scored")
     assert json.loads(delivery.variables_json)["streakDays"] == "1"
-    assert result["engine"] == {"evaluated": 1, "sent": 1}
+    assert result["engine"]["evaluated"] == 1
+    assert result["engine"]["sent"] == 0
+    assert result["engine"]["attempted"] == 1
+    assert result["engine"]["failed"] == 1
 
 
-def test_one_run_sends_at_most_one_push_per_producer(engine_on):
-    user_id = _producer("engine-once")
+def test_a_failed_attempt_can_be_tried_again(engine_on):
+    user_id = _producer("engine-retry")
 
     _run()
+    _run(EVENING + timedelta(minutes=20))
+
+    assert len(_deliveries(user_id)) == 2
+    assert all(delivery.delivered_count == 0 for delivery in _deliveries(user_id))
+
+
+def test_a_delivered_push_blocks_another_one_the_same_evening(engine_on):
+    user_id = _producer("engine-once")
+    _run()
+    with SessionLocal() as db:
+        delivery = db.query(NotificationDelivery).filter_by(user_id=user_id).one()
+        delivery.delivered_count = 1
+        db.commit()
+
     _run(EVENING + timedelta(minutes=20))
 
     assert len(_deliveries(user_id)) == 1
@@ -77,7 +94,7 @@ def test_one_run_sends_at_most_one_push_per_producer(engine_on):
 def test_producers_without_a_push_token_are_not_evaluated(engine_on):
     user_id = _producer("engine-no-token", has_token=False)
 
-    assert _run()["engine"] == {"evaluated": 0, "sent": 0}
+    assert _run()["engine"] == {"evaluated": 0, "sent": 0, "attempted": 0, "failed": 0}
     assert _deliveries(user_id) == []
 
 
@@ -87,7 +104,7 @@ def test_producers_with_smart_notifications_off_are_not_evaluated(engine_on):
         db.add(UserNotificationPreferences(user_id=user_id, smart_enabled=False))
         db.commit()
 
-    assert _run()["engine"] == {"evaluated": 0, "sent": 0}
+    assert _run()["engine"] == {"evaluated": 0, "sent": 0, "attempted": 0, "failed": 0}
 
 
 def test_nothing_changes_with_the_feature_flag_off(client):

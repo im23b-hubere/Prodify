@@ -25,6 +25,9 @@ _LEARNING_FROM_SESSIONS = 4
 _ESTABLISHED_FROM_SESSIONS = 11
 _ROLLING_WEEKS = 4
 _WEEK = timedelta(days=7)
+# Recent sessions count fully; older routines fade so a new habit can take over.
+_RECENCY_WEIGHTS = ((14, 10), (30, 7), (60, 4))
+_OLDEST_WEIGHT = 2
 
 
 class CompletedSession(Protocol):
@@ -46,6 +49,29 @@ def start_pattern(sessions: Iterable[CompletedSession], calendar: StreakCalendar
         weekdays=Counter(moment.weekday() for moment in local_starts),
         hours=Counter(moment.hour for moment in local_starts),
     )
+
+
+def weighted_start_pattern(
+    sessions: Iterable[CompletedSession], calendar: StreakCalendar, now: datetime
+) -> StartPattern:
+    """Same shape as `start_pattern`, with newer sessions weighing more."""
+    now = as_utc_aware(now)
+    weekdays: Counter[int] = Counter()
+    hours: Counter[int] = Counter()
+    for session in sessions:
+        weight = _recency_weight(as_utc_aware(session.started_at), now)
+        moment = calendar.local_time_of(session.started_at)
+        weekdays[moment.weekday()] += weight
+        hours[moment.hour] += weight
+    return StartPattern(weekdays=weekdays, hours=hours)
+
+
+def _recency_weight(started_at: datetime, now: datetime) -> int:
+    days = (now - started_at).days
+    for within_days, weight in _RECENCY_WEIGHTS:
+        if days <= within_days:
+            return weight
+    return _OLDEST_WEIGHT
 
 
 @dataclass(frozen=True)
@@ -85,7 +111,7 @@ def compute_profile(
     calendar: StreakCalendar,
     now: datetime,
 ) -> BehaviorProfile:
-    pattern = start_pattern(sessions, calendar)
+    pattern = weighted_start_pattern(sessions, calendar, now)
     starts = [as_utc_aware(session.started_at) for session in sessions]
     now = as_utc_aware(now)
     return BehaviorProfile(

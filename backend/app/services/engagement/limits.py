@@ -66,7 +66,7 @@ def is_send_allowed(
     smart_sent = [
         (delivery.notification_type, as_utc_aware(delivery.sent_at))
         for delivery in recent_deliveries
-        if delivery.notification_type not in TRANSACTIONAL_TYPES
+        if delivery.notification_type not in TRANSACTIONAL_TYPES and _was_delivered(delivery)
     ]
     sent_today = sum(in_zone(sent_at, zone).date() == local_now.date() for _, sent_at in smart_sent)
     if sent_today >= MAX_SMART_PER_DAY:
@@ -80,3 +80,8 @@ def is_send_allowed(
     ):
         return LimitDecision(LimitReason.REENGAGEMENT_COOLDOWN)
     return LimitDecision(LimitReason.OK)
+
+
+def _was_delivered(delivery: SentNotification) -> bool:
+    """A push that never reached a device must not use up a send slot."""
+    return getattr(delivery, "delivered_count", 1) > 0

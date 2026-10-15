@@ -147,3 +147,15 @@ def test_naive_timestamps_from_the_database_are_read_as_utc():
     decision = _check([_sent(naive_utc)], _local(2026, 6, 11, 5, 0), quiet=False)
 
     assert decision.reason == LimitReason.MIN_SPACING
+
+
+def test_a_push_that_never_arrived_does_not_use_up_the_daily_limit():
+    failed = SimpleNamespace(
+        notification_type="reengagement",
+        sent_at=_local(2026, 6, 10, 12, 0),
+        delivered_count=0,
+    )
+
+    decision = _check([failed, failed], _local(2026, 6, 10, 12, 30), category=NotificationCategory.REENGAGEMENT)
+
+    assert decision.allowed

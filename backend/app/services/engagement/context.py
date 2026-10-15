@@ -91,6 +91,7 @@ class EngagementContext:
     fatigue_score: float = 0
     ignored_streak: int = 0
     preferred_notification_hour: int | None = None
+    preferred_notification_slots: Mapping[int, int] = field(default_factory=dict)
     segment: Segment | None = None
     return_probability: float | None = None
     # The last value stored on an earlier local day; None until the engine has run on one.
@@ -139,6 +140,7 @@ def load_engagement_context(db: Session, user_id: int, now: datetime) -> Engagem
         fatigue_score=learned.fatigue_score,
         ignored_streak=learned.ignored_streak,
         preferred_notification_hour=learned.preferred_notification_hour,
+        preferred_notification_slots=learned.preferred_notification_slots,
         segment=segment_of(profile, now),
         return_probability=return_probability(features),
         previous_return_probability=_previous_return_probability(row, calendar.day_key_of(now)),

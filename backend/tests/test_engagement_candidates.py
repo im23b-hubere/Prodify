@@ -206,6 +206,18 @@ def test_a_friend_who_just_wrapped_a_session_is_a_candidate():
     assert candidate.type == CandidateType.SOCIAL_FRIEND_SESSION
     assert candidate.category == NotificationCategory.SOCIAL
     assert candidate.variables == {"friendName": "Mira", "durationMinutes": "45"}
+    assert candidate.base_score == 55
+
+
+def test_a_short_session_from_someone_you_are_not_chasing_counts_for_less():
+    friend = FriendSession(friend_id=5, friend_name="Mira", ended_at=NOW - timedelta(minutes=20), duration_minutes=15)
+    rival = FriendSession(friend_id=6, friend_name="Jonas", ended_at=NOW - timedelta(minutes=10), duration_minutes=50)
+    standing = LeaderboardStanding(rank=2, previous_rank=2, session_count=3, friend_ahead_name="Jonas")
+
+    casual = social_candidate(_context(friend_sessions=(friend,)), NOW)
+    relevant = social_candidate(_context(friend_sessions=(rival,), leaderboard=standing), NOW)
+
+    assert casual.base_score < relevant.base_score
 
 
 def test_a_friend_overtaking_you_beats_a_friend_session():
