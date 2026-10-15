@@ -115,7 +115,7 @@ def _cancel_open_duels_between(db: Session, blocker_id: int, blocked_id: int) ->
     ).all()
     for duel in duels:
         if pair <= _duel_participants(db, duel):
-            cancel_challenge(db, duel, actor_user_id=blocker_id)
+            cancel_challenge(db, duel, reason="blocked", actor_user_id=blocker_id)
 
 
 def _duel_participants(db: Session, duel: SocialChallenge) -> set[int]:

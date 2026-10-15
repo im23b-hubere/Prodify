@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.models import GrowthEvent, ProductionSession, SocialComment, SocialReaction, Streak, User, utcnow
 from app.schemas import FriendActivityPublic
+from app.services.commitment_service import is_commitment_visible_to
 from app.services.friend_graph import friend_user_ids
 from app.services.streak_status_service import streak_status_for_days
+from app.services.user_block_service import hidden_user_ids
 
 # A session still open after this long was almost certainly forgotten, not being worked on.
 LIVE_SESSION_MAX_AGE = timedelta(hours=12)
@@ -20,7 +22,7 @@ def build_friend_activity(db: Session, viewer_id: int, requested_limit: int) -> 
     friend_ids = friend_user_ids(db, viewer_id)
     user_ids = [viewer_id, *friend_ids]
     sessions = _recent_sessions(db, user_ids, limit)
-    events = _recent_events(db, user_ids, limit)
+    events = [event for event in _recent_events(db, user_ids, limit) if _is_event_visible(db, event, viewer_id)]
     reactions, comments, viewer_reactions = _session_engagement(db, sessions, viewer_id)
     users = _user_metadata(db, user_ids)
 
@@ -81,6 +83,19 @@ def _recent_events(db: Session, user_ids: list[int], limit: int) -> list[GrowthE
     )
 
 
+def _is_event_visible(db: Session, event: GrowthEvent, viewer_id: int) -> bool:
+    if event.event_name != "commitment_published" or event.user_id == viewer_id:
+        return True
+    properties = _event_properties(event)
+    return is_commitment_visible_to(
+        db,
+        owner_id=int(event.user_id or 0),
+        week_start=str(properties.get("week_start") or ""),
+        commitment_key=str(properties.get("commitment_key") or "sessions"),
+        viewer_id=viewer_id,
+    )
+
+
 def _session_engagement(
     db: Session,
     sessions: list[ProductionSession],
@@ -90,14 +105,23 @@ def _session_engagement(
     if not session_ids:
         return {}, {}, {}
 
+    hidden_ids = hidden_user_ids(db, viewer_id)
     reaction_rows = db.execute(
         select(SocialReaction.target_id, func.count(SocialReaction.id))
-        .where(SocialReaction.target_type == "session", SocialReaction.target_id.in_(session_ids))
+        .where(
+            SocialReaction.target_type == "session",
+            SocialReaction.target_id.in_(session_ids),
+            SocialReaction.user_id.not_in(hidden_ids),
+        )
         .group_by(SocialReaction.target_id)
     ).all()
     comment_rows = db.execute(
         select(SocialComment.target_id, func.count(SocialComment.id))
-        .where(SocialComment.target_type == "session", SocialComment.target_id.in_(session_ids))
+        .where(
+            SocialComment.target_type == "session",
+            SocialComment.target_id.in_(session_ids),
+            SocialComment.author_id.not_in(hidden_ids),
+        )
         .group_by(SocialComment.target_id)
     ).all()
     viewer_rows = db.scalars(

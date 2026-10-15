@@ -28,9 +28,10 @@ export function buildDuelBoard(
   const active = own
     .filter((challenge) => challenge.status === "active")
     .sort((left, right) => duelDaysLeft(left) - duelDaysLeft(right));
+  const arena = active.find(isDuel) ?? null;
   return {
-    arena: active[0] ?? null,
-    live: active.slice(1),
+    arena,
+    live: active.filter((challenge) => challenge !== arena),
     waiting: own.filter(
       (challenge) => challenge.status === "pending" && challenge.owner_id === userId,
     ),
@@ -39,6 +40,10 @@ export function buildDuelBoard(
       .slice(0, HISTORY_LIMIT),
     fromFriends: challenges.filter((challenge) => isJoinableFriendChallenge(challenge, userId)),
   };
+}
+
+function isDuel(challenge: SocialChallengeDto) {
+  return challenge.challenge_kind === "duel";
 }
 
 export function isDuelBoardEmpty(board: DuelBoard) {
@@ -133,7 +138,7 @@ export function rematchableDuelIds(
   const seenOpponents = new Set<number>();
   const rematchable = new Set<number>();
   for (const challenge of history) {
-    if (challenge.status !== "completed") continue;
+    if (challenge.status !== "completed" || !isDuel(challenge)) continue;
     const request = rematchRequest(challenge, userId);
     if (request == null || seenOpponents.has(request.friendId)) continue;
     seenOpponents.add(request.friendId);
