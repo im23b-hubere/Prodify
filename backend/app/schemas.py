@@ -36,7 +36,6 @@ from app.contracts.notifications import (
     PushBulkResultPublic,
     PushPingBody,
     PushTokenRegister,
-    SmartNudgeBody,
 )
 from app.contracts.outcomes import (
     GoalForecastPublic,
@@ -294,4 +293,4 @@ class LegalDocumentsPublic(BaseModel):
 class FeatureFlagsPublic(BaseModel):
     billing_sync_enabled: bool
     push_notifications_enabled: bool
-    smart_nudges_enabled: bool
+    smart_notifications_enabled: bool

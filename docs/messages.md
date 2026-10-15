@@ -11,7 +11,7 @@ What the producer is told, on which channel, and when. Copy follows [studio voic
 | **Inbox** | In-app notification list. Server feed plus local prepends. Filtered by category, frequency, quiet hours, and first-week quiet. |
 | **In-app** | Alert or HUD in the running app. Not a notification. |
 
-Jobs that actually fire time-based pushes: `POST /jobs/streak-reminders`, `POST /jobs/session-presence`, `POST /jobs/social-challenges`. If a job is not on a schedule in production, that row does not fire until it is.
+Jobs that actually fire time-based pushes: `POST /jobs/streak-reminders`, `POST /jobs/session-presence`, `POST /jobs/social-challenges`, and `POST /jobs/engagement` (every 15–30 min; sends only with `FEATURE_FLAG_SMART_NOTIFICATIONS_ENABLED`). If a job is not on a schedule in production, that row does not fire until it is.
 
 Every push that reaches a token is logged in `notification_deliveries` and carries its id as `data.nid`. A tap reports `POST /notifications/{nid}/opened`; a session started within two hours of a non-transactional push credits the most recent one (`POST /jobs/engagement` settles the rest as opened-only or ignored).
 
@@ -56,6 +56,8 @@ Streak day = the producer's local calendar day. A streak is at risk when `curren
 
 Local streak slots that are already past today are not scheduled until the next sync. A device gets either the local or the push reminders, never both: once its push token reaches the server, local streak reminders stop. Users without a stored timezone get the push slots in UTC.
 
+With the smart-notifications flag on, the three push slots above stop (`/jobs/streak-reminders` hands over) and the streak reaches the producer as the engine's **Keep the streak alive** candidate instead — at most once per evening, weighed against the other candidates and the daily limits.
+
 ---
 
 ## Week
@@ -93,7 +95,9 @@ Local streak slots that are already past today are not scheduled until the next 
 
 ## Engagement engine candidates
 
-`engagement/candidates.py` turns each producer's context into at most one candidate per trigger. Copy lives in `push_templates.py`; every candidate also carries its variables and a `path` the app opens on tap. Not sent yet — the engine job that scores them and sends one comes next.
+`engagement/candidates.py` turns each producer's context into at most one candidate per trigger. Copy lives in `push_templates.py`; every candidate also carries its variables and a `path` the app opens on tap.
+
+Each `/jobs/engagement` run (flag on) scores every candidate in `engagement/scoring.py` as a sum of named parts — `timeMatch`, `inactivity`, the trigger's own `streak` / `social` / `challenge` / `rank` urgency, `motivation`, minus `fatigue` and `recentNotificationPenalty`. `engagement/engine.py` then sends **at most one** push per producer and run: the highest-scoring candidate that scores 25 or more (25–44 low, 45–69 good, 70+ high priority), passes the limits and preferences, and is either time-sensitive (streak, social, challenge deadline) or due at the producer's send moment. Its score, reason and variables are stored on the delivery. Only producers with an active push token and smart notifications on are evaluated; in development every decision is logged as `[EngagementEngine]`.
 
 | Message | Category | Trigger | Opens |
 |---------|----------|---------|-------|
@@ -116,9 +120,6 @@ These strings exist. Nothing currently sends them on a schedule or from the mobi
 
 | Message | Where it lives | Notes |
 |---------|----------------|-------|
-| **Your studio is waiting** · No session in {n} day(s). Open Prodify and start one. | `POST /notifications/smart-nudge` `kind=inactivity` | Flag `smart_nudges_enabled`. Mobile never calls it. |
-| **Your usual studio hour** · You usually start around {HH}:00. Start a session now. | Same, `kind=best_time` | Same |
-| **Weekly goal at risk** · {n} session(s) left with {d} day(s) in the week. | Same, `kind=forecast_risk` | Same |
 | **Commitment completed** / **Commitment at risk** / **Commitment progress** | Witness copy in `commitment_witness_service` | Only `started` is sent today |
 | **Streak at risk** (generic hours-left body) | `push_templates.streak_reminder` | Used by the profile QA ping (`streak_demo`), not the slot job |
 | **Prodify** · Test push from server | Admin / self ping | QA |

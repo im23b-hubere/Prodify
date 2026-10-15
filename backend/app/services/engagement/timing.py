@@ -67,6 +67,20 @@ def is_send_moment(window: ProductionWindow, now: datetime, zone: ZoneInfo) -> b
     return False
 
 
+def next_send_time(window: ProductionWindow, now: datetime, zone: ZoneInfo) -> datetime:
+    """The first send moment that has not started yet."""
+    now_utc = as_utc_aware(now)
+    local_today = in_zone(now, zone).date()
+    for days_ahead in range(8):
+        window_day = local_today + timedelta(days=days_ahead)
+        if window_day.weekday() not in window.weekdays:
+            continue
+        send_at = send_time_on(window, window_day, zone)
+        if as_utc_aware(send_at) > now_utc:
+            return send_at
+    raise ValueError("a production window opens at least once a week")
+
+
 def _busiest_block(hour_histogram: list[int]) -> tuple[int, int]:
     """Start and length of the busiest run of `WINDOW_HOURS` hours, trimmed of empty edge hours."""
 

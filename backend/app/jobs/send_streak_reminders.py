@@ -68,6 +68,8 @@ def pick_reminder_slot(local_now: datetime) -> str | None:
 
 def run_streak_reminder_job(db: DBSession, settings: Settings, now: datetime | None = None) -> dict:
     """For reachable users whose local evening is in a slot: remind once if their streak is at risk."""
+    if settings.feature_flag_smart_notifications_enabled:
+        return {"reminders_sent": 0, "handled_by": "engagement_engine"}
     run_at = now or utcnow()
     users = _reachable_users(db)
     counts = ReminderCounts()

@@ -5,7 +5,8 @@ generators themselves stay pure. Friends' data is reduced to name, duration and 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -21,6 +22,7 @@ from app.models import (
     User,
     UserProgression,
 )
+from app.services.engagement.preferences import NotificationCategory
 from app.services.engagement.profile import BehaviorProfile
 from app.services.engagement.profile_store import load_fresh_profile
 from app.services.friend_graph import friend_user_ids
@@ -80,6 +82,9 @@ class EngagementContext:
     friend_sessions: tuple[FriendSession, ...]
     leaderboard: LeaderboardStanding | None
     recent_deliveries: tuple[NotificationDelivery, ...]
+    # Conversion rate per category; a missing category counts as neutral.
+    motivation: Mapping[NotificationCategory, float] = field(default_factory=dict)
+    fatigue_score: float = 0
 
 
 def load_engagement_context(db: Session, user_id: int, now: datetime) -> EngagementContext:

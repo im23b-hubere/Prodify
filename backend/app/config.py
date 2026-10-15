@@ -57,7 +57,8 @@ class Settings(BaseSettings):
     support_email: str = "support@prodify.app"
     feature_flag_billing_sync_enabled: bool = True
     feature_flag_push_notifications_enabled: bool = True
-    feature_flag_smart_nudges_enabled: bool = True
+    # The engagement engine sends smart pushes and takes over streak reminders from their own job.
+    feature_flag_smart_notifications_enabled: bool = False
     # Local Ollama text generation for premium coaching surfaces (optional).
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.1:8b"
@@ -216,7 +217,7 @@ def feature_flags_snapshot() -> dict[str, bool]:
     return {
         "billing_sync_enabled": bool(settings.feature_flag_billing_sync_enabled),
         "push_notifications_enabled": bool(settings.feature_flag_push_notifications_enabled),
-        "smart_nudges_enabled": bool(settings.feature_flag_smart_nudges_enabled),
+        "smart_notifications_enabled": bool(settings.feature_flag_smart_notifications_enabled),
     }
 
 

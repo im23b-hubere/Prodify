@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from app.config import settings
 from app.database import SessionLocal
 from app.jobs.send_streak_reminders import (
     SLOT_HALF_HOUR_LEFT,
@@ -53,7 +54,7 @@ def _producer_with_streak(username: str, zone: str, session_started_utc: datetim
 
 def _run_job_at(now_utc: datetime) -> dict:
     with SessionLocal() as db:
-        return run_streak_reminder_job(db, settings=None, now=now_utc)
+        return run_streak_reminder_job(db, settings, now=now_utc)
 
 
 def test_reminds_only_users_whose_local_evening_has_reached_a_slot(sent_pushes):

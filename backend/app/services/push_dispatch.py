@@ -14,7 +14,12 @@ from sqlalchemy.orm import Session as DBSession
 from app.config import Settings
 from app.models import PushToken, utcnow
 from app.services import expo_client, fcm_client, push_templates
-from app.services.engagement.deliveries import create_delivery, notification_type_of, record_dispatch_result
+from app.services.engagement.deliveries import (
+    EngineChoice,
+    create_delivery,
+    notification_type_of,
+    record_dispatch_result,
+)
 from app.services.engagement.preferences import is_push_allowed
 from app.services.push_links import push_data_dashboard
 
@@ -65,13 +70,16 @@ def dispatch_to_user(
     body: str,
     data: dict[str, str] | None = None,
     now: datetime | None = None,
+    *,
+    choice: EngineChoice | None = None,
 ) -> tuple[int, int, str | None]:
     """
     Send a notification to every unique active token for a user, unless their notification
     preferences hold this kind of push back right now.
 
     Every send is recorded as a `NotificationDelivery` whose id travels as `data.nid`, so the
-    app can report the open and the next session can be attributed to this push.
+    app can report the open and the next session can be attributed to this push. Engine sends
+    pass their `choice` so the delivery remembers why it went out.
     """
     sent_at = now or utcnow()
     notification_type = notification_type_of(data)
@@ -81,7 +89,7 @@ def dispatch_to_user(
     if channels.attempted == 0:
         return 0, 0, "no push tokens registered"
 
-    delivery = create_delivery(db, user_id, notification_type, sent_at)
+    delivery = create_delivery(db, user_id, notification_type, sent_at, choice=choice)
     tracked_data = {**(data or {}), "nid": delivery.id}
     channel_results = [
         _deliver_expo(settings, db, channels.expo, title, body, tracked_data),

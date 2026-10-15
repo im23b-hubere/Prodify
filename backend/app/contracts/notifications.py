@@ -86,11 +86,3 @@ class NotificationPreferencesPublic(NotificationPreferencesUpdate):
 
 class NotificationPermissionBody(BaseModel):
     granted: bool
-
-
-class SmartNudgeBody(BaseModel):
-    kind: Literal["inactivity", "best_time", "forecast_risk"] = "inactivity"
-    hour: int | None = Field(default=None, ge=0, le=23)
-    remaining_sessions: int | None = Field(default=None, ge=0, le=100)
-    days_left: int | None = Field(default=None, ge=0, le=30)
-    days_inactive: int | None = Field(default=None, ge=1, le=60)

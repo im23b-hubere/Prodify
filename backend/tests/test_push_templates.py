@@ -24,8 +24,14 @@ def test_streak_reminder_slots_do_not_leak_utc_or_emoji() -> None:
     assert "⏰" not in last_half
 
 
-def test_inactivity_nudge_asks_for_a_session() -> None:
-    title, body = push_templates.inactivity_nudge(3)
-    assert title == "Your studio is waiting"
-    assert "session" in body.lower()
-    assert "block" not in body.lower()
+def test_reengagement_invites_without_pressure() -> None:
+    title, body = push_templates.reengagement(4)
+    assert title == "Your studio misses you"
+    assert "4 days" in body
+    assert "!" not in body
+
+
+def test_streak_at_risk_names_the_time_left_in_words() -> None:
+    assert "45 minutes left" in push_templates.streak_at_risk(6, 45)[1]
+    assert "about 1 hour left" in push_templates.streak_at_risk(6, 70)[1]
+    assert "about 5 hours left" in push_templates.streak_at_risk(6, 290)[1]

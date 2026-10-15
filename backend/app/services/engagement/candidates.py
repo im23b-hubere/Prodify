@@ -39,7 +39,10 @@ class CandidateType(StrEnum):
 
 @dataclass(frozen=True)
 class Candidate:
-    """A push the engine could send. `base_score` (0–100) is the trigger's own urgency."""
+    """
+    A push the engine could send. `base_score` (0–100) is the trigger's own urgency.
+    Time-sensitive candidates lose their point if they wait for the producer's send moment.
+    """
 
     type: CandidateType
     category: NotificationCategory
@@ -49,6 +52,7 @@ class Candidate:
     path: str
     reason: str
     variables: dict[str, str] = field(default_factory=dict)
+    is_time_sensitive: bool = False
 
 
 def generate_candidates(context: EngagementContext, now: datetime) -> list[Candidate]:
@@ -76,6 +80,7 @@ def streak_candidate(context: EngagementContext, now: datetime) -> Candidate | N
         path=DASHBOARD_PATH,
         reason=f"{context.streak_days}-day streak at risk, {minutes_to_goal} min left today",
         variables={"streakDays": str(context.streak_days), "minutesToGoal": str(minutes_to_goal)},
+        is_time_sensitive=True,
     )
 
 
@@ -150,6 +155,7 @@ def _challenge_candidate(challenge: ChallengeStanding, now: datetime) -> Candida
         path=challenge_path(challenge.challenge_id),
         reason=trigger.reason,
         variables={"challengeName": challenge.title, "sessionsRemaining": str(challenge.sessions_remaining)},
+        is_time_sensitive=trigger.type == CandidateType.CHALLENGE_DEADLINE,
     )
 
 
@@ -203,6 +209,7 @@ def _overtaken_candidate(context: EngagementContext) -> Candidate | None:
         path=FRIENDS_PATH,
         reason=f"dropped from #{standing.previous_rank} to #{standing.rank} on the friend leaderboard",
         variables={"friendName": standing.friend_ahead_name},
+        is_time_sensitive=True,
     )
 
 
@@ -223,4 +230,5 @@ def _friend_session_candidate(context: EngagementContext) -> Candidate | None:
         path=FRIENDS_PATH,
         reason=f"a friend just finished a {session.duration_minutes} min session",
         variables={"friendName": session.friend_name, "durationMinutes": str(session.duration_minutes)},
+        is_time_sensitive=True,
     )

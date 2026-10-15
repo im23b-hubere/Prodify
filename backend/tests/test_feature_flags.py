@@ -5,5 +5,5 @@ def test_feature_flags_endpoint_returns_current_flag_snapshot(client):
     assert set(body.keys()) == {
         "billing_sync_enabled",
         "push_notifications_enabled",
-        "smart_nudges_enabled",
+        "smart_notifications_enabled",
     }

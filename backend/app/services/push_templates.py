@@ -69,24 +69,6 @@ def streak_reminder_slot(slot_kind: str, streak_days: int) -> tuple[str, str]:
     return title, body
 
 
-def inactivity_nudge(days_inactive: int) -> tuple[str, str]:
-    title = "Your studio is waiting"
-    body = f"No session in {days_inactive} day(s). Open Prodify and start one."
-    return title, body
-
-
-def best_time_nudge(hour: int) -> tuple[str, str]:
-    title = "Your usual studio hour"
-    body = f"You usually start around {hour:02d}:00. Start a session now."
-    return title, body
-
-
-def forecast_risk_nudge(remaining_sessions: int, days_left: int) -> tuple[str, str]:
-    title = "Weekly goal at risk"
-    body = f"{remaining_sessions} session(s) left with {days_left} day(s) in the week."
-    return title, body
-
-
 def friend_nudge(sender_username: str) -> tuple[str, str]:
     return f"👊 {sender_username} nudged you", "Studio time? Your crew is waiting on your next session."
 

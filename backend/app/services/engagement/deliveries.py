@@ -9,6 +9,7 @@ report something the producer just did (session saved, still there?) never do.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -46,23 +47,30 @@ def notification_type_of(data: dict[str, str] | None) -> str:
     return data.get("kind") or data.get("type") or GENERIC_TYPE
 
 
+@dataclass(frozen=True)
+class EngineChoice:
+    """Why the engagement engine sent a push; stored on its delivery."""
+
+    score: int
+    reason: str
+    variables: dict[str, str]
+
+
 def create_delivery(
     db: Session,
     user_id: int,
     notification_type: str,
     sent_at: datetime,
     *,
-    candidate_score: int | None = None,
-    reason: str | None = None,
-    variables: dict | None = None,
+    choice: EngineChoice | None = None,
 ) -> NotificationDelivery:
     delivery = NotificationDelivery(
         user_id=user_id,
         notification_type=notification_type[:48],
         sent_at=sent_at,
-        candidate_score=candidate_score,
-        reason=reason[:255] if reason else None,
-        variables_json=json.dumps(variables or {}),
+        candidate_score=choice.score if choice else None,
+        reason=choice.reason[:255] if choice else None,
+        variables_json=json.dumps(choice.variables if choice else {}),
     )
     db.add(delivery)
     db.flush()

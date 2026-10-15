@@ -11,6 +11,7 @@ from app.services.engagement.timing import (
     DEFAULT_WINDOW,
     NOTIFY_LEAD,
     is_send_moment,
+    next_send_time,
     production_window,
     send_time_on,
 )
@@ -93,6 +94,20 @@ def test_a_send_moment_is_the_slot_starting_at_the_send_time():
     assert is_send_moment(DEFAULT_WINDOW, send_at + timedelta(minutes=29), ZURICH)
     assert not is_send_moment(DEFAULT_WINDOW, send_at - timedelta(minutes=1), ZURICH)
     assert not is_send_moment(DEFAULT_WINDOW, send_at + timedelta(minutes=30), ZURICH)
+
+
+def test_the_next_send_time_is_today_until_it_has_passed():
+    today_send = send_time_on(DEFAULT_WINDOW, date(2026, 6, 10), ZURICH)
+
+    assert next_send_time(DEFAULT_WINDOW, today_send - timedelta(hours=3), ZURICH) == today_send
+    assert next_send_time(DEFAULT_WINDOW, today_send, ZURICH) == send_time_on(DEFAULT_WINDOW, date(2026, 6, 11), ZURICH)
+
+
+def test_the_next_send_time_skips_weekdays_outside_the_window():
+    window = production_window(_profile(STAGE_ESTABLISHED, {20: 12}, {0: 4, 1: 4, 2: 4}))
+    wednesday_night = datetime(2026, 6, 10, 23, 0, tzinfo=ZURICH)
+
+    assert next_send_time(window, wednesday_night, ZURICH).date() == date(2026, 6, 15)
 
 
 def test_no_send_moment_on_a_weekday_outside_the_window():
