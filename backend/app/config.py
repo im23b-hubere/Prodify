@@ -89,9 +89,13 @@ class Settings(BaseSettings):
     onboarding_trial_days: int = 0
     legal_privacy_url: str = "https://prodify-api-46b1.onrender.com/legal/privacy"
     legal_terms_url: str = "https://prodify-api-46b1.onrender.com/legal/terms"
+    legal_imprint_url: str = "https://prodify-api-46b1.onrender.com/legal/imprint"
     legal_effective_date: str = "2026-10-14"
     legal_version: str = "2026.10"
     support_email: str = "support@prodify.app"
+    # Shown on /legal/imprint (TMG / Swiss identification). Address can be refined via env.
+    legal_operator_name: str = "Eric Huber"
+    legal_operator_address: str = "Zurich, Switzerland"
     feature_flag_billing_sync_enabled: bool = True
     feature_flag_push_notifications_enabled: bool = True
     # The engagement engine sends smart pushes and takes over streak reminders from their own job.

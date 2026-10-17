@@ -26,4 +26,23 @@ describe("in-app legal documents", () => {
     expect(safety).toContain("report");
     expect(safety).toContain("block");
   });
+
+  it("privacy policy names processors and sign-in providers", () => {
+    const providers = sectionText(en.legal.privacy.blocks, "Service providers");
+    const signIn = sectionText(en.legal.privacy.blocks, "Sign-in providers");
+
+    expect(providers).toContain("RevenueCat");
+    expect(providers).toContain("Sentry");
+    expect(providers).toContain("Cloudflare");
+    expect(providers).toContain("Render");
+    expect(providers).toContain("Expo");
+    expect(signIn).toContain("Sign in with Apple");
+    expect(signIn).toContain("Google");
+  });
+
+  it("imprint names the operator", () => {
+    expect(sectionText(en.legal.imprint.blocks, "Service provider")).toContain("Eric Huber");
+    expect(sectionText(en.legal.imprint.blocks, "Address")).toContain("Switzerland");
+    expect(sectionText(en.legal.imprint.blocks, "Contact")).toContain("support@prodify.app");
+  });
 });

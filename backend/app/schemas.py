@@ -287,6 +287,7 @@ class LegalDocumentMetaPublic(BaseModel):
 class LegalDocumentsPublic(BaseModel):
     privacy: LegalDocumentMetaPublic
     terms: LegalDocumentMetaPublic
+    imprint: LegalDocumentMetaPublic
     support_email: str
 
 

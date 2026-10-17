@@ -60,8 +60,9 @@ Whether you are beat making, mixing, recording, or learning, Prodify keeps your 
 
 - **Privacy policy URL:** https://prodify-api-46b1.onrender.com/legal/privacy
 - **Terms URL:** https://prodify-api-46b1.onrender.com/legal/terms
+- **Imprint URL:** https://prodify-api-46b1.onrender.com/legal/imprint
 - **Support URL / email:** https://prodify-api-46b1.onrender.com/legal/support (fallback: support@prodify.app)
-- **Account deletion:** In-app via Profile -> Settings & legal -> Delete account
+- **Account deletion:** In-app via Profile → Settings → Delete account
 
 ## Release Notes (1.0.1)
 

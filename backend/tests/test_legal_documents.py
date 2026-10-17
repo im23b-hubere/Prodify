@@ -4,8 +4,10 @@ def test_legal_documents_public_endpoint(client):
     body = response.json()
     assert body["privacy"]["in_app_path"] == "/legal/privacy"
     assert body["terms"]["in_app_path"] == "/legal/terms"
+    assert body["imprint"]["in_app_path"] == "/legal/imprint"
     assert body["privacy"]["url"].startswith("https://")
     assert body["terms"]["url"].startswith("https://")
+    assert body["imprint"]["url"].startswith("https://")
     assert "@" in body["support_email"]
 
 
@@ -13,6 +15,7 @@ def test_public_legal_pages_are_renderable_html(client):
     for path, heading in (
         ("/legal/privacy", "Privacy Policy"),
         ("/legal/terms", "Terms of Use"),
+        ("/legal/imprint", "Imprint"),
         ("/legal/support", "Support"),
     ):
         response = client.get(path)
@@ -20,6 +23,26 @@ def test_public_legal_pages_are_renderable_html(client):
         assert response.headers["content-type"].startswith("text/html")
         assert heading in response.text
         assert "mailto:" in response.text
+
+
+def test_imprint_names_the_operator(client):
+    text = client.get("/legal/imprint").text
+
+    assert "Eric Huber" in text
+    assert "Switzerland" in text
+    assert "support@prodify.app" in text
+
+
+def test_privacy_policy_names_processors_and_sign_in_providers(client):
+    text = client.get("/legal/privacy").text
+
+    assert "Sign in with Apple" in text
+    assert "Google" in text
+    assert "RevenueCat" in text
+    assert "Sentry" in text
+    assert "Cloudflare" in text
+    assert "Render" in text
+    assert "Expo" in text
 
 
 def test_the_privacy_policy_explains_personalised_reminders(client):

@@ -26,6 +26,7 @@ function createController(): SettingsScreenController {
       openNotifications: jest.fn(),
       openPrivacy: jest.fn(),
       openTerms: jest.fn(),
+      openImprint: jest.fn(),
       openBlockedUsers: jest.fn(),
       openEngagementDebug: jest.fn(),
     },
@@ -41,12 +42,14 @@ describe("SettingsScreenView", () => {
     fireEvent.press(screen.getByLabelText("profile.manageNotifications"));
     fireEvent.press(screen.getByLabelText("legal.linksPrivacy"));
     fireEvent.press(screen.getByLabelText("legal.linksTerms"));
+    fireEvent.press(screen.getByLabelText("legal.linksImprint"));
     fireEvent.press(screen.getByLabelText("profile.signOut"));
     fireEvent.press(screen.getByLabelText("legal.deleteAccount.button"));
 
     expect(controller.navigation.openNotifications).toHaveBeenCalledTimes(1);
     expect(controller.navigation.openPrivacy).toHaveBeenCalledTimes(1);
     expect(controller.navigation.openTerms).toHaveBeenCalledTimes(1);
+    expect(controller.navigation.openImprint).toHaveBeenCalledTimes(1);
     expect(controller.accountActions.confirmSignOut).toHaveBeenCalledTimes(1);
     expect(controller.accountActions.confirmDeleteAccount).toHaveBeenCalledTimes(1);
   });

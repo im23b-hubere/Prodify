@@ -20,6 +20,7 @@ export function useSettingsScreenController() {
         router.push({ pathname: "/notifications", params: { source: "profile" } }),
       openPrivacy: () => router.push("/legal/privacy" as never),
       openTerms: () => router.push("/legal/terms" as never),
+      openImprint: () => router.push("/legal/imprint" as never),
       openBlockedUsers: () => router.push("/blocked-users" as never),
       openEngagementDebug: () => router.push("/engagement-debug" as never),
     },
