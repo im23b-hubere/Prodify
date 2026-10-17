@@ -1,14 +1,8 @@
 import type { TFunction } from "i18next";
 
+import { currentAppLocaleTag } from "../../lib/appLocale";
 import type { EngagementDebug } from "../../lib/engagementDebug";
 
-const weekdayFormatter = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
-const momentFormatter = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 const MONDAY_UTC = Date.UTC(2026, 5, 8);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -18,7 +12,10 @@ export function formatHour(hour: number): string {
 
 /** Weekdays come from the server as 0 = Monday. */
 export function formatWeekday(weekday: number): string {
-  return weekdayFormatter.format(new Date(MONDAY_UTC + weekday * DAY_MS));
+  return new Intl.DateTimeFormat(currentAppLocaleTag(), {
+    weekday: "short",
+    timeZone: "UTC",
+  }).format(new Date(MONDAY_UTC + weekday * DAY_MS));
 }
 
 export function formatWindow(
@@ -33,7 +30,12 @@ export function formatWindow(
 }
 
 export function formatMoment(iso: string): string {
-  return momentFormatter.format(new Date(iso));
+  return new Intl.DateTimeFormat(currentAppLocaleTag(), {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
 }
 
 export function formatPercent(rate: number): string {

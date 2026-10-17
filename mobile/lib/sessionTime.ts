@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 
 import type { SessionDto } from "../types/session";
+import { currentAppLocaleTag } from "./appLocale";
 
 /** Parse API datetime; assume UTC if no offset. */
 export function parseSessionDate(value: string): Date {
@@ -71,7 +72,7 @@ export function weekdayLetterFromIsoDay(iso: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "?";
   const d = new Date(`${iso}T12:00:00Z`);
   if (!Number.isFinite(d.getTime())) return "?";
-  return d.toLocaleDateString("en-US", { weekday: "short" });
+  return d.toLocaleDateString(currentAppLocaleTag(), { weekday: "short" });
 }
 
 /** Calendar day key YYYY-MM-DD → short local date for chart axis (e.g. 4/23). */
@@ -80,5 +81,5 @@ export function formatIsoDateShortLocal(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
   if (!Number.isFinite(dt.getTime())) return "?";
-  return dt.toLocaleDateString("en-US", { month: "numeric", day: "numeric" });
+  return dt.toLocaleDateString(currentAppLocaleTag(), { month: "numeric", day: "numeric" });
 }

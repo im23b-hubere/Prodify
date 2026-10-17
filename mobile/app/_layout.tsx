@@ -14,6 +14,7 @@ import {
 import { Syne_700Bold, useFonts as useSyneFonts } from "@expo-google-fonts/syne";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -27,6 +28,7 @@ import { colors, spacing } from "../constants/theme";
 import { ChallengeSyncBridge } from "../features/challenges/sync/ChallengeSyncBridge";
 import { DuelClashHost } from "../features/duelClash/components/DuelClashHost";
 import { appRootFillStyle, rootStackScreenOptions } from "../features/navigation/rootStackChrome";
+import { hydrateLanguageFromStorage } from "../lib/i18n";
 import { initSentry } from "../lib/sentry";
 import { configureNotificationHandler } from "../lib/streakNotifications";
 
@@ -37,6 +39,10 @@ export default function RootLayout() {
   const [syneLoaded] = useSyneFonts({ Syne_700Bold });
   const [dmLoaded] = useDmSansFonts({ DMSans_400Regular, DMSans_500Medium, DMSans_700Bold });
   const fontsLoaded = syneLoaded && dmLoaded;
+
+  useEffect(() => {
+    void hydrateLanguageFromStorage();
+  }, []);
 
   if (!fontsLoaded) {
     return (
