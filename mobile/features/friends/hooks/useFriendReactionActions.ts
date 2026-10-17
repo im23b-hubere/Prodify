@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { Alert } from "react-native";
 
 import { fetchSessionReactionUsers, toggleSessionReaction } from "../../../lib/social";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { FriendActivityDto } from "../../../types/friends";
 import type { FriendActionContext } from "./friendEngagementTypes";
 
@@ -77,6 +78,6 @@ function useToggleThumbReaction({ state, t, token }: FriendActionContext) {
 function showReactionError(t: FriendActionContext["t"], error: unknown) {
   Alert.alert(
     t("friendsScreen.errorGeneric"),
-    error instanceof Error ? error.message : t("common.tryAgain"),
+    userFacingErrorMessage(error, t, "common.tryAgain"),
   );
 }

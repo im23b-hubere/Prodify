@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next';
+
 import type { SessionActivity, SessionData } from './types';
 
 export const sampleSession: SessionData = {
@@ -14,27 +16,49 @@ export function safeSeconds(value: number): number {
   if (!Number.isFinite(value) || value < 0) throw new Error('Session duration must be finite and non-negative.');
   return Math.floor(value);
 }
-export function durationLabel(value: number): string {
+
+export function durationLabel(value: number, t: TFunction): string {
   const seconds = safeSeconds(value);
-  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 60) return t('shareCard.durationSeconds', { count: seconds });
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor(seconds % 3600 / 60);
-  return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+  return hours
+    ? t('shareCard.durationHoursMinutes', { h: hours, m: minutes })
+    : t('shareCard.durationMinutes', { count: minutes });
 }
+
 export function truncate(value: string, length: number): string {
   const points = Array.from(value.trim());
   return points.length > length ? points.slice(0, length - 1).join('') + '…' : points.join('');
 }
+
 export function xmlEscape(value: string): string {
   return value.replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&apos;' }[char]!));
 }
+
 /** Aggregate allocation only. This does NOT claim chronological order. */
-export function activityRows(session: SessionData): SessionActivity[] {
+export function activityRows(session: SessionData, t: TFunction): SessionActivity[] {
+  const production = t('shareCard.activityProduction');
+  const other = t('shareCard.activityOther');
   const total = safeSeconds(session.durationSeconds);
-  const rows = session.activities.map(a => ({ label: a.label.trim() || 'Production', durationSeconds: safeSeconds(a.durationSeconds) })).filter(a => a.durationSeconds > 0);
+  const rows = session.activities
+    .map((a) => ({
+      label: a.label.trim() || production,
+      durationSeconds: safeSeconds(a.durationSeconds),
+    }))
+    .filter((a) => a.durationSeconds > 0);
   const allocated = rows.reduce((sum, a) => sum + a.durationSeconds, 0);
-  if (allocated > total) throw new Error('Activity durations exceed active session time. Map non-overlapping activity data before sharing.');
-  if (allocated < total) rows.push({ label: rows.length ? 'Other' : 'Production', durationSeconds: total - allocated });
+  if (allocated > total) {
+    throw new Error(
+      'Activity durations exceed active session time. Map non-overlapping activity data before sharing.',
+    );
+  }
+  if (allocated < total) {
+    rows.push({ label: rows.length ? other : production, durationSeconds: total - allocated });
+  }
   if (rows.length <= 3) return rows;
-  return [...rows.slice(0, 2), { label: 'Other', durationSeconds: rows.slice(2).reduce((sum, a) => sum + a.durationSeconds, 0) }];
+  return [
+    ...rows.slice(0, 2),
+    { label: other, durationSeconds: rows.slice(2).reduce((sum, a) => sum + a.durationSeconds, 0) },
+  ];
 }

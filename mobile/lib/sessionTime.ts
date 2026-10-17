@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { SessionDto } from "../types/session";
 
 /** Parse API datetime; assume UTC if no offset. */
@@ -43,14 +45,17 @@ export function mergeSessionPauseTiming(
   return server;
 }
 
-export function formatDurationWords(totalSeconds: number): string {
+export function formatDurationWords(totalSeconds: number, t: TFunction): string {
   const safe = Number.isFinite(totalSeconds) && totalSeconds >= 0 ? totalSeconds : 0;
   const mins = Math.round(safe / 60);
-  if (mins < 1) return "less than a minute";
-  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"}`;
+  if (mins < 1) return t("time.lessThanAMinute");
+  if (mins < 60) {
+    return mins === 1 ? t("time.oneMinute") : t("time.minutes", { count: mins });
+  }
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  return m ? `${h}h ${m}m` : `${h} hour${h === 1 ? "" : "s"}`;
+  if (m) return t("time.hoursAndMinutes", { h, m });
+  return h === 1 ? t("time.oneHour") : t("time.hours", { count: h });
 }
 
 /** Short calendar date for lists; returns em dash if ISO is missing or invalid. */

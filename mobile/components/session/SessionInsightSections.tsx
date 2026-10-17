@@ -129,10 +129,14 @@ function TimeBreakdown({ insights, t }: { insights: SessionDetailInsightsDto; t:
     <View style={styles.card}>
       <Text style={styles.sectionLabel}>{t("sessionInsights.timeBreakdown")}</Text>
       <Text style={styles.rowLine}>
-        {t("sessionInsights.active", { duration: formatDurationWords(insights.active_seconds) })}
+        {t("sessionInsights.active", {
+          duration: formatDurationWords(insights.active_seconds, t),
+        })}
       </Text>
       <Text style={styles.rowLine}>
-        {t("sessionInsights.paused", { duration: formatDurationWords(insights.paused_seconds) })}
+        {t("sessionInsights.paused", {
+          duration: formatDurationWords(insights.paused_seconds, t),
+        })}
       </Text>
       <Text style={styles.rowLine}>
         {t("sessionInsights.effectiveRate", { pct: insights.effective_rate_percent.toFixed(0) })}
@@ -186,7 +190,9 @@ function RelatedSessions({ insights, t }: { insights: SessionDetailInsightsDto; 
             onPress={() => router.push(`/session/${related.id}`)}
           >
             <Text style={styles.relType}>{sessionTypeLabel(String(related.session_type), t)}</Text>
-            <Text style={styles.relDur}>{formatDurationWords(related.duration_seconds ?? 0)}</Text>
+            <Text style={styles.relDur}>
+              {formatDurationWords(related.duration_seconds ?? 0, t)}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>

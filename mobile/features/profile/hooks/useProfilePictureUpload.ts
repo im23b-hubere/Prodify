@@ -4,9 +4,9 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 
-import { ApiError } from "../../../lib/client";
 import type { AuthenticatedUser } from "../../../lib/authSessionService";
 import { uploadProfilePicture } from "../../../lib/profilePictureUpload";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 
 type Options = {
   token: string | null;
@@ -51,13 +51,10 @@ export function useProfilePictureUpload({ token, applyAuthenticatedUser }: Optio
         () => undefined,
       );
     } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : t("profile.photoUploadFailed");
-      Alert.alert(t("profile.photoUploadFailedTitle"), message);
+      Alert.alert(
+        t("profile.photoUploadFailedTitle"),
+        userFacingErrorMessage(error, t, "profile.photoUploadFailed"),
+      );
     } finally {
       setBusy(false);
     }

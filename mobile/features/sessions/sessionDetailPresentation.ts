@@ -33,7 +33,7 @@ export function buildSessionDetailPresentation(
   return {
     durationLabel:
       session.duration_seconds != null
-        ? formatDurationWords(session.duration_seconds)
+        ? formatDurationWords(session.duration_seconds, t)
         : t("sessionDetail.inProgress"),
     tags: sessionTagsList(session.tags),
     pauseSeconds,

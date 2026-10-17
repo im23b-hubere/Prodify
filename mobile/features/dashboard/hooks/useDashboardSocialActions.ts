@@ -14,6 +14,7 @@ import { Alert } from "react-native";
 import type { MomentumAction } from "../../../lib/momentum";
 import { openTab } from "../../../lib/stackNavigation";
 import { rescueBuddyStreak } from "../../../lib/social";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { BuddyRiskDto, IdentityStateDto } from "../../../types/friends";
 import type { DashboardPrimaryNudge } from "./useDashboardSocialNudges";
 
@@ -184,5 +185,5 @@ function showRescueSuccess(t: TFunction, router: DashboardSocialRouter) {
 }
 
 function showActionError(t: TFunction, titleKey: string, error: unknown) {
-  Alert.alert(t(titleKey), error instanceof Error ? error.message : t("common.tryAgain"));
+  Alert.alert(t(titleKey), userFacingErrorMessage(error, t, "common.tryAgain"));
 }

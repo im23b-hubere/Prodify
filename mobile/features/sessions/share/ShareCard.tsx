@@ -1,4 +1,5 @@
 import { forwardRef, useMemo, type ComponentRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image, StyleSheet, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { renderCardSvg } from './renderCardSvg';
@@ -18,17 +19,22 @@ export interface ShareCardProps {
 export const ShareCard = forwardRef<ComponentRef<typeof View>, ShareCardProps>(function ShareCard(
   { session, options, width, photoUri, onPhotoLoad, onPhotoError, onLayout }, ref,
 ) {
+  const { t } = useTranslation();
   const svg = useMemo(() => renderCardSvg(session, {
     ...options,
-  }), [session, options]);
+  }, t), [session, options, t]);
   const height = width * 16 / 9;
+  const a11yLabel = t('shareCard.a11yLabel', {
+    name: session.producerName,
+    minutes: Math.floor(session.durationSeconds / 60),
+  });
   return (
     <View
       ref={ref}
       collapsable={false}
       onLayout={onLayout}
       accessible
-      accessibilityLabel={`Production session. ${session.producerName}. ${Math.floor(session.durationSeconds / 60)} minutes.`}
+      accessibilityLabel={a11yLabel}
       style={{ width, height, backgroundColor: 'transparent', overflow: 'hidden' }}
     >
       {options.template === 'photo' && photoUri ? (

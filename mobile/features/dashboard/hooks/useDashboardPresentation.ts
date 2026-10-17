@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { buildWeeklyForecast } from "../../../lib/forecastEngine";
 import { adjustedWeeklyTargetForSignupWeek } from "../../../lib/goalPace";
 import { buildSessionFeedback } from "../../../lib/sessionFeedbackEngine";
-import { STREAK_MILESTONES } from "../../../lib/streakMilestones";
+import { STREAK_MILESTONES, streakMilestoneTitle } from "../../../lib/streakMilestones";
 import { buildTodayPlanRecommendation } from "../../../lib/todayPlanEngine";
 import {
   buildCalendarWeeksFromDays,
@@ -229,7 +229,7 @@ function buildFallbackStreakOverview({
     last_7_day_labels: current?.days.map((day) => day.label) ?? labels,
     calendar_weeks,
     next_milestone_at: nextMilestone?.days ?? null,
-    next_milestone_title: nextMilestone?.title ?? null,
+    next_milestone_title: nextMilestone ? streakMilestoneTitle(nextMilestone, t) : null,
     days_to_next_milestone: nextMilestone ? nextMilestone.days - clientStreak : null,
     freezes_remaining: 0,
     can_use_freeze: false,

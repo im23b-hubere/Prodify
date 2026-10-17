@@ -24,7 +24,7 @@ export function SessionCompleteHero({ controller }: { controller: SessionComplet
       style={styles.heroCard}
     >
       <Text style={styles.heroEyebrow}>{t("sessionComplete.heroEyebrow")}</Text>
-      <Text style={styles.bigDur}>{formatDurationWords(controller.durationSeconds)}</Text>
+      <Text style={styles.bigDur}>{formatDurationWords(controller.durationSeconds, t)}</Text>
       <View style={styles.metaRow}>
         <View style={styles.typePill}>
           <Text style={styles.typePillText}>

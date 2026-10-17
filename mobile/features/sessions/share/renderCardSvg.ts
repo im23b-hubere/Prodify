@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import { fontFamily } from "../../../constants/fonts";
 import { colors } from "../../../constants/theme";
 import { activityRows, durationLabel, truncate, xmlEscape } from "./data";
@@ -7,10 +9,10 @@ import type { CardOptions, SessionData } from "./types";
 const ICON = 32;
 
 /** Pure SVG renderer: same source generates native artwork and the reference files. */
-export function renderCardSvg(session: SessionData, options: CardOptions): string {
+export function renderCardSvg(session: SessionData, options: CardOptions, t: TFunction): string {
   const { template } = options;
   const accent = validateAccent(options.accent ?? colors.primary);
-  const rows = activityRows(session);
+  const rows = activityRows(session, t);
   const light = template === "mono" && options.monoTheme === "light";
   const colour = light ? "#0B0B0C" : colors.textPrimary;
   const muted = template === "photo" || template === "transparent" ? colour : light ? "#6F6A62" : colors.textSecondary;
@@ -18,7 +20,7 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
   const display = xmlEscape(options.displayFont ?? fontFamily.heading);
   const body = xmlEscape(options.bodyFont ?? fontFamily.body);
   const medium = xmlEscape(options.bodyMediumFont ?? fontFamily.bodyMedium);
-  const duration = durationLabel(session.durationSeconds);
+  const duration = durationLabel(session.durationSeconds, t);
   const date = truncate(session.dateLabel, 18);
   const username = '@' + truncate(session.producerName.replace(/^@/, ''), 22);
   const showIdentity = options.showIdentity !== false;
@@ -49,7 +51,7 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
 
   const streak = (x: number, y: number, center = false) => {
     if (!showStreak) return '';
-    const text = `${session.streakDays} day streak`;
+    const text = t('shareCard.dayStreak', { count: session.streakDays });
     const width = ICON + 14 + text.length * 17;
     const start = center ? x - width / 2 : x;
     return flame(start, y) + label(start + ICON + 14, y, text, 32, colour, 500, 'start', 0, medium);
@@ -62,13 +64,10 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
     return rows.map((row, index) => label(x, y + index * 46, truncate(row.label, 28), 32, muted, 400, center ? 'middle' : 'start', 0, body)).join('');
   };
 
-  const detailRows = (y: number) => showActivities
-    ? rows.map((row, index) => label(96, y + index * 72, truncate(row.label, 26), 34, colour, 400, 'start', 0, body) + label(984, y + index * 72, durationLabel(row.durationSeconds), 34, muted, 500, 'end', 0, medium)).join('')
-    : '';
-
   const header = () => brand(96, 268) + label(984, 260, date, 26, muted, 500, 'end', 1.6, medium);
   const rule = (y: number) => `<path d="M96 ${y}H984" stroke="${line}" stroke-width="2"/>`;
   let content = backgroundMarkup(template, accent, options.monoTheme);
+  const productionTime = t('shareCard.productionTime');
 
   if (template === 'photo') {
     const top = options.photoPosition === 'top';
@@ -76,16 +75,16 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
     const base = top ? 300 : 1120;
     if (showIdentity) content += label(96, base, `${username}   ·   ${date}`, 28, colour, 500, 'start', 1.2, medium);
     content += bigTime(96, base + 168, false, 176);
-    content += label(96, base + 236, 'Production time', 36, colour, 400, 'start', 0, body);
+    content += label(96, base + 236, productionTime, 36, colour, 400, 'start', 0, body);
     content += activitiesInline(96, base + 312);
     content += streak(96, base + 392);
     content += brand(96, base + 492);
   }
 
   if (template === 'transparent') {
-    content += label(540, 620, 'IN THE STUDIO', 26, colour, 500, 'middle', 3.2, medium);
+    content += label(540, 620, t('shareCard.inTheStudio'), 26, colour, 500, 'middle', 3.2, medium);
     content += bigTime(540, 840, true, 188);
-    content += label(540, 916, 'Production time', 36, colour, 400, 'middle', 0, body);
+    content += label(540, 916, productionTime, 36, colour, 400, 'middle', 0, body);
     content += `<rect x="492" y="972" width="96" height="6" rx="3" fill="${accent}"/>`;
     // Stacked from the accent stroke down, so the logo sits right under it when there is nothing
     // in between. A session without assigned activities would only repeat "Production" here.
@@ -106,7 +105,7 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
   if (template === 'mono') {
     // Poster layout: the time owns the top half, the breakdown and the producer sit at the foot.
     content += brand(96, 236) + label(984, 228, date, 26, muted, 500, 'end', 1.6, medium);
-    content += `<circle cx="108" cy="412" r="7" fill="${accent}"/>` + label(134, 422, 'SESSION COMPLETE', 26, muted, 500, 'start', 2.4, medium);
+    content += `<circle cx="108" cy="412" r="7" fill="${accent}"/>` + label(134, 422, t('shareCard.sessionComplete'), 26, muted, 500, 'start', 2.4, medium);
     // "47m" → a big number with a smaller unit, so the figure reads first.
     const figure = (value: string, y: number, fill: string, size: number) => {
       const match = value.match(/^(\d+)([hms])$/);
@@ -116,17 +115,17 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
     const parts = duration.split(' ');
     if (parts.length === 2) {
       content += figure(parts[0]!, 760, colour, 300) + figure(parts[1]!, 1060, accent, 300);
-      content += label(96, 1150, 'Production time', 38, muted, 400, 'start', 0, body);
+      content += label(96, 1150, productionTime, 38, muted, 400, 'start', 0, body);
     } else {
       content += figure(parts[0]!, 900, accent, 340);
-      content += label(96, 1000, 'Production time', 38, muted, 400, 'start', 0, body);
+      content += label(96, 1000, productionTime, 38, muted, 400, 'start', 0, body);
     }
     if (showActivities && rows.length > 0) {
       content += rule(1270);
       rows.forEach((row, index) => {
         const y = 1350 + index * 84;
         content += label(96, y, truncate(row.label, 24), 38, colour, 400, 'start', 0, body);
-        content += label(984, y, durationLabel(row.durationSeconds), 36, muted, 500, 'end', 0, medium);
+        content += label(984, y, durationLabel(row.durationSeconds, t), 36, muted, 500, 'end', 0, medium);
       });
     }
     if (showIdentity) content += label(96, 1800, username, 32, muted, 500, 'start', 0, medium);
@@ -135,9 +134,9 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
 
   if (template === 'isometric') {
     content += header();
-    content += label(96, 420, 'BUILT, ONE SESSION AT A TIME.', 26, muted, 500, 'start', 2.2, medium);
+    content += label(96, 420, t('shareCard.builtOneSession'), 26, muted, 500, 'start', 2.2, medium);
     content += bigTime(96, 640, false, 188);
-    content += label(96, 716, 'Production time', 36, muted, 400, 'start', 0, body);
+    content += label(96, 716, productionTime, 36, muted, 400, 'start', 0, body);
     content += activitiesInline(96, 812);
     content += streak(96, 1052);
     if (showIdentity) content += label(984, 1200, username, 32, muted, 500, 'end', 0, medium);
@@ -145,10 +144,10 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
 
   if (template === 'echo') {
     content += header();
-    content += label(96, 430, 'MAKE TIME.', 30, accent, 500, 'start', 2.6, medium);
-    content += label(96, 478, 'MAKE SOMETHING.', 30, accent, 500, 'start', 2.6, medium);
+    content += label(96, 430, t('shareCard.makeTime'), 30, accent, 500, 'start', 2.6, medium);
+    content += label(96, 478, t('shareCard.makeSomething'), 30, accent, 500, 'start', 2.6, medium);
     content += bigTime(96, 700, false, 188);
-    content += label(96, 776, 'In the studio.', 36, muted, 400, 'start', 0, body);
+    content += label(96, 776, t('shareCard.inTheStudioSentence'), 36, muted, 400, 'start', 0, body);
     if (showActivities) {
       rows.forEach((row, index) => {
         content += label(96, 960 + index * 72, truncate(row.label, 18), 34, colour, 400, 'start', 0, body);
@@ -158,5 +157,5 @@ export function renderCardSvg(session: SessionData, options: CardOptions): strin
     if (showIdentity) content += label(96, 1736, username, 32, muted, 500, 'start', 0, medium);
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><title>Prodify session — ${xmlEscape(duration)}</title>${content}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><title>${xmlEscape(t('shareCard.svgTitle', { duration }))}</title>${content}</svg>`;
 }

@@ -19,7 +19,15 @@ jest.mock("../../lib/notificationInbox", () => ({
   prependNotification: jest.fn().mockResolvedValue(undefined),
 }));
 
-const mockT = mockTFunction();
+const mockT = mockTFunction((key, options) => {
+  if (key === "streakMilestones.message") {
+    return `${String(options?.title ?? "")} — ${String(options?.reward ?? "")}`;
+  }
+  if (key === "streakMilestones.d7.title") return "One week warrior";
+  if (key === "streakMilestones.d7.reward") return "Custom theme";
+  if (key === "dashboard.milestoneNotifTitle") return "Milestone reached";
+  return key;
+});
 const refreshUnread = jest.fn();
 const getItemAsync = jest.mocked(SecureStore.getItemAsync);
 const setItemAsync = jest.mocked(SecureStore.setItemAsync);

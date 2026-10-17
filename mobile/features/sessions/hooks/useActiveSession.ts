@@ -82,9 +82,9 @@ function sessionInsight(
   if (longestCompletedSeconds == null) return t("sessionActive.insightDefault");
   return elapsed > longestCompletedSeconds
     ? t("sessionActive.insightPastBest", {
-        prev: formatDurationWords(longestCompletedSeconds),
+        prev: formatDurationWords(longestCompletedSeconds, t),
       })
     : t("sessionActive.insightLongest", {
-        duration: formatDurationWords(longestCompletedSeconds),
+        duration: formatDurationWords(longestCompletedSeconds, t),
       });
 }

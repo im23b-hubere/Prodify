@@ -205,6 +205,23 @@
     "weekdaysFull": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
     "retry": "Retry"
   },
+  "time": {
+    "lessThanAMinute": "less than a minute",
+    "oneMinute": "1 minute",
+    "minutes": "{{count}} minutes",
+    "oneHour": "1 hour",
+    "hours": "{{count}} hours",
+    "hoursAndMinutes": "{{h}}h {{m}}m"
+  },
+  "streakMilestones": {
+    "message": "{{title}} — {{reward}}",
+    "d3": { "title": "Getting started", "reward": "Badge unlocked" },
+    "d7": { "title": "One week warrior", "reward": "Custom theme" },
+    "d14": { "title": "Two weeks strong", "reward": "Advanced stats" },
+    "d30": { "title": "Producer Legend", "reward": "Legend badge unlocked" },
+    "d60": { "title": "Unstoppable", "reward": "Special badge + template" },
+    "d100": { "title": "Producer God", "reward": "Hall of Fame" }
+  },
   "engagementDebug": {
     "title": "Engine debug",
     "subtitle": "Why Prodify would or wouldn't nudge you right now",
@@ -240,12 +257,32 @@
     "daysSince": "Days since last session",
     "usualHours": "Usual hours",
     "window": "Production window",
+    "everyDay": "Every day",
     "defaultWindow": "{{window}} (default)",
     "lastPushTitle": "Last smart push",
     "noPush": "No smart push sent yet.",
     "outcome": "Outcome",
     "score": "Score",
     "none": "–"
+  },
+  "shareCard": {
+    "productionTime": "Production time",
+    "inTheStudio": "IN THE STUDIO",
+    "inTheStudioSentence": "In the studio.",
+    "sessionComplete": "SESSION COMPLETE",
+    "builtOneSession": "BUILT, ONE SESSION AT A TIME.",
+    "makeTime": "MAKE TIME.",
+    "makeSomething": "MAKE SOMETHING.",
+    "dayStreak": "{{count}} day streak",
+    "dayStreak_one": "{{count}} day streak",
+    "dayStreak_other": "{{count}} day streak",
+    "svgTitle": "Prodify session — {{duration}}",
+    "a11yLabel": "Production session. {{name}}. {{minutes}} minutes.",
+    "activityProduction": "Production",
+    "activityOther": "Other",
+    "durationSeconds": "{{count}}s",
+    "durationMinutes": "{{count}}m",
+    "durationHoursMinutes": "{{h}}h {{m}}m"
   },
   "legal": {
     "linksPrivacy": "Privacy",

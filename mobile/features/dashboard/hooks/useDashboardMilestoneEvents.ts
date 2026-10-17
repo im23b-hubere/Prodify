@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 
 import { prependNotification } from "../../../lib/notificationInbox";
-import { latestNewMilestone } from "../../../lib/streakMilestones";
+import {
+  formatStreakMilestoneMessage,
+  latestNewMilestone,
+} from "../../../lib/streakMilestones";
 import type { StreakOverviewDto } from "../../../types/streak";
 
 type Params = {
@@ -71,7 +74,7 @@ export function useDashboardMilestoneEvents({
         if (!milestone) return;
 
         await SecureStore.setItemAsync(storageKey, String(milestone.days));
-        const message = `${milestone.title} — ${milestone.reward}`;
+        const message = formatStreakMilestoneMessage(milestone, t);
         setToast(message);
         notifyMilestone(message, t, refreshUnread);
         clearTimer(secondHapticTimer);

@@ -6,6 +6,7 @@ import { apiJson } from "../../../lib/client";
 import { syncProgression } from "../../../lib/progressionSync";
 import { tryParseSessionDto } from "../../../lib/sessionDto";
 import { tryParseSessionStatsDto } from "../../../lib/statsDto";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { ProgressionDto } from "../../../types/outcomes";
 import type { SessionDto } from "../../../types/session";
 import { MINIMUM_COUNTED_SESSION_SECONDS } from "../sessionCompletePresentation";
@@ -123,7 +124,7 @@ export function useSessionCompleteData(
       setLoadState("ready");
     } catch (error) {
       if (!cancelled.current) {
-        fail(error instanceof Error ? error.message : t("sessionComplete.loadError"));
+        fail(userFacingErrorMessage(error, t, "sessionComplete.loadError"));
       }
     }
   }, [fail, sessionId, t, token]);

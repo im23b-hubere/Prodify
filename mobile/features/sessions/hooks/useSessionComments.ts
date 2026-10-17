@@ -7,6 +7,7 @@ import { useLatestRef } from "../../../hooks/useLatestRef";
 import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import { ApiError } from "../../../lib/client";
 import { createSessionComment, fetchSessionComments } from "../../../lib/social";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { SocialCommentDto } from "../../../types/friends";
 import { validSessionId } from "./sessionSocialUtils";
 
@@ -110,7 +111,7 @@ export function useSessionComments(
 
 function commentErrorMessage(error: unknown, t: TFunction): string {
   if (error instanceof ApiError && error.code === "CONTENT_REJECTED") return t("safety.comment.rejected");
-  return error instanceof Error ? error.message : t("common.tryAgain");
+  return userFacingErrorMessage(error, t, "common.tryAgain");
 }
 
 function useCommentSuccessFeedback() {

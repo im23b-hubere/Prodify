@@ -1,6 +1,7 @@
 const { defineConfig, globalIgnores } = require("eslint/config");
 const expoConfig = require("eslint-config-expo/flat");
 const eslintConfigPrettier = require("eslint-config-prettier");
+const i18next = require("eslint-plugin-i18next");
 const globals = require("globals");
 
 module.exports = defineConfig([
@@ -13,6 +14,30 @@ module.exports = defineConfig([
   ]),
   expoConfig,
   eslintConfigPrettier,
+  // Soft guard for new screens: warn on raw JSX text. Catalog copy lives in locales/en.json;
+  // German leftovers are also blocked by __tests__/i18n/noGermanUiLiterals.test.ts.
+  {
+    files: ["app/**/*.{tsx,jsx}", "features/**/*.{tsx,jsx}", "components/**/*.{tsx,jsx}"],
+    plugins: { i18next },
+    rules: {
+      "i18next/no-literal-string": [
+        "warn",
+        {
+          markupOnly: true,
+          ignoreAttribute: [
+            "testID",
+            "accessibilityRole",
+            "accessibilityState",
+            "hitSlop",
+            "pointerEvents",
+            "resizeMode",
+            "collapsable",
+            "importantForAccessibility",
+          ],
+        },
+      ],
+    },
+  },
   {
     files: ["__tests__/**/*.{ts,tsx}", "jest.setup.ts"],
     rules: {

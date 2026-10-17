@@ -1,5 +1,21 @@
-import { effectiveElapsedSeconds, mergeSessionPauseTiming } from "../../lib/sessionTime";
+import type { TFunction } from "i18next";
+
+import {
+  effectiveElapsedSeconds,
+  formatDurationWords,
+  mergeSessionPauseTiming,
+} from "../../lib/sessionTime";
 import type { SessionDto } from "../../types/session";
+
+const t = ((key: string, options?: { count?: number; h?: number; m?: number }) => {
+  if (key === "time.lessThanAMinute") return "less than a minute";
+  if (key === "time.oneMinute") return "1 minute";
+  if (key === "time.minutes") return `${options?.count} minutes`;
+  if (key === "time.oneHour") return "1 hour";
+  if (key === "time.hours") return `${options?.count} hours`;
+  if (key === "time.hoursAndMinutes") return `${options?.h}h ${options?.m}m`;
+  return key;
+}) as TFunction;
 
 function baseSession(overrides: Partial<SessionDto> = {}): SessionDto {
   return {
@@ -45,5 +61,16 @@ describe("effectiveElapsedSeconds", () => {
     const nowMs = Date.parse("2026-06-10T12:02:30Z");
 
     expect(effectiveElapsedSeconds(session, nowMs)).toBe(150);
+  });
+});
+
+describe("formatDurationWords", () => {
+  it("formats durations through i18n keys", () => {
+    expect(formatDurationWords(20, t)).toBe("less than a minute");
+    expect(formatDurationWords(60, t)).toBe("1 minute");
+    expect(formatDurationWords(120, t)).toBe("2 minutes");
+    expect(formatDurationWords(3600, t)).toBe("1 hour");
+    expect(formatDurationWords(7200, t)).toBe("2 hours");
+    expect(formatDurationWords(3660, t)).toBe("1h 1m");
   });
 });

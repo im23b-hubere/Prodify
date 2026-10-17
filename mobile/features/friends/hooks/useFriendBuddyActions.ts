@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { Alert } from "react-native";
 
 import { apiJson } from "../../../lib/client";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { FriendEngagementContext } from "./friendEngagementTypes";
 
 export function useFriendBuddyActions(context: FriendEngagementContext) {
@@ -60,6 +61,6 @@ export function useFriendBuddyActions(context: FriendEngagementContext) {
 function showActionError(t: FriendEngagementContext["t"], error: unknown) {
   Alert.alert(
     t("friendsScreen.errorGeneric"),
-    error instanceof Error ? error.message : t("common.tryAgain"),
+    userFacingErrorMessage(error, t, "common.tryAgain"),
   );
 }

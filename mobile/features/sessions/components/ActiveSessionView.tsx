@@ -56,7 +56,7 @@ function ActiveSessionBody({ controller }: { controller: ActiveSessionController
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Animated.View style={[styles.timerWrap, controller.pulseStyle]}>
           <Text style={styles.timer}>{formatSessionClock(controller.elapsed)}</Text>
-          <Text style={styles.subTimer}>{formatDurationWords(controller.elapsed)}</Text>
+          <Text style={styles.subTimer}>{formatDurationWords(controller.elapsed, t)}</Text>
         </Animated.View>
         <View style={styles.insightCard}>
           <Text style={styles.insightText}>{controller.insightLine}</Text>

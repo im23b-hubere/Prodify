@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 
-import { ApiError } from "../../lib/client";
+import { userFacingErrorMessage } from "../../lib/userFacingErrorMessage";
 
 type PaywallAccountActionsOptions = {
   signOut: () => Promise<void>;
@@ -40,13 +40,10 @@ export function usePaywallAccountActions({
           void deleteAccount()
             .then(exitToLogin)
             .catch((error) => {
-              const message =
-                error instanceof ApiError
-                  ? error.message
-                  : error instanceof Error
-                    ? error.message
-                    : t("legal.deleteAccount.errorFallback");
-              Alert.alert(t("legal.deleteAccount.errorTitle"), message);
+              Alert.alert(
+                t("legal.deleteAccount.errorTitle"),
+                userFacingErrorMessage(error, t, "legal.deleteAccount.errorFallback"),
+              );
             });
         },
       },

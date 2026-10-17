@@ -92,7 +92,7 @@ const session: SessionDto = {
   focus_times: [{ skill_id: "beat_making.drums", assigned_seconds: 3480 }],
 };
 
-const CARD = "Production session. eric. 107 minutes.";
+const CARD = "shareCard.a11yLabel";
 /** Opening the sheet draws the first card and its neighbour; the rest are drawn as you swipe. */
 const DRAWN_ON_OPEN = 2;
 
