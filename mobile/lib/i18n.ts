@@ -31,11 +31,16 @@ function detectLocale(): AppLanguage {
   return resolveAppLanguage("system", deviceLanguageCode());
 }
 
+// Jest keeps the English catalog as the default so UI assertions stay stable; preference
+// tests still call applyLanguagePreference / changeLanguage explicitly when they need German.
+const initialLanguage =
+  typeof process !== "undefined" && process.env.JEST_WORKER_ID ? "en" : detectLocale();
+
 // i18next intentionally uses default export instance methods here.
 // eslint-disable-next-line import/no-named-as-default-member
 void i18n.use(initReactI18next).init({
   resources,
-  lng: detectLocale(),
+  lng: initialLanguage,
   fallbackLng: "en",
   supportedLngs: ["en", "de"],
   compatibilityJSON: "v4",

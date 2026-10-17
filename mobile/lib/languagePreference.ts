@@ -22,8 +22,9 @@ export function resolveAppLanguage(
   deviceLanguageCode: string | undefined,
 ): AppLanguage {
   if (preference !== "system") return preference;
-  const code = deviceLanguageCode?.toLowerCase();
-  if (code === "de") return "de";
+  const code = deviceLanguageCode?.toLowerCase() ?? "";
+  // Accept regional German codes from the OS (de, de-DE, de-AT, de-CH).
+  if (code === "de" || code.startsWith("de-")) return "de";
   return "en";
 }
 

@@ -3,7 +3,8 @@ import i18n from "./i18n";
 
 /** BCP-47 tag for Intl / toLocale* formatters from an app language code. */
 export function appLocaleTag(language: AppLanguage): string {
-  return language === "de" ? "de-DE" : "en-US";
+  // en-GB keeps day-first dates (e.g. share cards: "07 OCT 2026") matching the design.
+  return language === "de" ? "de-DE" : "en-GB";
 }
 
 /** Active app UI locale for dates, numbers, and share-card dates. */

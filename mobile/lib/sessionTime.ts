@@ -64,7 +64,7 @@ export function formatSessionListDate(iso: string | null | undefined): string {
   if (!iso?.trim()) return "—";
   const d = parseSessionDate(iso);
   if (!Number.isFinite(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return d.toLocaleDateString(currentAppLocaleTag(), { month: "short", day: "numeric" });
 }
 
 /** Weekday letter for trend chart axis; safe for bad ISO day keys. */

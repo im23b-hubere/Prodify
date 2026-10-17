@@ -11,6 +11,8 @@ import {
 describe("resolveAppLanguage", () => {
   it("uses the device language when preference is system", () => {
     expect(resolveAppLanguage("system", "de")).toBe("de");
+    expect(resolveAppLanguage("system", "de-AT")).toBe("de");
+    expect(resolveAppLanguage("system", "de-ch")).toBe("de");
     expect(resolveAppLanguage("system", "en")).toBe("en");
   });
 

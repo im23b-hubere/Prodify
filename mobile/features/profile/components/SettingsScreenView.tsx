@@ -17,13 +17,15 @@ export function SettingsScreenView({ controller }: { controller: SettingsScreenC
           onBack={navigation.goBack}
           style={styles.settingsTopBar}
         />
-        <LanguagePreferenceControl
-          t={t}
-          preference={language.preference}
-          onChange={(value) => {
-            void language.selectPreference(value);
-          }}
-        />
+        {language.ready ? (
+          <LanguagePreferenceControl
+            t={t}
+            preference={language.preference}
+            onChange={(value) => {
+              void language.selectPreference(value);
+            }}
+          />
+        ) : null}
         <ProfileSettingsSection controller={controller} />
       </ScrollView>
     </SafeAreaView>
