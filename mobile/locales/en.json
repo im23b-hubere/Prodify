@@ -250,6 +250,7 @@
   "legal": {
     "linksPrivacy": "Privacy",
     "linksTerms": "Terms of use",
+    "linksImprint": "Imprint",
     "sectionTitle": "Legal",
     "documentBodyMissing": "Sections for this document are not available in the current language. Try English or update the app.",
     "deleteAccount": {
@@ -267,34 +268,42 @@
       "blocks": [
         {
           "heading": "1. Controller",
-          "body": "The operator of the Prodify services is responsible for processing (see App Store listing or support email). Which environment you use also depends on the API URL configured in the app."
+          "body": "Eric Huber (Zurich, Switzerland) is the controller for personal data processed in connection with Prodify. Contact: support@prodify.app. See also the Imprint."
         },
         {
           "heading": "2. Data we process",
-          "body": "We process account data (email, username), technical data required to run the app, and content you create such as studio sessions (times, types, optional notes/mood/tags), streak and friendship data, and push tokens if you enable notifications."
+          "body": "We process account data (email, username, optional profile picture), authentication data when you use Sign in with Apple or Google, technical data needed to operate and secure the service, studio-session content you create (times, types, optional notes, mood and tags), streak and friendship data, comments and social activity, reports and blocks, subscription and entitlement status, push tokens when notifications are enabled, and crash/performance diagnostics."
         },
         {
           "heading": "3. Purposes and legal bases",
-          "body": "Processing is necessary to perform the contract (GDPR Art. 6(1)(b)), to protect security and prevent abuse (legitimate interests, Art. 6(1)(f)), and — where you consented — for push messages (Art. 6(1)(a))."
+          "body": "We use this data to provide the service, authenticate you, maintain account security, prevent abuse, moderate community content, process subscriptions, deliver notifications you have enabled, and keep the app reliable. Processing is necessary to perform the contract (GDPR Art. 6(1)(b)), to protect security and prevent abuse (legitimate interests, Art. 6(1)(f)), and — where you consented — for push messages (Art. 6(1)(a))."
         },
         {
-          "heading": "4. Personalised reminders",
+          "heading": "4. Sign-in providers",
+          "body": "If you choose Sign in with Apple or Google, the provider verifies your identity and shares an identifier and, depending on your settings, your email address with Prodify so we can create or sign into your account. Apple and Google process data under their own privacy policies."
+        },
+        {
+          "heading": "5. Personalised reminders",
           "body": "Prodify uses your activity patterns to personalize reminders and help you maintain your production routine. For this we only use first-party data from your use of Prodify: when and how long you produce, your streaks, challenges and friend activity on Prodify, and whether a reminder was opened or followed by a session. We do not use your location, WiFi, contacts or data from other apps, and we do not fingerprint your device. You can turn smart notifications or single categories off at any time in the notification settings."
         },
         {
-          "heading": "5. Safety and moderation",
+          "heading": "6. Safety and moderation",
           "body": "When you report or block someone, we store the report (reason, optional note, the reported user or comment, and your account) and the block. Moderators use reports and blocks only to review reports, remove violating content and suspend accounts. The reported user is never told who reported them."
         },
         {
-          "heading": "6. Retention",
-          "body": "We store data while your account exists. After deletion, we remove associated personal data unless a legal retention obligation applies."
+          "heading": "7. Service providers",
+          "body": "We use specialized processors only as needed to operate Prodify: Render (hosting and PostgreSQL database, EU region where configured), Cloudflare R2 (profile picture storage), RevenueCat (subscription status and App Store purchase receipt validation), Apple and Google (sign-in and in-app purchases), Sentry (crash and performance diagnostics, with sensitive fields scrubbed), and Expo Push / platform push services (delivery of notifications you enable)."
         },
         {
-          "heading": "7. Your rights",
+          "heading": "8. Retention",
+          "body": "We store data while your account exists. You can permanently delete your account in the app (Profile → Settings → Delete account). After deletion, we remove associated personal data unless a legal retention obligation applies."
+        },
+        {
+          "heading": "9. Your rights",
           "body": "You have the right to access, rectification, erasure, restriction, portability, and objection where processing relies on legitimate interests. You may withdraw consent at any time with future effect. You may lodge a complaint with a supervisory authority."
         },
         {
-          "heading": "8. Contact",
+          "heading": "10. Contact",
           "body": "To exercise your rights or ask questions, contact support@prodify.app."
         }
       ]
@@ -306,7 +315,7 @@
       "blocks": [
         {
           "heading": "1. Service",
-          "body": "Prodify helps you track and analyse studio sessions, streaks, and social features among friends. Features and availability may evolve."
+          "body": "Prodify helps you track and analyse studio sessions, streaks, and social features among friends. Prodify requires an active subscription. Features and availability may evolve."
         },
         {
           "heading": "2. Account",
@@ -322,7 +331,7 @@
         },
         {
           "heading": "5. Subscriptions",
-          "body": "Prodify requires an active subscription. Payment is charged to your Apple ID account at confirmation of purchase. Subscriptions renew automatically unless canceled at least 24 hours before the end of the current billing period. Manage or cancel in Settings > Apple ID > Subscriptions."
+          "body": "Prodify requires an active subscription. Payment is charged to your Apple ID account at confirmation of purchase. Subscriptions renew automatically unless canceled at least 24 hours before the end of the current billing period. Manage or cancel in Settings > Apple ID > Subscriptions. Use Restore Purchases in Prodify after reinstalling or changing devices."
         },
         {
           "heading": "6. Availability",
@@ -330,7 +339,7 @@
         },
         {
           "heading": "7. Liability",
-          "body": "To the extent permitted by law, we are liable for intent and gross negligence. For slight negligence we are liable only for breaches of essential contractual duties and limited to typical, foreseeable damage."
+          "body": "Mandatory consumer rights remain unaffected. To the extent permitted by law, we are liable for intent and gross negligence. For slight negligence we are liable only for breaches of essential contractual duties and limited to typical, foreseeable damage."
         },
         {
           "heading": "8. Changes",
@@ -338,7 +347,34 @@
         },
         {
           "heading": "9. Contact",
-          "body": "Questions about these terms or a report: support@prodify.app."
+          "body": "Questions about these terms or a report: support@prodify.app. Provider details are in the Imprint."
+        }
+      ]
+    },
+    "imprint": {
+      "screenTitle": "Imprint",
+      "updated": "Last updated: October 2026",
+      "intro": "Legal notice for the Prodify mobile application and related services.",
+      "blocks": [
+        {
+          "heading": "1. Service provider",
+          "body": "Eric Huber operates the Prodify mobile application and related backend services as a sole proprietor."
+        },
+        {
+          "heading": "2. Address",
+          "body": "Zurich, Switzerland"
+        },
+        {
+          "heading": "3. Contact",
+          "body": "Email: support@prodify.app. For privacy rights requests use the same address."
+        },
+        {
+          "heading": "4. Responsible for content",
+          "body": "Eric Huber is responsible for the content of this app and the associated support pages within the meaning of applicable identification rules (including Swiss UWG and, where relevant, German TMG)."
+        },
+        {
+          "heading": "5. Dispute resolution",
+          "body": "The European Commission provides a platform for online dispute resolution at https://ec.europa.eu/consumers/odr. We are not obliged and not willing to participate in dispute resolution proceedings before a consumer arbitration board."
         }
       ]
     }

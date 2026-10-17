@@ -1,6 +1,7 @@
 import {
   Activity,
   Bell,
+  Building2,
   ChevronRight,
   FileText,
   LogOut,
@@ -19,7 +20,12 @@ type Props = {
   controller: Pick<SettingsScreenController, "t" | "accountActions"> & {
     navigation: Pick<
       SettingsScreenController["navigation"],
-      "openNotifications" | "openPrivacy" | "openTerms" | "openBlockedUsers" | "openEngagementDebug"
+      | "openNotifications"
+      | "openPrivacy"
+      | "openTerms"
+      | "openImprint"
+      | "openBlockedUsers"
+      | "openEngagementDebug"
     >;
   };
 };
@@ -82,6 +88,12 @@ export function ProfileSettingsSection({ controller }: Props) {
           label={t("legal.linksTerms")}
           Icon={FileText}
           onPress={navigation.openTerms}
+        />
+        <View style={styles.legalDivider} />
+        <SettingsLink
+          label={t("legal.linksImprint")}
+          Icon={Building2}
+          onPress={navigation.openImprint}
         />
         {__DEV__ ? (
           <>

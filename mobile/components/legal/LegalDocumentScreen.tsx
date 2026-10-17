@@ -9,7 +9,7 @@ import { returnTo } from "../../lib/stackNavigation";
 import { colors, radii, spacing, typography } from "../../constants/theme";
 import { ScreenTopBar } from "../ui/ScreenTopBar";
 
-type LegalDoc = "privacy" | "terms";
+type LegalDoc = "privacy" | "terms" | "imprint";
 
 type Block = { heading: string; body: string };
 

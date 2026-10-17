@@ -1,8 +1,9 @@
 # App Store Privacy Disclosure Audit
 
-Date: 2026-08-12
+Date: 2026-10-17
 
 Scope: Prodify iOS 1.0.1 source and installed native dependencies.
+Rechecked after Sign in with Apple / Google and engagement personalisation.
 
 ## Tracking
 
@@ -14,10 +15,12 @@ Scope: Prodify iOS 1.0.1 source and installed native dependencies.
 
 ## Data linked to the user
 
-- Contact Info: email address (account creation and authentication).
+- Contact Info: email address (account creation, email/password auth, and Sign in with
+  Apple / Google when the provider shares an email).
 - User Content: username, optional profile picture, session notes, mood/tags, comments,
   goals, and social activity submitted by the user.
-- Identifiers: internal account/user identifier and push token.
+- Identifiers: internal account/user identifier, Sign in with Apple / Google subject
+  identifiers, and push token.
 - Purchases: subscription status and product/entitlement information through Apple and RevenueCat.
 - Usage Data / Product Interaction: sessions, streaks, goals, screen-related breadcrumbs,
   feature events, and whether a push was opened or followed by a session, used to provide
