@@ -161,6 +161,12 @@ export const profileScreenStyles = StyleSheet.create({
   badgesRow: {
     gap: spacing.sm,
   },
+  languageLabel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+    marginBottom: spacing.sm,
+  },
   settingsCard: {
     borderRadius: radii.lg,
     borderWidth: 1,

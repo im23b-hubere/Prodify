@@ -4,6 +4,8 @@ import type { TFunction } from "i18next";
 import { SettingsScreenView } from "../../../features/profile/components/SettingsScreenView";
 import type { SettingsScreenController } from "../../../features/profile/hooks/useSettingsScreenController";
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
 jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
   const { View } = require("react-native");
@@ -21,6 +23,11 @@ function createController(): SettingsScreenController {
   return {
     t: ((key: string) => key) as unknown as TFunction,
     accountActions: { confirmSignOut: jest.fn(), confirmDeleteAccount: jest.fn() },
+    language: {
+      preference: "system",
+      ready: true,
+      selectPreference: jest.fn(async () => undefined),
+    },
     navigation: {
       goBack: jest.fn(),
       openNotifications: jest.fn(),
@@ -34,11 +41,14 @@ function createController(): SettingsScreenController {
 }
 
 describe("SettingsScreenView", () => {
-  it("offers notifications, legal links and the account actions", () => {
+  it("offers language, notifications, legal links and the account actions", () => {
     const controller = createController();
     render(<SettingsScreenView controller={controller} />);
 
     expect(screen.getByText("profile.settingsTitle")).toBeTruthy();
+    expect(screen.getByLabelText("profile.languageA11y")).toBeTruthy();
+    fireEvent.press(screen.getByText("profile.languageGerman"));
+    expect(controller.language.selectPreference).toHaveBeenCalledWith("de");
     fireEvent.press(screen.getByLabelText("profile.manageNotifications"));
     fireEvent.press(screen.getByLabelText("legal.linksPrivacy"));
     fireEvent.press(screen.getByLabelText("legal.linksTerms"));

@@ -5,6 +5,7 @@ import { colors } from "../../../constants/theme";
 import { DurationWheelSheet } from "../../../features/sessions/components/DurationWheelSheet";
 import { WHEEL_ROW_HEIGHT } from "../../../features/sessions/durationWheel";
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 jest.mock("react-native-gesture-handler", () => require("../../../test/gestureHandlerStub"));
 jest.mock("expo-haptics", () => ({
   selectionAsync: jest.fn().mockResolvedValue(undefined),
