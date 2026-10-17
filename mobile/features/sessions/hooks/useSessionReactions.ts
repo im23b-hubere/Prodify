@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLatestRef } from "../../../hooks/useLatestRef";
 import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import { fetchSessionReactions, toggleSessionReaction } from "../../../lib/social";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { SocialReactionDto } from "../../../types/friends";
 import { validSessionId } from "./sessionSocialUtils";
 
@@ -84,7 +85,7 @@ export function useSessionReactions(
         Haptics.selectionAsync().catch(() => undefined);
       } catch (error) {
         setReactionsError(
-          error instanceof Error ? error.message : t("sessionDetail.reactionToggleFailed"),
+          userFacingErrorMessage(error, t, "sessionDetail.reactionToggleFailed"),
         );
       } finally {
         setReactionBusyEmoji(null);

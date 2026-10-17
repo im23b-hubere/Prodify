@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { EngagementDebug } from "../../lib/engagementDebug";
 
 const weekdayFormatter = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
@@ -19,9 +21,14 @@ export function formatWeekday(weekday: number): string {
   return weekdayFormatter.format(new Date(MONDAY_UTC + weekday * DAY_MS));
 }
 
-export function formatWindow(window: EngagementDebug["production_window"]): string {
+export function formatWindow(
+  window: EngagementDebug["production_window"],
+  t: TFunction,
+): string {
   const days =
-    window.weekdays.length === 7 ? "Every day" : window.weekdays.map(formatWeekday).join(", ");
+    window.weekdays.length === 7
+      ? t("engagementDebug.everyDay")
+      : window.weekdays.map(formatWeekday).join(", ");
   return `${days} ${formatHour(window.start_hour)}–${formatHour(window.end_hour)}`;
 }
 

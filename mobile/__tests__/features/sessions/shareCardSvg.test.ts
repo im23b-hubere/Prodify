@@ -1,9 +1,32 @@
+import type { TFunction } from "i18next";
+
 import { colors } from "../../../constants/theme";
 import { fontFamily } from "../../../constants/fonts";
 import { renderCardSvg } from "../../../features/sessions/share/renderCardSvg";
 import { sessionShareData } from "../../../features/sessions/share/sessionShareData";
 import { TEMPLATE_IDS } from "../../../features/sessions/share/types";
 import type { SessionDto } from "../../../types/session";
+
+const t = ((key: string, options?: { count?: number; duration?: string; h?: number; m?: number }) => {
+  const catalog: Record<string, string> = {
+    "shareCard.productionTime": "Production time",
+    "shareCard.inTheStudio": "IN THE STUDIO",
+    "shareCard.inTheStudioSentence": "In the studio.",
+    "shareCard.sessionComplete": "SESSION COMPLETE",
+    "shareCard.builtOneSession": "BUILT, ONE SESSION AT A TIME.",
+    "shareCard.makeTime": "MAKE TIME.",
+    "shareCard.makeSomething": "MAKE SOMETHING.",
+    "shareCard.activityProduction": "Production",
+    "shareCard.activityOther": "Other",
+  };
+  if (key === "shareCard.dayStreak") return `${options?.count} day streak`;
+  if (key === "shareCard.svgTitle") return `Prodify session — ${options?.duration}`;
+  if (key === "shareCard.durationSeconds") return `${options?.count}s`;
+  if (key === "shareCard.durationMinutes") return `${options?.count}m`;
+  if (key === "shareCard.durationHoursMinutes") return `${options?.h}h ${options?.m}m`;
+  if (key.startsWith("skills.")) return key;
+  return catalog[key] ?? key;
+}) as TFunction;
 
 const session: SessionDto = {
   id: 4,
@@ -20,11 +43,11 @@ const session: SessionDto = {
 };
 
 describe("share card svg", () => {
-  const data = sessionShareData(session, "erix", ((key: string) => key) as never);
+  const data = sessionShareData(session, "erix", t);
 
   it("uses the loaded Prodify fonts and accent on every template", () => {
     for (const template of TEMPLATE_IDS) {
-      const svg = renderCardSvg(data, { template });
+      const svg = renderCardSvg(data, { template }, t);
       expect(svg).toContain(`font-family="${fontFamily.heading}"`);
       expect(svg).toContain(`font-family="${fontFamily.body}"`);
       expect(svg).toContain(colors.primary);
@@ -35,12 +58,12 @@ describe("share card svg", () => {
 
   it("only uses SVG features that react-native-svg can draw on iOS", () => {
     for (const template of TEMPLATE_IDS) {
-      expect(renderCardSvg(data, { template })).not.toMatch(/feDropShadow|filter=/);
+      expect(renderCardSvg(data, { template }, t)).not.toMatch(/feDropShadow|filter=/);
     }
   });
 
   it("keeps the transparent card free of a background fill", () => {
-    const svg = renderCardSvg(data, { template: "transparent" });
+    const svg = renderCardSvg(data, { template: "transparent" }, t);
     expect(svg).not.toContain(`fill="${colors.background}"`);
   });
 
@@ -50,25 +73,29 @@ describe("share card svg", () => {
     expect(data.activities.reduce((sum, row) => sum + row.durationSeconds, 0)).toBeLessThanOrEqual(
       6420,
     );
-    expect(renderCardSvg(data, { template: "mono" })).toContain("@erix");
+    expect(renderCardSvg(data, { template: "mono" }, t)).toContain("@erix");
   });
 
   it("leaves weights to the app's single-weight font files, but sets them for generic families", () => {
     for (const template of TEMPLATE_IDS) {
-      expect(renderCardSvg(data, { template })).not.toContain("font-weight=");
+      expect(renderCardSvg(data, { template }, t)).not.toContain("font-weight=");
     }
-    const generic = renderCardSvg(data, {
-      template: "isometric",
-      displayFont: "Syne",
-      bodyFont: "DM Sans",
-      bodyMediumFont: "DM Sans Medium",
-    });
+    const generic = renderCardSvg(
+      data,
+      {
+        template: "isometric",
+        displayFont: "Syne",
+        bodyFont: "DM Sans",
+        bodyMediumFont: "DM Sans Medium",
+      },
+      t,
+    );
     expect(generic).toContain('font-weight="700"');
   });
 
   it("draws Mono as a black or a warm white card", () => {
-    const dark = renderCardSvg(data, { template: "mono" });
-    const light = renderCardSvg(data, { template: "mono", monoTheme: "light" });
+    const dark = renderCardSvg(data, { template: "mono" }, t);
+    const light = renderCardSvg(data, { template: "mono", monoTheme: "light" }, t);
     expect(dark).toContain(`fill="${colors.background}"`);
     expect(light).toContain('fill="#F4F1EB"');
     expect(light).toContain('fill="#0B0B0C"');
@@ -77,7 +104,15 @@ describe("share card svg", () => {
 
   it("leaves the repeated Production line off a transparent card without activities", () => {
     const bare = { ...data, activities: [] };
-    expect(renderCardSvg(bare, { template: "transparent" })).not.toContain(">Production</text>");
-    expect(renderCardSvg(data, { template: "transparent" })).toContain("prodify");
+    expect(renderCardSvg(bare, { template: "transparent" }, t)).not.toContain(">Production</text>");
+    expect(renderCardSvg(data, { template: "transparent" }, t)).toContain("prodify");
+  });
+
+  it("pulls card chrome copy through t()", () => {
+    const echo = renderCardSvg(data, { template: "echo" }, t);
+    expect(echo).toContain("MAKE TIME.");
+    expect(echo).toContain("In the studio.");
+    expect(echo).toContain("Prodify session —");
+    expect(renderCardSvg(data, { template: "mono" }, t)).toContain("Production time");
   });
 });

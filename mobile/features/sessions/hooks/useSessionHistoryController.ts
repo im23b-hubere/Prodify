@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
 import { apiJson } from "../../../lib/client";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { StatsPeriod } from "../../stats/types";
 import { filterSessionsByStatsPeriod } from "../utils/sessionHistoryFilter";
 import { useSessionHistory } from "./useSessionHistory";
@@ -46,7 +47,7 @@ export function useSessionHistoryController() {
       try {
         await apiJson(`/sessions/item/${sessionId}`, { token, method: "DELETE" });
       } catch (error) {
-        setError(error instanceof Error ? error.message : t("sessionHistory.deleteFailed"));
+        setError(userFacingErrorMessage(error, t, "sessionHistory.deleteFailed"));
         await load({ reset: true });
       }
     },

@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useRef } from "react";
 
 import { isScreenDataStale } from "../../../lib/screenDataStale";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import { loadFriendsDashboard } from "../services/friendsDashboardApi";
 import {
   resetFriendsAccountOwnedState,
@@ -33,7 +34,7 @@ function isCurrentRequest(
 }
 
 function dashboardLoadError(error: unknown, t: TFunction) {
-  return error instanceof Error ? error.message : t("friendsScreen.loadError");
+  return userFacingErrorMessage(error, t, "friendsScreen.loadError");
 }
 
 export function useFriendsDashboardData({ token, userId, periodParam, t, state }: Params) {

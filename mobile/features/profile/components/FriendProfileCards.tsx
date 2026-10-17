@@ -273,7 +273,9 @@ function SessionRow({
       {session.mood_level != null && isMoodLevel(session.mood_level) ? (
         <MoodIcon level={session.mood_level} size={16} />
       ) : null}
-      <Text style={styles.sessionDuration}>{formatDurationWords(session.duration_seconds)}</Text>
+      <Text style={styles.sessionDuration}>
+        {formatDurationWords(session.duration_seconds, t)}
+      </Text>
     </Pressable>
   );
 }

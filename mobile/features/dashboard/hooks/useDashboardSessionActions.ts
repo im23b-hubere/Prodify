@@ -10,6 +10,7 @@ import { sessionSummaryHref } from "../../../lib/stackNavigation";
 import { debugLog } from "../../../lib/debugLog";
 import { setWeeklyGoal } from "../../../lib/goals";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../../lib/sessionTime";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { SessionDto } from "../../../types/session";
 import type { StreakOverviewDto } from "../../../types/streak";
 import { useSessionPresenceCheckIn } from "../../sessions/hooks/useSessionPresenceCheckIn";
@@ -95,7 +96,7 @@ function useWeeklyGoalAction({ refreshDashboard, setError, t, token }: Options) 
         await refreshDashboard({ force: true });
       } catch (error) {
         ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
-        setError(error instanceof Error ? error.message : t("dashboard.weeklyGoalSaveFailed"));
+        setError(userFacingErrorMessage(error, t, "dashboard.weeklyGoalSaveFailed"));
       } finally {
         setGoalSaving(false);
       }
@@ -126,7 +127,7 @@ function useFreezeActions({
       ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
       Alert.alert(
         t("dashboard.freezeErrorTitle"),
-        error instanceof Error ? error.message : t("dashboard.freezeTryAgain"),
+        userFacingErrorMessage(error, t, "dashboard.freezeTryAgain"),
       );
     } finally {
       setFreezeBusy(false);
@@ -166,7 +167,7 @@ function useSessionCompletionActions(options: Options, router: Router) {
         return true;
       } catch (error) {
         ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
-        const message = error instanceof Error ? error.message : t("dashboard.stopFailed");
+        const message = userFacingErrorMessage(error, t, "dashboard.stopFailed");
         debugLog("session", "stop_failure", { sessionId: session.id, message });
         setError(message);
         await loadSessions().catch(() => undefined);
@@ -180,7 +181,7 @@ function useSessionCompletionActions(options: Options, router: Router) {
   );
   const confirmStop = useCallback(() => {
     if (!active || !token || inFlight.current) return;
-    const duration = formatDurationWords(effectiveElapsedSeconds(active, Date.now()));
+    const duration = formatDurationWords(effectiveElapsedSeconds(active, Date.now()), t);
     Alert.alert(t("dashboard.endSessionTitle"), t("dashboard.endSessionWorked", { duration }), [
       { text: t("dashboard.keepGoing"), style: "cancel" },
       {
@@ -202,7 +203,7 @@ function useDismissSession({ loadSessions, setError, t, token }: Options) {
         await apiJson(`/sessions/item/${sessionId}`, { token, method: "DELETE" });
         await loadSessions();
       } catch (error) {
-        setError(error instanceof Error ? error.message : t("dashboard.deleteFailed"));
+        setError(userFacingErrorMessage(error, t, "dashboard.deleteFailed"));
       }
     },
     [loadSessions, setError, t, token],

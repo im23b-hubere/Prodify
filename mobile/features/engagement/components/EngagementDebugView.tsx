@@ -290,8 +290,8 @@ function ProfileSection({ debug }: { debug: EngagementDebug }) {
           label={t("engagementDebug.window")}
           value={
             window.is_default
-              ? t("engagementDebug.defaultWindow", { window: formatWindow(window) })
-              : formatWindow(window)
+              ? t("engagementDebug.defaultWindow", { window: formatWindow(window, t) })
+              : formatWindow(window, t)
           }
         />
       </View>

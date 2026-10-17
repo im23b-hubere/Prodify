@@ -1,11 +1,17 @@
 import type { TFunction } from "i18next";
 
+import i18n from "../../../lib/i18n";
 import { skillFocusText } from "../../../lib/skillI18n";
 import type { SessionDto } from "../../../types/session";
 import type { SessionData } from "./types";
 
 export const SHARE_EXPORT_WIDTH = 1080;
 export const SHARE_EXPORT_HEIGHT = 1920;
+
+function shareDateLocale(): string {
+  const language = i18n.resolvedLanguage ?? i18n.language ?? "en";
+  return language.startsWith("en") ? "en-GB" : language;
+}
 
 /** Map a saved session onto the share card. Streak is omitted: this screen does not load it. */
 export function sessionShareData(
@@ -19,7 +25,7 @@ export function sessionShareData(
     ? ""
     : started
         // The producer's own calendar day: an evening session must not show tomorrow's date.
-        .toLocaleDateString("en-GB", {
+        .toLocaleDateString(shareDateLocale(), {
           day: "2-digit",
           month: "short",
           year: "numeric",

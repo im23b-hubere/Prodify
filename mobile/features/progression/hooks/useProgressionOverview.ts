@@ -6,6 +6,7 @@ import { useLatestRef } from "../../../hooks/useLatestRef";
 import { PROGRESSION_NAMED_LEVEL_MAX } from "../../../lib/progressionLevels";
 import { isScreenDataStale } from "../../../lib/screenDataStale";
 import { fetchProgression, syncProgression } from "../../../lib/progressionSync";
+import { userFacingErrorOrFallback } from "../../../lib/userFacingErrorMessage";
 import type { ProgressionDto } from "../../../types/outcomes";
 
 type LoadOptions = { silent?: boolean; sync?: boolean; force?: boolean };
@@ -79,7 +80,7 @@ export function useProgressionOverview(token: string | null, loadErrorMessage: s
       } catch (error) {
         setProgression(null);
         setLevelCatalog([]);
-        setLoadError(error instanceof Error ? error.message : loadErrorMessage);
+        setLoadError(userFacingErrorOrFallback(error, loadErrorMessage));
       } finally {
         setLoadingProgression(false);
         setLoadingCatalog(false);

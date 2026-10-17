@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { Alert } from "react-native";
 
 import { apiJson } from "../../../lib/client";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { FriendActivityDto } from "../../../types/friends";
 import type { FriendActionContext } from "./friendEngagementTypes";
 
@@ -72,6 +73,6 @@ function useStreakSupport({ load, state, t, token, userId }: FriendActionContext
 function showMomentumError(t: FriendActionContext["t"], error: unknown) {
   Alert.alert(
     t("friendsScreen.errorGeneric"),
-    error instanceof Error ? error.message : t("common.tryAgain"),
+    userFacingErrorMessage(error, t, "common.tryAgain"),
   );
 }

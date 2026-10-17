@@ -6,6 +6,10 @@ import { apiJson } from "../../../lib/client";
 import { useAuthScopedReset } from "../../../lib/authScopedReset";
 import { isScreenDataStale } from "../../../lib/screenDataStale";
 import { tryParseHeatmapDays, tryParseSessionStatsDto } from "../../../lib/statsDto";
+import {
+  userFacingErrorMessage,
+  userFacingErrorOrFallback,
+} from "../../../lib/userFacingErrorMessage";
 import type { SessionStatsDto } from "../../../types/session";
 import type { StreakMilestonesDto } from "../../../types/streak";
 import type { HeatmapDay } from "../../stats/types";
@@ -19,9 +23,13 @@ async function loadProfileSnapshot(token: string) {
   ]);
 }
 
-function rejectedMessage(result: PromiseSettledResult<unknown>, fallback: string): string | null {
+function rejectedMessage(
+  result: PromiseSettledResult<unknown>,
+  t: ReturnType<typeof useTranslation>["t"],
+  fallbackKey: string,
+): string | null {
   if (result.status !== "rejected") return null;
-  return result.reason instanceof Error ? result.reason.message : fallback;
+  return userFacingErrorMessage(result.reason, t, fallbackKey);
 }
 
 function parseProfileSnapshot(
@@ -30,8 +38,8 @@ function parseProfileSnapshot(
 ) {
   const [stats, milestones, heatmap] = results;
   const errors = [
-    rejectedMessage(stats, t("profile.errorLoadProfile")),
-    rejectedMessage(milestones, t("profile.errorLoadMilestones")),
+    rejectedMessage(stats, t, "profile.errorLoadProfile"),
+    rejectedMessage(milestones, t, "profile.errorLoadMilestones"),
   ].filter((message): message is string => Boolean(message));
   return {
     stats: stats.status === "fulfilled" ? tryParseSessionStatsDto(stats.value) : null,
@@ -64,7 +72,7 @@ function shouldSkipLoad(force: boolean | undefined, lastFetch: number): boolean 
 }
 
 function profileErrorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+  return userFacingErrorOrFallback(error, fallback);
 }
 
 export function useProfileData(token?: string | null, userId?: number | null) {

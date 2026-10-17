@@ -5,6 +5,7 @@ import { Alert } from "react-native";
 
 import { useAuth } from "../../../context/AuthContext";
 import { apiJson } from "../../../lib/client";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 
 /** Sends a friend request from a locked profile, then lets the caller reload the relationship. */
 export function useSendFriendRequest(onSent: () => Promise<void>) {
@@ -23,7 +24,7 @@ export function useSendFriendRequest(onSent: () => Promise<void>) {
       } catch (error) {
         Alert.alert(
           t("friendsScreen.couldNotSend"),
-          error instanceof Error ? error.message : t("friendsScreen.couldNotSend"),
+          userFacingErrorMessage(error, t, "friendsScreen.couldNotSend"),
         );
       } finally {
         setIsSending(false);

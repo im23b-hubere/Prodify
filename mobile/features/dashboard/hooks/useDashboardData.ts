@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import { syncWeeklyRecapReminder } from "../../../lib/weeklyRecapNotifications";
 import { useDashboardAuthReset } from "./dashboardAuthReset";
 import { useDashboardSessionsData } from "./useDashboardSessionsData";
@@ -62,7 +63,7 @@ export function useDashboardData(token: string | null, userId: number | null | u
             lastDashboardFetch.current = Date.now();
           });
         } catch (error) {
-          setError(error instanceof Error ? error.message : t("dashboard.loadFailed"));
+          setError(userFacingErrorMessage(error, t, "dashboard.loadFailed"));
         } finally {
           if (withLoading) setLoadInFlight(false);
         }

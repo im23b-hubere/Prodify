@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/AuthContext";
 import { apiJson } from "../../../lib/client";
 import { fetchBuddyStatus } from "../../../lib/social";
+import { userFacingErrorOrFallback } from "../../../lib/userFacingErrorMessage";
 import type { FriendCommitmentDto } from "../../../types/friends";
 
 export type FriendStatus = "self" | "none" | "pending" | "accepted";
@@ -114,7 +115,7 @@ async function loadProfileData(
 }
 
 function loadErrorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+  return userFacingErrorOrFallback(error, fallback);
 }
 
 function useFriendProfileLifecycle(load: () => Promise<void>) {

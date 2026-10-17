@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 
 import { apiJson } from "../../../lib/client";
 import { parseSessionList, tryParseSessionDto } from "../../../lib/sessionDto";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { SessionDto } from "../../../types/session";
 import { useDashboardAuthReset } from "./dashboardAuthReset";
 
@@ -47,7 +48,7 @@ export function useDashboardSessionsData(
       setActiveResolved(true);
     } catch (error) {
       if (sequence !== loadSequence.current) return;
-      setError(error instanceof Error ? error.message : t("dashboard.loadSessionsFailed"));
+      setError(userFacingErrorMessage(error, t, "dashboard.loadSessionsFailed"));
       setActiveResolved(false);
     }
   }, [token, t]);

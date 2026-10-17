@@ -56,7 +56,7 @@ export function useStopActiveSession(options: StopSessionOptions) {
     const sessionId = session.id;
     Alert.alert(
       t("dashboard.endSessionTitle"),
-      t("dashboard.endSessionWorked", { duration: formatDurationWords(elapsed) }),
+      t("dashboard.endSessionWorked", { duration: formatDurationWords(elapsed, t) }),
       [
         { text: t("dashboard.keepGoing"), style: "cancel" },
         {

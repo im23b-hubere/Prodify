@@ -5,6 +5,7 @@ import { Alert } from "react-native";
 
 import { apiJson } from "../../../lib/client";
 import { tryParseSessionDto } from "../../../lib/sessionDto";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import { DEFAULT_SESSION_TYPE, type SessionDto, type SessionType } from "../../../types/session";
 import { focusReflectionPayload } from "../focusReflectionPayload";
 import {
@@ -130,7 +131,7 @@ export function useSessionEditor({
       onSessionUpdated(updatedSession);
       onClose();
     } catch (error) {
-      onError(error instanceof Error ? error.message : t("sessionDetail.saveFailed"));
+      onError(userFacingErrorMessage(error, t, "sessionDetail.saveFailed"));
     } finally {
       setBusy(false);
     }
@@ -162,7 +163,7 @@ export function useSessionEditor({
             );
             onClose();
           } catch (error) {
-            onError(error instanceof Error ? error.message : t("sessionDetail.deleteFailed"));
+            onError(userFacingErrorMessage(error, t, "sessionDetail.deleteFailed"));
           }
         },
       },

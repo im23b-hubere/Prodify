@@ -1,5 +1,6 @@
 import { ChevronLeft } from "lucide-react-native";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,6 +33,7 @@ export function OnboardingQuizShell({
   children,
   footer,
 }: Props) {
+  const { t } = useTranslation();
   const progress = Math.max(0, Math.min(1, (stepIndex + 1) / totalSteps));
 
   return (
@@ -40,7 +42,7 @@ export function OnboardingQuizShell({
         {onBack ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={t("common.back")}
             hitSlop={12}
             style={styles.iconBtn}
             onPress={onBack}
