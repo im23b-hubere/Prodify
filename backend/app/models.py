@@ -2,7 +2,20 @@ import enum
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Enum as SAEnum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    event,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -108,6 +121,7 @@ class ProductionSession(Base):
             sqlite_where=text("stopped_at IS NULL AND deleted_at IS NULL"),
             postgresql_where=text("stopped_at IS NULL AND deleted_at IS NULL"),
         ),
+        Index("idx_sessions_user_stopped", "user_id", "stopped_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -278,7 +292,12 @@ class UserAchievement(Base):
 
 class Friendship(Base):
     __tablename__ = "friendships"
-    __table_args__ = (UniqueConstraint("user_id", "friend_id", name="uq_friendship_pair"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "friend_id", name="uq_friendship_pair"),
+        CheckConstraint("user_id <> friend_id", name="ck_friendship_no_self"),
+        Index("idx_friendships_status_user", "status", "user_id"),
+        Index("idx_friendships_status_friend", "status", "friend_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -289,6 +308,22 @@ class Friendship(Base):
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+@event.listens_for(Friendship.__table__, "after_create")
+def _create_friendship_canonical_pair_index(target, connection, **_kwargs) -> None:
+    """Block A→B and B→A as two rows (SQLite min/max, PostgreSQL LEAST/GREATEST)."""
+    pair_expr = (
+        "LEAST(user_id, friend_id), GREATEST(user_id, friend_id)"
+        if connection.dialect.name == "postgresql"
+        else "min(user_id, friend_id), max(user_id, friend_id)"
+    )
+    connection.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_friendship_canonical_pair "
+            f"ON friendships ({pair_expr})"
+        )
+    )
 
 
 class UserSubscription(Base):

@@ -2,6 +2,7 @@ import logging
 from typing import Literal
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -75,7 +76,14 @@ def send_friend_request(db: Session, user_id: int, username: str) -> Friendship:
     )
     db.add(friendship)
     track_event(db, "invite_sent", user_id, {"friend_id": target.id})
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        existing = _friendship_between(db, user_id, target.id)
+        if existing is not None:
+            _raise_existing_relationship(existing, user_id)
+        raise FriendshipOperationError("friendship conflict") from error
     db.refresh(friendship)
     sender = db.get(User, user_id)
     if sender is not None:
@@ -123,9 +131,15 @@ def list_incoming_requests(db: Session, user_id: int) -> list[FriendIncomingPubl
         )
         .order_by(Friendship.created_at.desc())
     ).all()
+    requesters = {
+        user.id: user
+        for user in db.scalars(
+            select(User).where(User.id.in_([row.user_id for row in friendships]))
+        ).all()
+    }
     requests: list[FriendIncomingPublic] = []
     for friendship in friendships:
-        requester = db.get(User, friendship.user_id)
+        requester = requesters.get(friendship.user_id)
         if requester is not None:
             requests.append(
                 FriendIncomingPublic(

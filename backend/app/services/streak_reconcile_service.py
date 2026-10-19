@@ -121,9 +121,40 @@ def compute_streak_counts_for_display(db: Session, user_id: int) -> tuple[int, i
     user = db.get(User, user_id)
     if user is None:
         return 0, 0
-    streak = db.scalar(select(Streak).where(Streak.user_id == user_id))
-    snapshot = _snapshot(db, user, streak, calendar_for(user))
-    return snapshot.current_streak, snapshot.longest_streak
+    return compute_streak_counts_for_users(db, [user]).get(user.id, (0, 0))
+
+
+def compute_streak_counts_for_users(db: Session, users: list[User]) -> dict[int, tuple[int, int]]:
+    """Batch streak counts for many users with two queries instead of one per user."""
+    if not users:
+        return {}
+
+    user_ids = [user.id for user in users]
+    streaks = {
+        row.user_id: row
+        for row in db.scalars(select(Streak).where(Streak.user_id.in_(user_ids))).all()
+    }
+    started_by_user: dict[int, list] = {user_id: [] for user_id in user_ids}
+    for user_id, started_at in db.execute(
+        select(ProductionSession.user_id, ProductionSession.started_at).where(
+            ProductionSession.user_id.in_(user_ids),
+            ProductionSession.deleted_at.is_(None),
+            ProductionSession.duration_seconds.is_not(None),
+        )
+    ).all():
+        started_by_user[int(user_id)].append(started_at)
+
+    counts: dict[int, tuple[int, int]] = {}
+    for user in users:
+        calendar = calendar_for(user)
+        streak = streaks.get(user.id)
+        session_days = [calendar.day_key_of(value) for value in started_by_user.get(user.id, [])]
+        frozen_days = parse_frozen_json(streak.frozen_day_keys) if streak else []
+        merged_days = sorted(set(session_days) | set(frozen_days))
+        current = compute_current_streak(merged_days, calendar.today)
+        stored_longest = int(streak.longest_streak or 0) if streak else 0
+        counts[user.id] = (current, max(stored_longest, best_streak_run(merged_days), current))
+    return counts
 
 
 def _refresh_last_session_date(db: Session, user_id: int, streak: Streak) -> None:

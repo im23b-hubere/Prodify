@@ -3,12 +3,22 @@
 import json
 from datetime import timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import GrowthEvent, ProductionSession, SocialComment, SocialReaction, Streak, User, utcnow
+from app.models import (
+    BuddyRelationship,
+    BuddyStatus,
+    GrowthEvent,
+    ProductionSession,
+    SocialComment,
+    SocialCommitment,
+    SocialReaction,
+    Streak,
+    User,
+    utcnow,
+)
 from app.schemas import FriendActivityPublic
-from app.services.commitment_service import is_commitment_visible_to
 from app.services.friend_graph import friend_user_ids
 from app.services.streak_status_service import streak_status_for_days
 from app.services.user_block_service import hidden_user_ids
@@ -22,7 +32,7 @@ def build_friend_activity(db: Session, viewer_id: int, requested_limit: int) -> 
     friend_ids = friend_user_ids(db, viewer_id)
     user_ids = [viewer_id, *friend_ids]
     sessions = _recent_sessions(db, user_ids, limit)
-    events = [event for event in _recent_events(db, user_ids, limit) if _is_event_visible(db, event, viewer_id)]
+    events = _visible_events(db, _recent_events(db, user_ids, limit), viewer_id)
     reactions, comments, viewer_reactions = _session_engagement(db, sessions, viewer_id)
     users = _user_metadata(db, user_ids)
 
@@ -83,17 +93,69 @@ def _recent_events(db: Session, user_ids: list[int], limit: int) -> list[GrowthE
     )
 
 
-def _is_event_visible(db: Session, event: GrowthEvent, viewer_id: int) -> bool:
-    if event.event_name != "commitment_published" or event.user_id == viewer_id:
-        return True
-    properties = _event_properties(event)
-    return is_commitment_visible_to(
+def _visible_events(db: Session, events: list[GrowthEvent], viewer_id: int) -> list[GrowthEvent]:
+    """Keep events the viewer may see; commitment checks are batched to avoid N+1 lookups."""
+    always_visible: list[GrowthEvent] = []
+    commitment_events: list[tuple[GrowthEvent, int, str, str]] = []
+    for event in events:
+        if event.event_name != "commitment_published" or event.user_id == viewer_id:
+            always_visible.append(event)
+            continue
+        properties = _event_properties(event)
+        commitment_events.append(
+            (
+                event,
+                int(event.user_id or 0),
+                str(properties.get("week_start") or ""),
+                str(properties.get("commitment_key") or "sessions"),
+            )
+        )
+    if not commitment_events:
+        return always_visible
+
+    owner_ids = {owner_id for _, owner_id, _, _ in commitment_events}
+    commitments = {
+        (row.user_id, row.week_start, row.commitment_key): row
+        for row in db.scalars(
+            select(SocialCommitment).where(SocialCommitment.user_id.in_(list(owner_ids)))
+        ).all()
+    }
+    buddy_partners = _active_buddy_partners(
         db,
-        owner_id=int(event.user_id or 0),
-        week_start=str(properties.get("week_start") or ""),
-        commitment_key=str(properties.get("commitment_key") or "sessions"),
-        viewer_id=viewer_id,
+        {row.user_id for row in commitments.values() if row.visibility == "buddy"},
     )
+
+    visible = list(always_visible)
+    for event, owner_id, week_start, commitment_key in commitment_events:
+        commitment = commitments.get((owner_id, week_start, commitment_key))
+        if commitment is None:
+            continue
+        if commitment.visibility == "friends":
+            visible.append(event)
+        elif commitment.visibility == "buddy" and viewer_id in buddy_partners.get(owner_id, ()):
+            visible.append(event)
+    return visible
+
+
+def _active_buddy_partners(db: Session, owner_ids: set[int]) -> dict[int, set[int]]:
+    if not owner_ids:
+        return {}
+    partners: dict[int, set[int]] = {owner_id: set() for owner_id in owner_ids}
+    rows = db.scalars(
+        select(BuddyRelationship).where(
+            BuddyRelationship.status == BuddyStatus.active,
+            or_(
+                BuddyRelationship.requester_id.in_(owner_ids),
+                BuddyRelationship.addressee_id.in_(owner_ids),
+            ),
+        )
+    ).all()
+    for row in rows:
+        if row.requester_id in partners:
+            partners[row.requester_id].add(row.addressee_id)
+        if row.addressee_id in partners:
+            partners[row.addressee_id].add(row.requester_id)
+    return partners
 
 
 def _session_engagement(
