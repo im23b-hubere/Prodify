@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import DashboardScreen from "../../app/(tabs)/dashboard";
+import { ui } from "../../constants/theme";
 
 const mockPush = jest.fn();
 
@@ -29,8 +30,9 @@ jest.mock("react-native-safe-area-context", () => {
 
 jest.mock("react-native-gesture-handler", () => {
   const React = require("react");
-  const { View } = require("react-native");
+  const { FlatList, View } = require("react-native");
   return {
+    FlatList,
     Swipeable: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
   };
 });
@@ -280,6 +282,30 @@ describe("Dashboard Screen", () => {
     );
     const { getByText } = render(<DashboardScreen />);
     expect(getByText("mixing")).toBeTruthy();
+  });
+
+  it("does not stretch a single-session list to the viewport height", () => {
+    mockUseDashboardData.mockReturnValue(
+      createDashboardState({
+        sessions: [
+          {
+            id: 101,
+            session_type: "mixing",
+            stopped_at: "2026-04-20T10:00:00Z",
+            started_at: "2026-04-20T09:30:00Z",
+            duration_seconds: 1800,
+          },
+        ],
+      }),
+    );
+    const { getByTestId } = render(<DashboardScreen />);
+    const list = getByTestId("dashboard-session-list");
+    expect(list.props.style).toEqual({ flex: 1 });
+    expect(list.props.contentContainerStyle).toEqual({
+      paddingHorizontal: ui.screenPadding,
+      paddingBottom: ui.tabBarClearance,
+    });
+    expect(list.props.contentContainerStyle).not.toHaveProperty("flexGrow");
   });
 
   it("shows standardized error state when data load fails", () => {

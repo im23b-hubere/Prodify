@@ -104,8 +104,8 @@ function WeekStripPager({
           testID="dashboard-week-pager"
           accessibilityLabel={t("dashboard.weekStripPagerA11y")}
           horizontal
-          // Opens on the page the title describes, even if the pager is re-created mid-session.
-          contentOffset={{ x: pageWidth * pageIndex, y: 0 }}
+          // Initial page only — live pageIndex must not re-drive contentOffset (fights vertical parent scroll).
+          contentOffset={{ x: pageWidth * startIndex, y: 0 }}
           pagingEnabled
           nestedScrollEnabled
           directionalLockEnabled

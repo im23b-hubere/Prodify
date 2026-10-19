@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import {
-  FlatList,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -9,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Swipeable } from "react-native-gesture-handler";
+import { FlatList, Swipeable } from "react-native-gesture-handler";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -24,6 +23,7 @@ import { progressionOverviewHref } from "../../../lib/progressionNavigation";
 import { openTab } from "../../../lib/stackNavigation";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
 import type { SessionDto } from "../../../types/session";
+import { buildDashboardListScrollLayout } from "../dashboardListScrollLayout";
 import { styles } from "../dashboardScreen.styles";
 import type { DashboardScreenController } from "../hooks/useDashboardScreenController";
 import { DashboardFeedbackOverlays } from "./DashboardFeedbackOverlays";
@@ -50,6 +50,10 @@ export function DashboardScreenView({ controller }: { controller: DashboardScree
   const insets = useSafeAreaInsets();
   const { scrolled, onScroll } = useChromeScrolled();
   const renderItem = useRecentSessionRenderer(controller);
+  const listScrollLayout = buildDashboardListScrollLayout({
+    bottomInset: insets.bottom,
+    recentSessionCount: presentation.recentSessions.length,
+  });
   return (
     <View style={styles.safe}>
       <LinearGradient
@@ -83,13 +87,15 @@ export function DashboardScreenView({ controller }: { controller: DashboardScree
         />
       </View>
       <FlatList
+        testID="dashboard-session-list"
         data={presentation.recentSessions}
         keyExtractor={(item) => `session-${item.id}`}
         removeClippedSubviews={false}
         maxToRenderPerBatch={5}
         windowSize={10}
         initialNumToRender={8}
-        contentInsetAdjustmentBehavior="never"
+        style={listScrollLayout.style}
+        contentInsetAdjustmentBehavior={listScrollLayout.contentInsetAdjustmentBehavior}
         onScroll={onScroll}
         scrollEventThrottle={16}
         refreshControl={
@@ -108,7 +114,7 @@ export function DashboardScreenView({ controller }: { controller: DashboardScree
             <EmptyState compact title={controller.t("dashboard.emptyStreakTitle")} />
           ) : null
         }
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={listScrollLayout.contentContainerStyle}
         renderItem={renderItem}
       />
       <DashboardSessionSetupModal
