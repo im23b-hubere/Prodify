@@ -17,7 +17,7 @@ describe("in-app legal documents", () => {
   });
 
   it("terms name a support contact", () => {
-    expect(sectionText(en.legal.terms.blocks, "Contact")).toContain("support@prodify.app");
+    expect(sectionText(en.legal.terms.blocks, "Contact")).toContain("prodify@gmx.net");
   });
 
   it("privacy policy covers safety reports and blocks", () => {
@@ -43,6 +43,6 @@ describe("in-app legal documents", () => {
   it("imprint names the operator", () => {
     expect(sectionText(en.legal.imprint.blocks, "Service provider")).toContain("Eric Huber");
     expect(sectionText(en.legal.imprint.blocks, "Address")).toContain("Switzerland");
-    expect(sectionText(en.legal.imprint.blocks, "Contact")).toContain("support@prodify.app");
+    expect(sectionText(en.legal.imprint.blocks, "Contact")).toContain("prodify@gmx.net");
   });
 });

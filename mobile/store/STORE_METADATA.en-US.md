@@ -58,10 +58,10 @@ Whether you are beat making, mixing, recording, or learning, Prodify keeps your 
 
 ## Compliance and Support Links
 
-- **Privacy policy URL:** https://prodify-api-46b1.onrender.com/legal/privacy
-- **Terms URL:** https://prodify-api-46b1.onrender.com/legal/terms
-- **Imprint URL:** https://prodify-api-46b1.onrender.com/legal/imprint
-- **Support URL / email:** https://prodify-api-46b1.onrender.com/legal/support (fallback: support@prodify.app)
+- **Privacy policy URL:** https://klarwerk-tech.ch/prodify/privacy
+- **Terms URL:** https://klarwerk-tech.ch/prodify/terms
+- **Imprint URL:** https://klarwerk-tech.ch/prodify/impressum
+- **Support URL / email:** https://klarwerk-tech.ch/prodify/support (fallback: prodify@gmx.net)
 - **Account deletion:** In-app via Profile → Settings → Delete account
 
 ## Release Notes (1.0.1)

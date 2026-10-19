@@ -87,12 +87,12 @@ class Settings(BaseSettings):
     # Optional emergency fallback trial before RevenueCat rows exist: grant access for N days after signup.
     # Keep at 0 for strict paid-access behavior (recommended for production).
     onboarding_trial_days: int = 0
-    legal_privacy_url: str = "https://prodify-api-46b1.onrender.com/legal/privacy"
-    legal_terms_url: str = "https://prodify-api-46b1.onrender.com/legal/terms"
-    legal_imprint_url: str = "https://prodify-api-46b1.onrender.com/legal/imprint"
+    legal_privacy_url: str = "https://klarwerk-tech.ch/prodify/privacy"
+    legal_terms_url: str = "https://klarwerk-tech.ch/prodify/terms"
+    legal_imprint_url: str = "https://klarwerk-tech.ch/prodify/impressum"
     legal_effective_date: str = "2026-10-14"
     legal_version: str = "2026.10"
-    support_email: str = "support@prodify.app"
+    support_email: str = "prodify@gmx.net"
     # Shown on /legal/imprint (TMG / Swiss identification). Address can be refined via env.
     legal_operator_name: str = "Eric Huber"
     legal_operator_address: str = "Zurich, Switzerland"

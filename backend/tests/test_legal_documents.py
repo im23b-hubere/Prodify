@@ -30,7 +30,7 @@ def test_imprint_names_the_operator(client):
 
     assert "Eric Huber" in text
     assert "Switzerland" in text
-    assert "support@prodify.app" in text
+    assert "prodify@gmx.net" in text
 
 
 def test_privacy_policy_names_processors_and_sign_in_providers(client):

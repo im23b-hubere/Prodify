@@ -305,7 +305,7 @@
       "blocks": [
         {
           "heading": "1. Controller",
-          "body": "Eric Huber (Zurich, Switzerland) is the controller for personal data processed in connection with Prodify. Contact: support@prodify.app. See also the Imprint."
+          "body": "Eric Huber (Zurich, Switzerland) is the controller for personal data processed in connection with Prodify. Contact: prodify@gmx.net. See also the Imprint."
         },
         {
           "heading": "2. Data we process",
@@ -341,7 +341,7 @@
         },
         {
           "heading": "10. Contact",
-          "body": "To exercise your rights or ask questions, contact support@prodify.app."
+          "body": "To exercise your rights or ask questions, contact prodify@gmx.net."
         }
       ]
     },
@@ -384,7 +384,7 @@
         },
         {
           "heading": "9. Contact",
-          "body": "Questions about these terms or a report: support@prodify.app. Provider details are in the Imprint."
+          "body": "Questions about these terms or a report: prodify@gmx.net. Provider details are in the Imprint."
         }
       ]
     },
@@ -403,7 +403,7 @@
         },
         {
           "heading": "3. Contact",
-          "body": "Email: support@prodify.app. For privacy rights requests use the same address."
+          "body": "Email: prodify@gmx.net. For privacy rights requests use the same address."
         },
         {
           "heading": "4. Responsible for content",
@@ -2478,7 +2478,7 @@
       "socialTokenInvalid": "We couldn't verify your sign-in. Please try again.",
       "socialProviderUnavailable": "This sign-in option isn't available right now. Please use email instead.",
       "usernameRejected": "This username isn't allowed. Please choose another one.",
-      "accountSuspended": "This account has been suspended for violating our community guidelines. Contact support@prodify.app if you think this is a mistake."
+      "accountSuspended": "This account has been suspended for violating our community guidelines. Contact prodify@gmx.net if you think this is a mistake."
     },
     "requestTimeout": "Connection timed out. Check your network and try again.",
     "network": "Network error. Check your connection and try again.",

@@ -13,11 +13,17 @@ PERSONALISATION_NOTICE = (
     "maintain your production routine."
 )
 
-PRIVACY_SECTIONS = (
+def _support_email() -> str:
+    return settings.support_email.strip() or "prodify@gmx.net"
+
+
+def _privacy_sections() -> tuple[tuple[str, str], ...]:
+    email = _support_email()
+    return (
     (
         "Controller",
         "Eric Huber (Zurich, Switzerland) is the controller for personal data processed "
-        "in connection with Prodify. Contact: support@prodify.app.",
+        f"in connection with Prodify. Contact: {email}.",
     ),
     (
         "Data we process",
@@ -89,11 +95,14 @@ PRIVACY_SECTIONS = (
     ),
     (
         "Contact",
-        "To exercise your rights or ask questions, email support@prodify.app.",
+        f"To exercise your rights or ask questions, email {email}.",
     ),
-)
+    )
 
-TERMS_SECTIONS = (
+
+def _terms_sections() -> tuple[tuple[str, str], ...]:
+    email = _support_email()
+    return (
     (
         "Service",
         "Prodify helps users track studio sessions, streaks, goals, and optional social "
@@ -142,16 +151,16 @@ TERMS_SECTIONS = (
     ),
     (
         "Contact",
-        "Questions about these terms or a report: support@prodify.app. Provider details "
+        f"Questions about these terms or a report: {email}. Provider details "
         "are in the Imprint.",
     ),
-)
+    )
 
 
 def _imprint_sections() -> tuple[tuple[str, str], ...]:
     name = settings.legal_operator_name.strip() or "Eric Huber"
     address = settings.legal_operator_address.strip() or "Zurich, Switzerland"
-    email = settings.support_email.strip() or "support@prodify.app"
+    email = _support_email()
     return (
         (
             "Service provider",
@@ -212,12 +221,12 @@ def legal_documents():
 
 @router.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
 def privacy_policy() -> HTMLResponse:
-    return HTMLResponse(_legal_page("Privacy Policy", PRIVACY_SECTIONS))
+    return HTMLResponse(_legal_page("Privacy Policy", _privacy_sections()))
 
 
 @router.get("/terms", response_class=HTMLResponse, include_in_schema=False)
 def terms_of_use() -> HTMLResponse:
-    return HTMLResponse(_legal_page("Terms of Use", TERMS_SECTIONS))
+    return HTMLResponse(_legal_page("Terms of Use", _terms_sections()))
 
 
 @router.get("/imprint", response_class=HTMLResponse, include_in_schema=False)

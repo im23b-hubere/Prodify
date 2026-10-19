@@ -57,10 +57,10 @@ Ob Beatmaking, Mixing, Recording oder Lernen — Prodify strukturiert deinen Wor
 
 ## Compliance & Support
 
-- **Datenschutz:** https://prodify-api-46b1.onrender.com/legal/privacy
-- **AGB:** https://prodify-api-46b1.onrender.com/legal/terms
-- **Impressum:** https://prodify-api-46b1.onrender.com/legal/imprint
-- **Support:** https://prodify-api-46b1.onrender.com/legal/support (Fallback: support@prodify.app)
+- **Datenschutz:** https://klarwerk-tech.ch/prodify/privacy
+- **AGB:** https://klarwerk-tech.ch/prodify/terms
+- **Impressum:** https://klarwerk-tech.ch/prodify/impressum
+- **Support:** https://klarwerk-tech.ch/prodify/support (Fallback: prodify@gmx.net)
 - **Account-Löschung:** In-app über Profil → Einstellungen & Rechtliches → Konto löschen
 
 ## Release Notes (1.0.1)
