@@ -9,7 +9,9 @@ import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing } from "../../../constants/theme";
 import type { ProgressionLevelItem } from "../../../lib/progressionLevelCatalog";
 import type { LevelTierTheme } from "../../../lib/progressionLevelTheme";
+import type { FriendPathCluster } from "../clusterFriendsByLevel";
 import { pointAlongSegment, type RankPathLayout, type RankPathSegment } from "../rankPathLayout";
+import { RankPathFriendMarkers } from "./RankPathFriendMarkers";
 import { type RankNodeState, RankPathNode } from "./RankPathNode";
 import { RankPathScenery } from "./RankPathScenery";
 
@@ -24,6 +26,9 @@ type Props = {
   xpTotal: number;
   xpToNext: number;
   levelCatalog: ProgressionLevelItem[];
+  friendClusters?: FriendPathCluster[];
+  onOpenFriend?: (userId: number) => void;
+  onOpenFriendCluster?: (cluster: FriendPathCluster) => void;
   t: TFunction;
 };
 
@@ -43,6 +48,9 @@ export function RankPath({
   xpTotal,
   xpToNext,
   levelCatalog,
+  friendClusters = [],
+  onOpenFriend,
+  onOpenFriendCluster,
   t,
 }: Props) {
   const maxLevel = layout.nodes.length;
@@ -116,6 +124,15 @@ export function RankPath({
           />
         );
       })}
+
+      {onOpenFriend && onOpenFriendCluster ? (
+        <RankPathFriendMarkers
+          layout={layout}
+          clusters={friendClusters}
+          onOpenFriend={onOpenFriend}
+          onOpenCluster={onOpenFriendCluster}
+        />
+      ) : null}
 
       <StartArea y={(layout.nodes[0]?.y ?? 0) + 58} t={t} />
     </View>

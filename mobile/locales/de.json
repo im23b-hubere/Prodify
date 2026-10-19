@@ -1869,6 +1869,10 @@
       "nextLine": "Lv {{level}} · Als Nächstes",
       "lockedLine": "Lv {{level}} · Freigeschaltet ab {{xp}} XP",
       "nodeA11y": "Level {{level}}, {{name}}, {{status}}. {{detail}}",
+      "friendMarkerA11y": "{{name}} auf Level {{level}}",
+      "friendClusterA11y": "{{count}} Freunde auf Level {{level}}",
+      "friendClusterTitle": "Freunde auf Lv {{level}}",
+      "friendOverflow": "+{{count}}",
       "status": {
         "cleared": "geschafft",
         "current": "dein aktueller Rang",
@@ -2186,6 +2190,15 @@
     "unfriendBody": "{{name}} wird aus deiner Freundesliste entfernt.",
     "unfriendConfirm": "Entfernen",
     "headToHeadTitle": "Direktvergleich",
+    "rankCompareTitle": "Rang-Pfad",
+    "rankCompareVs": "vs",
+    "rankCompareOpen": "Rang-Pfad öffnen",
+    "rankCompareOpenA11y": "Gemeinsamen Rang-Pfad öffnen",
+    "rankCompareVerdict": {
+      "you": "Du stehst höher auf dem Pfad — weiter so.",
+      "them": "{{name}} steht höher — hol auf dem Pfad auf.",
+      "tied": "Gleicher Rang — die nächste Session entscheidet."
+    },
     "versusYou": "Du",
     "versusMetric": {
       "streak": "Streak",

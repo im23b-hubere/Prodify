@@ -26,8 +26,8 @@ function ProgressionOverviewScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ from?: string | string[] }>();
   const from = parseProgressionOverviewFrom(params.from);
-  const { token } = useAuth();
-  const overview = useProgressionOverview(token, t("progression.loadError"));
+  const { token, user } = useAuth();
+  const overview = useProgressionOverview(token, t("progression.loadError"), user?.id ?? null);
 
   return (
     <View style={styles.safe}>
@@ -36,6 +36,7 @@ function ProgressionOverviewScreen() {
         signedIn={Boolean(token)}
         onBack={() => leaveProgressionOverview(router, from)}
         onSignIn={() => router.replace("/(auth)/login" as Href)}
+        onOpenFriend={(userId) => router.push(`/profile/${userId}` as Href)}
       />
     </View>
   );

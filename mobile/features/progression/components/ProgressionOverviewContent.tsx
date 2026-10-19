@@ -18,9 +18,11 @@ import { AppCard } from "../../../components/ui/AppCard";
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { ScreenTopBar } from "../../../components/ui/ScreenTopBar";
 import { colors } from "../../../constants/theme";
+import type { FriendPathCluster } from "../clusterFriendsByLevel";
 import type { ProgressionOverviewState } from "../hooks/useProgressionOverview";
 import { styles } from "../progressionOverview.styles";
 import { buildRankPathLayout, rankPathCapColors } from "../rankPathLayout";
+import { FriendPathClusterSheet } from "./FriendPathClusterSheet";
 import { RankInfoModal } from "./RankInfoModal";
 import { RankPath } from "./RankPath";
 
@@ -29,6 +31,7 @@ type Props = {
   signedIn: boolean;
   onBack: () => void;
   onSignIn: () => void;
+  onOpenFriend?: (userId: number) => void;
 };
 
 /** Where the user's node lands in the viewport when the path scrolls to it. */
@@ -61,7 +64,7 @@ export function ProgressionOverviewContent(props: Props) {
 
 function ProgressionPathView(props: Props) {
   const { t } = useTranslation();
-  const { overview, onBack } = props;
+  const { overview, onBack, onOpenFriend } = props;
   const progression = overview.progression;
   const pending = progression == null;
   const { width } = useWindowDimensions();
@@ -74,6 +77,7 @@ function ProgressionPathView(props: Props) {
   const [viewportHeight, setViewportHeight] = useState(0);
   const [topBarHeight, setTopBarHeight] = useState(0);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [clusterSheet, setClusterSheet] = useState<FriendPathCluster | null>(null);
 
   const pathLevel = pending
     ? null
@@ -129,6 +133,9 @@ function ProgressionPathView(props: Props) {
           xpTotal={progression?.xp_total ?? 0}
           xpToNext={progression?.xp_to_next_level ?? 0}
           levelCatalog={overview.levelCatalog}
+          friendClusters={overview.friendClusters}
+          onOpenFriend={onOpenFriend}
+          onOpenFriendCluster={onOpenFriend ? setClusterSheet : undefined}
           t={t}
         />
       </ScrollView>
@@ -157,6 +164,13 @@ function ProgressionPathView(props: Props) {
         />
       </BlurView>
       <RankInfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
+      {onOpenFriend ? (
+        <FriendPathClusterSheet
+          cluster={clusterSheet}
+          onClose={() => setClusterSheet(null)}
+          onOpenFriend={onOpenFriend}
+        />
+      ) : null}
     </View>
   );
 }

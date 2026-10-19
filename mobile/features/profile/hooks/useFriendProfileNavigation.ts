@@ -2,6 +2,7 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useCallback } from "react";
 
+import { progressionOverviewHref } from "../../../lib/progressionNavigation";
 import { dismissToTab } from "../../../lib/stackNavigation";
 import { parseProfileUserId } from "../friendProfilePresentation";
 
@@ -35,5 +36,10 @@ export function useFriendProfileNavigation() {
     [router],
   );
 
-  return { userId, goBack, openFriends, openSession, openChallengeCreate };
+  const openRankPath = useCallback(() => {
+    Haptics.selectionAsync().catch(() => undefined);
+    router.push(progressionOverviewHref("friends"));
+  }, [router]);
+
+  return { userId, goBack, openFriends, openSession, openChallengeCreate, openRankPath };
 }

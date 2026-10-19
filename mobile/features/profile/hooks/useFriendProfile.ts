@@ -35,6 +35,9 @@ export type FriendProfilePayload = {
   streak_status_key?: string;
   streak_status_label?: string;
   streak_status_emoji?: string;
+  level?: number;
+  xp_total?: number;
+  level_progress_percent?: number;
 };
 
 export type FriendStatsPayload = {

@@ -65,6 +65,9 @@ function overview(overrides: Partial<ProgressionOverviewState> = {}): Progressio
   return {
     progression: null,
     levelCatalog: [],
+    friendProgression: [],
+    friendClusters: [],
+    friendsReady: true,
     loadingProgression: false,
     loadingCatalog: false,
     refreshing: false,

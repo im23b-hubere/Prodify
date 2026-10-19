@@ -139,6 +139,17 @@ class FriendLeaderboardPublic(BaseModel):
     entries: list[FriendLeaderboardEntryPublic]
 
 
+class FriendProgressionEntryPublic(BaseModel):
+    user_id: int
+    username: str
+    profile_picture_url: str | None = None
+    level: int = 1
+
+
+class FriendsProgressionPublic(BaseModel):
+    friends: list[FriendProgressionEntryPublic]
+
+
 class FriendActivityPublic(BaseModel):
     session_id: int
     user_id: int

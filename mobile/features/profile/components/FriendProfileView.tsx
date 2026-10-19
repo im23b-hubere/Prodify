@@ -16,6 +16,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorState } from "../../../components/states/ErrorState";
 import { BackButton } from "../../../components/ui/BackButton";
 import { colors } from "../../../constants/theme";
+import { useRankProgression } from "../../../hooks/useRankProgression";
+import { PROGRESSION_NAMED_LEVEL_MAX } from "../../../lib/progressionLevels";
 import { StatsHeatmapSection } from "../../stats/components/StatsHeatmapSection";
 import { translatedWeekday } from "../friendProfilePresentation";
 import { friendProfileStyles as styles } from "../friendProfile.styles";
@@ -30,6 +32,7 @@ import {
 import { FriendProfileHero } from "./FriendProfileHero";
 import { FriendProfileSkeleton, LockedProfile } from "./FriendProfileStates";
 import { HeadToHeadCard } from "./HeadToHeadCard";
+import { RankComparisonCard } from "./RankComparisonCard";
 
 /** Scroll distance over which the username fades into the top bar, roughly when the hero name leaves. */
 const TITLE_FADE_RANGE = [150, 200];
@@ -48,6 +51,7 @@ type Props = {
   onChallenge: (friendId: number) => void;
   onSendRequest: (username: string) => void;
   onWithdrawRequest: () => void;
+  onOpenRankPath?: () => void;
 };
 
 type VisibleData = NonNullable<FriendProfileState["visible"]>;
@@ -118,6 +122,7 @@ function ProfileBody({
   onChallenge,
   onSendRequest,
   onWithdrawRequest,
+  onOpenRankPath,
 }: Props) {
   const { t } = useTranslation();
   if (state.loadState === "loading" && !state.refreshing) {
@@ -168,6 +173,7 @@ function ProfileBody({
       isOwnProfile={state.status === "self"}
       onOpenSession={onOpenSession}
       onChallenge={onChallenge}
+      onOpenRankPath={onOpenRankPath}
     />
   );
 }
@@ -201,15 +207,28 @@ function VisibleProfile({
   isOwnProfile,
   onOpenSession,
   onChallenge,
+  onOpenRankPath,
 }: {
   visible: VisibleData;
   isOwnProfile: boolean;
   onOpenSession: Props["onOpenSession"];
   onChallenge: Props["onChallenge"];
+  onOpenRankPath?: () => void;
 }) {
   const { t } = useTranslation();
   const { profile, stats, sessions, commitment, yourStats, isBuddy } = visible;
   const showHeadToHead = !isOwnProfile && yourStats != null;
+  const yourRank = useRankProgression(!isOwnProfile);
+  const theirLevel = Math.min(
+    PROGRESSION_NAMED_LEVEL_MAX,
+    Math.max(1, Math.trunc(profile.level ?? 1)),
+  );
+  const yourLevel =
+    yourRank.level == null
+      ? null
+      : Math.min(PROGRESSION_NAMED_LEVEL_MAX, Math.max(1, yourRank.level));
+  const showRankCompare =
+    !isOwnProfile && onOpenRankPath != null && yourRank.ready && yourLevel != null;
   return (
     <>
       <StaggeredSection order={0}>
@@ -225,28 +244,44 @@ function VisibleProfile({
           <HeadToHeadCard you={yourStats} them={stats} friendName={profile.username} t={t} />
         </StaggeredSection>
       ) : null}
-      <StaggeredSection order={2}>
+      {showRankCompare && yourLevel != null ? (
+        <StaggeredSection order={showHeadToHead ? 2 : 1}>
+          <RankComparisonCard
+            you={{
+              level: yourLevel,
+              label: t("progression.xpHudLevelShort", { level: yourLevel }),
+            }}
+            them={{
+              level: theirLevel,
+              label: t("progression.xpHudLevelShort", { level: theirLevel }),
+            }}
+            friendName={profile.username}
+            onOpenPath={onOpenRankPath}
+          />
+        </StaggeredSection>
+      ) : null}
+      <StaggeredSection order={3}>
         <FriendStatsGrid profile={profile} stats={stats} showTotals={!showHeadToHead} t={t} />
       </StaggeredSection>
       {commitment ? (
-        <StaggeredSection order={3}>
+        <StaggeredSection order={4}>
           <CommitmentCard commitment={commitment} t={t} />
         </StaggeredSection>
       ) : null}
-      <StaggeredSection order={4}>
+      <StaggeredSection order={5}>
         <StatsHeatmapSection t={t} days={stats.heatmap_days} />
       </StaggeredSection>
-      <StaggeredSection order={5}>
+      <StaggeredSection order={6}>
         <FocusCard
           breakdown={stats.type_breakdown}
           bestDayLabel={translatedWeekday(stats.best_day, t)}
           t={t}
         />
       </StaggeredSection>
-      <StaggeredSection order={6}>
+      <StaggeredSection order={7}>
         <AchievementsRow stats={stats} t={t} />
       </StaggeredSection>
-      <StaggeredSection order={7}>
+      <StaggeredSection order={8}>
         <RecentSessionsCard
           sessions={sessions}
           ownerName={profile.username}

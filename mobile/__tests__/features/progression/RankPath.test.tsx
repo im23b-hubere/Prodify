@@ -4,6 +4,8 @@ import type { TFunction } from "i18next";
 import { RankPath } from "../../../features/progression/components/RankPath";
 import { buildRankPathLayout } from "../../../features/progression/rankPathLayout";
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
 jest.mock("expo-linear-gradient", () => {
   const React = require("react");
   const { View } = require("react-native");
@@ -11,6 +13,17 @@ jest.mock("expo-linear-gradient", () => {
     LinearGradient: ({ children }: { children?: React.ReactNode }) =>
       React.createElement(View, null, children),
   };
+});
+
+jest.mock("expo-haptics", () => ({
+  impactAsync: jest.fn().mockResolvedValue(undefined),
+  ImpactFeedbackStyle: { Light: "light" },
+}));
+
+jest.mock("expo-image", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return { Image: (props: object) => React.createElement(View, props) };
 });
 
 const t = ((key: string, params?: Record<string, unknown>) =>
@@ -37,7 +50,7 @@ describe("RankPath", () => {
   it("marks cleared, current, next and locked ranks", () => {
     renderPath(7);
 
-    expect(screen.getByText("progression.path.youAreHere")).toBeTruthy();
+    expect(screen.queryByText("progression.path.youAreHere")).toBeNull();
     expect(
       screen.getByLabelText(/"level":6,.*"status":"progression.path.status.cleared"/),
     ).toBeTruthy();

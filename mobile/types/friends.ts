@@ -28,6 +28,18 @@ export type FriendLeaderboardDto = {
   entries: FriendLeaderboardEntryDto[];
 };
 
+/** XP rank of an accepted friend for the progression path (not session leaderboard). */
+export type FriendProgressionEntryDto = {
+  user_id: number;
+  username: string;
+  profile_picture_url?: string | null;
+  level: number;
+};
+
+export type FriendsProgressionDto = {
+  friends: FriendProgressionEntryDto[];
+};
+
 export type FriendActivityDto = {
   session_id: number;
   user_id: number;

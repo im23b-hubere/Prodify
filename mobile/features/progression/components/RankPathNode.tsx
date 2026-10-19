@@ -117,15 +117,6 @@ export function RankPathNode({ node, state, summit, width, subtitle, meter, t }:
         ) : null}
       </View>
 
-      {state === "current" ? (
-        <View style={[styles.hereMarker, { left: node.x - 60, top: node.y - radius - 34 }]}>
-          <View style={[styles.herePill, { backgroundColor: node.tier.accent }]}>
-            <Text style={styles.hereText}>{t("progression.path.youAreHere")}</Text>
-          </View>
-          <View style={[styles.hereCaret, { borderTopColor: node.tier.accent }]} />
-        </View>
-      ) : null}
-
       {summit ? (
         <SummitTitle
           tier={node.tier}
@@ -370,33 +361,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     fontSize: 11,
     lineHeight: 13,
-  },
-  hereMarker: {
-    position: "absolute",
-    width: 120,
-    alignItems: "center",
-  },
-  herePill: {
-    borderRadius: radii.round,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  hereText: {
-    color: "#0a0a0a",
-    fontFamily: fontFamily.bodyBold,
-    fontSize: 10,
-    lineHeight: 12,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  hereCaret: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 5,
-    borderRightWidth: 5,
-    borderTopWidth: 5,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
   },
   label: {
     position: "absolute",

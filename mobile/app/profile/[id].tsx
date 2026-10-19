@@ -60,6 +60,7 @@ function FriendProfileScreen() {
           }
           void removeFriendship.remove(state.friendshipId);
         }}
+        onOpenRankPath={navigation.openRankPath}
       />
       <ReportSheet
         visible={report.target !== null}
