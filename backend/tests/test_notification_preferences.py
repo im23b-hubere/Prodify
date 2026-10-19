@@ -118,6 +118,8 @@ def test_master_toggle_off_blocks_every_smart_category():
     [
         ("streak_1h_left", NotificationCategory.STREAK),
         ("friend_nudge", NotificationCategory.SOCIAL),
+        ("friend_request", NotificationCategory.SOCIAL),
+        ("friend_accepted", NotificationCategory.SOCIAL),
         ("streak_encouragement", NotificationCategory.SOCIAL),
         ("duel_invite", NotificationCategory.CHALLENGE),
         ("challenge_won", NotificationCategory.CHALLENGE),

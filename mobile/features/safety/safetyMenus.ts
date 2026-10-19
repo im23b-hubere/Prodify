@@ -1,7 +1,7 @@
 import type { FriendStatus } from "../profile/hooks/useFriendProfile";
 
 export type CommentAction = "delete" | "report" | "block";
-export type ProfileAction = "report" | "block";
+export type ProfileAction = "unfriend" | "report" | "block";
 
 export function commentMenuActions({
   isOwnComment,
@@ -16,5 +16,6 @@ export function commentMenuActions({
 
 export function profileMenuActions(status: FriendStatus | null): ProfileAction[] {
   if (status === null || status === "self") return [];
+  if (status === "accepted") return ["unfriend", "report", "block"];
   return ["report", "block"];
 }

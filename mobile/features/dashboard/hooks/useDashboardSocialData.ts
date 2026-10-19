@@ -19,6 +19,7 @@ import type {
   SocialChallengeDto,
 } from "../../../types/friends";
 import { subscribeChallengeSync } from "../../challenges/sync/challengeSync";
+import { subscribeFriendsSync } from "../../friends/sync/friendsSync";
 import { useDashboardAuthReset } from "./dashboardAuthReset";
 
 type LoadSocialOptions = { silent?: boolean };
@@ -85,6 +86,7 @@ export function useDashboardSocialData(
   );
 
   useEffect(() => subscribeChallengeSync(() => void loadSocial({ silent: true })), [loadSocial]);
+  useEffect(() => subscribeFriendsSync(() => void loadSocial({ silent: true })), [loadSocial]);
 
   return {
     socialError,

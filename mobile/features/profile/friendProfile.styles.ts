@@ -283,6 +283,7 @@ export const friendProfileStyles = StyleSheet.create({
     maxWidth: 320,
   },
   lockedActions: { alignSelf: "stretch", gap: spacing.sm, marginTop: spacing.sm },
+  pendingActions: { alignSelf: "stretch", gap: spacing.sm },
   pendingPill: {
     alignSelf: "center",
     paddingHorizontal: spacing.md,

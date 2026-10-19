@@ -19,8 +19,8 @@ describe("commentMenuActions", () => {
 });
 
 describe("profileMenuActions", () => {
-  it("lets you report or block anyone else, friend or not", () => {
-    expect(profileMenuActions("accepted")).toEqual(["report", "block"]);
+  it("lets you unfriend accepted friends, and report or block anyone else", () => {
+    expect(profileMenuActions("accepted")).toEqual(["unfriend", "report", "block"]);
     expect(profileMenuActions("none")).toEqual(["report", "block"]);
     expect(profileMenuActions("pending")).toEqual(["report", "block"]);
   });

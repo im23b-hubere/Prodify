@@ -6,6 +6,7 @@ import { useAuth } from "../../../context/AuthContext";
 import type { RematchRequest } from "../../challenges/board/duelBoard";
 import { subscribeChallengeSync } from "../../challenges/sync/challengeSync";
 import { liveFriends, pastActivity } from "../activity/friendsActivityFeed";
+import { subscribeFriendsSync } from "../sync/friendsSync";
 import { useFriendsActivityRenderer } from "./useFriendsActivityRenderer";
 import { useFriendsDashboardData } from "./useFriendsDashboardData";
 import { useFriendsNotifications } from "./useFriendsNotifications";
@@ -96,6 +97,13 @@ export function useFriendsScreenController() {
     () =>
       subscribeChallengeSync((reason) => {
         void load({ force: reason === "changed" }).catch(() => undefined);
+      }),
+    [load],
+  );
+  useEffect(
+    () =>
+      subscribeFriendsSync(() => {
+        void load({ force: true }).catch(() => undefined);
       }),
     [load],
   );

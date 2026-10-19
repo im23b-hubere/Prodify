@@ -6,6 +6,7 @@ import { apiJson } from "../../../lib/client";
 import { fetchBuddyStatus } from "../../../lib/social";
 import { userFacingErrorOrFallback } from "../../../lib/userFacingErrorMessage";
 import type { FriendCommitmentDto } from "../../../types/friends";
+import { subscribeFriendsSync } from "../../friends/sync/friendsSync";
 
 export type FriendStatus = "self" | "none" | "pending" | "accepted";
 export type PendingDirection = "outgoing" | "incoming";
@@ -14,6 +15,7 @@ type FriendStatusPayload = {
   status: FriendStatus;
   username?: string | null;
   pending_direction?: PendingDirection | null;
+  friendship_id?: number | null;
 };
 
 export type FriendProfilePayload = {
@@ -68,6 +70,7 @@ type ProfileData = {
   status: FriendStatus;
   targetUsername: string | null;
   pendingDirection: PendingDirection | null;
+  friendshipId: number | null;
   visible: VisibleProfile | null;
 };
 
@@ -110,6 +113,7 @@ async function loadProfileData(
     status: friendStatus.status,
     targetUsername: friendStatus.username ?? null,
     pendingDirection: friendStatus.pending_direction ?? null,
+    friendshipId: friendStatus.friendship_id ?? null,
     visible: canView ? await loadVisibleProfile(token, userId, viewerId) : null,
   };
 }
@@ -122,6 +126,16 @@ function useFriendProfileLifecycle(load: () => Promise<void>) {
   useEffect(() => {
     void load();
   }, [load]);
+}
+
+function useFriendProfileSync(load: (options?: { silent?: boolean }) => Promise<void>) {
+  useEffect(
+    () =>
+      subscribeFriendsSync(() => {
+        void load({ silent: true });
+      }),
+    [load],
+  );
 }
 
 function useFriendProfileRefresh(load: (options?: { silent?: boolean }) => Promise<void>) {
@@ -166,12 +180,14 @@ export function useFriendProfile(userId: number | null) {
   );
 
   useFriendProfileLifecycle(load);
+  useFriendProfileSync(load);
   const { refreshing, refresh } = useFriendProfileRefresh(load);
 
   return {
     status: data?.status ?? null,
     targetUsername: data?.targetUsername ?? null,
     pendingDirection: data?.pendingDirection ?? null,
+    friendshipId: data?.friendshipId ?? null,
     visible: data?.visible ?? null,
     loadState,
     error,

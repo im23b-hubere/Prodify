@@ -1,18 +1,25 @@
+import logging
 from typing import Literal
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models import Friendship, FriendshipStatus, User
 from app.schemas import (
     FriendIncomingPublic,
     FriendPostAcceptActionPublic,
     FriendStatusPublic,
 )
+from app.services import push_templates
 from app.services.engagement.events import EngagementEvent
 from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp
+from app.services.push_dispatch import schedule_push_to_user
+from app.services.push_links import push_data_friend_accepted, push_data_friend_request
 from app.services.user_block_service import is_blocked_between
+
+logger = logging.getLogger(__name__)
 
 
 class FriendshipOperationError(ValueError):
@@ -70,6 +77,14 @@ def send_friend_request(db: Session, user_id: int, username: str) -> Friendship:
     track_event(db, "invite_sent", user_id, {"friend_id": target.id})
     db.commit()
     db.refresh(friendship)
+    sender = db.get(User, user_id)
+    if sender is not None:
+        _schedule_friend_push(
+            target.id,
+            *push_templates.friend_request(sender.username),
+            push_data_friend_request(user_id),
+            label="friend-request",
+        )
     return friendship
 
 
@@ -83,7 +98,11 @@ def friendship_status(db: Session, user: User, target_user_id: int) -> FriendSta
     if friendship is None:
         return FriendStatusPublic(status="none", username=target.username)
     if friendship.status == FriendshipStatus.accepted:
-        return FriendStatusPublic(status="accepted", username=target.username)
+        return FriendStatusPublic(
+            status="accepted",
+            username=target.username,
+            friendship_id=friendship.id,
+        )
     direction: Literal["outgoing", "incoming"] = (
         "outgoing" if friendship.user_id == user.id else "incoming"
     )
@@ -91,6 +110,7 @@ def friendship_status(db: Session, user: User, target_user_id: int) -> FriendSta
         status="pending",
         username=target.username,
         pending_direction=direction,
+        friendship_id=friendship.id,
     )
 
 
@@ -144,6 +164,12 @@ def accept_friend_request(db: Session, user: User, friendship_id: int) -> Friend
     )
     db.commit()
     db.refresh(friendship)
+    _schedule_friend_push(
+        friendship.user_id,
+        *push_templates.friend_accepted(user.username),
+        push_data_friend_accepted(user.id),
+        label="friend-accepted",
+    )
     return friendship
 
 
@@ -214,3 +240,17 @@ def _raise_existing_relationship(friendship: Friendship, user_id: int) -> None:
 def _grant_friendship_bonuses(user: User) -> None:
     user.bonus_rescues = int(user.bonus_rescues or 0) + 1
     user.bonus_challenge_slots = int(user.bonus_challenge_slots or 0) + 1
+
+
+def _schedule_friend_push(
+    user_id: int,
+    title: str,
+    body: str,
+    data: dict[str, str],
+    *,
+    label: str,
+) -> None:
+    try:
+        schedule_push_to_user(settings, user_id, title, body, data, label=label)
+    except Exception:
+        logger.exception("schedule %s push failed user_id=%s", label, user_id)

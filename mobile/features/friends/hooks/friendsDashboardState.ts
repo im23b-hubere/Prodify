@@ -1,5 +1,6 @@
 import type { FriendActivityDto } from "../../../types/friends";
 import type { FriendsDashboardSnapshot } from "../services/friendsDashboardApi";
+import { setIncomingFriendRequestCount } from "../sync/friendsInboxBadge";
 import type { FriendsScreenState } from "./useFriendsScreenState";
 
 type FeedMetrics = FriendsScreenState["feedMetricsBySession"];
@@ -42,6 +43,7 @@ export function applyFriendsDashboardSnapshot(
   state.setLeaderboard(snapshot.leaderboard);
   state.setActivity(snapshot.activity);
   state.setIncoming(snapshot.incoming);
+  setIncomingFriendRequestCount(snapshot.incoming.length);
   applyIfLoaded(snapshot.buddy, state.setBuddy);
   applyIfLoaded(snapshot.checkin, state.setCheckin);
   applyIfLoaded(snapshot.challenges, state.setChallenges);

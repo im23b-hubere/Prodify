@@ -2153,6 +2153,11 @@
     "buddyChip": "Your buddy",
     "selfPreviewNote": "This is how your friends see your profile.",
     "openRequestCta": "Open request in Friends",
+    "withdrawRequest": "Withdraw request",
+    "removeFailed": "Couldn't update friendship",
+    "unfriendTitle": "Remove friend?",
+    "unfriendBody": "{{name}} will be removed from your friends list.",
+    "unfriendConfirm": "Remove",
     "headToHeadTitle": "Head to head",
     "versusYou": "You",
     "versusMetric": {
@@ -2492,6 +2497,7 @@
     "menu": {
       "profileA11y": "More options for {{name}}",
       "report": "Report",
+      "unfriend": "Remove friend",
       "block": "Block",
       "deleteComment": "Delete comment",
       "decline": "Decline",

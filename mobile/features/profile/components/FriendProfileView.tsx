@@ -39,13 +39,15 @@ const AMBIENT_GLOW = ["rgba(255,61,0,0.18)", "rgba(255,61,0,0.05)", "rgba(10,10,
 type Props = {
   state: FriendProfileState;
   isSendingRequest: boolean;
+  isWithdrawingRequest: boolean;
   onBack: () => void;
-  /** Report / block menu; absent on your own profile. */
+  /** Report / block / unfriend menu; absent on your own profile. */
   onOpenMenu?: () => void;
   onOpenFriends: () => void;
   onOpenSession: (id: number, ownerName: string) => void;
   onChallenge: (friendId: number) => void;
   onSendRequest: (username: string) => void;
+  onWithdrawRequest: () => void;
 };
 
 type VisibleData = NonNullable<FriendProfileState["visible"]>;
@@ -109,11 +111,13 @@ export function FriendProfileView(props: Props) {
 function ProfileBody({
   state,
   isSendingRequest,
+  isWithdrawingRequest,
   onBack,
   onOpenFriends,
   onOpenSession,
   onChallenge,
   onSendRequest,
+  onWithdrawRequest,
 }: Props) {
   const { t } = useTranslation();
   if (state.loadState === "loading" && !state.refreshing) {
@@ -150,7 +154,9 @@ function ProfileBody({
         isPending={state.status === "pending"}
         pendingDirection={state.pendingDirection}
         isSending={isSendingRequest}
+        isWithdrawing={isWithdrawingRequest}
         onSendRequest={onSendRequest}
+        onWithdrawRequest={onWithdrawRequest}
         onOpenFriends={onOpenFriends}
       />
     );

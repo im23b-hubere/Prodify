@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { colors, spacing } from "../../constants/theme";
+import { useIncomingFriendRequestCount } from "../friends/sync/friendsInboxBadge";
 
 const IOS_MAJOR_VERSION = Platform.OS === "ios" ? parseInt(String(Platform.Version), 10) || 0 : 0;
 // The native UITabBar only renders as Liquid Glass on iOS 26+; older devices keep the JS tab bar.
@@ -60,6 +61,7 @@ function TabBarButton({ testID, ...props }: PressableProps & { testID: string })
 
 function LiquidGlassTabs() {
   const { t } = useTranslation();
+  const incomingFriendRequests = useIncomingFriendRequestCount();
   return (
     <ThemeProvider value={NATIVE_TABS_THEME}>
       <NativeTabs
@@ -74,6 +76,9 @@ function LiquidGlassTabs() {
           <NativeTabs.Trigger key={name} name={name} testID={testID}>
             <NativeTabs.Trigger.Icon sf={sf} />
             <NativeTabs.Trigger.Label>{t(titleKey)}</NativeTabs.Trigger.Label>
+            {name === "friends" && incomingFriendRequests > 0 ? (
+              <NativeTabs.Trigger.Badge>{String(incomingFriendRequests)}</NativeTabs.Trigger.Badge>
+            ) : null}
           </NativeTabs.Trigger>
         ))}
         <NativeTabs.Trigger name="session-trash" hidden />
@@ -84,6 +89,7 @@ function LiquidGlassTabs() {
 
 function ClassicTabs() {
   const { t } = useTranslation();
+  const incomingFriendRequests = useIncomingFriendRequestCount();
   return (
     <Tabs
       // Android system-back must not jump Stats/Friends to Dashboard. Tab taps stay the same.
@@ -113,6 +119,7 @@ function ClassicTabs() {
           name={name}
           options={{
             title: t(titleKey),
+            tabBarBadge: name === "friends" && incomingFriendRequests > 0 ? incomingFriendRequests : undefined,
             tabBarButton: (props) => (
               <TabBarButton {...(props as PressableProps)} testID={testID} />
             ),

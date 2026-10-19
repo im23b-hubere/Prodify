@@ -3,6 +3,10 @@ import {
   buildFeedMetrics,
 } from "../../../features/friends/hooks/friendsDashboardState";
 import type { FriendsDashboardSnapshot } from "../../../features/friends/services/friendsDashboardApi";
+import {
+  getIncomingFriendRequestCount,
+  setIncomingFriendRequestCount,
+} from "../../../features/friends/sync/friendsInboxBadge";
 import type { FriendActivityDto } from "../../../types/friends";
 
 function activity(overrides: Partial<FriendActivityDto>): FriendActivityDto {
@@ -64,11 +68,19 @@ describe("friends dashboard state", () => {
   });
 
   it("applies a complete API snapshot through the dashboard writer", () => {
+    setIncomingFriendRequestCount(9);
     const writer = dashboardWriter();
     const snapshot = {
       leaderboard: { period: "week", entries: [] },
       activity: [activity({ session_id: 7, reactions_count: 2 })],
-      incoming: [],
+      incoming: [
+        {
+          id: 1,
+          user_id: 2,
+          username: "bob",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ],
       buddy: null,
       checkin: null,
       challenges: [],
@@ -81,6 +93,8 @@ describe("friends dashboard state", () => {
 
     expect(writer.setLeaderboard).toHaveBeenCalledWith(snapshot.leaderboard);
     expect(writer.setActivity).toHaveBeenCalledWith(snapshot.activity);
+    expect(writer.setIncoming).toHaveBeenCalledWith(snapshot.incoming);
+    expect(getIncomingFriendRequestCount()).toBe(1);
     expect(writer.setDuelRecords).toHaveBeenCalledWith(snapshot.duelRecords);
     expect(writer.setFeedMetricsBySession).toHaveBeenCalledWith({
       7: { reactionsCount: 2, commentsCount: 0, viewerReaction: null },

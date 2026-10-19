@@ -40,6 +40,8 @@ _CATEGORY_BY_TYPE = {
     "social_friend_session": NotificationCategory.SOCIAL,
     "social_overtaken": NotificationCategory.SOCIAL,
     "friend_nudge": NotificationCategory.SOCIAL,
+    "friend_request": NotificationCategory.SOCIAL,
+    "friend_accepted": NotificationCategory.SOCIAL,
     "streak_broken": NotificationCategory.SOCIAL,
     "streak_encouragement": NotificationCategory.SOCIAL,
     "commitment_witness": NotificationCategory.SOCIAL,

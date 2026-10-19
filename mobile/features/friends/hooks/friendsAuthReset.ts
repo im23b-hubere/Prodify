@@ -1,4 +1,5 @@
 import { useAuthScopedReset } from "../../../lib/authScopedReset";
+import { setIncomingFriendRequestCount } from "../sync/friendsInboxBadge";
 import type { FriendsScreenState } from "./useFriendsScreenState";
 
 export { useAuthScopedReset as useFriendsAuthReset };
@@ -18,6 +19,7 @@ export function resetFriendsAccountOwnedState(
   state.setLeaderboard(null);
   state.setActivity([]);
   state.setIncoming([]);
+  setIncomingFriendRequestCount(0);
   state.setBuddy(null);
   state.setCheckin(null);
   state.setChallenges([]);

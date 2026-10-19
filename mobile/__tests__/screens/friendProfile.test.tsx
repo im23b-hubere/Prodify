@@ -9,6 +9,8 @@ const mockApiJson = jest.fn();
 
 const translate = (key: string) => key;
 
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+
 jest.mock("expo-haptics", () => ({
   selectionAsync: jest.fn().mockResolvedValue(undefined),
   notificationAsync: jest.fn().mockResolvedValue(undefined),
@@ -229,6 +231,47 @@ describe("FriendProfileScreen locked profile", () => {
         token: "token-123",
         method: "POST",
         body: { username: "carol" },
+      });
+    });
+  });
+
+  it("withdraws an outgoing friend request from the locked profile", async () => {
+    respondWith({
+      status: {
+        status: "pending",
+        username: "carol",
+        pending_direction: "outgoing",
+        friendship_id: 77,
+      },
+    });
+    const { findByTestId } = render(<FriendProfileScreen />);
+
+    fireEvent.press(await findByTestId("friend-profile-withdraw-request"));
+
+    await waitFor(() => {
+      expect(mockApiJson).toHaveBeenCalledWith("/friends/77", {
+        token: "token-123",
+        method: "DELETE",
+      });
+    });
+  });
+});
+
+describe("FriendProfileScreen unfriend", () => {
+  it("removes an accepted friend from the profile menu", async () => {
+    respondWith({ status: { status: "accepted", username: "carol", friendship_id: 88 } });
+    jest.spyOn(Alert, "alert").mockImplementation((_title, _body, buttons) => {
+      buttons?.find((button) => button.style === "destructive")?.onPress?.();
+    });
+    const { findByLabelText } = render(<FriendProfileScreen />);
+
+    fireEvent.press(await findByLabelText("safety.menu.profileA11y"));
+    act(() => pickMenuItem("safety.menu.unfriend"));
+
+    await waitFor(() => {
+      expect(mockApiJson).toHaveBeenCalledWith("/friends/88", {
+        token: "token-123",
+        method: "DELETE",
       });
     });
   });

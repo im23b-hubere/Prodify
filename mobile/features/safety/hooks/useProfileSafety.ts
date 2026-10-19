@@ -13,11 +13,22 @@ type Options = {
   userId: number | null;
   name: string | null;
   status: FriendStatus | null;
+  friendshipId: number | null;
   onBlocked: () => void;
+  onUnfriend: (friendshipId: number) => void;
 };
 
-/** The "…" menu on someone's profile: report them or block them. */
-export function useProfileSafety({ token, t, userId, name, status, onBlocked }: Options) {
+/** The "…" menu on someone's profile: unfriend, report, or block. */
+export function useProfileSafety({
+  token,
+  t,
+  userId,
+  name,
+  status,
+  friendshipId,
+  onBlocked,
+  onUnfriend,
+}: Options) {
   const report = useReportFlow(token, t);
   const requestBlock = useBlockUser(token, t);
   const actions = profileMenuActions(status);
@@ -33,16 +44,29 @@ export function useProfileSafety({ token, t, userId, name, status, onBlocked }: 
     showActionMenu({
       title: name,
       cancelLabel: t("common.cancel"),
-      items: actions.map((action) =>
-        action === "report"
-          ? {
+      items: actions.flatMap((action) => {
+        if (action === "unfriend") {
+          if (friendshipId == null) return [];
+          return [
+            {
+              label: t("safety.menu.unfriend"),
+              destructive: true,
+              onSelect: () => onUnfriend(friendshipId),
+            },
+          ];
+        }
+        if (action === "report") {
+          return [
+            {
               label: t("safety.menu.report"),
               onSelect: () => openReport({ kind: "user", userId, name }),
-            }
-          : { label: t("safety.menu.block"), destructive: true, onSelect: block },
-      ),
+            },
+          ];
+        }
+        return [{ label: t("safety.menu.block"), destructive: true, onSelect: block }];
+      }),
     });
-  }, [actions, block, name, openReport, t, userId]);
+  }, [actions, block, friendshipId, name, onUnfriend, openReport, t, userId]);
 
   const blockAfterReport = useCallback(() => {
     closeReport();
