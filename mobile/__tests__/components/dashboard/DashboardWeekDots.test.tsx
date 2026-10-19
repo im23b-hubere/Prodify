@@ -115,4 +115,30 @@ describe("DashboardWeekDots", () => {
       expect(screen.getByText("Last week")).toBeTruthy();
     });
   });
+
+  it("keeps contentOffset on the initial week after paging", async () => {
+    render(
+      <DashboardWeekDots
+        overview={overviewFromDays(["2026-09-02"])}
+        onOpenStats={jest.fn()}
+        t={t}
+      />,
+    );
+    await layoutPager();
+
+    const initialOffset = screen.getByTestId("dashboard-week-pager").props.contentOffset.x;
+
+    fireEvent(screen.getByTestId("dashboard-week-pager"), "momentumScrollEnd", {
+      nativeEvent: {
+        contentOffset: { x: 640, y: 0 },
+        contentSize: { width: 1280, height: 80 },
+        layoutMeasurement: { width: 320, height: 80 },
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Last week")).toBeTruthy();
+    });
+    expect(screen.getByTestId("dashboard-week-pager").props.contentOffset.x).toBe(initialOffset);
+  });
 });

@@ -71,11 +71,6 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     flex: 1,
   },
-  listContainer: {
-    paddingHorizontal: ui.screenPadding,
-    paddingBottom: spacing.xxl,
-    flexGrow: 1,
-  },
   chrome: {
     zIndex: 2,
     paddingHorizontal: ui.screenPadding,
