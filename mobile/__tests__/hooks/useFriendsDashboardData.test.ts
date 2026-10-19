@@ -5,6 +5,10 @@ import { useFriendsDashboardData } from "../../features/friends/hooks/useFriends
 import { useFriendsScreenState } from "../../features/friends/hooks/useFriendsScreenState";
 import { loadFriendsDashboard } from "../../features/friends/services/friendsDashboardApi";
 import type { FriendsDashboardSnapshot } from "../../features/friends/services/friendsDashboardApi";
+import {
+  getIncomingFriendRequestCount,
+  setIncomingFriendRequestCount,
+} from "../../features/friends/sync/friendsInboxBadge";
 import { mockTFunction } from "../helpers/mockTFunction";
 
 jest.mock("expo-router", () => ({
@@ -141,6 +145,7 @@ function renderFriendsDataHook(token: string | null, userId: number | null) {
 
 describe("resetFriendsAccountOwnedState", () => {
   it("clears leaderboard and all account-owned dashboard fields", () => {
+    setIncomingFriendRequestCount(4);
     const state = {
       loadSeq: { current: 0 },
       setLeaderboard: jest.fn(),
@@ -176,6 +181,7 @@ describe("resetFriendsAccountOwnedState", () => {
     expect(state.setLeaderboard).toHaveBeenCalledWith(null);
     expect(state.setActivity).toHaveBeenCalledWith([]);
     expect(state.setIncoming).toHaveBeenCalledWith([]);
+    expect(getIncomingFriendRequestCount()).toBe(0);
     expect(state.setFeedMetricsBySession).toHaveBeenCalledWith({});
     expect(state.setLoading).toHaveBeenCalledWith(false);
   });
@@ -439,6 +445,20 @@ describe("useFriendsDashboardData auth scope", () => {
 
     await Promise.all([result.current.load({ force: true }), result.current.load({ force: true })]);
 
+    expect(mockLoadFriendsDashboard).toHaveBeenCalledTimes(1);
+  });
+
+  it("force reload bypasses the focus TTL so peer friendship changes land immediately", async () => {
+    const { result } = renderFriendsDataHook("token-a", 1);
+    await waitFor(() => {
+      expect(result.current.state.leaderboard).toEqual(userASnapshot.leaderboard);
+    });
+    mockLoadFriendsDashboard.mockClear();
+
+    await result.current.load();
+    expect(mockLoadFriendsDashboard).not.toHaveBeenCalled();
+
+    await result.current.load({ force: true });
     expect(mockLoadFriendsDashboard).toHaveBeenCalledTimes(1);
   });
 

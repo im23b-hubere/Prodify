@@ -48,7 +48,9 @@ type LockedProps = {
   isPending: boolean;
   pendingDirection: PendingDirection | null;
   isSending: boolean;
+  isWithdrawing: boolean;
   onSendRequest: (username: string) => void;
+  onWithdrawRequest: () => void;
   onOpenFriends: () => void;
 };
 
@@ -57,7 +59,9 @@ export function LockedProfile({
   isPending,
   pendingDirection,
   isSending,
+  isWithdrawing,
   onSendRequest,
+  onWithdrawRequest,
   onOpenFriends,
 }: LockedProps) {
   const { t } = useTranslation();
@@ -80,7 +84,9 @@ export function LockedProfile({
           isPending={isPending}
           pendingDirection={pendingDirection}
           isSending={isSending}
+          isWithdrawing={isWithdrawing}
           onSendRequest={onSendRequest}
+          onWithdrawRequest={onWithdrawRequest}
           onOpenFriends={onOpenFriends}
         />
         {isPending && pendingDirection === "incoming" ? null : (
@@ -98,7 +104,9 @@ function LockedPrimaryAction({
   isPending,
   pendingDirection,
   isSending,
+  isWithdrawing,
   onSendRequest,
+  onWithdrawRequest,
   onOpenFriends,
 }: LockedProps) {
   const { t } = useTranslation();
@@ -107,8 +115,16 @@ function LockedPrimaryAction({
   }
   if (isPending) {
     return (
-      <View style={styles.pendingPill}>
-        <Text style={styles.pendingPillText}>{t("profileHeader.requestPending")}</Text>
+      <View style={styles.pendingActions}>
+        <View style={styles.pendingPill}>
+          <Text style={styles.pendingPillText}>{t("profileHeader.requestPending")}</Text>
+        </View>
+        <PrimaryButton
+          label={t("friendProfile.withdrawRequest")}
+          loading={isWithdrawing}
+          onPress={onWithdrawRequest}
+          testID="friend-profile-withdraw-request"
+        />
       </View>
     );
   }

@@ -89,6 +89,38 @@ def test_delete_pending_cancel(client):
     assert inc.json() == []
 
 
+def test_friendship_status_includes_friendship_id(client):
+    t_a = _register(client, "status-a@example.com", "statusa")
+    t_b = _register(client, "status-b@example.com", "statusb")
+    bob = client.get("/auth/me", headers={"Authorization": f"Bearer {t_b}"}).json()
+
+    none = client.get(f"/friends/status/{bob['id']}", headers={"Authorization": f"Bearer {t_a}"})
+    assert none.status_code == 200
+    assert none.json()["status"] == "none"
+    assert none.json().get("friendship_id") is None
+
+    req = client.post(
+        "/friends/request",
+        headers={"Authorization": f"Bearer {t_a}"},
+        json={"username": "statusb"},
+    )
+    assert req.status_code == 201
+    fid = req.json()["id"]
+
+    pending = client.get(f"/friends/status/{bob['id']}", headers={"Authorization": f"Bearer {t_a}"})
+    assert pending.json() == {
+        "status": "pending",
+        "username": "statusb",
+        "pending_direction": "outgoing",
+        "friendship_id": fid,
+    }
+
+    assert client.post(f"/friends/{fid}/accept", headers={"Authorization": f"Bearer {t_b}"}).status_code == 200
+    accepted = client.get(f"/friends/status/{bob['id']}", headers={"Authorization": f"Bearer {t_a}"})
+    assert accepted.json()["status"] == "accepted"
+    assert accepted.json()["friendship_id"] == fid
+
+
 def test_activity_includes_reaction_and_comment_counts(client):
     t_a = _register(client, "g@example.com", "gina")
     t_b = _register(client, "h@example.com", "hank")

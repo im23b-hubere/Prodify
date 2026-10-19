@@ -73,6 +73,14 @@ def friend_nudge(sender_username: str) -> tuple[str, str]:
     return f"👊 {sender_username} nudged you", "Studio time? Your crew is waiting on your next session."
 
 
+def friend_request(sender_username: str) -> tuple[str, str]:
+    return "Friend request", f"{sender_username} wants to be friends."
+
+
+def friend_accepted(accepter_username: str) -> tuple[str, str]:
+    return "Friend request accepted", f"{accepter_username} accepted your friend request."
+
+
 def session_still_there() -> tuple[str, str]:
     return (
         "Still there?",

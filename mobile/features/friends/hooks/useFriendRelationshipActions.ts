@@ -6,6 +6,7 @@ import { Alert } from "react-native";
 import { apiJson } from "../../../lib/client";
 import type { FriendIncomingDto } from "../../../types/friends";
 import { useBlockUser } from "../../safety/hooks/useBlockUser";
+import { setIncomingFriendRequestCount } from "../sync/friendsInboxBadge";
 import type { FriendsScreenState } from "./useFriendsScreenState";
 
 type ActionContext = {
@@ -17,13 +18,15 @@ type ActionContext = {
 };
 
 export function useFriendRelationshipActions({ token, t, load, state }: ActionContext) {
+  const sendInFlight = useRef(false);
   const sendRequest = useCallback(async () => {
     const username = state.addName.trim();
     if (username.length < 2) {
       Alert.alert(t("friendsScreen.alertUsername"), t("friendsScreen.alertUsernameInvalid"));
       return;
     }
-    if (!token) return;
+    if (!token || sendInFlight.current || state.addBusy) return;
+    sendInFlight.current = true;
     state.setAddBusy(true);
     try {
       await apiJson("/friends/request", { token, method: "POST", body: { username } });
@@ -39,12 +42,13 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
       const msg = e instanceof Error ? e.message : t("friendsScreen.couldNotSend");
       Alert.alert(t("friendsScreen.couldNotSend"), msg);
     } finally {
+      sendInFlight.current = false;
       state.setAddBusy(false);
     }
   }, [load, state, t, token]);
 
   const answeringIds = useRef(new Set<number>());
-  const { setRequestsInFlight } = state;
+  const { setRequestsInFlight, setIncoming } = state;
   const beginAnswer = useCallback(
     (id: number, action: "accept" | "decline") => {
       if (answeringIds.current.has(id)) return false;
@@ -62,9 +66,22 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
     [setRequestsInFlight],
   );
 
+  /** Drop one inbox row via functional update so concurrent answers cannot clobber each other. */
+  const removeIncomingOptimistically = useCallback(
+    (id: number) => {
+      setIncoming((previous) => {
+        const next = previous.filter((request) => request.id !== id);
+        setIncomingFriendRequestCount(next.length);
+        return next;
+      });
+    },
+    [setIncoming],
+  );
+
   const acceptRequest = useCallback(
     async (id: number) => {
       if (!token || !beginAnswer(id, "accept")) return;
+      removeIncomingOptimistically(id);
       try {
         await apiJson(`/friends/${id}/accept`, { token, method: "POST" });
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -82,6 +99,8 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
           );
         }
       } catch (e) {
+        // Reload ground truth instead of restoring a stale snapshot (safe with concurrent answers).
+        await load({ force: true }).catch(() => undefined);
         Alert.alert(
           t("friendsScreen.errorGeneric"),
           e instanceof Error ? e.message : t("friendsScreen.acceptFailed"),
@@ -90,16 +109,18 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
         endAnswer(id);
       }
     },
-    [beginAnswer, endAnswer, load, t, token],
+    [beginAnswer, endAnswer, load, removeIncomingOptimistically, t, token],
   );
 
   const declineRequest = useCallback(
     async (id: number) => {
       if (!token || !beginAnswer(id, "decline")) return;
+      removeIncomingOptimistically(id);
       try {
         await apiJson(`/friends/${id}`, { token, method: "DELETE" });
         await load({ force: true });
       } catch (e) {
+        await load({ force: true }).catch(() => undefined);
         Alert.alert(
           t("friendsScreen.errorGeneric"),
           e instanceof Error ? e.message : t("friendsScreen.declineFailed"),
@@ -108,7 +129,7 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
         endAnswer(id);
       }
     },
-    [beginAnswer, endAnswer, load, t, token],
+    [beginAnswer, endAnswer, load, removeIncomingOptimistically, t, token],
   );
 
   const requestBlock = useBlockUser(token, t);

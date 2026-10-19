@@ -17,6 +17,14 @@ def push_data_friend_nudge(sender_user_id: int) -> dict[str, str]:
     return {"path": profile_path(sender_user_id), "kind": "friend_nudge", "from_user_id": str(sender_user_id)}
 
 
+def push_data_friend_request(from_user_id: int) -> dict[str, str]:
+    return {"path": FRIENDS_PATH, "kind": "friend_request", "from_user_id": str(from_user_id)}
+
+
+def push_data_friend_accepted(from_user_id: int) -> dict[str, str]:
+    return {"path": FRIENDS_PATH, "kind": "friend_accepted", "from_user_id": str(from_user_id)}
+
+
 def push_data_dashboard() -> dict[str, str]:
     return {"path": DASHBOARD_PATH, "kind": "dashboard"}
 

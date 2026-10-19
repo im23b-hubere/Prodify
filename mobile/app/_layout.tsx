@@ -25,6 +25,8 @@ import { CrashBoundary } from "../components/ui/CrashBoundary";
 import { AuthProvider } from "../context/AuthContext";
 import { colors, spacing } from "../constants/theme";
 import { ChallengeSyncBridge } from "../features/challenges/sync/ChallengeSyncBridge";
+import { FriendsInboxBadgeSync } from "../features/friends/sync/FriendsInboxBadgeSync";
+import { FriendsSyncBridge } from "../features/friends/sync/FriendsSyncBridge";
 import { DuelClashHost } from "../features/duelClash/components/DuelClashHost";
 import { appRootFillStyle, rootStackScreenOptions } from "../features/navigation/rootStackChrome";
 import { initSentry } from "../lib/sentry";
@@ -64,6 +66,8 @@ export default function RootLayout() {
             <OfflineBanner />
             <NotificationNavBridge />
             <ChallengeSyncBridge />
+            <FriendsSyncBridge />
+            <FriendsInboxBadgeSync />
             <StatusBar style="light" />
             <Stack
               screenOptions={{

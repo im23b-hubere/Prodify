@@ -211,6 +211,7 @@ class FriendStatusPublic(BaseModel):
     status: Literal["self", "none", "pending", "accepted"]
     username: str | None = None
     pending_direction: Literal["outgoing", "incoming"] | None = None
+    friendship_id: int | None = None
 
 
 class FriendPostAcceptActionPublic(BaseModel):

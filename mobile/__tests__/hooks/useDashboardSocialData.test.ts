@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 
 import { requestChallengeSync } from "../../features/challenges/sync/challengeSync";
 import { useDashboardSocialData } from "../../features/dashboard/hooks/useDashboardSocialData";
+import { requestFriendsSync } from "../../features/friends/sync/friendsSync";
 import { apiJson } from "../../lib/client";
 import { fetchChallenges } from "../../lib/social";
 import type { SocialChallengeDto } from "../../types/friends";
@@ -56,5 +57,27 @@ describe("useDashboardSocialData", () => {
 
     expect(result.current.socialLoading).toBe(false);
     await waitFor(() => expect(result.current.socialChallenges).toEqual([finishedDuel]));
+  });
+
+  it("refreshes social widgets when a friends sync is requested", async () => {
+    mockApiJson.mockResolvedValueOnce({ period: "week", entries: [{ user_id: 1, username: "me" }] });
+    const { result } = renderSocialData();
+    await act(() => result.current.loadSocial());
+    mockApiJson.mockResolvedValue({
+      period: "week",
+      entries: [
+        { user_id: 1, username: "me" },
+        { user_id: 2, username: "new-friend" },
+      ],
+    });
+
+    act(() => requestFriendsSync("changed"));
+
+    await waitFor(() =>
+      expect(result.current.friendLeaderboard?.entries.map((entry) => entry.username)).toEqual([
+        "me",
+        "new-friend",
+      ]),
+    );
   });
 });
