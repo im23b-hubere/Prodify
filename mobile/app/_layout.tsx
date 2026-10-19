@@ -13,17 +13,18 @@ import {
 } from "@expo-google-fonts/dm-sans";
 import { Syne_700Bold, useFonts as useSyneFonts } from "@expo-google-fonts/syne";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { ActivityIndicator, View } from "react-native";
+import { useCallback } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { ProdifyWordmark } from "../components/brand/ProdifyWordmark";
+import { LaunchOverlay } from "../components/brand/LaunchOverlay";
 import { NotificationNavBridge } from "../components/NotificationNavBridge";
 import { DeepLinkGuard } from "../components/DeepLinkGuard";
 import { OfflineBanner } from "../components/OfflineBanner";
 import { CrashBoundary } from "../components/ui/CrashBoundary";
 import { AuthProvider } from "../context/AuthContext";
-import { colors, spacing } from "../constants/theme";
+import { colors } from "../constants/theme";
 import { ChallengeSyncBridge } from "../features/challenges/sync/ChallengeSyncBridge";
 import { FriendsInboxBadgeSync } from "../features/friends/sync/FriendsInboxBadgeSync";
 import { FriendsSyncBridge } from "../features/friends/sync/FriendsSyncBridge";
@@ -32,6 +33,7 @@ import { appRootFillStyle, rootStackScreenOptions } from "../features/navigation
 import { initSentry } from "../lib/sentry";
 import { configureNotificationHandler } from "../lib/streakNotifications";
 
+SplashScreen.preventAutoHideAsync();
 initSentry();
 configureNotificationHandler();
 
@@ -40,25 +42,17 @@ export default function RootLayout() {
   const [dmLoaded] = useDmSansFonts({ DMSans_400Regular, DMSans_500Medium, DMSans_700Bold });
   const fontsLoaded = syneLoaded && dmLoaded;
 
-  if (!fontsLoaded) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.background,
-          alignItems: "center",
-          justifyContent: "center",
-          gap: spacing.md,
-        }}
-      >
-        <ProdifyWordmark size="splash" />
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
-  }
+  // The native splash holds until the fonts are in; LaunchOverlay takes over in place.
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={appRootFillStyle}>
+    <GestureHandlerRootView style={appRootFillStyle} onLayout={onLayoutRootView}>
       <SafeAreaProvider>
         <AuthProvider>
           <CrashBoundary scope="root">
@@ -112,6 +106,7 @@ export default function RootLayout() {
               />
             </Stack>
             <DuelClashHost />
+            <LaunchOverlay />
           </CrashBoundary>
         </AuthProvider>
       </SafeAreaProvider>
