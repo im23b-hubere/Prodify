@@ -3,6 +3,7 @@
  * Preserves {{placeholders}}; falls back to English when tokens would be lost.
  *
  * Usage: node scripts/i18n/generate-app-locales.mjs [--only=tr,es] [--force]
+ * Needs `npm i --no-save google-translate-api-x` at the repo root first (not a project dependency).
  */
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";

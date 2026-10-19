@@ -13,7 +13,13 @@ export function appLocaleTag(language: AppLanguage): string {
 
 /** Active app UI locale for dates, numbers, and share-card dates. */
 export function currentAppLocaleTag(): string {
-  const code = (i18n.resolvedLanguage ?? i18n.language ?? FALLBACK_APP_LANGUAGE).split("-")[0] ?? FALLBACK_APP_LANGUAGE;
-  const language = isAppLanguage(code) ? code : FALLBACK_APP_LANGUAGE;
+  const active = i18n.resolvedLanguage ?? i18n.language ?? FALLBACK_APP_LANGUAGE;
+  // Catalog codes can carry a script or region (zh-Hans, pt-BR): try the full code first.
+  const base = active.split("-")[0];
+  const language = isAppLanguage(active)
+    ? active
+    : isAppLanguage(base)
+      ? base
+      : FALLBACK_APP_LANGUAGE;
   return appLocaleTag(language);
 }

@@ -4,6 +4,7 @@ import {
   Building2,
   ChevronRight,
   FileText,
+  Languages,
   LogOut,
   Shield,
   Trash2,
@@ -17,9 +18,10 @@ import { profileScreenStyles as styles } from "../profileScreen.styles";
 import type { SettingsScreenController } from "../hooks/useSettingsScreenController";
 
 type Props = {
-  controller: Pick<SettingsScreenController, "t" | "accountActions"> & {
+  controller: Pick<SettingsScreenController, "t" | "accountActions" | "languageName"> & {
     navigation: Pick<
       SettingsScreenController["navigation"],
+      | "openLanguageSettings"
       | "openNotifications"
       | "openPrivacy"
       | "openTerms"
@@ -32,12 +34,15 @@ type Props = {
 
 function SettingsLink({
   label,
+  value,
   onPress,
   Icon,
   chevron = true,
   danger = false,
 }: {
   label: string;
+  /** Current setting, shown on the right before the chevron. */
+  value?: string;
   onPress: () => void;
   Icon: LucideIcon;
   chevron?: boolean;
@@ -48,7 +53,7 @@ function SettingsLink({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={value ? `${label}, ${value}` : label}
       style={({ pressed }) => [styles.legalRow, pressed && styles.pressed]}
       onPress={onPress}
     >
@@ -56,16 +61,26 @@ function SettingsLink({
         <Icon color={iconTint} size={18} strokeWidth={2.2} />
         <Text style={[styles.legalRowText, { color: tint }]}>{label}</Text>
       </View>
-      {chevron ? <ChevronRight color={colors.textSecondary} size={18} strokeWidth={2.2} /> : null}
+      <View style={styles.legalRowRight}>
+        {value ? <Text style={styles.legalRowValue}>{value}</Text> : null}
+        {chevron ? <ChevronRight color={colors.textSecondary} size={18} strokeWidth={2.2} /> : null}
+      </View>
     </Pressable>
   );
 }
 
 export function ProfileSettingsSection({ controller }: Props) {
-  const { t, navigation, accountActions } = controller;
+  const { t, navigation, accountActions, languageName } = controller;
   return (
     <>
       <View style={styles.settingsCard}>
+        <SettingsLink
+          label={t("profile.language")}
+          value={languageName}
+          Icon={Languages}
+          onPress={navigation.openLanguageSettings}
+        />
+        <View style={styles.legalDivider} />
         <SettingsLink
           label={t("profile.manageNotifications")}
           Icon={Bell}

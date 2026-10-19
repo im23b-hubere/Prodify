@@ -161,12 +161,6 @@ export const profileScreenStyles = StyleSheet.create({
   badgesRow: {
     gap: spacing.sm,
   },
-  languageLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    ...typography.caption,
-    marginBottom: spacing.sm,
-  },
   settingsCard: {
     borderRadius: radii.lg,
     borderWidth: 1,
@@ -193,6 +187,16 @@ export const profileScreenStyles = StyleSheet.create({
     flexShrink: 1,
     color: colors.textPrimary,
     fontFamily: fontFamily.bodyMedium,
+    ...typography.body,
+  },
+  legalRowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  legalRowValue: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
     ...typography.body,
   },
   legalDivider: {

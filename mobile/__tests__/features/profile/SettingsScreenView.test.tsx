@@ -23,13 +23,10 @@ function createController(): SettingsScreenController {
   return {
     t: ((key: string) => key) as unknown as TFunction,
     accountActions: { confirmSignOut: jest.fn(), confirmDeleteAccount: jest.fn() },
-    language: {
-      preference: "system",
-      ready: true,
-      selectPreference: jest.fn(async () => undefined),
-    },
+    languageName: "Deutsch",
     navigation: {
       goBack: jest.fn(),
+      openLanguageSettings: jest.fn(),
       openNotifications: jest.fn(),
       openPrivacy: jest.fn(),
       openTerms: jest.fn(),
@@ -46,9 +43,7 @@ describe("SettingsScreenView", () => {
     render(<SettingsScreenView controller={controller} />);
 
     expect(screen.getByText("profile.settingsTitle")).toBeTruthy();
-    expect(screen.getByLabelText("profile.languageA11y")).toBeTruthy();
-    fireEvent.press(screen.getByText("Deutsch"));
-    expect(controller.language.selectPreference).toHaveBeenCalledWith("de");
+    fireEvent.press(screen.getByLabelText("profile.language, Deutsch"));
     fireEvent.press(screen.getByLabelText("profile.manageNotifications"));
     fireEvent.press(screen.getByLabelText("legal.linksPrivacy"));
     fireEvent.press(screen.getByLabelText("legal.linksTerms"));
@@ -56,6 +51,7 @@ describe("SettingsScreenView", () => {
     fireEvent.press(screen.getByLabelText("profile.signOut"));
     fireEvent.press(screen.getByLabelText("legal.deleteAccount.button"));
 
+    expect(controller.navigation.openLanguageSettings).toHaveBeenCalledTimes(1);
     expect(controller.navigation.openNotifications).toHaveBeenCalledTimes(1);
     expect(controller.navigation.openPrivacy).toHaveBeenCalledTimes(1);
     expect(controller.navigation.openTerms).toHaveBeenCalledTimes(1);

@@ -36,7 +36,16 @@
       "expo-font",
       "expo-notifications",
       "@sentry/react-native",
-      "expo-localization",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["en", "de"],
+            "android": ["en", "de"]
+          },
+          "allowDynamicLocaleChangesAndroid": true
+        }
+      ],
       "expo-asset",
       "expo-apple-authentication",
       [

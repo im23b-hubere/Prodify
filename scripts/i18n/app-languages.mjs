@@ -6,6 +6,15 @@
 export const APP_UI_LANGUAGES = [
   { code: "en", localeTag: "en-GB", nativeName: "English", googleTo: null },
   { code: "de", localeTag: "de-DE", nativeName: "Deutsch", googleTo: null },
+];
+
+/**
+ * Not shipped yet. Machine translation alone left some catalogs half English, so a
+ * language moves up into APP_UI_LANGUAGES only once its file has been reviewed.
+ * Add it to `supportedLocales` of expo-localization in mobile/app.json at the same time.
+ * Arabic, Hebrew and Urdu also need right-to-left layout support before they can ship.
+ */
+export const PLANNED_UI_LANGUAGES = [
   { code: "ar", localeTag: "ar-SA", nativeName: "العربية", googleTo: "ar" },
   { code: "bn", localeTag: "bn-BD", nativeName: "বাংলা", googleTo: "bn" },
   { code: "ca", localeTag: "ca-ES", nativeName: "Català", googleTo: "ca" },

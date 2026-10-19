@@ -1,47 +1,29 @@
 /**
  * Internationalization
  *
- * Catalog languages live in `i18nLanguages.ts`. Default follows the device locale
- * (System) unless the user pins a language in Settings.
+ * Catalog languages live in `i18nLanguages.ts`. There is no in-app picker: the language
+ * comes from the phone (per-app language in iOS / Android settings, else the system
+ * languages, else the region), see `deviceLanguage.ts`.
  */
 import i18n from "i18next";
 import { getLocales } from "expo-localization";
 import { initReactI18next } from "react-i18next";
+import { AppState } from "react-native";
 
-import {
-  APP_LANGUAGES,
-  FALLBACK_APP_LANGUAGE,
-  buildI18nResources,
-} from "./i18nLanguages";
-import {
-  loadLanguagePreference,
-  resolveAppLanguage,
-  saveLanguagePreference,
-  type AppLanguage,
-  type LanguagePreference,
-} from "./languagePreference";
+import { resolveDeviceLanguage } from "./deviceLanguage";
+import { APP_LANGUAGES, FALLBACK_APP_LANGUAGE, buildI18nResources } from "./i18nLanguages";
 
 const resources = buildI18nResources();
 
-/** Prefer the full BCP-47 tag so zh-Hans / pt-BR can match registered catalogs. */
-export function deviceLanguageCode(): string | undefined {
-  const locale = getLocales()?.[0];
-  if (!locale) return undefined;
-  const tag = locale.languageTag?.toLowerCase();
-  if (tag) return tag;
-  return locale.languageCode?.toLowerCase() ?? undefined;
+export function detectDeviceLanguage() {
+  return resolveDeviceLanguage(getLocales() ?? []);
 }
 
-function detectLocale(): AppLanguage {
-  return resolveAppLanguage("system", deviceLanguageCode());
-}
+const isJest = typeof process !== "undefined" && Boolean(process.env.JEST_WORKER_ID);
 
-// Jest keeps English as the default so UI assertions stay stable; preference
-// tests still call applyLanguagePreference / changeLanguage when they need another locale.
-const initialLanguage =
-  typeof process !== "undefined" && process.env.JEST_WORKER_ID
-    ? FALLBACK_APP_LANGUAGE
-    : detectLocale();
+// Jest keeps English as the default so UI assertions stay stable; tests that need
+// another locale call changeLanguage themselves.
+const initialLanguage = isJest ? FALLBACK_APP_LANGUAGE : detectDeviceLanguage();
 
 // i18next intentionally uses default export instance methods here.
 // eslint-disable-next-line import/no-named-as-default-member
@@ -54,24 +36,14 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
-/** Apply a stored preference after AsyncStorage is ready (call once from the root layout). */
-export async function hydrateLanguageFromStorage(): Promise<AppLanguage> {
-  const preference = await loadLanguagePreference();
-  const language = resolveAppLanguage(preference, deviceLanguageCode());
-  if (i18n.language !== language) {
-    await i18n.changeLanguage(language);
-  }
-  return language;
-}
-
-/** Persist a Settings choice and switch the active catalog immediately. */
-export async function applyLanguagePreference(
-  preference: LanguagePreference,
-): Promise<AppLanguage> {
-  await saveLanguagePreference(preference);
-  const language = resolveAppLanguage(preference, deviceLanguageCode());
-  await i18n.changeLanguage(language);
-  return language;
+// Changing the language in the phone's settings sends the user back here: pick it up.
+if (!isJest) {
+  AppState.addEventListener("change", (state) => {
+    if (state !== "active") return;
+    const language = detectDeviceLanguage();
+    // eslint-disable-next-line import/no-named-as-default-member
+    if (i18n.language !== language) void i18n.changeLanguage(language);
+  });
 }
 
 export default i18n;

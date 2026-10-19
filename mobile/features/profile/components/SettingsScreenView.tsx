@@ -4,11 +4,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenTopBar } from "../../../components/ui/ScreenTopBar";
 import type { SettingsScreenController } from "../hooks/useSettingsScreenController";
 import { profileScreenStyles as styles } from "../profileScreen.styles";
-import { LanguagePreferenceControl } from "./LanguagePreferenceControl";
 import { ProfileSettingsSection } from "./ProfileSettingsSection";
 
 export function SettingsScreenView({ controller }: { controller: SettingsScreenController }) {
-  const { t, navigation, language } = controller;
+  const { t, navigation } = controller;
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="settings-screen">
       <ScrollView contentContainerStyle={styles.content}>
@@ -17,15 +16,6 @@ export function SettingsScreenView({ controller }: { controller: SettingsScreenC
           onBack={navigation.goBack}
           style={styles.settingsTopBar}
         />
-        {language.ready ? (
-          <LanguagePreferenceControl
-            t={t}
-            preference={language.preference}
-            onChange={(value) => {
-              void language.selectPreference(value);
-            }}
-          />
-        ) : null}
         <ProfileSettingsSection controller={controller} />
       </ScrollView>
     </SafeAreaView>
