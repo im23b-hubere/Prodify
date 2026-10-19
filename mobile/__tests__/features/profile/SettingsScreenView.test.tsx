@@ -47,7 +47,7 @@ describe("SettingsScreenView", () => {
 
     expect(screen.getByText("profile.settingsTitle")).toBeTruthy();
     expect(screen.getByLabelText("profile.languageA11y")).toBeTruthy();
-    fireEvent.press(screen.getByText("profile.languageGerman"));
+    fireEvent.press(screen.getByText("Deutsch"));
     expect(controller.language.selectPreference).toHaveBeenCalledWith("de");
     fireEvent.press(screen.getByLabelText("profile.manageNotifications"));
     fireEvent.press(screen.getByLabelText("legal.linksPrivacy"));

@@ -1,19 +1,24 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import {
+  APP_LANGUAGES,
+  DEVICE_LANGUAGE_ALIASES,
+  FALLBACK_APP_LANGUAGE,
+  isAppLanguage,
+  matchDeviceToAppLanguage,
+  type AppLanguage,
+} from "./i18nLanguages";
+
 export const LANGUAGE_PREFERENCE_KEY = "prodify_language_preference_v1";
 
-export const LANGUAGE_PREFERENCES = ["system", "en", "de"] as const;
-export type LanguagePreference = (typeof LANGUAGE_PREFERENCES)[number];
+export type { AppLanguage };
+export { APP_LANGUAGES, FALLBACK_APP_LANGUAGE, isAppLanguage };
 
-export const APP_LANGUAGES = ["en", "de"] as const;
-export type AppLanguage = (typeof APP_LANGUAGES)[number];
+/** Stored choice: follow the phone, or pin a registered catalog language. */
+export type LanguagePreference = "system" | AppLanguage;
 
 export function isLanguagePreference(value: unknown): value is LanguagePreference {
-  return typeof value === "string" && (LANGUAGE_PREFERENCES as readonly string[]).includes(value);
-}
-
-export function isAppLanguage(value: unknown): value is AppLanguage {
-  return typeof value === "string" && (APP_LANGUAGES as readonly string[]).includes(value);
+  return value === "system" || isAppLanguage(value);
 }
 
 /** Map a stored preference + device language code onto a concrete catalog language. */
@@ -21,11 +26,15 @@ export function resolveAppLanguage(
   preference: LanguagePreference,
   deviceLanguageCode: string | undefined,
 ): AppLanguage {
-  if (preference !== "system") return preference;
-  const code = deviceLanguageCode?.toLowerCase() ?? "";
-  // Accept regional German codes from the OS (de, de-DE, de-AT, de-CH).
-  if (code === "de" || code.startsWith("de-")) return "de";
-  return "en";
+  if (preference !== "system") {
+    return isAppLanguage(preference) ? preference : FALLBACK_APP_LANGUAGE;
+  }
+  return matchDeviceToAppLanguage(
+    deviceLanguageCode,
+    APP_LANGUAGES,
+    FALLBACK_APP_LANGUAGE,
+    DEVICE_LANGUAGE_ALIASES,
+  );
 }
 
 export async function loadLanguagePreference(): Promise<LanguagePreference> {

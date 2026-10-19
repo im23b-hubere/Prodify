@@ -9,15 +9,17 @@ import {
 } from "../../lib/languagePreference";
 
 describe("resolveAppLanguage", () => {
-  it("uses the device language when preference is system", () => {
+  it("uses a registered device language when preference is system", () => {
     expect(resolveAppLanguage("system", "de")).toBe("de");
     expect(resolveAppLanguage("system", "de-AT")).toBe("de");
     expect(resolveAppLanguage("system", "de-ch")).toBe("de");
     expect(resolveAppLanguage("system", "en")).toBe("en");
+    expect(resolveAppLanguage("system", "tr")).toBe("tr");
+    expect(resolveAppLanguage("system", "tr-TR")).toBe("tr");
   });
 
-  it("falls back to English for unsupported device languages", () => {
-    expect(resolveAppLanguage("system", "fr")).toBe("en");
+  it("falls back to English when the phone language is not in the catalog", () => {
+    expect(resolveAppLanguage("system", "eo")).toBe("en");
     expect(resolveAppLanguage("system", undefined)).toBe("en");
   });
 

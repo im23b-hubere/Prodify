@@ -1,15 +1,18 @@
 /**
  * Internationalization
  *
- * Supported languages: English and German. Default follows the device locale
- * unless the user picks a language in Settings (see languagePreference).
+ * Catalog languages live in `i18nLanguages.ts`. Default follows the device locale
+ * (System) unless the user pins a language in Settings.
  */
 import i18n from "i18next";
 import { getLocales } from "expo-localization";
 import { initReactI18next } from "react-i18next";
 
-import de from "../locales/de.json";
-import en from "../locales/en.json";
+import {
+  APP_LANGUAGES,
+  FALLBACK_APP_LANGUAGE,
+  buildI18nResources,
+} from "./i18nLanguages";
 import {
   loadLanguagePreference,
   resolveAppLanguage,
@@ -18,31 +21,35 @@ import {
   type LanguagePreference,
 } from "./languagePreference";
 
-const resources = {
-  en: { translation: en },
-  de: { translation: de },
-} as const;
+const resources = buildI18nResources();
 
+/** Prefer the full BCP-47 tag so zh-Hans / pt-BR can match registered catalogs. */
 export function deviceLanguageCode(): string | undefined {
-  return getLocales()?.[0]?.languageCode?.toLowerCase() ?? undefined;
+  const locale = getLocales()?.[0];
+  if (!locale) return undefined;
+  const tag = locale.languageTag?.toLowerCase();
+  if (tag) return tag;
+  return locale.languageCode?.toLowerCase() ?? undefined;
 }
 
 function detectLocale(): AppLanguage {
   return resolveAppLanguage("system", deviceLanguageCode());
 }
 
-// Jest keeps the English catalog as the default so UI assertions stay stable; preference
-// tests still call applyLanguagePreference / changeLanguage explicitly when they need German.
+// Jest keeps English as the default so UI assertions stay stable; preference
+// tests still call applyLanguagePreference / changeLanguage when they need another locale.
 const initialLanguage =
-  typeof process !== "undefined" && process.env.JEST_WORKER_ID ? "en" : detectLocale();
+  typeof process !== "undefined" && process.env.JEST_WORKER_ID
+    ? FALLBACK_APP_LANGUAGE
+    : detectLocale();
 
 // i18next intentionally uses default export instance methods here.
 // eslint-disable-next-line import/no-named-as-default-member
 void i18n.use(initReactI18next).init({
   resources,
   lng: initialLanguage,
-  fallbackLng: "en",
-  supportedLngs: ["en", "de"],
+  fallbackLng: FALLBACK_APP_LANGUAGE,
+  supportedLngs: [...APP_LANGUAGES],
   compatibilityJSON: "v4",
   interpolation: { escapeValue: false },
 });
