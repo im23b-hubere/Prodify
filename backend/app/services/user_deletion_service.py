@@ -9,6 +9,7 @@ from app.models import (
     ChallengeParticipant,
     CheckinLog,
     CheckinPlan,
+    ContentReport,
     FriendNudge,
     Friendship,
     GrowthEvent,
@@ -20,6 +21,7 @@ from app.models import (
     PushToken,
     RefreshToken,
     SessionSkillFocus,
+    SocialChallenge,
     SocialChallengeMember,
     SocialComment,
     SocialCommitment,
@@ -30,6 +32,7 @@ from app.models import (
     StreakRescue,
     User,
     UserAchievement,
+    UserBlock,
     UserGoal,
     UserEngagementProfile,
     UserIdentity,
@@ -92,6 +95,17 @@ def delete_user_account(db: Session, user: User) -> None:
             )
         )
 
+    owned_challenge_ids = list(
+        db.scalars(select(SocialChallenge.id).where(SocialChallenge.owner_id == user.id)).all()
+    )
+    if owned_challenge_ids:
+        db.execute(
+            delete(SocialChallengeMember).where(
+                SocialChallengeMember.challenge_id.in_(owned_challenge_ids)
+            )
+        )
+        db.execute(delete(SocialChallenge).where(SocialChallenge.id.in_(owned_challenge_ids)))
+
     for model in USER_OWNED_MODELS:
         db.execute(delete(model).where(model.user_id == user.id))
 
@@ -110,6 +124,14 @@ def delete_user_account(db: Session, user: User) -> None:
     db.execute(
         delete(FriendNudge).where(
             or_(FriendNudge.sender_user_id == user.id, FriendNudge.recipient_user_id == user.id)
+        )
+    )
+    db.execute(
+        delete(UserBlock).where(or_(UserBlock.blocker_id == user.id, UserBlock.blocked_id == user.id))
+    )
+    db.execute(
+        delete(ContentReport).where(
+            or_(ContentReport.reporter_id == user.id, ContentReport.reported_user_id == user.id)
         )
     )
     db.delete(user)

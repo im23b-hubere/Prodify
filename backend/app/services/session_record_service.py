@@ -1,10 +1,10 @@
 import json
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.contracts.sessions import SessionUpdate
-from app.models import ProductionSession, utcnow
+from app.models import ProductionSession, SocialComment, SocialReaction, utcnow
 from app.services.friend_graph import friend_user_ids
 from app.services.kpi_tracker import track_event_deduped
 from app.services.session_skill_focus_service import (
@@ -103,9 +103,25 @@ def delete_session_record(db: Session, session_id: int, user_id: int) -> None:
     if session.stopped_at is None:
         raise ActiveSessionDeleteError
     session.deleted_at = utcnow()
+    _purge_session_social_engagement(db, session.id)
     reconcile_streak_row_for_user(db, user_id)
     revoke_session_challenge_credit(db, user_id=user_id, session_id=session.id)
     db.commit()
+
+
+def _purge_session_social_engagement(db: Session, session_id: int) -> None:
+    db.execute(
+        delete(SocialComment).where(
+            SocialComment.target_type == "session",
+            SocialComment.target_id == session_id,
+        )
+    )
+    db.execute(
+        delete(SocialReaction).where(
+            SocialReaction.target_type == "session",
+            SocialReaction.target_id == session_id,
+        )
+    )
 
 
 def restore_session_record(

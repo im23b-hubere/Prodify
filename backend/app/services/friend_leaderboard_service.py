@@ -6,11 +6,11 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import User, utcnow
+from app.models import Streak, User, utcnow
 from app.schemas import FriendLeaderboardEntryPublic, FriendLeaderboardPublic
 from app.services.friend_graph import friend_user_ids
-from app.services.friend_metrics_service import session_counts_between, session_counts_since, streak_by_user
-from app.services.streak_reconcile_service import compute_streak_counts_for_display
+from app.services.friend_metrics_service import session_counts_between, session_counts_since
+from app.services.streak_reconcile_service import compute_streak_counts_for_users
 from app.services.streak_status_service import streak_status_for_days
 
 
@@ -78,17 +78,30 @@ def _rank_friends(
     session_counts: dict[int, int],
 ) -> list[RankedFriend]:
     users = {user.id: user for user in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+    ranked_users = [users[user_id] for user_id in user_ids if user_id in users]
+    streak_counts = compute_streak_counts_for_users(db, ranked_users)
+    streaks = {
+        row.user_id: row
+        for row in db.scalars(select(Streak).where(Streak.user_id.in_(user_ids))).all()
+    }
     friends = [
-        _friend_metrics(db, users[user_id], session_counts.get(user_id, 0))
-        for user_id in user_ids
-        if user_id in users
+        _friend_metrics(
+            user,
+            session_counts.get(user.id, 0),
+            streak_counts.get(user.id, (0, 0))[0],
+            streaks.get(user.id),
+        )
+        for user in ranked_users
     ]
     return sorted(friends, key=lambda friend: (friend.sessions, friend.streak_days), reverse=True)
 
 
-def _friend_metrics(db: Session, user: User, session_count: int) -> RankedFriend:
-    streak_days, _ = compute_streak_counts_for_display(db, user.id)
-    streak = streak_by_user(db, user.id)
+def _friend_metrics(
+    user: User,
+    session_count: int,
+    streak_days: int,
+    streak: Streak | None,
+) -> RankedFriend:
     inactive_days = 0
     if streak and streak.last_session_date:
         inactive_days = max((utcnow().date() - streak.last_session_date.date()).days, 0)
