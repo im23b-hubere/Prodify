@@ -14,6 +14,7 @@ import {
 import { Syne_700Bold, useFonts as useSyneFonts } from "@expo-google-fonts/syne";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -29,6 +30,7 @@ import { FriendsInboxBadgeSync } from "../features/friends/sync/FriendsInboxBadg
 import { FriendsSyncBridge } from "../features/friends/sync/FriendsSyncBridge";
 import { DuelClashHost } from "../features/duelClash/components/DuelClashHost";
 import { appRootFillStyle, rootStackScreenOptions } from "../features/navigation/rootStackChrome";
+import { hydrateLanguageFromStorage } from "../lib/i18n";
 import { initSentry } from "../lib/sentry";
 import { configureNotificationHandler } from "../lib/streakNotifications";
 
@@ -38,9 +40,20 @@ configureNotificationHandler();
 export default function RootLayout() {
   const [syneLoaded] = useSyneFonts({ Syne_700Bold });
   const [dmLoaded] = useDmSansFonts({ DMSans_400Regular, DMSans_500Medium, DMSans_700Bold });
+  const [languageReady, setLanguageReady] = useState(false);
   const fontsLoaded = syneLoaded && dmLoaded;
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    let cancelled = false;
+    void hydrateLanguageFromStorage().finally(() => {
+      if (!cancelled) setLanguageReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!fontsLoaded || !languageReady) {
     return (
       <View
         style={{
