@@ -40,8 +40,8 @@
         "expo-localization",
         {
           "supportedLocales": {
-            "ios": ["en", "de"],
-            "android": ["en", "de"]
+            "ios": ["en", "de", "fr", "es", "it", "pt-BR"],
+            "android": ["en", "de", "fr", "es", "it", "pt-BR"]
           },
           "allowDynamicLocaleChangesAndroid": true
         }
@@ -72,6 +72,14 @@
         }
       ]
     ],
+    "locales": {
+      "en": "./locales/native/en.json",
+      "de": "./locales/native/de.json",
+      "fr": "./locales/native/fr.json",
+      "es": "./locales/native/es.json",
+      "it": "./locales/native/it.json",
+      "pt-BR": "./locales/native/pt-BR.json"
+    },
     "experiments": {
       "typedRoutes": true
     },

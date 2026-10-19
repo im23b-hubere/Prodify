@@ -1,11 +1,15 @@
 /**
  * App Store / iOS UI languages for Prodify.
  * English variants share `en`; French Canada → `fr`; Spanish variants → `es`.
- * `googleTo` is the Google Translate target; null = keep existing file (en/de).
+ * `googleTo` is the Google Translate target; null = hand-reviewed file the generator never touches.
  */
 export const APP_UI_LANGUAGES = [
   { code: "en", localeTag: "en-GB", nativeName: "English", googleTo: null },
   { code: "de", localeTag: "de-DE", nativeName: "Deutsch", googleTo: null },
+  { code: "fr", localeTag: "fr-FR", nativeName: "Français", googleTo: null },
+  { code: "es", localeTag: "es-ES", nativeName: "Español", googleTo: null },
+  { code: "it", localeTag: "it-IT", nativeName: "Italiano", googleTo: null },
+  { code: "pt-BR", localeTag: "pt-BR", nativeName: "Português (Brasil)", googleTo: null },
 ];
 
 /**
@@ -25,14 +29,12 @@ export const PLANNED_UI_LANGUAGES = [
   { code: "da", localeTag: "da-DK", nativeName: "Dansk", googleTo: "da" },
   { code: "nl", localeTag: "nl-NL", nativeName: "Nederlands", googleTo: "nl" },
   { code: "fi", localeTag: "fi-FI", nativeName: "Suomi", googleTo: "fi" },
-  { code: "fr", localeTag: "fr-FR", nativeName: "Français", googleTo: "fr" },
   { code: "el", localeTag: "el-GR", nativeName: "Ελληνικά", googleTo: "el" },
   { code: "gu", localeTag: "gu-IN", nativeName: "ગુજરાતી", googleTo: "gu" },
   { code: "he", localeTag: "he-IL", nativeName: "עברית", googleTo: "he" },
   { code: "hi", localeTag: "hi-IN", nativeName: "हिन्दी", googleTo: "hi" },
   { code: "hu", localeTag: "hu-HU", nativeName: "Magyar", googleTo: "hu" },
   { code: "id", localeTag: "id-ID", nativeName: "Bahasa Indonesia", googleTo: "id" },
-  { code: "it", localeTag: "it-IT", nativeName: "Italiano", googleTo: "it" },
   { code: "ja", localeTag: "ja-JP", nativeName: "日本語", googleTo: "ja" },
   { code: "kn", localeTag: "kn-IN", nativeName: "ಕನ್ನಡ", googleTo: "kn" },
   { code: "ko", localeTag: "ko-KR", nativeName: "한국어", googleTo: "ko" },
@@ -42,14 +44,12 @@ export const PLANNED_UI_LANGUAGES = [
   { code: "nb", localeTag: "nb-NO", nativeName: "Norsk Bokmål", googleTo: "no" },
   { code: "or", localeTag: "or-IN", nativeName: "ଓଡ଼ିଆ", googleTo: "or" },
   { code: "pl", localeTag: "pl-PL", nativeName: "Polski", googleTo: "pl" },
-  { code: "pt-BR", localeTag: "pt-BR", nativeName: "Português (Brasil)", googleTo: "pt" },
   { code: "pt-PT", localeTag: "pt-PT", nativeName: "Português (Portugal)", googleTo: "pt" },
   { code: "pa", localeTag: "pa-IN", nativeName: "ਪੰਜਾਬੀ", googleTo: "pa" },
   { code: "ro", localeTag: "ro-RO", nativeName: "Română", googleTo: "ro" },
   { code: "ru", localeTag: "ru-RU", nativeName: "Русский", googleTo: "ru" },
   { code: "sk", localeTag: "sk-SK", nativeName: "Slovenčina", googleTo: "sk" },
   { code: "sl", localeTag: "sl-SI", nativeName: "Slovenščina", googleTo: "sl" },
-  { code: "es", localeTag: "es-ES", nativeName: "Español", googleTo: "es" },
   { code: "sv", localeTag: "sv-SE", nativeName: "Svenska", googleTo: "sv" },
   { code: "ta", localeTag: "ta-IN", nativeName: "தமிழ்", googleTo: "ta" },
   { code: "te", localeTag: "te-IN", nativeName: "తెలుగు", googleTo: "te" },

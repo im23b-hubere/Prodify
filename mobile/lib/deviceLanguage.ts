@@ -15,11 +15,16 @@ export type DeviceLocale = {
 
 /** Regions whose users get the matching catalog when none of their languages is in it. */
 const REGION_LANGUAGES: Readonly<Record<string, AppLanguage>> = {
-  DE: "de",
-  AT: "de",
-  CH: "de",
-  LI: "de",
+  ...regions("de", "DE AT CH LI"),
+  ...regions("fr", "FR MC"),
+  ...regions("it", "IT SM"),
+  ...regions("pt-BR", "BR PT AO MZ"),
+  ...regions("es", "ES MX AR CO CL PE VE EC GT CU BO DO HN PY SV NI CR PA UY"),
 };
+
+function regions(language: AppLanguage, codes: string): Record<string, AppLanguage> {
+  return Object.fromEntries(codes.split(" ").map((code) => [code, language]));
+}
 
 const NO_MATCH = "";
 

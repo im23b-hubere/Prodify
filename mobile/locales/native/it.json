@@ -1,0 +1,10 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "Prodify",
+    "NSPhotoLibraryUsageDescription": "Prodify ha bisogno di accedere alle tue foto per permetterti di impostare un’immagine del profilo.",
+    "NSUserNotificationsUsageDescription": "Prodify ti invia promemoria per aiutarti a mantenere la tua serie in studio."
+  },
+  "android": {
+    "app_name": "Prodify"
+  }
+}

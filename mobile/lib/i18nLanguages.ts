@@ -7,6 +7,10 @@
  */
 import locale_en from "../locales/en.json";
 import locale_de from "../locales/de.json";
+import locale_fr from "../locales/fr.json";
+import locale_es from "../locales/es.json";
+import locale_it from "../locales/it.json";
+import locale_pt_BR from "../locales/pt-BR.json";
 
 export const FALLBACK_APP_LANGUAGE = "en" as const;
 
@@ -26,6 +30,26 @@ export const APP_LANGUAGE_DEFINITIONS = {
     localeTag: "de-DE",
     nativeName: "Deutsch",
     translation: locale_de,
+  },
+  "fr": {
+    localeTag: "fr-FR",
+    nativeName: "Français",
+    translation: locale_fr,
+  },
+  "es": {
+    localeTag: "es-ES",
+    nativeName: "Español",
+    translation: locale_es,
+  },
+  "it": {
+    localeTag: "it-IT",
+    nativeName: "Italiano",
+    translation: locale_it,
+  },
+  "pt-BR": {
+    localeTag: "pt-BR",
+    nativeName: "Português (Brasil)",
+    translation: locale_pt_BR,
   },
 } as const satisfies Record<string, AppLanguageDefinition>;
 
