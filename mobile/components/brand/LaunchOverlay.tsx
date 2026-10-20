@@ -162,13 +162,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // The app icon, at the size and corner radius of an icon tile.
+  // Same rounded tile as the native splash. The corner shape is in the image,
+  // so a second border radius would clip it again.
   logo: {
     width: LOGO_SIZE,
     height: LOGO_SIZE,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   // Wordmark and dots hang below the centred logo.
   below: {
