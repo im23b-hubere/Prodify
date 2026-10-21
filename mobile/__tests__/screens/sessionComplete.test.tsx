@@ -161,7 +161,7 @@ function skillProgress(skillId: string, overrides: Record<string, unknown> = {})
 
 function mockBackend(
   session: SessionOverrides = {},
-  { totalSessions = 2, goalConfigured = true } = {},
+  { totalSessions = 2, goalConfigured = true, goalSessions = 2 } = {},
 ) {
   mockApiJson.mockImplementation((path: string, options?: { method?: string }) => {
     if (path === "/sessions/item/12/skill-progress") return progressResponder();
@@ -189,7 +189,7 @@ function mockBackend(
         goal_type: "weekly_sessions",
         target_value: 4,
         week_start: "2026-10-19",
-        current_sessions: 2,
+        current_sessions: goalSessions,
         progress_percent: 50,
         configured: goalConfigured,
       });
@@ -224,6 +224,13 @@ describe("SessionCompleteScreen", () => {
     expect(getByText("dashboard.weeklyGoalTitle")).toBeTruthy();
     expect(getByText("sessionComplete.viewDetails")).toBeTruthy();
     expect(getByText("sessionComplete.backToDashboard")).toBeTruthy();
+  });
+
+  it("keeps the server week count when this session is under five minutes", async () => {
+    mockBackend({ duration_seconds: 299 }, { goalSessions: 7 });
+    const { findByText } = render(<SessionCompleteScreen />);
+
+    expect(await findByText("7/4")).toBeTruthy();
   });
 
   it("hides the week ring until the producer sets a goal", async () => {

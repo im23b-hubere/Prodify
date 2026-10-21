@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models import ProductionSession, UserGoal
 from app.schemas import GoalCurrentPublic
 from app.services.kpi_tracker import track_event
+from app.services.skill_progress_service import is_counted_studio_session
 from app.services.streak_calendar import load_calendar
 
 
@@ -74,7 +75,9 @@ def _goal_snapshot(db: Session, user_id: int, goal: UserGoal, *, configured: boo
         )
     ).all()
     current_sessions = sum(
-        calendar.week_start_key_of(session.started_at) == goal.week_start for session in sessions
+        calendar.week_start_key_of(session.started_at) == goal.week_start
+        and is_counted_studio_session(session.duration_seconds)
+        for session in sessions
     )
     progress = (
         min(100.0, (current_sessions / goal.target_value) * 100)

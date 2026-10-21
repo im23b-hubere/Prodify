@@ -84,6 +84,7 @@ class HeatmapDayPublic(BaseModel):
     date: str
     seconds: int
     intensity: int
+    counted: bool = False
 
 
 class HeatmapPublic(BaseModel):

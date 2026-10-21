@@ -1,13 +1,9 @@
-import { MINIMUM_COUNTED_SESSION_SECONDS } from "../../sessions/sessionCompletePresentation";
 import { weekDateKeys } from "../../../lib/weekCalendar";
 
-type DaySeconds = { date: string; seconds?: number };
+type DaySeconds = { date: string; counted?: boolean };
 
-export function countedStudioDayKeys(
-  days: DaySeconds[],
-  minSeconds = MINIMUM_COUNTED_SESSION_SECONDS,
-): Set<string> {
-  return new Set(days.filter((day) => (day.seconds ?? 0) >= minSeconds).map((day) => day.date));
+export function countedStudioDayKeys(days: DaySeconds[]): Set<string> {
+  return new Set(days.filter((day) => day.counted === true).map((day) => day.date));
 }
 
 export function studioWeekFill(days: DaySeconds[], weekKeys: string[]) {

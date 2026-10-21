@@ -13,4 +13,9 @@ def test_legacy_schema_exports_reference_insight_contracts():
 def test_heatmap_contract_keeps_numeric_intensity():
     day = HeatmapDayContract(date="2026-08-12", seconds=900, intensity=2)
 
-    assert day.model_dump() == {"date": "2026-08-12", "seconds": 900, "intensity": 2}
+    assert day.model_dump() == {
+        "date": "2026-08-12",
+        "seconds": 900,
+        "intensity": 2,
+        "counted": False,
+    }

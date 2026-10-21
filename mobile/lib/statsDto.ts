@@ -139,12 +139,12 @@ export function tryParseSessionStatsDto(value: unknown): SessionStatsDto | null 
 
 export function tryParseHeatmapDays(
   value: unknown,
-): { date: string; seconds: number; intensity: number }[] {
+): { date: string; seconds: number; intensity: number; counted: boolean }[] {
   if (!value || typeof value !== "object") return [];
   const v = value as Record<string, unknown>;
   const days = v.days;
   if (!Array.isArray(days)) return [];
-  const out: { date: string; seconds: number; intensity: number }[] = [];
+  const out: { date: string; seconds: number; intensity: number; counted: boolean }[] = [];
   for (const row of days) {
     if (!row || typeof row !== "object") continue;
     const d = row as Record<string, unknown>;
@@ -152,7 +152,7 @@ export function tryParseHeatmapDays(
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
     const seconds = Math.floor(finiteNonNeg(d.seconds, 0));
     const intensity = Math.floor(finiteNonNeg(d.intensity, 0));
-    out.push({ date, seconds, intensity: Math.min(4, intensity) });
+    out.push({ date, seconds, intensity: Math.min(4, intensity), counted: d.counted === true });
   }
   return out;
 }

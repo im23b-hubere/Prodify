@@ -16,6 +16,7 @@ from app.contracts.insights import (
 )
 from app.contracts.sessions import InsightItemPublic
 from app.models import ProductionSession, Streak, UserGoal
+from app.services.skill_progress_service import is_counted_studio_session
 from app.services.streak_calendar import StreakCalendar, load_calendar
 from app.streakutil import best_streak_run, compute_current_streak, parse_frozen_json
 
@@ -26,7 +27,11 @@ def build_stats_insights(db: Session, user_id: int) -> StatsInsightsPublic:
     best_hour, best_weekday = _productive_time_slots(sessions, calendar)
     week_start = calendar.week_start_key
     target = _weekly_goal_target(db, user_id, week_start)
-    week_sessions = sum(calendar.week_start_key_of(row.started_at) == week_start for row in sessions)
+    week_sessions = sum(
+        calendar.week_start_key_of(row.started_at) == week_start
+        and is_counted_studio_session(row.duration_seconds)
+        for row in sessions
+    )
     return StatsInsightsPublic(
         productivity=ProductivityInsightsPublic(
             best_hour_start=best_hour,
@@ -65,13 +70,24 @@ def build_heatmap(db: Session, user_id: int) -> HeatmapPublic:
         since=datetime.combine(start - timedelta(days=1), time.min, tzinfo=timezone.utc),
     )
     seconds_by_day: defaultdict[str, int] = defaultdict(int)
+    counted_by_day: defaultdict[str, bool] = defaultdict(bool)
     for session in sessions:
-        seconds_by_day[calendar.day_key_of(session.started_at)] += int(session.duration_seconds or 0)
+        day_key = calendar.day_key_of(session.started_at)
+        seconds_by_day[day_key] += int(session.duration_seconds or 0)
+        if is_counted_studio_session(session.duration_seconds):
+            counted_by_day[day_key] = True
     days: list[HeatmapDayPublic] = []
     for offset in range(90):
         day = (start + timedelta(days=offset)).isoformat()
         seconds = seconds_by_day[day]
-        days.append(HeatmapDayPublic(date=day, seconds=seconds, intensity=_heatmap_intensity(seconds)))
+        days.append(
+            HeatmapDayPublic(
+                date=day,
+                seconds=seconds,
+                intensity=_heatmap_intensity(seconds),
+                counted=counted_by_day[day],
+            )
+        )
     return HeatmapPublic(days=days)
 
 

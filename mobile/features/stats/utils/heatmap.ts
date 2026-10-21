@@ -61,7 +61,7 @@ export function buildHeatmapWeekGrid(days: HeatmapDay[]): HeatmapWeekColumn[] {
       if (cursor < first || cursor > last) {
         week.push(null);
       } else {
-        week.push(byDate.get(key) ?? { date: key, seconds: 0, intensity: 0 });
+        week.push(byDate.get(key) ?? { date: key, seconds: 0, intensity: 0, counted: false });
       }
       cursor.setDate(cursor.getDate() + 1);
     }

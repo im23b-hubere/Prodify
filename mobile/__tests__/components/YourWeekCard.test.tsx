@@ -57,7 +57,7 @@ describe("YourWeekCard", () => {
   });
 
   it("labels a full counted week without treating the session goal as the win", () => {
-    renderHero(week.map((date) => ({ date, seconds: 600, intensity: 2 })));
+    renderHero(week.map((date) => ({ date, seconds: 600, intensity: 2, counted: true })));
 
     expect(screen.getByText("stats.yourWeek.fullWeek")).toBeTruthy();
     expect(screen.queryByText("stats.yourWeek.studioDays")).toBeNull();

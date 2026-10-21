@@ -20,7 +20,7 @@ jest.mock("../../features/stats/fullWeekCelebrated", () => ({
 
 const wednesday = new Date(2026, 0, 7, 15, 0, 0);
 const thisWeek = weekDateKeys(0, wednesday);
-const fullDays = thisWeek.map((date) => ({ date, seconds: 600, intensity: 2 }));
+const fullDays = thisWeek.map((date) => ({ date, seconds: 600, intensity: 2, counted: true }));
 
 const loadCelebrated = loadCelebratedFullWeek as jest.MockedFunction<typeof loadCelebratedFullWeek>;
 const saveCelebrated = saveCelebratedFullWeek as jest.MockedFunction<typeof saveCelebratedFullWeek>;

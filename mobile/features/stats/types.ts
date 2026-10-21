@@ -1,4 +1,4 @@
-export type HeatmapDay = { date: string; seconds: number; intensity: number };
+export type HeatmapDay = { date: string; seconds: number; intensity: number; counted: boolean };
 
 export type PersonalRecord = {
   key: string;

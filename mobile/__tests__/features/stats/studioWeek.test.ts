@@ -10,7 +10,12 @@ const wednesday = new Date(2026, 0, 7, 15, 0, 0);
 const thisWeek = weekDateKeys(0, wednesday);
 
 function day(date: string, seconds: number) {
-  return { date, seconds, intensity: seconds > 0 ? 2 : 0 };
+  return {
+    date,
+    seconds,
+    intensity: seconds > 0 ? 2 : 0,
+    counted: seconds >= MINIMUM_COUNTED_SESSION_SECONDS,
+  };
 }
 
 describe("countedStudioDayKeys", () => {
@@ -20,6 +25,15 @@ describe("countedStudioDayKeys", () => {
         day("2026-01-05", MINIMUM_COUNTED_SESSION_SECONDS - 1),
         day("2026-01-06", MINIMUM_COUNTED_SESSION_SECONDS),
         day("2026-01-07", 0),
+      ]),
+    ]).toEqual(["2026-01-06"]);
+  });
+
+  it("does not fill a day whose short sessions only add up past five minutes", () => {
+    expect([
+      ...countedStudioDayKeys([
+        { date: "2026-01-05", seconds: 360, counted: false },
+        { date: "2026-01-06", seconds: 100, counted: true },
       ]),
     ]).toEqual(["2026-01-06"]);
   });

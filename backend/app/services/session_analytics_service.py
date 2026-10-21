@@ -21,6 +21,7 @@ from app.skill_catalog import SKILL_BRANCHES
 from app.services.engagement.profile import start_pattern
 from app.services.skill_profile_service import area_seconds_for_session
 from app.services.stats_period import StatsPeriod
+from app.services.skill_progress_service import is_counted_studio_session
 from app.services.streak_calendar import StreakCalendar, load_calendar, session_day_keys
 
 _DURATION_CAP_SECONDS = 48 * 3600
@@ -261,7 +262,11 @@ def _weekly_goal_impact(
     )
     if not target or target <= 0:
         return None
-    count = sum(calendar.week_start_key_of(row.started_at) == week_start for row in completed)
+    count = sum(
+        calendar.week_start_key_of(row.started_at) == week_start
+        and is_counted_studio_session(row.duration_seconds)
+        for row in completed
+    )
     key = "impact_weekly_goal_cleared" if count >= target else "impact_week_progress"
     return InsightItemPublic(key=key, params={"count": count, "target": target})
 

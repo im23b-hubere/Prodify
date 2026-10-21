@@ -10,8 +10,6 @@ import { tryParseSessionStatsDto } from "../../../lib/statsDto";
 import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { ProgressionDto } from "../../../types/outcomes";
 import type { SessionDto } from "../../../types/session";
-import { MINIMUM_COUNTED_SESSION_SECONDS } from "../sessionCompletePresentation";
-
 type LoadState = "loading" | "ready" | "error";
 
 type SessionCompleteData = {
@@ -116,12 +114,7 @@ export function useSessionCompleteData(
       setStreak(summary.streak);
       setTotalSessions(summary.totalSessions);
       setProgression(summary.progression);
-      applyGoalResult(
-        summary.rawGoal,
-        completedSession.duration_seconds ?? 0,
-        setWeeklyGoalTarget,
-        setWeekSessionsCount,
-      );
+      applyGoalResult(summary.rawGoal, setWeeklyGoalTarget, setWeekSessionsCount);
       setLoadState("ready");
     } catch (error) {
       if (!cancelled.current) {
@@ -147,7 +140,6 @@ export function useSessionCompleteData(
 
 function applyGoalResult(
   rawGoal: unknown,
-  durationSeconds: number,
   setTarget: (value: number | null) => void,
   setCount: (value: number) => void,
 ) {
@@ -164,7 +156,5 @@ function applyGoalResult(
     return;
   }
   setTarget(goal.target_value);
-  let count = goal.current_sessions;
-  if (durationSeconds < MINIMUM_COUNTED_SESSION_SECONDS && count > 0) count -= 1;
-  setCount(Math.max(0, count));
+  setCount(Math.max(0, goal.current_sessions));
 }

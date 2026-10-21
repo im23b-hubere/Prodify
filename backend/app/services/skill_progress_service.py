@@ -41,6 +41,11 @@ class SkillProgress:
     next_level_seconds: int | None
 
 
+def is_counted_studio_session(duration_seconds: int | None) -> bool:
+    """Work time long enough to count as a studio session. Pause is already out of the duration."""
+    return duration_seconds is not None and int(duration_seconds) >= MIN_COUNTED_SESSION_SECONDS
+
+
 def counted_session_seconds(duration_seconds: int) -> int:
     """Skill time a session can earn: nothing when too short, capped when implausibly long."""
     if duration_seconds < MIN_COUNTED_SESSION_SECONDS:
