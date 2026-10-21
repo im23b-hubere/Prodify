@@ -168,6 +168,8 @@ function StudioSection({ controller }: { controller: DashboardScreenController }
       onQuickStart={sessionActions.openSessionSetup}
       onOpenFullscreen={sessionActions.openFullscreenActive}
       onConfirmStop={sessionActions.confirmStop}
+      onResume={sessionActions.resumePaused}
+      resumeBusy={sessionActions.resumeBusy}
       hasWeeklyGoal={data.hasWeeklyGoal}
       weekSessionsCount={presentation.weekSessionsForGoal}
       weeklyGoalTarget={presentation.effectiveWeeklyGoalTarget}

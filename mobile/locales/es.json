@@ -1619,6 +1619,7 @@
     "todayStatA11y": "Tiempo de hoy. Abrir el historial de sesiones",
     "levelStatA11y": "Tu nivel. Abrir tu rango",
     "liveLabel": "En vivo",
+    "pausedLabel": "En pausa",
     "spark": {
       "morning": "Estudio por la mañana. Empieza una sesión.",
       "afternoon": "Tarde. El estudio está abierto.",

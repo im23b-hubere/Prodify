@@ -28,11 +28,18 @@ describe("sessionPresenceSchedule", () => {
     expect(plan.autoStop?.getTime()).toBe(startedAtMs + SESSION_AUTO_STOP_SECONDS * 1000);
   });
 
-  it("schedules nothing while paused or already stopped", () => {
+  it("schedules only the auto-stop while paused", () => {
     const fromMs = startedAtMs + 60_000;
-    expect(
-      sessionPresenceSchedule({ ...running, pause_started_at: "2026-10-06T12:10:00.000Z" }, fromMs),
-    ).toEqual({ stillThere: null, autoStop: null });
+    const plan = sessionPresenceSchedule(
+      { ...running, pause_started_at: "2026-10-06T12:10:00.000Z" },
+      fromMs,
+    );
+    expect(plan.stillThere).toBeNull();
+    expect(plan.autoStop?.getTime()).toBe(startedAtMs + SESSION_AUTO_STOP_SECONDS * 1000);
+  });
+
+  it("schedules nothing when the session is already stopped", () => {
+    const fromMs = startedAtMs + 60_000;
     expect(
       sessionPresenceSchedule({ ...running, stopped_at: "2026-10-06T13:00:00.000Z" }, fromMs),
     ).toEqual({ stillThere: null, autoStop: null });

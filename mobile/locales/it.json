@@ -1619,6 +1619,7 @@
     "todayStatA11y": "Tempo di oggi. Apri la cronologia sessioni",
     "levelStatA11y": "Il tuo livello. Apri il tuo grado",
     "liveLabel": "Live",
+    "pausedLabel": "In pausa",
     "spark": {
       "morning": "Studio di mattina. Inizia una sessione.",
       "afternoon": "Pomeriggio. Lo studio è aperto.",

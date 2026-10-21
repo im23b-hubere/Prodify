@@ -2,6 +2,7 @@ import * as Haptics from "expo-haptics";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ApiError } from "../../../lib/apiErrors";
 import { mergeSessionPauseTiming, parseSessionDate } from "../../../lib/sessionTime";
 import type { SessionDto } from "../../../types/session";
 import { pauseActiveSession, resumeActiveSession } from "../services/activeSessionApi";
@@ -12,12 +13,13 @@ type PauseControlsOptions = {
   setSession: (session: SessionDto | null) => void;
   setError: (error: string | null) => void;
   setNowMs: (nowMs: number) => void;
+  onStaleSession: () => void | Promise<void>;
 };
 
 export function useActiveSessionPauseControls(options: PauseControlsOptions) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
-  const { token, session, setSession, setError, setNowMs } = options;
+  const { token, session, setSession, setError, setNowMs, onStaleSession } = options;
 
   const restoreAfterInvalidResponse = useCallback(
     (previous: SessionDto, message: string) => {
@@ -75,6 +77,10 @@ export function useActiveSessionPauseControls(options: PauseControlsOptions) {
       if (updated) setSession(updated);
       else restoreAfterInvalidResponse(previous, t("sessionDetail.invalidResponse"));
     } catch (resumeError) {
+      if (resumeError instanceof ApiError && resumeError.status === 400) {
+        await onStaleSession();
+        return;
+      }
       restoreAfterInvalidResponse(
         previous,
         resumeError instanceof Error ? resumeError.message : t("sessionActive.resumeFailed"),
@@ -82,7 +88,7 @@ export function useActiveSessionPauseControls(options: PauseControlsOptions) {
     } finally {
       setBusy(false);
     }
-  }, [restoreAfterInvalidResponse, session, setNowMs, setSession, t, token]);
+  }, [onStaleSession, restoreAfterInvalidResponse, session, setNowMs, setSession, t, token]);
 
   return { pause, resume, pauseResumeBusy: busy };
 }

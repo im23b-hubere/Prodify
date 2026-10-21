@@ -20,14 +20,16 @@ export function sessionPresenceSchedule(
   session: SessionDto | null,
   fromMs: number,
 ): { stillThere: Date | null; autoStop: Date | null } {
-  if (!isSessionRunning(session) || !session?.started_at?.trim()) {
+  if (!session?.started_at?.trim() || session.stopped_at) {
     return { stillThere: null, autoStop: null };
   }
   const startedAtMs = parseSessionDate(session.started_at).getTime();
   const paused = session.paused_duration_seconds ?? 0;
+  const autoStop = presenceFireDate(startedAtMs, paused, SESSION_AUTO_STOP_SECONDS, fromMs);
+  if (!isSessionRunning(session)) return { stillThere: null, autoStop };
   return {
     stillThere: presenceFireDate(startedAtMs, paused, SESSION_STILL_THERE_SECONDS, fromMs),
-    autoStop: presenceFireDate(startedAtMs, paused, SESSION_AUTO_STOP_SECONDS, fromMs),
+    autoStop,
   };
 }
 

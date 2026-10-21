@@ -32,6 +32,19 @@ export function effectiveElapsedSeconds(session: SessionDto, nowMs: number): num
   return Math.max(0, net);
 }
 
+/** How long the open slot has been held. The current pause counts; completed pauses do not. */
+export function openElapsedSeconds(session: SessionDto, nowMs: number): number {
+  if (!session?.started_at?.trim()) return 0;
+  const startedMs = parseSessionDate(session.started_at).getTime();
+  if (!Number.isFinite(startedMs)) return 0;
+  let paused = session.paused_duration_seconds ?? 0;
+  if (!Number.isFinite(paused) || paused < 0) paused = 0;
+  const gross = Math.floor((nowMs - startedMs) / 1000);
+  const net = gross - paused;
+  if (!Number.isFinite(net)) return 0;
+  return Math.max(0, net);
+}
+
 /** Keep client pause timestamp when server confirms later — avoids timer jumping forward. */
 export function mergeSessionPauseTiming(
   clientPauseStartedAt: string | null | undefined,

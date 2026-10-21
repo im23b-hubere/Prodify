@@ -25,6 +25,8 @@ type Props = {
   onQuickStart: () => void;
   onOpenFullscreen: () => void;
   onConfirmStop: () => void;
+  onResume: () => void;
+  resumeBusy: boolean;
   hasWeeklyGoal: boolean;
   weekSessionsCount: number;
   weeklyGoalTarget: number | null;
@@ -102,7 +104,9 @@ function SessionAction({ props }: { props: Props }) {
           active={props.active}
           onOpenFullscreen={props.onOpenFullscreen}
           onConfirmStop={props.onConfirmStop}
+          onResume={props.onResume}
           stopBusy={props.stopBusy}
+          resumeBusy={props.resumeBusy}
         />
       </View>
     );

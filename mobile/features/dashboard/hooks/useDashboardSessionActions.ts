@@ -5,7 +5,8 @@ import { useCallback, useRef, useState } from "react";
 import { Alert } from "react-native";
 
 import { useIsScreenFocused } from "../../../hooks/useIsScreenFocused";
-import { apiJson } from "../../../lib/client";
+import { ApiError, apiJson } from "../../../lib/client";
+import { resumeActiveSession } from "../../sessions/services/activeSessionApi";
 import { sessionSummaryHref } from "../../../lib/stackNavigation";
 import { debugLog } from "../../../lib/debugLog";
 import { setWeeklyGoal } from "../../../lib/goals";
@@ -39,9 +40,10 @@ export function useDashboardSessionActions(options: Options) {
   const goal = useWeeklyGoalAction(options);
   const freeze = useFreezeActions(options);
   const { stopSession, ...completion } = useSessionCompletionActions(options, router);
+  const resume = useResumePausedSession(options);
   const dismissSession = useDismissSession(options);
   useDashboardSessionPresence(options, stopSession);
-  return { ...navigation, ...goal, ...freeze, ...completion, dismissSession };
+  return { ...navigation, ...goal, ...freeze, ...completion, ...resume, dismissSession };
 }
 
 function useSessionNavigation(options: Options, router: Router) {
@@ -192,6 +194,30 @@ function useSessionCompletionActions(options: Options, router: Router) {
     ]);
   }, [active, stopSession, t, token]);
   return { stopBusy, confirmStop, stopSession };
+}
+
+function useResumePausedSession({ active, loadSessions, setActive, setError, t, token }: Options) {
+  const [resumeBusy, setResumeBusy] = useState(false);
+  const resumePaused = useCallback(async () => {
+    if (!token || !active?.pause_started_at) return;
+    setResumeBusy(true);
+    try {
+      const updated = await resumeActiveSession(token, active.id);
+      if (updated && updated.stopped_at == null) {
+        setActive(updated);
+        return;
+      }
+      await loadSessions();
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 400)) {
+        setError(userFacingErrorMessage(error, t, "sessionActive.resumeFailed"));
+      }
+      await loadSessions().catch(() => undefined);
+    } finally {
+      setResumeBusy(false);
+    }
+  }, [active, loadSessions, setActive, setError, t, token]);
+  return { resumePaused, resumeBusy };
 }
 
 function useDismissSession({ loadSessions, setError, t, token }: Options) {

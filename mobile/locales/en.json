@@ -1601,6 +1601,7 @@
     "todayStatA11y": "Today's time. Open session history",
     "levelStatA11y": "Your level. Open your rank",
     "liveLabel": "Live",
+    "pausedLabel": "Paused",
     "spark": {
       "morning": "Morning studio. Start a session.",
       "afternoon": "Afternoon. The studio is open.",

@@ -2,6 +2,8 @@ import { act, renderHook } from "@testing-library/react-native";
 import type { TFunction } from "i18next";
 
 import { useDashboardSessionActions } from "../../features/dashboard/hooks/useDashboardSessionActions";
+import { resumeActiveSession } from "../../features/sessions/services/activeSessionApi";
+import { ApiError } from "../../lib/apiErrors";
 import { resetSessionPresenceStateForTests } from "../../lib/sessionPresence";
 import type { SessionDto } from "../../types/session";
 
@@ -23,6 +25,10 @@ jest.mock("expo-haptics", () => ({
 
 jest.mock("../../lib/sessionPresenceNotifications", () => ({
   syncSessionPresenceNotifications: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock("../../features/sessions/services/activeSessionApi", () => ({
+  resumeActiveSession: jest.fn(),
 }));
 
 function createOptions(
@@ -114,5 +120,59 @@ describe("useDashboardSessionActions openSessionSetup", () => {
     });
 
     expect(mockPush).not.toHaveBeenCalled();
+  });
+});
+
+function pausedSession(): SessionDto {
+  const now = Date.now();
+  return {
+    id: 9,
+    user_id: 1,
+    started_at: new Date(now - 60 * 60 * 1000).toISOString(),
+    stopped_at: null,
+    duration_seconds: null,
+    session_type: "beat_making",
+    notes: null,
+    pause_started_at: new Date(now - 30 * 60 * 1000).toISOString(),
+    paused_duration_seconds: 0,
+  };
+}
+
+describe("useDashboardSessionActions resumePaused", () => {
+  beforeEach(() => {
+    resetSessionPresenceStateForTests();
+    jest.clearAllMocks();
+  });
+
+  it("keeps the dashboard paused until the server confirms the resume", async () => {
+    const active = pausedSession();
+    const options = createOptions({ active });
+    const resumed = { ...active, pause_started_at: null };
+    jest.mocked(resumeActiveSession).mockImplementation(async () => {
+      expect(options.setActive).not.toHaveBeenCalled();
+      return resumed;
+    });
+    const { result } = renderHook(() => useDashboardSessionActions(options));
+
+    await act(async () => {
+      await result.current.resumePaused();
+    });
+
+    expect(options.setActive).toHaveBeenCalledWith(resumed);
+    expect(options.loadSessions).not.toHaveBeenCalled();
+  });
+
+  it("reloads when the paused session was already stopped", async () => {
+    const options = createOptions({ active: pausedSession() });
+    jest.mocked(resumeActiveSession).mockRejectedValue(new ApiError(400, "Session already stopped"));
+    const { result } = renderHook(() => useDashboardSessionActions(options));
+
+    await act(async () => {
+      await result.current.resumePaused();
+    });
+
+    expect(options.setActive).not.toHaveBeenCalled();
+    expect(options.setError).not.toHaveBeenCalled();
+    expect(options.loadSessions).toHaveBeenCalledTimes(1);
   });
 });

@@ -15,7 +15,7 @@ import {
   wasStillTherePrompted,
 } from "../../../lib/sessionPresence";
 import { syncSessionPresenceNotifications } from "../../../lib/sessionPresenceNotifications";
-import { effectiveElapsedSeconds } from "../../../lib/sessionTime";
+import { openElapsedSeconds } from "../../../lib/sessionTime";
 import type { SessionDto } from "../../../types/session";
 
 const PRESENCE_POLL_MS = 15_000;
@@ -39,12 +39,12 @@ export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions
 
   reconcileRef.current = async () => {
     const { session, enabled: isEnabled = true } = optionsRef.current;
-    if (!isEnabled || !session || !isSessionRunning(session)) return;
+    if (!isEnabled || !session || session.stopped_at) return;
     if (isBackgroundAppState(String(AppState.currentState))) return;
 
     const decision = decideSessionPresence({
-      isRunning: true,
-      elapsedSeconds: effectiveElapsedSeconds(session, Date.now()),
+      isRunning: isSessionRunning(session),
+      elapsedSeconds: openElapsedSeconds(session, Date.now()),
       stillTherePrompted: wasStillTherePrompted(session.id),
     });
     if (decision.kind === "none") return;
@@ -106,13 +106,13 @@ export function useSessionPresenceCheckIn(options: SessionPresenceCheckInOptions
     void syncSessionPresenceNotifications(watchedSessionRef.current);
   }, [enabled, scheduleKey]);
 
-  const isRunning = isSessionRunning(watchedSession);
+  const isOpen = Boolean(watchedSession && !watchedSession.stopped_at);
   const watchedSessionId = watchedSession?.id;
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isOpen) return;
     const interval = setInterval(() => void reconcileRef.current(), PRESENCE_POLL_MS);
     return () => clearInterval(interval);
-  }, [isRunning, watchedSessionId]);
+  }, [isOpen, watchedSessionId]);
 }
 
 /** Changes exactly when the local presence reminders would fire at different times. */

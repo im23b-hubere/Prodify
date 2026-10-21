@@ -33,6 +33,17 @@ def _backdate(session_id: int, *, hours: float, paused_duration_seconds: int = 0
         db.commit()
 
 
+def _place_pause(session_id: int, *, started_hours_ago: float, paused_hours_ago: float) -> None:
+    now = datetime.now(timezone.utc)
+    with SessionLocal() as db:
+        session = db.get(ProductionSession, session_id)
+        assert session is not None
+        session.started_at = now - timedelta(hours=started_hours_ago)
+        session.pause_started_at = now - timedelta(hours=paused_hours_ago)
+        session.paused_duration_seconds = 0
+        db.commit()
+
+
 def _register_push_token(user_id: int) -> None:
     with SessionLocal() as db:
         db.add(
@@ -121,12 +132,38 @@ def test_job_stops_after_eight_hours_even_when_late(client, monkeypatch):
         assert session.duration_seconds == SESSION_AUTO_STOP_SECONDS
 
 
-def test_job_skips_paused_sessions(client, monkeypatch):
-    headers = auth_headers(client, "presence-paused@example.com", "presence-paused")
-    session_id = _start_session(client, headers)
-    paused = client.post(f"/sessions/item/{session_id}/pause", headers=headers, json={})
-    assert paused.status_code == 200
-    _backdate(session_id, hours=8)
+def test_job_stops_a_paused_session_after_eight_open_hours(client, monkeypatch):
+    headers = auth_headers(client, "presence-paused-stop@example.com", "presence-paused-stop")
+    manual_headers = auth_headers(client, "presence-paused-manual@example.com", "presence-paused-manual")
+    session_id = _pause(client, headers)
+    manual_id = _pause(client, manual_headers)
+    _place_pause(session_id, started_hours_ago=10, paused_hours_ago=9)
+    _place_pause(manual_id, started_hours_ago=10, paused_hours_ago=9)
+    monkeypatch.setattr(
+        "app.jobs.enforce_session_presence.dispatch_to_user",
+        lambda *args, **kwargs: (0, 0, None),
+    )
+
+    manual = client.post("/sessions/stop", headers=manual_headers, json={"session_id": manual_id})
+    result = _run_job()
+
+    assert result["stopped"] == 1
+    assert manual.status_code == 200
+    with SessionLocal() as db:
+        stopped = db.get(ProductionSession, session_id)
+        by_hand = db.get(ProductionSession, manual_id)
+        assert stopped is not None and by_hand is not None
+        assert stopped.duration_seconds == 3600
+        assert by_hand.duration_seconds == 3600
+        assert _open_seconds(stopped) == _open_seconds(by_hand) == SESSION_AUTO_STOP_SECONDS
+    started = client.post("/sessions/start", headers=headers, json={"session_type": "beat_making"})
+    assert started.status_code == 201
+
+
+def test_job_keeps_a_paused_session_under_eight_hours(client, monkeypatch):
+    headers = auth_headers(client, "presence-paused-keep@example.com", "presence-paused-keep")
+    session_id = _pause(client, headers)
+    _place_pause(session_id, started_hours_ago=4, paused_hours_ago=3)
     monkeypatch.setattr(
         "app.jobs.enforce_session_presence.dispatch_to_user",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not push")),
@@ -134,12 +171,51 @@ def test_job_skips_paused_sessions(client, monkeypatch):
 
     result = _run_job()
 
-    assert result["nudged"] == 0
-    assert result["stopped"] == 0
+    assert result == {"nudged": 0, "stopped": 0, "scanned": 1}
+    conflict = client.post("/sessions/start", headers=headers, json={"session_type": "beat_making"})
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["details"]["session_id"] == session_id
     with SessionLocal() as db:
         session = db.get(ProductionSession, session_id)
         assert session is not None
         assert session.stopped_at is None
+        assert session.pause_started_at is not None
+
+
+def test_job_stops_a_session_paused_after_eight_hours_of_work(client, monkeypatch):
+    headers = auth_headers(client, "presence-paused-full@example.com", "presence-paused-full")
+    session_id = _pause(client, headers)
+    _place_pause(session_id, started_hours_ago=8, paused_hours_ago=0)
+    monkeypatch.setattr(
+        "app.jobs.enforce_session_presence.dispatch_to_user",
+        lambda *args, **kwargs: (0, 0, None),
+    )
+
+    result = _run_job()
+
+    assert result["stopped"] == 1
+    with SessionLocal() as db:
+        session = db.get(ProductionSession, session_id)
+        assert session is not None
+        assert session.duration_seconds == SESSION_AUTO_STOP_SECONDS
+
+
+def _pause(client, headers: dict[str, str]) -> int:
+    session_id = _start_session(client, headers)
+    paused = client.post(f"/sessions/item/{session_id}/pause", headers=headers, json={})
+    assert paused.status_code == 200
+    return session_id
+
+
+def _open_seconds(session: ProductionSession) -> int:
+    stopped_at = session.stopped_at
+    started_at = session.started_at
+    assert stopped_at is not None
+    if stopped_at.tzinfo is None:
+        stopped_at = stopped_at.replace(tzinfo=timezone.utc)
+    if started_at.tzinfo is None:
+        started_at = started_at.replace(tzinfo=timezone.utc)
+    return int((stopped_at - started_at).total_seconds())
 
 
 def test_job_still_stops_the_next_session_when_one_auto_stop_fails(client, monkeypatch):

@@ -20,8 +20,8 @@ export function decideSessionPresence(input: {
   elapsedSeconds: number;
   stillTherePrompted: boolean;
 }): SessionPresenceDecision {
-  if (!input.isRunning) return { kind: "none" };
   if (input.elapsedSeconds >= SESSION_AUTO_STOP_SECONDS) return { kind: "auto-stop" };
+  if (!input.isRunning) return { kind: "none" };
   if (!input.stillTherePrompted && input.elapsedSeconds >= SESSION_STILL_THERE_SECONDS) {
     return { kind: "still-there" };
   }

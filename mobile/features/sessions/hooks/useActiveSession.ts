@@ -25,6 +25,7 @@ export function useActiveSession(id: string | undefined) {
     setSession: loader.setSession,
     setError: loader.setError,
     setNowMs: clock.setNowMs,
+    onStaleSession: loader.load,
   });
   const metadata = useActiveSessionMetadata({
     token,

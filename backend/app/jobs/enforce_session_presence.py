@@ -1,4 +1,4 @@
-"""Nudge still-running sessions at 3h and safety-stop them at 8h."""
+"""Nudge a running session at 3h and safety-stop any open session at 8h."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from app.services.engagement.profile_store import refresh_profile
 from app.services.push_dispatch import dispatch_to_user
 from app.services.push_links import push_data_dashboard
 from app.services.session_lifecycle_service import complete_session
-from app.services.session_presence import decide_session_presence, effective_elapsed_seconds, stop_deadline
+from app.services.session_presence import session_presence_action, stop_deadline
 from app.services.social_challenge_notifications import PushChallengeEvents
 from app.services.social_consequence import maybe_notify_streak_break_on_transition
 
@@ -28,18 +28,13 @@ def run_session_presence_job(db: DBSession, settings: Settings) -> dict:
             select(ProductionSession).where(
                 ProductionSession.stopped_at.is_(None),
                 ProductionSession.deleted_at.is_(None),
-                ProductionSession.pause_started_at.is_(None),
             )
         ).all()
     )
     nudged = 0
     stopped = 0
     for session in sessions:
-        action = decide_session_presence(
-            effective_elapsed_seconds(session, now),
-            is_running=True,
-            already_nudged=session.still_there_notified_at is not None,
-        )
+        action = session_presence_action(session, now)
         if action == "nudge" and _nudge(db, settings, session, now):
             nudged += 1
         elif action == "stop" and _stop(db, settings, session, now):
@@ -48,6 +43,9 @@ def run_session_presence_job(db: DBSession, settings: Settings) -> dict:
 
 
 def _nudge(db: DBSession, settings: Settings, session: ProductionSession, now) -> bool:
+    if not _confirmed(db, session, now, "nudge"):
+        db.rollback()
+        return False
     title, body = push_templates.session_still_there()
     try:
         dispatch_to_user(
@@ -70,7 +68,7 @@ def _nudge(db: DBSession, settings: Settings, session: ProductionSession, now) -
 def _stop(db: DBSession, settings: Settings, session: ProductionSession, now) -> bool:
     user_id = session.user_id
     try:
-        if not _still_running_after_lock(db, session):
+        if not _confirmed(db, session, now, "stop"):
             db.rollback()
             return False
         completion = complete_session(db, user_id, session, stopped_at=stop_deadline(session, now))
@@ -112,10 +110,10 @@ def _stop(db: DBSession, settings: Settings, session: ProductionSession, now) ->
     return True
 
 
-def _still_running_after_lock(db: DBSession, session: ProductionSession) -> bool:
-    """The scan is a snapshot; the user may have stopped, paused or deleted the session since."""
+def _confirmed(db: DBSession, session: ProductionSession, now, expected: str) -> bool:
+    """The scan is a snapshot; the user may have resumed, paused, stopped or deleted since."""
     db.refresh(session, with_for_update=True)
-    return session.stopped_at is None and session.pause_started_at is None and session.deleted_at is None
+    return session_presence_action(session, now) == expected
 
 
 def main() -> None:

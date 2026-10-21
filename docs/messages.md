@@ -30,11 +30,11 @@ Some events can hit more than one channel at once. That is current behavior, not
 | Message | Channel | Trigger | When |
 |---------|---------|---------|------|
 | **Session saved** · `{type} · {duration}` | Push | Producer stops a session | Immediately after stop |
-| **Still there?** · Your session is still running. Open Prodify to continue or end it. | Local + Push | Running session, not paused, elapsed ≥ 3h, not yet nudged | 3h of effective session time (pauses excluded) |
+| **Still there?** · Your session is still running. Open Prodify to continue or end it. | Local + Push | Running session, not paused, work time ≥ 3h, not yet nudged | 3h of effective work time (pauses excluded) |
 | **Still there?** · Continue, or end it here. | In-app alert | Same, and the app is in the foreground | Same 3h mark |
-| **Session ended** · Your session was stopped after 8 hours. | Local + Push | Running session, not paused, elapsed ≥ 8h | 8h of effective session time; server is source of truth for the stop |
+| **Session ended** · Your session was stopped after 8 hours. | Local + Push | Open session, running or paused, open age ≥ 8h | 8h from the start, plus completed pauses. The current pause counts toward that window. The server stops at the same deadline a manual stop would use. |
 
-Paused sessions are skipped. The 8h local notification can arrive even if the app is closed; the server job must also run for the session to actually stop.
+A pause does not get a still-there nudge. It is stopped once the open slot reaches 8 hours, whether the app is open or the presence job runs first. The local notification can arrive before that job; the server remains the source of truth for the stop.
 
 ---
 

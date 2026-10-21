@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 
 import {
   effectiveElapsedSeconds,
+  openElapsedSeconds,
   formatDurationWords,
   mergeSessionPauseTiming,
 } from "../../lib/sessionTime";
@@ -44,6 +45,7 @@ describe("effectiveElapsedSeconds", () => {
     expect(effectiveElapsedSeconds(session, pauseMs - 2000)).toBe(65);
     expect(effectiveElapsedSeconds(session, pauseMs - 1000)).toBe(65);
     expect(effectiveElapsedSeconds(session, pauseMs + 5000)).toBe(65);
+    expect(openElapsedSeconds(session, pauseMs + 5000)).toBe(70);
   });
 
   it("prefers the earlier client pause timestamp when merging server response", () => {

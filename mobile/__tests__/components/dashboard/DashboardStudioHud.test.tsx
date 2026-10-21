@@ -52,6 +52,8 @@ const baseProps = {
   onQuickStart: mockOnQuickStart,
   onOpenFullscreen: jest.fn(),
   onConfirmStop: jest.fn(),
+  onResume: jest.fn(),
+  resumeBusy: false,
   hasWeeklyGoal: false,
   weekSessionsCount: 0,
   weeklyGoalTarget: null,
@@ -124,6 +126,39 @@ describe("DashboardStudioHud session start gate", () => {
 
     expect(screen.queryByTestId("dashboard-start-session")).toBeNull();
     expect(screen.queryByTestId("dashboard-start-session-loading")).toBeNull();
+    expect(screen.getByTestId("dashboard-stop-session")).toBeTruthy();
+    expect(screen.getByText("Live")).toBeTruthy();
+  });
+
+  it("shows a paused session as paused, with resume beside end", () => {
+    const onResume = jest.fn();
+    render(
+      <DashboardStudioHud
+        {...baseProps}
+        activeResolved={true}
+        onResume={onResume}
+        active={
+          {
+            id: 9,
+            user_id: 1,
+            started_at: "2026-08-31T10:00:00.000Z",
+            stopped_at: null,
+            duration_seconds: 300,
+            session_type: "beat_making",
+            notes: null,
+            pause_started_at: "2026-08-31T10:20:00.000Z",
+          } satisfies SessionDto
+        }
+      />,
+    );
+
+    expect(screen.queryByText("Live")).toBeNull();
+    expect(screen.queryByTestId("dashboard-start-session")).toBeNull();
+    expect(screen.getByText("Paused")).toBeTruthy();
+    expect(screen.getByText("20 minutes")).toBeTruthy();
+    expect(screen.queryByText(/counting/)).toBeNull();
+    fireEvent.press(screen.getByTestId("dashboard-resume-session"));
+    expect(onResume).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("dashboard-stop-session")).toBeTruthy();
   });
 

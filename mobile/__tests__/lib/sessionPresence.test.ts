@@ -23,14 +23,24 @@ describe("isSessionRunning", () => {
 });
 
 describe("decideSessionPresence", () => {
-  it("does nothing while the session is paused", () => {
+  it("does nothing while a pause is still inside the eight-hour window", () => {
+    expect(
+      decideSessionPresence({
+        isRunning: false,
+        elapsedSeconds: SESSION_AUTO_STOP_SECONDS - 1,
+        stillTherePrompted: false,
+      }),
+    ).toEqual({ kind: "none" });
+  });
+
+  it("stops a paused session once eight open hours have passed", () => {
     expect(
       decideSessionPresence({
         isRunning: false,
         elapsedSeconds: SESSION_AUTO_STOP_SECONDS,
         stillTherePrompted: false,
       }),
-    ).toEqual({ kind: "none" });
+    ).toEqual({ kind: "auto-stop" });
   });
 
   it("does nothing before three hours", () => {

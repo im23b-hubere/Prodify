@@ -6,25 +6,32 @@ import Animated, { useAnimatedStyle } from "react-native-reanimated";
 import { fontFamily } from "../../../constants/fonts";
 import { colors, radii, spacing, typography } from "../../../constants/theme";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
+import { formatDurationWords } from "../../../lib/sessionTime";
 import type { SessionDto } from "../../../types/session";
 import { formatNaturalCounting, formatTimer, notesPreview } from "../utils";
 
 type ActiveSessionBlockProps = {
   active: SessionDto;
   activeSeconds: number;
+  isPaused: boolean;
   ringPulse: SharedValue<number>;
   onOpenFullscreen: () => void;
   onConfirmStop: () => void;
+  onResume: () => void;
   stopBusy: boolean;
+  resumeBusy: boolean;
 };
 
 export function ActiveSessionBlock({
   active,
   activeSeconds,
+  isPaused,
   ringPulse,
   onOpenFullscreen,
   onConfirmStop,
+  onResume,
   stopBusy,
+  resumeBusy,
 }: ActiveSessionBlockProps) {
   const { t } = useTranslation();
   const ringAnimatedStyle = useAnimatedStyle(() => ({
@@ -40,17 +47,23 @@ export function ActiveSessionBlock({
         onPress={onOpenFullscreen}
         style={styles.timerPressable}
       >
-        <Animated.View style={[styles.pulse, ringAnimatedStyle]} />
+        {isPaused ? null : <Animated.View style={[styles.pulse, ringAnimatedStyle]} />}
         <View style={styles.liveRow}>
-          <View style={styles.liveDot} />
-          <Text style={styles.liveLabel}>{t("dashboard.liveLabel")}</Text>
+          {isPaused ? null : <View style={styles.liveDot} />}
+          <Text style={isPaused ? styles.pausedLabel : styles.liveLabel}>
+            {isPaused ? t("dashboard.pausedLabel") : t("dashboard.liveLabel")}
+          </Text>
           <Text style={styles.liveSep}>·</Text>
           <Text style={styles.typeLabel}>
             {sessionTypeLabel(String(active.session_type || "beat_making"), t)}
           </Text>
         </View>
         <Text style={styles.heroTimer}>{formatTimer(activeSeconds)}</Text>
-        <Text style={styles.elapsedNatural}>{formatNaturalCounting(activeSeconds, t)}</Text>
+        <Text style={styles.elapsedNatural}>
+          {isPaused
+            ? formatDurationWords(activeSeconds, t)
+            : formatNaturalCounting(activeSeconds, t)}
+        </Text>
         {preview ? (
           <Text style={styles.notesPreview} numberOfLines={1}>
             {preview}
@@ -58,16 +71,39 @@ export function ActiveSessionBlock({
         ) : null}
       </Pressable>
 
-      <Pressable
-        style={({ pressed }) => [styles.stopSessionBtn, pressed && styles.pressedStop]}
-        onPress={onConfirmStop}
-        disabled={stopBusy}
-        testID="dashboard-stop-session"
-      >
-        <Text style={styles.stopSessionLabel}>
-          {stopBusy ? t("dashboard.stopping") : t("dashboard.stopSession")}
-        </Text>
-      </Pressable>
+      <View style={styles.sessionActions}>
+        {isPaused ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("sessionActive.resume")}
+            style={({ pressed }) => [
+              styles.stopSessionBtn,
+              styles.actionButton,
+              pressed && styles.pressedStop,
+            ]}
+            onPress={onResume}
+            disabled={resumeBusy}
+            testID="dashboard-resume-session"
+          >
+            <Text style={styles.stopSessionLabel}>{t("sessionActive.resume")}</Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.stopSessionBtn,
+            styles.actionButton,
+            pressed && styles.pressedStop,
+          ]}
+          onPress={onConfirmStop}
+          disabled={stopBusy}
+          testID="dashboard-stop-session"
+        >
+          <Text style={styles.stopSessionLabel}>
+            {stopBusy ? t("dashboard.stopping") : t("dashboard.stopSession")}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -102,6 +138,20 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 4,
     backgroundColor: colors.primary,
+  },
+  sessionActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  actionButton: {
+    flex: 1,
+  },
+  pausedLabel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
   },
   liveLabel: {
     color: colors.primary,

@@ -109,7 +109,7 @@ describe("useSessionPresenceCheckIn", () => {
     expect(endSession).not.toHaveBeenCalled();
   });
 
-  it("skips while the session is paused", async () => {
+  it("skips a pause that is still inside the eight-hour window", async () => {
     const { endSession } = renderPresence({
       session: { ...stillThereSession, pause_started_at: "2026-10-06T19:50:00.000Z" },
     });
@@ -117,6 +117,19 @@ describe("useSessionPresenceCheckIn", () => {
 
     expect(Alert.alert).not.toHaveBeenCalled();
     expect(endSession).not.toHaveBeenCalled();
+  });
+
+  it("stops a paused session once the open slot is eight hours old", async () => {
+    const { endSession } = renderPresence({
+      session: {
+        ...runningSession,
+        started_at: new Date(START_MS - 10 * 60 * 60 * 1000).toISOString(),
+        pause_started_at: new Date(START_MS - 9 * 60 * 60 * 1000).toISOString(),
+      },
+    });
+
+    await waitFor(() => expect(endSession).toHaveBeenCalledTimes(1));
+    expect(Alert.alert).not.toHaveBeenCalled();
   });
 
   it("asks still-there after three hours without pausing", async () => {

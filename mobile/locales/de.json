@@ -1627,6 +1627,7 @@
     "todayStatA11y": "Heutige Zeit. Session-Verlauf öffnen",
     "levelStatA11y": "Dein Level. Deinen Rang öffnen",
     "liveLabel": "Live",
+    "pausedLabel": "Pausiert",
     "spark": {
       "morning": "Morgens im Studio. Starte eine Session.",
       "afternoon": "Nachmittag. Das Studio ist offen.",

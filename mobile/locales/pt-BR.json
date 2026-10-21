@@ -1627,6 +1627,7 @@
     "todayStatA11y": "Tempo de hoje. Abrir histórico de sessões",
     "levelStatA11y": "Seu nível. Abrir seu ranking",
     "liveLabel": "Ao vivo",
+    "pausedLabel": "Pausado",
     "spark": {
       "morning": "Estúdio pela manhã. Comece uma sessão.",
       "afternoon": "Tarde. O estúdio está aberto.",
