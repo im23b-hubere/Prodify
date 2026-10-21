@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from app.models import Streak, User, utcnow
 from app.schemas import FriendLeaderboardEntryPublic, FriendLeaderboardPublic
 from app.services.friend_graph import friend_user_ids
-from app.services.friend_metrics_service import session_counts_between, session_counts_since
+from app.services.friend_metrics_service import session_counts_since
+from app.services.social_week_service import current_week_start, previous_week_start, session_counts
 from app.services.streak_reconcile_service import compute_streak_counts_for_users
 from app.services.streak_status_service import streak_status_for_days
 
@@ -17,13 +18,12 @@ from app.services.streak_status_service import streak_status_for_days
 @dataclass(frozen=True)
 class LeaderboardPeriod:
     label: str
-    days: int | None
 
     @classmethod
     def parse(cls, value: str) -> "LeaderboardPeriod":
         if value == "all":
-            return cls(label="all", days=None)
-        return cls(label="week", days=7)
+            return cls(label="all")
+        return cls(label="week")
 
 
 @dataclass(frozen=True)
@@ -61,14 +61,11 @@ def _session_counts(
     user_ids: list[int],
     period: LeaderboardPeriod,
 ) -> tuple[dict[int, int], dict[int, int]]:
-    now = utcnow()
-    if period.days is None:
-        return session_counts_since(db, user_ids, now - timedelta(days=365 * 50)), {}
-    current_start = now - timedelta(days=period.days)
-    previous_start = current_start - timedelta(days=period.days)
+    if period.label == "all":
+        return session_counts_since(db, user_ids, utcnow() - timedelta(days=365 * 50)), {}
     return (
-        session_counts_since(db, user_ids, current_start),
-        session_counts_between(db, user_ids, previous_start, current_start),
+        session_counts(db, user_ids, current_week_start()),
+        session_counts(db, user_ids, previous_week_start()),
     )
 
 
@@ -133,7 +130,7 @@ def _to_public_entry(
     previous_counts: dict[int, int],
     period: LeaderboardPeriod,
 ) -> FriendLeaderboardEntryPublic:
-    previous_sessions = previous_counts.get(friend.user_id, 0) if period.days is not None else friend.sessions
+    previous_sessions = previous_counts.get(friend.user_id, 0) if period.label != "all" else friend.sessions
     delta = friend.sessions - int(previous_sessions)
     return FriendLeaderboardEntryPublic(
         rank=rank,
