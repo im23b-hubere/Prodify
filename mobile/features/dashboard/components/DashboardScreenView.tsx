@@ -173,9 +173,6 @@ function StudioSection({ controller }: { controller: DashboardScreenController }
       hasWeeklyGoal={data.hasWeeklyGoal}
       weekSessionsCount={presentation.weekSessionsForGoal}
       weeklyGoalTarget={presentation.effectiveWeeklyGoalTarget}
-      savedWeeklyGoalTarget={data.weeklyGoalTarget}
-      goalSaving={sessionActions.goalSaving}
-      onSaveWeeklyGoal={sessionActions.saveWeeklyGoal}
       feedback={presentation.sessionFeedback}
       paceForecast={presentation.paceForecast}
       streakOverview={presentation.displayOverview}

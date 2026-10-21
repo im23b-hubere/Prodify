@@ -30,9 +30,6 @@ type Props = {
   hasWeeklyGoal: boolean;
   weekSessionsCount: number;
   weeklyGoalTarget: number | null;
-  savedWeeklyGoalTarget?: number | null;
-  goalSaving: boolean;
-  onSaveWeeklyGoal: (target: number) => Promise<void>;
   feedback: SessionFeedbackComputed;
   paceForecast: ForecastComputed | null;
   streakOverview: StreakOverviewDto | null;
@@ -73,12 +70,7 @@ export const DashboardStudioHud = memo(function DashboardStudioHud(props: Props)
 function WeeklyGoalBlock({ props }: { props: Props }) {
   if (!props.hasWeeklyGoal || props.weeklyGoalTarget == null) {
     return (
-      <WeeklyQuestCard
-        mode="setup"
-        t={props.t}
-        busy={props.goalSaving}
-        onSave={props.onSaveWeeklyGoal}
-      />
+      <WeeklyQuestCard mode="setup" t={props.t} onOpen={props.onOpenStats} />
     );
   }
   return (
@@ -88,10 +80,7 @@ function WeeklyGoalBlock({ props }: { props: Props }) {
       feedback={props.feedback}
       weekSessionsCount={props.weekSessionsCount}
       weeklyGoalTarget={props.weeklyGoalTarget}
-      savedWeeklyGoalTarget={props.savedWeeklyGoalTarget}
       paceForecast={props.paceForecast}
-      busy={props.goalSaving}
-      onChangeTarget={props.onSaveWeeklyGoal}
     />
   );
 }

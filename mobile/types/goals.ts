@@ -4,4 +4,5 @@ export type GoalCurrentDto = {
   week_start: string;
   current_sessions: number;
   progress_percent: number;
+  configured: boolean;
 };

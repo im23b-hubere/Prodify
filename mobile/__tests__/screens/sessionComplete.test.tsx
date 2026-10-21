@@ -159,7 +159,10 @@ function skillProgress(skillId: string, overrides: Record<string, unknown> = {})
   };
 }
 
-function mockBackend(session: SessionOverrides = {}, { totalSessions = 2 } = {}) {
+function mockBackend(
+  session: SessionOverrides = {},
+  { totalSessions = 2, goalConfigured = true } = {},
+) {
   mockApiJson.mockImplementation((path: string, options?: { method?: string }) => {
     if (path === "/sessions/item/12/skill-progress") return progressResponder();
     if (path === "/sessions/item/12" && options?.method === "PATCH") return patchResponder();
@@ -182,7 +185,14 @@ function mockBackend(session: SessionOverrides = {}, { totalSessions = 2 } = {})
       });
     }
     if (path === "/goals/current") {
-      return Promise.resolve({ target_value: 4, current_sessions: 2 });
+      return Promise.resolve({
+        goal_type: "weekly_sessions",
+        target_value: 4,
+        week_start: "2026-10-19",
+        current_sessions: 2,
+        progress_percent: 50,
+        configured: goalConfigured,
+      });
     }
     return Promise.resolve(null);
   });
@@ -214,6 +224,14 @@ describe("SessionCompleteScreen", () => {
     expect(getByText("dashboard.weeklyGoalTitle")).toBeTruthy();
     expect(getByText("sessionComplete.viewDetails")).toBeTruthy();
     expect(getByText("sessionComplete.backToDashboard")).toBeTruthy();
+  });
+
+  it("hides the week ring until the producer sets a goal", async () => {
+    mockBackend({}, { goalConfigured: false });
+    const { findByTestId, queryByText } = render(<SessionCompleteScreen />);
+
+    expect(await findByTestId("session-complete-screen")).toBeTruthy();
+    expect(queryByText("dashboard.weeklyGoalTitle")).toBeNull();
   });
 
   it("navigates from the primary and secondary actions", async () => {

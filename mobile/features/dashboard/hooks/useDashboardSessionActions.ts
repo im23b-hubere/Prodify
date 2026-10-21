@@ -9,7 +9,6 @@ import { ApiError, apiJson } from "../../../lib/client";
 import { resumeActiveSession } from "../../sessions/services/activeSessionApi";
 import { sessionSummaryHref } from "../../../lib/stackNavigation";
 import { debugLog } from "../../../lib/debugLog";
-import { setWeeklyGoal } from "../../../lib/goals";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../../lib/sessionTime";
 import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { SessionDto } from "../../../types/session";
@@ -37,13 +36,12 @@ type Router = ReturnType<typeof useRouter>;
 export function useDashboardSessionActions(options: Options) {
   const router = useRouter();
   const navigation = useSessionNavigation(options, router);
-  const goal = useWeeklyGoalAction(options);
   const freeze = useFreezeActions(options);
   const { stopSession, ...completion } = useSessionCompletionActions(options, router);
   const resume = useResumePausedSession(options);
   const dismissSession = useDismissSession(options);
   useDashboardSessionPresence(options, stopSession);
-  return { ...navigation, ...goal, ...freeze, ...completion, ...resume, dismissSession };
+  return { ...navigation, ...freeze, ...completion, ...resume, dismissSession };
 }
 
 function useSessionNavigation(options: Options, router: Router) {
@@ -84,28 +82,6 @@ function useSessionNavigation(options: Options, router: Router) {
     });
   }, [active, activeResolved, invalidateDashboard, router, suggestedSessionType]);
   return { openFullscreenActive, refresh, openSessionSetup };
-}
-
-function useWeeklyGoalAction({ refreshDashboard, setError, t, token }: Options) {
-  const [goalSaving, setGoalSaving] = useState(false);
-  const saveWeeklyGoal = useCallback(
-    async (target: number) => {
-      if (!token) return;
-      setGoalSaving(true);
-      try {
-        await setWeeklyGoal(token, target);
-        ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
-        await refreshDashboard({ force: true });
-      } catch (error) {
-        ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
-        setError(userFacingErrorMessage(error, t, "dashboard.weeklyGoalSaveFailed"));
-      } finally {
-        setGoalSaving(false);
-      }
-    },
-    [refreshDashboard, setError, t, token],
-  );
-  return { goalSaving, saveWeeklyGoal };
 }
 
 function useFreezeActions({

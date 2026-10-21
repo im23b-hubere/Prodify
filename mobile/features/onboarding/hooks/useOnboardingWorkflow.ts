@@ -6,7 +6,6 @@ import { useCallback, useState } from "react";
 import {
   ONBOARDING_COMPLETE_KEY,
   PENDING_WEEKLY_GOAL_KEY,
-  WEEKLY_GOAL_CONFIGURED_KEY,
 } from "../../../constants/storageKeys";
 import { useAuth } from "../../../context/AuthContext";
 import { hasPremiumAccess, peekCachedHasPremiumAccess } from "../../../lib/billing";
@@ -38,7 +37,6 @@ async function syncWeeklyGoal(token: string | null, weeklyGoal: number): Promise
       method: "POST",
       body: { goal_type: "weekly_sessions", target_value: weeklyGoal },
     });
-    await AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1").catch(() => undefined);
     await AsyncStorage.removeItem(PENDING_WEEKLY_GOAL_KEY).catch(() => undefined);
   } catch {
     // The authenticated app retries pending goal synchronization.

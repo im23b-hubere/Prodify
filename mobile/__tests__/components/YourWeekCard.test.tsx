@@ -22,6 +22,7 @@ function renderHero(
         week_start: week[0] ?? "2026-01-05",
         current_sessions: 2,
         progress_percent: 40,
+        configured: true,
       }}
       forecast={{
         week_start: week[0] ?? "2026-01-05",

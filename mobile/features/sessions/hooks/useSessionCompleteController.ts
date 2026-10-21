@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../../context/AuthContext";
 import { buildWeeklyForecast } from "../../../lib/forecastEngine";
-import { adjustedWeeklyTargetForSignupWeek } from "../../../lib/goalPace";
 import { buildSessionFeedback } from "../../../lib/sessionFeedbackEngine";
 import { returnTo } from "../../../lib/stackNavigation";
 import { useSessionChallengeCredits } from "./useSessionChallengeCredits";
@@ -23,14 +22,7 @@ export function useSessionCompleteController() {
   const data = useSessionCompleteData(token, id, t);
   const challengeCredits = useSessionChallengeCredits(token, id);
   const durationSeconds = data.session?.duration_seconds ?? 0;
-  const weeklyGoalTarget = useMemo(
-    () =>
-      adjustedWeeklyTargetForSignupWeek({
-        weeklyGoalTarget: data.weeklyGoalTarget,
-        accountCreatedAtIso: user?.created_at ?? null,
-      }),
-    [data.weeklyGoalTarget, user?.created_at],
-  );
+  const weeklyGoalTarget = data.weeklyGoalTarget;
   const feedback = useMemo(
     () =>
       buildSessionFeedback({

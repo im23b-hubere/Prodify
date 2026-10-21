@@ -61,6 +61,21 @@ export const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyBold,
     fontSize: 12,
   },
+  openGoal: {
+    minHeight: 44,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+  },
+  openGoalLabel: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
   chipRow: { flexDirection: "row", gap: spacing.sm },
   chip: {
     flex: 1,

@@ -199,6 +199,7 @@ class GoalCurrentPublic(BaseModel):
     week_start: str
     current_sessions: int
     progress_percent: float
+    configured: bool
 
 
 class AchievementDefPublic(BaseModel):

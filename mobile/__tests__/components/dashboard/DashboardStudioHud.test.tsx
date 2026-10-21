@@ -57,8 +57,6 @@ const baseProps = {
   hasWeeklyGoal: false,
   weekSessionsCount: 0,
   weeklyGoalTarget: null,
-  goalSaving: false,
-  onSaveWeeklyGoal: jest.fn(),
   feedback: {
     progressPercent: 0,
     remainingSessionsToGoal: 0,

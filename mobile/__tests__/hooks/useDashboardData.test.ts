@@ -61,6 +61,7 @@ function mockDashboardApi({
           week_start: "2026-06-09",
           current_sessions: weeklySessions,
           progress_percent: 40,
+          configured: weeklyTarget != null,
         },
   );
   mockApiJson.mockImplementation(async (path: string) => {
@@ -110,6 +111,26 @@ describe("useDashboardData", () => {
 
     expect(result.current.weeklyGoalTarget).toBeNull();
     expect(result.current.hasWeeklyGoal).toBe(false);
+  });
+
+  it("does not treat the synthetic default as a goal the producer set", async () => {
+    mockFetchCurrentGoal.mockResolvedValue({
+      goal_type: "weekly_sessions",
+      target_value: 5,
+      week_start: "2026-06-09",
+      current_sessions: 2,
+      progress_percent: 40,
+      configured: false,
+    });
+
+    const { result } = renderHook(() => useDashboardData("token", 1));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.hasWeeklyGoal).toBe(false);
+    expect(result.current.weeklyGoalTarget).toBeNull();
   });
 
   it("refreshes dashboard data on demand", async () => {

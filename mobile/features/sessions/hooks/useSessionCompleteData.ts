@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiJson } from "../../../lib/client";
+import { tryParseGoalCurrentDto } from "../../../lib/goals";
 import { syncProgression } from "../../../lib/progressionSync";
 import { tryParseSessionDto } from "../../../lib/sessionDto";
 import { tryParseSessionStatsDto } from "../../../lib/statsDto";
@@ -156,9 +157,14 @@ function applyGoalResult(
     return;
   }
 
-  const goal = rawGoal as { target_value?: unknown; current_sessions?: unknown };
-  setTarget(typeof goal.target_value === "number" ? goal.target_value : null);
-  let count = typeof goal.current_sessions === "number" ? goal.current_sessions : 0;
+  const goal = tryParseGoalCurrentDto(rawGoal);
+  if (!goal?.configured) {
+    setTarget(null);
+    setCount(0);
+    return;
+  }
+  setTarget(goal.target_value);
+  let count = goal.current_sessions;
   if (durationSeconds < MINIMUM_COUNTED_SESSION_SECONDS && count > 0) count -= 1;
   setCount(Math.max(0, count));
 }

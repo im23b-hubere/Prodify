@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import { ONBOARDING_COMPLETE_KEY, WEEKLY_GOAL_CONFIGURED_KEY } from "../../constants/storageKeys";
+import { ONBOARDING_COMPLETE_KEY } from "../../constants/storageKeys";
 import { colors, spacing } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
@@ -34,10 +34,7 @@ export default function E2eBootstrapScreen() {
         return;
       }
 
-      await AsyncStorage.multiSet([
-        [ONBOARDING_COMPLETE_KEY, "1"],
-        [WEEKLY_GOAL_CONFIGURED_KEY, "1"],
-      ]);
+      await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "1");
       await SecureStore.setItemAsync(TUTORIAL_SEEN_KEY, "1").catch(() => undefined);
       await clearPendingDeepLinkPath();
       await signIn(email, password);

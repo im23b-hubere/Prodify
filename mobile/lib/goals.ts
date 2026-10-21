@@ -9,7 +9,8 @@ export function tryParseGoalCurrentDto(raw: unknown): GoalCurrentDto | null {
     typeof v.target_value !== "number" ||
     typeof v.week_start !== "string" ||
     typeof v.current_sessions !== "number" ||
-    typeof v.progress_percent !== "number"
+    typeof v.progress_percent !== "number" ||
+    typeof v.configured !== "boolean"
   ) {
     return null;
   }
@@ -19,6 +20,7 @@ export function tryParseGoalCurrentDto(raw: unknown): GoalCurrentDto | null {
     week_start: v.week_start,
     current_sessions: v.current_sessions,
     progress_percent: v.progress_percent,
+    configured: v.configured,
   };
 }
 

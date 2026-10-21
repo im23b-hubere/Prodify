@@ -19,8 +19,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 type SetupProps = {
   mode: "setup";
   t: TFunction;
-  busy?: boolean;
-  onSave: (target: number) => Promise<void>;
+  onOpen: () => void;
   testID?: string;
 };
 
@@ -30,7 +29,6 @@ type ProgressProps = {
   feedback: SessionFeedbackComputed;
   weekSessionsCount: number;
   weeklyGoalTarget: number;
-  savedWeeklyGoalTarget?: number | null;
   paceForecast: ForecastComputed | null;
   busy?: boolean;
   onChangeTarget?: (target: number) => Promise<void>;
@@ -39,17 +37,19 @@ type ProgressProps = {
 
 type Props = SetupProps | ProgressProps;
 
-function WeeklyQuestSetup({
-  t,
-  busy,
-  onSave,
-  testID = "dashboard-quest-setup",
-}: Omit<SetupProps, "mode">) {
+function WeeklyQuestSetup({ t, onOpen, testID = "dashboard-quest-setup" }: Omit<SetupProps, "mode">) {
   return (
     <View style={styles.wrap} testID={testID}>
       <Text style={styles.setupTitle}>{t("dashboard.weeklyGoalNudgeTitle")}</Text>
       <Text style={styles.setupHint}>{t("dashboard.weeklyGoalInlineHint")}</Text>
-      <GoalChoices t={t} busy={busy} onSelect={onSave} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("stats.yourWeek.setTargetCta")}
+        onPress={onOpen}
+        style={({ pressed }) => [styles.openGoal, pressed && styles.chipPressed]}
+      >
+        <Text style={styles.openGoalLabel}>{t("stats.yourWeek.setTargetCta")}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -102,7 +102,6 @@ function WeeklyQuestProgress({
   feedback,
   weekSessionsCount,
   weeklyGoalTarget,
-  savedWeeklyGoalTarget,
   paceForecast,
   busy,
   onChangeTarget,
@@ -160,7 +159,7 @@ function WeeklyQuestProgress({
       {editing && onChangeTarget ? (
         <GoalChoices
           t={t}
-          target={savedWeeklyGoalTarget ?? weeklyGoalTarget}
+          target={weeklyGoalTarget}
           busy={busy}
           onSelect={saveTarget}
         />

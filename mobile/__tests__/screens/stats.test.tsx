@@ -107,6 +107,7 @@ jest.mock("../../lib/goals", () => ({
     week_start: "2026-06-23",
     current_sessions: 2,
     progress_percent: 40,
+    configured: true,
   }),
   setWeeklyGoal: jest.fn(),
 }));

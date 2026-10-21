@@ -1,7 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 
-import { WEEKLY_GOAL_CONFIGURED_KEY } from "../../../constants/storageKeys";
 import { apiJson } from "../../../lib/client";
 import { setWeeklyGoal } from "../../../lib/goals";
 import { tryParseGoalForecastDto } from "../../../lib/outcomesDto";
@@ -18,7 +16,6 @@ export function useStatsGoalSaver(
       setState((current) => ({ ...current, weekBusy: true }));
       try {
         const weeklyGoal = await setWeeklyGoal(token, target);
-        await AsyncStorage.setItem(WEEKLY_GOAL_CONFIGURED_KEY, "1").catch(() => undefined);
         let commitment: StatsScreenDataState["commitment"] | undefined;
         if (shareWithFriends) {
           await apiJson("/social/commitment", {

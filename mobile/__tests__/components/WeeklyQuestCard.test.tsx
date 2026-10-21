@@ -20,12 +20,12 @@ const feedback = {
 } as SessionFeedbackComputed;
 
 describe("WeeklyQuestCard", () => {
-  it("saves a selected setup target", async () => {
-    const onSave = jest.fn().mockResolvedValue(undefined);
-    render(<WeeklyQuestCard mode="setup" t={t} onSave={onSave} />);
+  it("opens stats to set the weekly target", () => {
+    const onOpen = jest.fn();
+    render(<WeeklyQuestCard mode="setup" t={t} onOpen={onOpen} />);
 
-    fireEvent.press(screen.getByLabelText('dashboard.weeklyGoalChipA11y:{"count":5}'));
-    await waitFor(() => expect(onSave).toHaveBeenCalledWith(5));
+    fireEvent.press(screen.getByLabelText("stats.yourWeek.setTargetCta"));
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   it("edits and closes the progress target picker after saving", async () => {
@@ -49,22 +49,21 @@ describe("WeeklyQuestCard", () => {
     await waitFor(() => expect(screen.queryByLabelText(sevenChoice)).toBeNull());
   });
 
-  it("keeps the scaled first-week target on the progress label and the saved target on chips", () => {
+  it("shows the saved target on the ring and on the editor chips", () => {
     render(
       <WeeklyQuestCard
         mode="progress"
         t={t}
         feedback={feedback}
         weekSessionsCount={2}
-        weeklyGoalTarget={5}
-        savedWeeklyGoalTarget={7}
+        weeklyGoalTarget={7}
         paceForecast={null}
         onChangeTarget={jest.fn().mockResolvedValue(undefined)}
       />,
     );
 
     expect(
-      screen.getByLabelText('dashboard.weeklyGoalProgressSimple:{"current":2,"target":5}'),
+      screen.getByLabelText('dashboard.weeklyGoalProgressSimple:{"current":2,"target":7}'),
     ).toBeTruthy();
     fireEvent.press(screen.getByLabelText("dashboard.weeklyGoalEdit"));
     expect(screen.getByLabelText('dashboard.weeklyGoalChipA11y:{"count":7}')).toBeTruthy();

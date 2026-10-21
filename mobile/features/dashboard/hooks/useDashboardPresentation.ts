@@ -2,7 +2,6 @@ import type { TFunction } from "i18next";
 import { useMemo } from "react";
 
 import { buildWeeklyForecast } from "../../../lib/forecastEngine";
-import { adjustedWeeklyTargetForSignupWeek } from "../../../lib/goalPace";
 import { buildSessionFeedback } from "../../../lib/sessionFeedbackEngine";
 import { STREAK_MILESTONES, streakMilestoneTitle } from "../../../lib/streakMilestones";
 import { buildTodayPlanRecommendation } from "../../../lib/todayPlanEngine";
@@ -23,7 +22,6 @@ type UseDashboardPresentationOptions = {
   weeklyGoalTarget: number | null;
   hasWeeklyGoal: boolean;
   weekSessionsCount: number;
-  accountCreatedAtIso?: string | null;
   t: TFunction;
 };
 
@@ -85,7 +83,6 @@ export function useDashboardPresentation({
   weeklyGoalTarget,
   hasWeeklyGoal,
   weekSessionsCount,
-  accountCreatedAtIso,
   t,
 }: UseDashboardPresentationOptions) {
   const visibleSessions = useMemo(
@@ -98,14 +95,7 @@ export function useDashboardPresentation({
     0,
     Number.isFinite(weekSessionsCount) ? weekSessionsCount : 0,
   );
-  const effectiveWeeklyGoalTarget = useMemo(
-    () =>
-      adjustedWeeklyTargetForSignupWeek({
-        weeklyGoalTarget,
-        accountCreatedAtIso: accountCreatedAtIso ?? null,
-      }),
-    [accountCreatedAtIso, weeklyGoalTarget],
-  );
+  const effectiveWeeklyGoalTarget = hasWeeklyGoal ? weeklyGoalTarget : null;
   const todayStats = useMemo(() => sessionsForToday(visibleSessions), [visibleSessions]);
   const { todayPlan, paceForecast, sessionFeedback } = useGoalPresentation({
     target: effectiveWeeklyGoalTarget,

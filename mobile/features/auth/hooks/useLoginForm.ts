@@ -3,10 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import type { TFunction } from "i18next";
 import { useCallback, useState } from "react";
 
-import {
-  ONBOARDING_COMPLETE_KEY,
-  WEEKLY_GOAL_CONFIGURED_KEY,
-} from "../../../constants/storageKeys";
+import { ONBOARDING_COMPLETE_KEY } from "../../../constants/storageKeys";
 import { useAuth } from "../../../context/AuthContext";
 import { getE2eTestCredentials } from "../../../lib/e2eCredentials";
 import { isE2eModeEnabled } from "../../../lib/e2eMode";
@@ -108,7 +105,6 @@ async function prepareE2eAccount(): Promise<void> {
   if (!isE2eModeEnabled()) return;
   await AsyncStorage.multiSet([
     [ONBOARDING_COMPLETE_KEY, "1"],
-    [WEEKLY_GOAL_CONFIGURED_KEY, "1"],
     [TUTORIAL_SEEN_KEY, "1"],
   ]).catch(() => undefined);
 }

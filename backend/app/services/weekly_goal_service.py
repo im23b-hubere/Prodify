@@ -32,12 +32,13 @@ def set_weekly_goal(
         {"goal_type": goal.goal_type, "target_value": goal.target_value},
     )
     db.commit()
-    return _goal_snapshot(db, user_id, goal)
+    return _goal_snapshot(db, user_id, goal, configured=True)
 
 
 def current_weekly_goal(db: Session, user_id: int) -> GoalCurrentPublic:
     week_start = load_calendar(db, user_id).week_start_key
     goal = _find_goal(db, user_id, "weekly_sessions", week_start)
+    configured = goal is not None
     if goal is None:
         goal = UserGoal(
             user_id=user_id,
@@ -45,7 +46,7 @@ def current_weekly_goal(db: Session, user_id: int) -> GoalCurrentPublic:
             target_value=5,
             week_start=week_start,
         )
-    return _goal_snapshot(db, user_id, goal)
+    return _goal_snapshot(db, user_id, goal, configured=configured)
 
 
 def _find_goal(
@@ -63,7 +64,7 @@ def _find_goal(
     )
 
 
-def _goal_snapshot(db: Session, user_id: int, goal: UserGoal) -> GoalCurrentPublic:
+def _goal_snapshot(db: Session, user_id: int, goal: UserGoal, *, configured: bool) -> GoalCurrentPublic:
     calendar = load_calendar(db, user_id)
     sessions = db.scalars(
         select(ProductionSession).where(
@@ -86,4 +87,5 @@ def _goal_snapshot(db: Session, user_id: int, goal: UserGoal) -> GoalCurrentPubl
         week_start=goal.week_start,
         current_sessions=current_sessions,
         progress_percent=round(progress, 1),
+        configured=configured,
     )

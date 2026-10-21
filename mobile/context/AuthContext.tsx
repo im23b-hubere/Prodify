@@ -151,6 +151,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void configureRevenueCat(String(user.id)).catch(() => undefined);
   }, [token, user?.id]);
 
+  useEffect(() => {
+    if (!token || !user?.is_premium) return;
+    void syncPendingWeeklyGoal(token).catch(() => undefined);
+  }, [token, user?.is_premium]);
+
   const completeAuthentication = useCallback(
     async (
       path: AuthenticatePath,

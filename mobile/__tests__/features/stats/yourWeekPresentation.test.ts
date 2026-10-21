@@ -12,6 +12,7 @@ const goal = (overrides: Partial<GoalCurrentDto> = {}): GoalCurrentDto => ({
   week_start: "2026-08-03",
   current_sessions: 2,
   progress_percent: 40,
+  configured: true,
   ...overrides,
 });
 

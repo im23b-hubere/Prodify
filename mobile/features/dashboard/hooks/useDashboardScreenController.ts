@@ -32,7 +32,6 @@ export function useDashboardScreenController() {
     weeklyGoalTarget: data.weeklyGoalTarget,
     hasWeeklyGoal: data.hasWeeklyGoal,
     weekSessionsCount: data.weekSessionsCount,
-    accountCreatedAtIso: user?.created_at,
     t,
   });
   const sessionActions = useDashboardSessionActions({
