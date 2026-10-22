@@ -26,17 +26,28 @@ describe("sessionHistoryFilter", () => {
     expect(filterCompletedSessions(sessions).map((item) => item.id)).toEqual([1]);
   });
 
+  it("keeps this Monday and drops the previous Sunday when the week is pinned to Wednesday", () => {
+    const wednesday = new Date(2026, 9, 21, 15, 0, 0);
+    const sessions = [
+      session(1, new Date(2026, 9, 19, 0, 30, 0).toISOString()),
+      session(2, new Date(2026, 9, 18, 23, 0, 0).toISOString()),
+    ];
+
+    expect(filterSessionsByStatsPeriod(sessions, "week", wednesday).map((item) => item.id)).toEqual([
+      1,
+    ]);
+  });
+
   it("filters sessions by week period", () => {
-    const today = new Date();
-    today.setHours(12, 0, 0, 0);
-    const withinWeek = new Date(today);
-    withinWeek.setDate(today.getDate() - 2);
-    const outsideWeek = new Date(today);
-    outsideWeek.setDate(today.getDate() - 10);
+    const wednesday = new Date(2026, 9, 21, 12, 0, 0);
+    const sessions = [
+      session(1, new Date(2026, 9, 19, 12, 0, 0).toISOString()),
+      session(2, new Date(2026, 9, 11, 12, 0, 0).toISOString()),
+    ];
 
-    const sessions = [session(1, withinWeek.toISOString()), session(2, outsideWeek.toISOString())];
-
-    expect(filterSessionsByStatsPeriod(sessions, "week").map((item) => item.id)).toEqual([1]);
+    expect(filterSessionsByStatsPeriod(sessions, "week", wednesday).map((item) => item.id)).toEqual([
+      1,
+    ]);
   });
 
   it("returns all completed sessions for all period", () => {

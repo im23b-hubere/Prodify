@@ -6,7 +6,7 @@ import {
   hasRecentHeatmapActivity,
 } from "../../../features/stats/utils/heatmap";
 import { decorateRecords } from "../../../features/stats/utils/records";
-import { formatChartHours, localStatsDateKey } from "../../../features/stats/utils/format";
+import { formatChartHours } from "../../../features/stats/utils/format";
 import type { SessionStatsDto } from "../../../types/session";
 
 describe("stats heatmap utils", () => {
@@ -74,16 +74,7 @@ describe("stats heatmap utils", () => {
 
 describe("stats summary utils", () => {
   it("builds summary with avg length and consistency", () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const iso = (offset: number) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() + offset);
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, "0");
-      const d = String(date.getDate()).padStart(2, "0");
-      return `${y}-${m}-${d}`;
-    };
+    const wednesday = new Date(2026, 9, 21, 15, 0, 0);
     expect(
       buildStatsSummary(
         {
@@ -97,14 +88,15 @@ describe("stats summary utils", () => {
             hours_delta_vs_prior_period: 1.1,
           },
           trend: [
-            { label: iso(-1), sessions: 1, seconds: 1800 },
-            { label: iso(0), sessions: 1, seconds: 1800 },
+            { label: "2026-10-20", sessions: 1, seconds: 1800 },
+            { label: "2026-10-21", sessions: 1, seconds: 1800 },
           ],
           breakdown: [],
           recent_sessions: [],
           productivity_hint: null,
         },
         "week",
+        wednesday,
       ),
     ).toEqual({
       hours: "1.0h",
@@ -137,9 +129,25 @@ describe("stats summary utils", () => {
     ).toBe("1h 30m");
   });
 
-  it("plots hours for the last seven local days, not session counts", () => {
-    const today = localDayKey(0);
-    const yesterday = localDayKey(-1);
+  it("plots the personal week from Monday through Sunday", () => {
+    const wednesday = new Date(2026, 9, 21, 15, 0, 0);
+    const chart = buildChartData(emptyStats(), "week", wednesday);
+
+    expect(chart.map((point) => point.label)).toEqual([
+      "2026-10-19",
+      "2026-10-20",
+      "2026-10-21",
+      "2026-10-22",
+      "2026-10-23",
+      "2026-10-24",
+      "2026-10-25",
+    ]);
+  });
+
+  it("plots hours on the calendar week, not session counts", () => {
+    const wednesday = new Date(2026, 9, 21, 15, 0, 0);
+    const today = "2026-10-21";
+    const yesterday = "2026-10-20";
     const chart = buildChartData(
       emptyStats({
         trend: [
@@ -148,6 +156,7 @@ describe("stats summary utils", () => {
         ],
       }),
       "week",
+      wednesday,
     );
 
     expect(chart).toHaveLength(7);
@@ -165,13 +174,6 @@ describe("chart hour captions", () => {
     expect(formatChartHours(1.25)).toBe("1.3h");
   });
 });
-
-function localDayKey(offsetFromToday: number): string {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + offsetFromToday);
-  return localStatsDateKey(date);
-}
 
 function emptyStats(overrides: Partial<SessionStatsDto> = {}): SessionStatsDto {
   return {

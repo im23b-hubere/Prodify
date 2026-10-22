@@ -1515,7 +1515,7 @@
   "sessionHistory": {
     "title": "Historique des sessions",
     "subtitle": "Toutes les sessions terminées, les plus récentes en premier",
-    "subtitleWeek": "7 derniers jours · plus récentes en premier",
+    "subtitleWeek": "Cette semaine · plus récentes en premier",
     "subtitleMonth": "30 derniers jours · plus récentes en premier",
     "subtitleAll": "Toutes les sessions terminées · plus récentes en premier",
     "loading": "Chargement des sessions…",
@@ -1713,7 +1713,7 @@
   },
   "stats": {
     "title": "Tes stats",
-    "filter7d": "7 j",
+    "filterWeek": "Semaine",
     "filter30d": "30 j",
     "filterAll": "Tout",
     "heatmapCaptionShort": "90 derniers jours",

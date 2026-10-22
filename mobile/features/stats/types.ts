@@ -15,7 +15,7 @@ export type BarPoint = { x: string; y: number; label: string };
 export type StatsPeriod = "week" | "month" | "all";
 
 export type StatsFilter = {
-  key: "7d" | "30d" | "all";
+  key: "week" | "30d" | "all";
   label: string;
   period: StatsPeriod;
 };

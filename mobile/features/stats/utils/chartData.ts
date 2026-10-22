@@ -1,5 +1,10 @@
 import { weekdayLetterFromIsoDay } from "../../../lib/sessionTime";
-import { localDateKey, parseIsoDate, startOfWeekMonday } from "../../../lib/weekCalendar";
+import {
+  currentWeekDateKeys,
+  localDateKey,
+  parseIsoDate,
+  startOfWeekMonday,
+} from "../../../lib/weekCalendar";
 import type { SessionStatsDto } from "../../../types/session";
 import type { BarPoint, StatsPeriod, StatsSummaryView } from "../types";
 import { CHART_ALL_WEEK_FIT, CHART_MONTH_DAYS } from "./chartScale";
@@ -59,7 +64,7 @@ export function buildChartData(
   today = new Date(),
 ): BarPoint[] {
   const hoursByLabel = hoursByTrendLabel(stats?.trend ?? []);
-  if (period === "week") return paddedDays(hoursByLabel, 7, today, weekAxisLabel);
+  if (period === "week") return weekBars(hoursByLabel, today);
   if (period === "month") return paddedDays(hoursByLabel, CHART_MONTH_DAYS, today, monthDayAxisLabel);
   return lifetimeBars(hoursByLabel, today);
 }
@@ -92,6 +97,14 @@ function paddedDays(
       label: isoLabel,
     };
   });
+}
+
+function weekBars(hoursByLabel: Map<string, number>, today: Date): BarPoint[] {
+  return currentWeekDateKeys(today).map((isoLabel) => ({
+    x: weekAxisLabel(isoLabel),
+    y: hoursByLabel.get(isoLabel) ?? 0,
+    label: isoLabel,
+  }));
 }
 
 function weekAxisLabel(iso: string): string {

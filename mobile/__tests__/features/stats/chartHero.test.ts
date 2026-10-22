@@ -45,7 +45,7 @@ describe("Health-style studio chart header", () => {
 
     expect(hero.averageHours).toBe(1);
     expect(hero.averageKind).toBe("period");
-    expect(hero.rangeLabel).toBe("Sep 30 – Oct 6, 2026");
+    expect(hero.rangeLabel).toBe("Oct 5 – Oct 11, 2026");
   });
 
   it("labels longer buckets as average per day and spans the first bar to today", () => {

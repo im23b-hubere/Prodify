@@ -11,7 +11,7 @@ import { buildWoranRows } from "../utils/woran";
 export function useStatsFilters(t: TFunction, filterIndex: number) {
   const filters = useMemo<readonly StatsFilter[]>(
     () => [
-      { key: "7d", label: t("stats.filter7d"), period: "week" },
+      { key: "week", label: t("stats.filterWeek"), period: "week" },
       { key: "30d", label: t("stats.filter30d"), period: "month" },
       { key: "all", label: t("stats.filterAll"), period: "all" },
     ],

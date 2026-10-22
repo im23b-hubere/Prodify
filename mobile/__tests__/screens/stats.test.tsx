@@ -195,7 +195,7 @@ describe("Stats Screen", () => {
 
   it("shows period filters and week hero after stats load", async () => {
     const { findByText, findByTestId } = render(<StatsScreen />);
-    expect(await findByText("stats.filter7d")).toBeTruthy();
+    expect(await findByText("stats.filterWeek")).toBeTruthy();
     expect(await findByTestId("stats-week-hero")).toBeTruthy();
     expect(await findByTestId("stats-kpi-strip")).toBeTruthy();
   });

@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,10 +29,17 @@ _DURATION_CAP_SECONDS = 48 * 3600
 
 def build_session_stats(db: Session, user_id: int, requested_period: str) -> SessionStatsPublic:
     period = StatsPeriod.parse(requested_period)
-    period_start = utcnow() - timedelta(days=period.days) if period.days is not None else None
-    sessions = _load_completed_sessions(db, user_id, since=period_start)
-    total_seconds = sum(_bounded_duration(row) for row in sessions)
     calendar = load_calendar(db, user_id)
+    if period.label == "week":
+        previous_start, week_start, week_end = _calendar_week_window(calendar)
+        sessions = _load_completed_sessions(db, user_id, since=week_start, until=week_end)
+        total_seconds = sum(_bounded_duration(row) for row in sessions)
+        delta = _hours_between(db, user_id, previous_start, week_start, total_seconds)
+    else:
+        period_start = utcnow() - timedelta(days=period.days) if period.days is not None else None
+        sessions = _load_completed_sessions(db, user_id, since=period_start)
+        total_seconds = sum(_bounded_duration(row) for row in sessions)
+        delta = _hours_delta(db, user_id, period, period_start, total_seconds)
     streak_days = _streak_days(db, user_id, calendar)
     return SessionStatsPublic(
         period=period.label,
@@ -42,7 +49,7 @@ def build_session_stats(db: Session, user_id: int, requested_period: str) -> Ses
             best_streak_days=best_streak_run(streak_days),
             avg_session_seconds=int(total_seconds / len(sessions)) if sessions else 0,
             current_streak_days=compute_current_streak(streak_days, calendar.today),
-            hours_delta_vs_prior_period=_hours_delta(db, user_id, period, period_start, total_seconds),
+            hours_delta_vs_prior_period=delta,
         ),
         trend=session_trend(sessions, calendar, period),
         breakdown=_type_breakdown(sessions),
@@ -82,6 +89,20 @@ def _streak_days(db: Session, user_id: int, calendar: StreakCalendar) -> list[st
     return list(set(session_day_keys(db, user_id, calendar)) | set(frozen_days))
 
 
+def _calendar_week_window(calendar: StreakCalendar) -> tuple[datetime, datetime, datetime]:
+    """Previous Monday, this Monday, and next Monday, at the user's local midnight."""
+    monday = date.fromisoformat(calendar.week_start_key)
+    return (
+        _local_midnight_utc(calendar, monday - timedelta(days=7)),
+        _local_midnight_utc(calendar, monday),
+        _local_midnight_utc(calendar, monday + timedelta(days=7)),
+    )
+
+
+def _local_midnight_utc(calendar: StreakCalendar, day: date) -> datetime:
+    return datetime.combine(day, time.min, tzinfo=calendar.zone).astimezone(timezone.utc)
+
+
 def _hours_delta(
     db: Session,
     user_id: int,
@@ -91,12 +112,23 @@ def _hours_delta(
 ) -> float | None:
     if period.days is None or period_start is None:
         return None
-    previous = _load_completed_sessions(
+    return _hours_between(
         db,
         user_id,
-        since=period_start - timedelta(days=period.days),
-        until=period_start,
+        period_start - timedelta(days=period.days),
+        period_start,
+        current_seconds,
     )
+
+
+def _hours_between(
+    db: Session,
+    user_id: int,
+    since: datetime,
+    until: datetime,
+    current_seconds: int,
+) -> float:
+    previous = _load_completed_sessions(db, user_id, since=since, until=until)
     previous_seconds = sum(_bounded_duration(row) for row in previous)
     return round((current_seconds - previous_seconds) / 3600, 1)
 

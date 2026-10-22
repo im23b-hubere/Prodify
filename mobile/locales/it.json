@@ -1515,7 +1515,7 @@
   "sessionHistory": {
     "title": "Cronologia sessioni",
     "subtitle": "Tutte le sessioni completate, dalla più recente",
-    "subtitleWeek": "Ultimi 7 giorni · dalla più recente",
+    "subtitleWeek": "Questa settimana · dalla più recente",
     "subtitleMonth": "Ultimi 30 giorni · dalla più recente",
     "subtitleAll": "Tutte le sessioni completate · dalla più recente",
     "loading": "Caricamento sessioni…",
@@ -1713,7 +1713,7 @@
   },
   "stats": {
     "title": "Le tue statistiche",
-    "filter7d": "7G",
+    "filterWeek": "Settimana",
     "filter30d": "30G",
     "filterAll": "Tutto",
     "heatmapCaptionShort": "Ultimi 90 giorni",

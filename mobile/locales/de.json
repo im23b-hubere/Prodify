@@ -1523,7 +1523,7 @@
   "sessionHistory": {
     "title": "Session-Verlauf",
     "subtitle": "Alle abgeschlossenen Sessions, neueste zuerst",
-    "subtitleWeek": "Letzte 7 Tage · neueste zuerst",
+    "subtitleWeek": "Diese Woche · neueste zuerst",
     "subtitleMonth": "Letzte 30 Tage · neueste zuerst",
     "subtitleAll": "Alle abgeschlossenen Sessions · neueste zuerst",
     "loading": "Sessions werden geladen…",
@@ -1721,7 +1721,7 @@
   },
   "stats": {
     "title": "Deine Stats",
-    "filter7d": "7T",
+    "filterWeek": "Woche",
     "filter30d": "30T",
     "filterAll": "Alle",
     "heatmapCaptionShort": "Letzte 90 Tage",
