@@ -19,9 +19,8 @@ from app.models import (
     utcnow,
 )
 from app.schemas import FriendActivityPublic
-from app.services.friend_graph import friend_user_ids
 from app.services.streak_status_service import streak_status_for_days
-from app.services.user_block_service import hidden_user_ids
+from app.services.user_block_service import hidden_user_ids, visible_friend_ids
 
 # A session still open after this long was almost certainly forgotten, not being worked on.
 LIVE_SESSION_MAX_AGE = timedelta(hours=12)
@@ -29,7 +28,7 @@ LIVE_SESSION_MAX_AGE = timedelta(hours=12)
 
 def build_friend_activity(db: Session, viewer_id: int, requested_limit: int) -> list[FriendActivityPublic]:
     limit = max(1, min(requested_limit, 50))
-    friend_ids = friend_user_ids(db, viewer_id)
+    friend_ids = visible_friend_ids(db, viewer_id)
     user_ids = [viewer_id, *friend_ids]
     sessions = _recent_sessions(db, user_ids, limit)
     events = _visible_events(db, _recent_events(db, user_ids, limit), viewer_id)

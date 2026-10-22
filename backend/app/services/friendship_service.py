@@ -18,7 +18,7 @@ from app.services.kpi_tracker import track_event
 from app.services.progression_service import grant_xp
 from app.services.push_dispatch import schedule_push_to_user
 from app.services.push_links import push_data_friend_accepted, push_data_friend_request
-from app.services.user_block_service import is_blocked_between
+from app.services.user_block_service import hidden_user_ids, is_blocked_between
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +131,7 @@ def list_incoming_requests(db: Session, user_id: int) -> list[FriendIncomingPubl
         )
         .order_by(Friendship.created_at.desc())
     ).all()
+    hidden = hidden_user_ids(db, user_id)
     requesters = {
         user.id: user
         for user in db.scalars(
@@ -140,7 +141,7 @@ def list_incoming_requests(db: Session, user_id: int) -> list[FriendIncomingPubl
     requests: list[FriendIncomingPublic] = []
     for friendship in friendships:
         requester = requesters.get(friendship.user_id)
-        if requester is not None:
+        if requester is not None and requester.id not in hidden:
             requests.append(
                 FriendIncomingPublic(
                     id=friendship.id,
@@ -159,6 +160,7 @@ def accept_friend_request(db: Session, user: User, friendship_id: int) -> Friend
         friendship is None
         or friendship.friend_id != user.id
         or friendship.status != FriendshipStatus.pending
+        or is_blocked_between(db, user.id, friendship.user_id)
     ):
         raise FriendRequestNotFoundError
     friendship.status = FriendshipStatus.accepted

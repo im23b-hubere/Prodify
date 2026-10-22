@@ -28,7 +28,10 @@ def test_blocking_a_friend_ends_the_friendship(client):
 
     assert _block(client, alice, _user_id(client, bob)).status_code == 204
 
-    assert client.get(f"/users/{_user_id(client, alice)}/profile", headers=bob).status_code == 403
+    hidden = client.get(f"/users/{_user_id(client, alice)}/profile", headers=bob)
+    missing = client.get("/users/999999/profile", headers=bob)
+    assert hidden.status_code == missing.status_code == 404
+    assert hidden.json()["error"]["message"] == missing.json()["error"]["message"]
     board = client.get("/friends/leaderboard?period=all", headers=alice).json()
     assert {entry["username"] for entry in board["entries"]} == {"block-alice"}
 

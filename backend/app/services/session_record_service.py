@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.contracts.sessions import SessionUpdate
 from app.models import ProductionSession, SocialComment, SocialReaction, utcnow
-from app.services.friend_graph import friend_user_ids
+from app.services.user_block_service import visible_friend_ids
 from app.services.kpi_tracker import track_event_deduped
 from app.services.session_skill_focus_service import (
     drop_area_weights_unless_production,
@@ -192,7 +192,7 @@ def _can_view_session(db: Session, viewer_id: int, session: ProductionSession) -
         return False
     if session.duration_seconds is None:
         return False
-    return session.user_id in friend_user_ids(db, viewer_id)
+    return session.user_id in set(visible_friend_ids(db, viewer_id))
 
 
 def _focus_snapshot(

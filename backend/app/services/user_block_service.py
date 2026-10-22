@@ -12,6 +12,7 @@ from app.models import (
     User,
     UserBlock,
 )
+from app.services.friend_graph import friend_user_ids
 from app.services.social_challenge_service import cancel_challenge, invitee_user_id, load_challenge_meta
 
 
@@ -74,6 +75,12 @@ def hidden_user_ids(db: Session, user_id: int) -> set[int]:
     blocked = {blocked_id if blocker_id == user_id else blocker_id for blocker_id, blocked_id in rows}
     suspended = set(db.scalars(select(User.id).where(User.suspended_at.is_not(None), User.id != user_id)).all())
     return blocked | suspended
+
+
+def visible_friend_ids(db: Session, user_id: int) -> list[int]:
+    """Accepted friends this viewer may still see. The friendship row itself stays."""
+    hidden = hidden_user_ids(db, user_id)
+    return [friend_id for friend_id in friend_user_ids(db, user_id) if friend_id not in hidden]
 
 
 def is_blocked_between(db: Session, first_user_id: int, second_user_id: int) -> bool:

@@ -5,12 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.models import User, UserProgression
 from app.schemas import FriendProgressionEntryPublic, FriendsProgressionPublic
-from app.services.friend_graph import friend_user_ids
+from app.services.user_block_service import visible_friend_ids
 from app.services.progression_service import XP_LEVEL_CATALOG_MAX
 
 
 def build_friends_progression(db: Session, current_user_id: int) -> FriendsProgressionPublic:
-    friend_ids = friend_user_ids(db, current_user_id)
+    friend_ids = visible_friend_ids(db, current_user_id)
     if not friend_ids:
         return FriendsProgressionPublic(friends=[])
 

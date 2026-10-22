@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Streak, User, utcnow
 from app.schemas import FriendLeaderboardEntryPublic, FriendLeaderboardPublic
-from app.services.friend_graph import friend_user_ids
+from app.services.user_block_service import visible_friend_ids
 from app.services.friend_metrics_service import session_counts_since
 from app.services.social_week_service import current_week_start, previous_week_start, session_counts
 from app.services.streak_reconcile_service import compute_streak_counts_for_users
@@ -45,7 +45,7 @@ def build_friend_leaderboard(
     requested_period: str,
 ) -> FriendLeaderboardPublic:
     period = LeaderboardPeriod.parse(requested_period)
-    user_ids = [current_user_id, *friend_user_ids(db, current_user_id)]
+    user_ids = [current_user_id, *visible_friend_ids(db, current_user_id)]
     current_counts, previous_counts = _session_counts(db, user_ids, period)
     ranked_friends = _rank_friends(db, user_ids, current_counts)
     current_user_rank = _rank_of(ranked_friends, current_user_id)

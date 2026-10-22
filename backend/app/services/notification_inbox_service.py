@@ -80,6 +80,8 @@ def _friend_request_items(db: Session, user_id: int) -> Iterable[NotificationInb
         .order_by(desc(Friendship.created_at))
         .limit(20)
     ).all()
+    hidden = hidden_user_ids(db, user_id)
+    requests = [row for row in requests if row.user_id not in hidden]
     requester_ids = [row.user_id for row in requests]
     usernames = (
         {user.id: user.username for user in db.scalars(select(User).where(User.id.in_(requester_ids))).all()}

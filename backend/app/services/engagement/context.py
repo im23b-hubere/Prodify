@@ -29,7 +29,6 @@ from app.services.engagement.profile import BehaviorProfile
 from app.services.engagement.profile_store import load_fresh_profile
 from app.services.engagement.return_probability import return_features, return_probability
 from app.services.engagement.segments import Segment, segment_of
-from app.services.friend_graph import friend_user_ids
 from app.services.friend_metrics_service import session_counts_since
 from app.services.social_challenge_service import (
     challenge_duration_days,
@@ -38,7 +37,7 @@ from app.services.social_challenge_service import (
 )
 from app.services.streak_calendar import StreakCalendar, load_calendar
 from app.services.streak_state import streak_snapshot
-from app.services.user_block_service import hidden_user_ids
+from app.services.user_block_service import visible_friend_ids
 from app.timeutil import as_utc_aware
 
 FRIEND_SESSION_LOOKBACK = timedelta(minutes=60)
@@ -107,7 +106,7 @@ class EngagementContext:
 def load_engagement_context(db: Session, user_id: int, now: datetime) -> EngagementContext:
     calendar = load_calendar(db, user_id)
     local_now = calendar.local_time_of(now)
-    friend_ids = _visible_friend_ids(db, user_id)
+    friend_ids = visible_friend_ids(db, user_id)
     streak_days, streak_at_risk = streak_snapshot(db, user_id, today=local_now.date())
     progression = db.get(UserProgression, user_id)
     profile = load_fresh_profile(db, user_id, now)
@@ -187,11 +186,6 @@ def record_leaderboard_snapshot(
     row.session_count = standing.session_count
     row.captured_at = now
     db.flush()
-
-
-def _visible_friend_ids(db: Session, user_id: int) -> list[int]:
-    hidden = hidden_user_ids(db, user_id)
-    return [friend_id for friend_id in friend_user_ids(db, user_id) if friend_id not in hidden]
 
 
 def _active_challenges(db: Session, user_id: int) -> tuple[ChallengeStanding, ...]:

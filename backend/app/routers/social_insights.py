@@ -17,7 +17,7 @@ from app.contracts.social import (
     SocialWeeklyRecapPublic,
 )
 from app.services.buddy_service import get_buddy_status
-from app.services.friend_graph import friend_user_ids
+from app.services.user_block_service import visible_friend_ids
 from app.services.identity_tags import social_identity_tags
 from app.services.social_week_service import (
     current_week_start,
@@ -38,7 +38,7 @@ def get_weekly_recap(
     week_start = current_week_start()
     current_sessions = session_count(db, current.id, week_start)
     buddy = get_buddy_status(db, current.id)
-    accepted_friend_ids = friend_user_ids(db, current.id)
+    accepted_friend_ids = visible_friend_ids(db, current.id)
     previous_sessions = session_count(db, current.id, previous_week_start())
     session_delta = current_sessions - previous_sessions
     identity_tags = social_identity_tags(db, current.id, week_start=week_start)
@@ -70,7 +70,7 @@ def get_leaderboard_context(
     current: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    user_ids = [current.id, *friend_user_ids(db, current.id)]
+    user_ids = [current.id, *visible_friend_ids(db, current.id)]
     usernames = {
         user.id: user.username
         for user in db.scalars(select(User).where(User.id.in_(user_ids))).all()

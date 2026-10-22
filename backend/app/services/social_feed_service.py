@@ -10,8 +10,7 @@ from app.contracts.social import (
 )
 from app.models import ProductionSession, SocialComment, SocialReaction, User
 from app.services.content_filter import is_objectionable
-from app.services.friend_graph import friend_user_ids
-from app.services.user_block_service import hidden_user_ids
+from app.services.user_block_service import hidden_user_ids, visible_friend_ids
 
 
 class FeedSessionNotFoundError(ValueError):
@@ -178,10 +177,11 @@ def _require_visible_session(db: Session, session_id: int, viewer_id: int) -> Pr
     session = db.get(ProductionSession, session_id)
     if session is None or session.deleted_at is not None:
         raise FeedSessionNotFoundError
-    visible_user_ids = {viewer_id, *friend_user_ids(db, viewer_id)}
-    if session.user_id not in visible_user_ids:
-        raise FeedAccessDeniedError
-    return session
+    if session.user_id == viewer_id or session.user_id in set(visible_friend_ids(db, viewer_id)):
+        return session
+    if session.user_id in hidden_user_ids(db, viewer_id):
+        raise FeedSessionNotFoundError
+    raise FeedAccessDeniedError
 
 
 def _comment_response(comment: SocialComment, author: User | None) -> SocialCommentPublic:

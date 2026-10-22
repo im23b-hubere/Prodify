@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.models import FriendNudge, User, utcnow
 from app.services import push_templates
-from app.services.friend_graph import friend_user_ids
+from app.services.user_block_service import visible_friend_ids
 from app.services.kpi_tracker import track_event
 from app.services.push_dispatch import schedule_push_to_user
 from app.services.push_links import push_data_friend_nudge
@@ -65,7 +65,7 @@ def send_friend_nudge(
     """Record the nudge and push it to the friend; returns when the next nudge is allowed."""
     if recipient_user_id == sender.id:
         raise SelfNudgeError
-    if recipient_user_id not in set(friend_user_ids(db, sender.id)):
+    if recipient_user_id not in set(visible_friend_ids(db, sender.id)):
         raise NudgeFriendRequiredError
     now = utcnow()
     if has_nudged_today(db, sender.id, recipient_user_id):

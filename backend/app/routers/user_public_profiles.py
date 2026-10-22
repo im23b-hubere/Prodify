@@ -45,6 +45,7 @@ from app.services.identity_tags import profile_identity_tags
 from app.services.progression_service import to_progression_public
 from app.services.reliability_service import ReliabilityScoreService
 from app.services.streak_reconcile_service import compute_streak_counts_for_display
+from app.services.user_block_service import hidden_user_ids
 from app.services.streak_status_service import streak_status_for_days
 from app.timeutil import as_utc_aware
 
@@ -116,7 +117,7 @@ def _heatmap_days(db: Session, user_id: int) -> list[HeatmapDayPublic]:
 
 def _require_friend_profile(db: Session, current: User, target_id: int) -> User:
     target = db.get(User, target_id)
-    if target is None:
+    if target is None or target_id in hidden_user_ids(db, current.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     if not _accepted_friendship(db, current.id, target_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not friends with this user")
