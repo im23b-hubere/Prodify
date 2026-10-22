@@ -2,15 +2,16 @@ import json
 import logging
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, timedelta
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, load_only
+from sqlalchemy.orm import Session
 
-from app.models import ProductionSession, UserGoal, WeeklyReviewSnapshot, utcnow
+from app.models import ProductionSession, UserGoal, WeeklyReviewSnapshot
 from app.contracts.outcomes import WeeklyReviewPublic
 from app.services.ollama_client import generate_weekly_coach_note
-from app.timeutil import as_utc_aware
+from app.services.streak_calendar import StreakCalendar, load_calendar
+from app.services.weekly_goal_service import counted_studio_sessions_in_week
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,11 @@ class WeeklySummary:
     top_hour: int | None
 
 
-def _week_range():
-    today = utcnow().date()
-    week_start = today - timedelta(days=today.weekday())
+def _personal_week(db: Session, user_id: int) -> tuple[StreakCalendar, str, str]:
+    calendar = load_calendar(db, user_id)
+    week_start = date.fromisoformat(calendar.week_start_key)
     week_end = week_start + timedelta(days=6)
-    return week_start.isoformat(), week_end.isoformat()
+    return calendar, week_start.isoformat(), week_end.isoformat()
 
 
 def _default_coach_note() -> str:
@@ -71,19 +72,9 @@ def _weekly_coach_prompt(
 
 
 def generate_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic:
-    week_start, week_end = _week_range()
-    week_start_dt = datetime.fromisoformat(week_start).replace(tzinfo=timezone.utc)
-    week_end_dt = datetime.fromisoformat(week_end).replace(tzinfo=timezone.utc) + timedelta(days=1)
-    sessions = list(db.scalars(
-        select(ProductionSession).where(
-            ProductionSession.user_id == user_id,
-            ProductionSession.deleted_at.is_(None),
-            ProductionSession.duration_seconds.is_not(None),
-            ProductionSession.started_at >= week_start_dt,
-            ProductionSession.started_at < week_end_dt,
-        ).options(load_only(ProductionSession.started_at, ProductionSession.duration_seconds))
-    ).all())
-    summary = _summarize_sessions(sessions)
+    calendar, week_start, week_end = _personal_week(db, user_id)
+    sessions = counted_studio_sessions_in_week(db, user_id, week_start)
+    summary = _summarize_sessions(sessions, calendar)
     target = _weekly_target(db, user_id, week_start)
     insights = _build_insights(summary)
     blockers = _build_blockers(summary.total_sessions, target)
@@ -101,13 +92,14 @@ def generate_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic:
     return _to_public(row)
 
 
-def _summarize_sessions(sessions: list[ProductionSession]) -> WeeklySummary:
+def _summarize_sessions(sessions: list[ProductionSession], calendar: StreakCalendar) -> WeeklySummary:
     by_weekday: Counter[int] = Counter()
     by_hour: Counter[int] = Counter()
     for row in sessions:
-        dt = as_utc_aware(row.started_at)
-        by_weekday[dt.weekday()] += int(row.duration_seconds or 0)
-        by_hour[dt.hour] += int(row.duration_seconds or 0)
+        local = calendar.local_time_of(row.started_at)
+        duration = int(row.duration_seconds or 0)
+        by_weekday[local.weekday()] += duration
+        by_hour[local.hour] += duration
     return WeeklySummary(
         total_sessions=len(sessions),
         total_seconds=sum(int(row.duration_seconds or 0) for row in sessions),
@@ -222,7 +214,7 @@ def _to_public(row: WeeklyReviewSnapshot) -> WeeklyReviewPublic:
 
 
 def get_current_weekly_review(db: Session, user_id: int) -> WeeklyReviewPublic | None:
-    week_start, _ = _week_range()
+    _, week_start, _ = _personal_week(db, user_id)
     row = db.scalar(
         select(WeeklyReviewSnapshot).where(
             WeeklyReviewSnapshot.user_id == user_id,

@@ -65,7 +65,12 @@ def _find_goal(
     )
 
 
-def _goal_snapshot(db: Session, user_id: int, goal: UserGoal, *, configured: bool) -> GoalCurrentPublic:
+def counted_studio_sessions_in_week(
+    db: Session,
+    user_id: int,
+    week_start: str,
+) -> list[ProductionSession]:
+    """Finished sessions of at least five minutes whose personal week is this Monday."""
     calendar = load_calendar(db, user_id)
     sessions = db.scalars(
         select(ProductionSession).where(
@@ -74,11 +79,16 @@ def _goal_snapshot(db: Session, user_id: int, goal: UserGoal, *, configured: boo
             ProductionSession.duration_seconds.is_not(None),
         )
     ).all()
-    current_sessions = sum(
-        calendar.week_start_key_of(session.started_at) == goal.week_start
-        and is_counted_studio_session(session.duration_seconds)
+    return [
+        session
         for session in sessions
-    )
+        if calendar.week_start_key_of(session.started_at) == week_start
+        and is_counted_studio_session(session.duration_seconds)
+    ]
+
+
+def _goal_snapshot(db: Session, user_id: int, goal: UserGoal, *, configured: bool) -> GoalCurrentPublic:
+    current_sessions = len(counted_studio_sessions_in_week(db, user_id, goal.week_start))
     progress = (
         min(100.0, (current_sessions / goal.target_value) * 100)
         if goal.target_value > 0
