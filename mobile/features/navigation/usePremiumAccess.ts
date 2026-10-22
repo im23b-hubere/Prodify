@@ -10,19 +10,13 @@ import { isDevBillingBypassActive, isExpoGoDevRuntime } from "../../lib/devBilli
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import { resolvePremiumAccess } from "../../lib/premiumAccess";
 
-const ENTITLEMENT_BOOT_TIMEOUT_MS = 10_000;
+export const ENTITLEMENT_BOOT_TIMEOUT_MS = 10_000;
 
 type PremiumAccessOptions = {
   token?: string | null;
   userId?: number | null;
   userIsPremium: boolean;
 };
-
-function timeoutAccessFallback(fallback: boolean): Promise<boolean> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(fallback), ENTITLEMENT_BOOT_TIMEOUT_MS);
-  });
-}
 
 async function loadFastAccess(
   token: string,
@@ -42,14 +36,18 @@ export function usePremiumAccess({ token, userId, userIsPremium }: PremiumAccess
   );
   const [loading, setLoading] = useState(false);
   const [resolvedAccess, setResolvedAccess] = useState<boolean | null>(null);
+  const [bootTimedOut, setBootTimedOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
     async function resolveAccess() {
       if (!token) {
         setResolvedAccess(null);
         setLoading(false);
+        setBootTimedOut(false);
         return;
       }
       if (
@@ -60,6 +58,7 @@ export function usePremiumAccess({ token, userId, userIsPremium }: PremiumAccess
         if (!cancelled) {
           setResolvedAccess(true);
           setLoading(false);
+          setBootTimedOut(false);
         }
         return;
       }
@@ -68,22 +67,41 @@ export function usePremiumAccess({ token, userId, userIsPremium }: PremiumAccess
       if (cancelled) return;
       setResolvedAccess(fastAccess === true ? true : null);
       setLoading(fastAccess !== true);
+      setBootTimedOut(false);
 
-      const authoritativeAccess = await Promise.race([
-        resolvePremiumAccess(token, userId != null ? String(userId) : null),
-        timeoutAccessFallback(fastAccess === true),
-      ]);
-      if (!cancelled) {
-        setResolvedAccess(authoritativeAccess);
-        setLoading(false);
+      if (fastAccess !== true) {
+        timer = setTimeout(() => {
+          if (cancelled || settled) return;
+          setLoading(false);
+          setBootTimedOut(true);
+        }, ENTITLEMENT_BOOT_TIMEOUT_MS);
+      }
+
+      try {
+        const authoritativeAccess = await resolvePremiumAccess(
+          token,
+          userId != null ? String(userId) : null,
+        );
+        settled = true;
+        if (!cancelled) {
+          setResolvedAccess(authoritativeAccess);
+          setLoading(false);
+          setBootTimedOut(false);
+        }
+      } catch {
+        settled = true;
+        if (!cancelled) {
+          setResolvedAccess(false);
+          setLoading(false);
+          setBootTimedOut(false);
+        }
       }
     }
 
-    void resolveAccess().catch(() => {
-      if (!cancelled) setLoading(false);
-    });
+    void resolveAccess();
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, [cacheRevision, token, userId, userIsPremium]);
 
@@ -91,6 +109,7 @@ export function usePremiumAccess({ token, userId, userIsPremium }: PremiumAccess
   const hasAccess = userIsPremium || cachedAccess === true || resolvedAccess === true;
   return {
     hasAccess,
-    waitingForAccess: Boolean(token) && !hasAccess && (loading || resolvedAccess == null),
+    waitingForAccess:
+      Boolean(token) && !hasAccess && !bootTimedOut && (loading || resolvedAccess == null),
   };
 }

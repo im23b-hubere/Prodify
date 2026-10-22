@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import type { PaywallSource } from "../../lib/postAuthNavigation";
+import { useEntitlementCacheUnlock } from "./useEntitlementCacheUnlock";
 import { usePaywallAccountActions } from "./usePaywallAccountActions";
 import { usePaywallCopy } from "./usePaywallCopy";
 import { usePaywallExit } from "./usePaywallExit";
@@ -77,6 +78,11 @@ export function usePaywallController() {
   usePremiumUpdateListener({
     enabled: !loading && !busy && !expoGoPreviewMode,
     onPremium: finalizePremiumUnlock,
+  });
+  useEntitlementCacheUnlock({
+    token: token ?? null,
+    enabled: !expoGoPreviewMode,
+    onPremium: () => requestExitAfterUnlock(false),
   });
 
   return {
