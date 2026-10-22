@@ -32,6 +32,13 @@ A signed-in user without an entitlement can authenticate, restore or buy a plan,
 legal documents, and delete their account. Every other authenticated product route returns
 `402 Premium entitlement required`.
 
+`DELETE /users/me` also calls RevenueCat `DELETE /v1/subscribers/{app_user_id}`, where
+`app_user_id` is the Prodify user id. That removes the customer record. It does not cancel
+the App Store or Play subscription; the paid period stays until the producer cancels it in
+the store. A later purchase creates a new RevenueCat customer. When the secret is not
+configured, the call is skipped. When RevenueCat or object storage does not respond, the
+account stays and the request returns 502 so the producer can retry.
+
 ## Subscriptions (App Store / RevenueCat)
 
 | Product ID | Plan | Notes |

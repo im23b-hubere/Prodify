@@ -86,6 +86,33 @@ def to_entitlement_public(row: UserSubscription | None) -> EntitlementPublic:
 # --- Verification ----------------------------------------------------------------------------
 
 
+class RevenueCatDeletionError(Exception):
+    """The subscriber could not be removed from RevenueCat, so the account stays."""
+
+
+def delete_revenuecat_subscriber(app_user_id: str) -> None:
+    """Remove the RevenueCat customer. Does not cancel the store subscription."""
+    if not is_revenuecat_secret_configured(settings.revenuecat_secret_key):
+        return
+    try:
+        response = requests.delete(
+            f"https://api.revenuecat.com/v1/subscribers/{quote(app_user_id, safe='')}",
+            headers={
+                "Authorization": f"Bearer {settings.revenuecat_secret_key}",
+                "Accept": "application/json",
+            },
+            timeout=8,
+        )
+    except requests.RequestException as exc:
+        raise RevenueCatDeletionError("RevenueCat subscriber could not be deleted") from exc
+    if response.status_code == 404:
+        return
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        raise RevenueCatDeletionError("RevenueCat subscriber could not be deleted") from exc
+
+
 def fetch_revenuecat_subscriber(app_user_id: str) -> dict:
     response = requests.get(
         f"https://api.revenuecat.com/v1/subscribers/{quote(app_user_id, safe='')}",

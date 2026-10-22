@@ -84,5 +84,5 @@ def replace_profile_picture(db: Session, user: User, content: bytes, mime_type: 
     return user
 
 
-def delete_profile_picture(profile_picture_url: str | None) -> None:
-    object_storage.delete_by_public_url(profile_picture_url)
+def delete_profile_picture(profile_picture_url: str | None, *, required: bool = False) -> None:
+    object_storage.delete_by_public_url(profile_picture_url, required=required)

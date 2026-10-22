@@ -64,8 +64,12 @@ def put_bytes(key: str, content: bytes, content_type: str) -> str:
     return _put_local(key, content)
 
 
-def delete_by_public_url(url: str | None) -> None:
-    """Delete the object behind a stored profile_picture_url. No-op if unknown/missing."""
+def delete_by_public_url(url: str | None, *, required: bool = False) -> None:
+    """Delete the object behind a stored public URL. No-op if the URL is not ours.
+
+    Account deletion passes required=True so a storage failure stays visible and the
+    account is left in place. Everyday picture replacement stays best effort.
+    """
     if not url or not url.strip():
         return
     normalized = url.strip()
@@ -73,7 +77,11 @@ def delete_by_public_url(url: str | None) -> None:
     if is_remote_public_url(normalized):
         key = normalized[len(public_base_url()) :].lstrip("/")
         if key:
-            _delete_remote(key)
+            try:
+                _delete_remote(key)
+            except ObjectStorageError:
+                if required:
+                    raise
         return
 
     if LOCAL_URL_PREFIX in normalized:
@@ -147,5 +155,6 @@ def _delete_remote(key: str) -> None:
             Bucket=(settings.object_storage_bucket or "").strip(),
             Key=key,
         )
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to delete object storage key=%s", key)
+        raise ObjectStorageError("Could not delete the stored image.") from exc
