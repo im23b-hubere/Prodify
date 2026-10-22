@@ -28,7 +28,6 @@ export function useDashboardScreenController() {
   const presentation = useDashboardPresentation({
     sessions: data.sessions,
     streakOverview: data.streakOverview,
-    loading: data.loading,
     weeklyGoalTarget: data.weeklyGoalTarget,
     hasWeeklyGoal: data.hasWeeklyGoal,
     weekSessionsCount: data.weekSessionsCount,

@@ -26,7 +26,9 @@ export function useStreakHistory(token: string | null, fallbackError: string) {
         apiJson<StreakRunDto[]>(`/streak/history?limit=${HISTORY_FETCH_LIMIT}`, { token }),
         apiJson<StreakOverviewDto>("/streak/overview", { token }),
       ]);
-      setCurrentStreak(readCurrentStreak(overviewResult));
+      if (overviewResult.status === "fulfilled") {
+        setCurrentStreak(readCurrentStreak(overviewResult));
+      }
       if (historyResult.status === "rejected") throw historyResult.reason;
       setRuns(Array.isArray(historyResult.value) ? historyResult.value : []);
     } catch (caught) {

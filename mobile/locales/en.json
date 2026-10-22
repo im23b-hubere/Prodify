@@ -1616,6 +1616,8 @@
     "studioTodayValue": "{{minutes}} min",
     "notificationsA11y": "Notifications",
     "streakFallbackTagline": "Connect to unlock Streak Freeze and sync milestones.",
+    "streakStale": "Streak couldn't refresh. Showing the last update.",
+    "streakUnavailable": "Streak couldn't load.",
     "naturalCountingStart": "Just getting started…",
     "naturalCountingMins_one": "{{mins}} minute and counting…",
     "naturalCountingMins_other": "{{mins}} minutes and counting…",

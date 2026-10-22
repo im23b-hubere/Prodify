@@ -1634,6 +1634,8 @@
     "studioTodayValue": "{{minutes}} min",
     "notificationsA11y": "Notificaciones",
     "streakFallbackTagline": "Conéctate para desbloquear el protector de racha y sincronizar hitos.",
+    "streakStale": "No se pudo actualizar la racha. Este es el último estado.",
+    "streakUnavailable": "No se pudo cargar la racha.",
     "naturalCountingStart": "Recién empezando…",
     "naturalCountingMins_one": "{{mins}} minuto y sumando…",
     "naturalCountingMins_other": "{{mins}} minutos y sumando…",

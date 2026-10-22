@@ -71,6 +71,7 @@ const baseProps = {
   paceForecast: null,
   streakOverview: null,
   streakCount: 0,
+  streakStale: false,
   todaySessions: 0,
   todayMinutes: 0,
   level: null,
@@ -193,5 +194,43 @@ describe("DashboardStudioHud session start gate", () => {
     fireEvent.press(screen.getByLabelText("dashboard.levelStatA11y"));
     expect(onOpenSessionHistory).toHaveBeenCalledTimes(1);
     expect(onOpenRank).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a dash instead of a zero streak when the overview never arrived", () => {
+    render(<DashboardStudioHud {...baseProps} streakCount={null} streakStale />);
+
+    expect(screen.queryByText("0")).toBeNull();
+    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.getByText("dashboard.streakUnavailable")).toBeTruthy();
+  });
+
+  it("keeps the last streak and freeze action visible while the overview is stale", () => {
+    const onUseFreeze = jest.fn();
+    render(
+      <DashboardStudioHud
+        {...baseProps}
+        streakCount={12}
+        streakStale
+        onUseFreeze={onUseFreeze}
+        streakOverview={{
+          current_streak: 12,
+          longest_streak: 20,
+          last_7_day_states: [],
+          last_7_day_labels: [],
+          freezes_remaining: 1,
+          can_use_freeze: true,
+          streak_at_risk: true,
+          next_milestone_at: null,
+          next_milestone_title: null,
+          days_to_next_milestone: null,
+          tagline: "",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("12")).toBeTruthy();
+    expect(screen.getByText("dashboard.streakStale")).toBeTruthy();
+    fireEvent.press(screen.getByText("streakHero.freezeAvailable"));
+    expect(onUseFreeze).toHaveBeenCalledTimes(1);
   });
 });

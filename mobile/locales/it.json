@@ -1634,6 +1634,8 @@
     "studioTodayValue": "{{minutes}} min",
     "notificationsA11y": "Notifiche",
     "streakFallbackTagline": "Connettiti per sbloccare il blocco serie e sincronizzare i traguardi.",
+    "streakStale": "La serie non si è aggiornata. Questo è l'ultimo stato.",
+    "streakUnavailable": "La serie non si è caricata.",
     "naturalCountingStart": "Si parte…",
     "naturalCountingMins_one": "{{mins}} minuto e si continua…",
     "naturalCountingMins_other": "{{mins}} minuti e si continua…",

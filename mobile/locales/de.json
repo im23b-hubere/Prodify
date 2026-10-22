@@ -1642,6 +1642,8 @@
     "studioTodayValue": "{{minutes}} Min.",
     "notificationsA11y": "Mitteilungen",
     "streakFallbackTagline": "Verbinde dich, um Streak-Freeze freizuschalten und Meilensteine zu synchronisieren.",
+    "streakStale": "Streak konnte nicht aktualisiert werden. Das ist der letzte Stand.",
+    "streakUnavailable": "Streak konnte nicht geladen werden.",
     "naturalCountingStart": "Geht gerade los…",
     "naturalCountingMins_one": "{{mins}} Minute und es läuft…",
     "naturalCountingMins_other": "{{mins}} Minuten und es läuft…",

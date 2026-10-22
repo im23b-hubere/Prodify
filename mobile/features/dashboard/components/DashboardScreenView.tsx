@@ -176,7 +176,8 @@ function StudioSection({ controller }: { controller: DashboardScreenController }
       feedback={presentation.sessionFeedback}
       paceForecast={presentation.paceForecast}
       streakOverview={presentation.displayOverview}
-      streakCount={presentation.displayOverview?.current_streak ?? presentation.clientStreak}
+      streakCount={presentation.displayOverview?.current_streak ?? null}
+      streakStale={data.streakOverviewStale}
       todaySessions={presentation.todayStats.count}
       todayMinutes={presentation.todayStats.minutes}
       level={level}

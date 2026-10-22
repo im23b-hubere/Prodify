@@ -33,7 +33,8 @@ type Props = {
   feedback: SessionFeedbackComputed;
   paceForecast: ForecastComputed | null;
   streakOverview: StreakOverviewDto | null;
-  streakCount: number;
+  streakCount: number | null;
+  streakStale: boolean;
   todaySessions: number;
   todayMinutes: number;
   level: number | null;
@@ -61,6 +62,7 @@ export const DashboardStudioHud = memo(function DashboardStudioHud(props: Props)
         ) : null}
         <View style={styles.panelDivider} />
         <DashboardStats props={props} />
+        <StreakFreshness props={props} />
         <FreezeAction props={props} />
       </View>
     </View>
@@ -123,12 +125,12 @@ function SessionAction({ props }: { props: Props }) {
 }
 
 function DashboardStats({ props }: { props: Props }) {
-  const streaking = props.streakCount > 0;
+  const streaking = (props.streakCount ?? 0) > 0;
   return (
     <View style={styles.metricsRow}>
       <MetricItem
         label={props.t("sessionComplete.statStreakLabel")}
-        value={String(props.streakCount)}
+        value={props.streakCount == null ? "—" : String(props.streakCount)}
         icon={
           streaking ? (
             <AppFlame size={16} />
@@ -169,6 +171,21 @@ function DashboardStats({ props }: { props: Props }) {
       ) : null}
     </View>
   );
+}
+
+function StreakFreshness({ props }: { props: Props }) {
+  const statusKey = streakStatusKey(props);
+  if (!statusKey) return null;
+  return (
+    <Text style={styles.metricLabel} testID="dashboard-streak-status">
+      {props.t(statusKey)}
+    </Text>
+  );
+}
+
+function streakStatusKey(props: Props) {
+  if (!props.streakStale) return null;
+  return props.streakCount == null ? "dashboard.streakUnavailable" : "dashboard.streakStale";
 }
 
 type MetricItemProps = {

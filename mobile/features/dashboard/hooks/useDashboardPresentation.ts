@@ -3,22 +3,16 @@ import { useMemo } from "react";
 
 import { buildWeeklyForecast } from "../../../lib/forecastEngine";
 import { buildSessionFeedback } from "../../../lib/sessionFeedbackEngine";
-import { STREAK_MILESTONES, streakMilestoneTitle } from "../../../lib/streakMilestones";
 import { buildTodayPlanRecommendation } from "../../../lib/todayPlanEngine";
-import {
-  buildCalendarWeeksFromDays,
-  resolveCalendarWeeks,
-  weekdayShortLabels,
-} from "../../../lib/streakCalendarWeeks";
+import { resolveCalendarWeeks, weekdayShortLabels } from "../../../lib/streakCalendarWeeks";
 import type { SessionDto } from "../../../types/session";
 import type { StreakOverviewDto } from "../../../types/streak";
 import { dashboardSparkKey } from "../dashboardCopy";
-import { getStreak, parseApiDate, toDateKey } from "../utils";
+import { parseApiDate, toDateKey } from "../utils";
 
 type UseDashboardPresentationOptions = {
   sessions: SessionDto[];
   streakOverview: StreakOverviewDto | null;
-  loading: boolean;
   weeklyGoalTarget: number | null;
   hasWeeklyGoal: boolean;
   weekSessionsCount: number;
@@ -28,7 +22,6 @@ type UseDashboardPresentationOptions = {
 type GoalPresentationOptions = {
   target: number | null;
   completed: number;
-  clientStreak: number;
   streakOverview: StreakOverviewDto | null;
   visibleSessions: SessionDto[];
 };
@@ -36,11 +29,10 @@ type GoalPresentationOptions = {
 function useGoalPresentation({
   target,
   completed,
-  clientStreak,
   streakOverview,
   visibleSessions,
 }: GoalPresentationOptions) {
-  const currentStreak = streakOverview?.current_streak ?? clientStreak;
+  const currentStreak = streakOverview?.current_streak ?? 0;
   const todayPlan = useMemo(
     () =>
       buildTodayPlanRecommendation({
@@ -79,7 +71,6 @@ function useGoalPresentation({
 export function useDashboardPresentation({
   sessions,
   streakOverview,
-  loading,
   weeklyGoalTarget,
   hasWeeklyGoal,
   weekSessionsCount,
@@ -90,7 +81,6 @@ export function useDashboardPresentation({
     [sessions],
   );
   const sessionDayKeys = useMemo(() => sessionDayKeySet(visibleSessions), [visibleSessions]);
-  const clientStreak = useMemo(() => getStreak(sessions), [sessions]);
   const weekSessionsForGoal = Math.max(
     0,
     Number.isFinite(weekSessionsCount) ? weekSessionsCount : 0,
@@ -100,14 +90,13 @@ export function useDashboardPresentation({
   const { todayPlan, paceForecast, sessionFeedback } = useGoalPresentation({
     target: effectiveWeeklyGoalTarget,
     completed: weekSessionsForGoal,
-    clientStreak,
     streakOverview,
     visibleSessions,
   });
   const sparkLine = useMemo(() => {
     const spark = dashboardSparkKey({
       streakAtRisk: Boolean(streakOverview?.streak_at_risk),
-      streakCount: streakOverview?.current_streak ?? clientStreak,
+      streakCount: streakOverview?.current_streak ?? 0,
       todayMinutes: todayStats.minutes,
       weeklyGoalComplete:
         hasWeeklyGoal &&
@@ -116,7 +105,6 @@ export function useDashboardPresentation({
     });
     return t(spark.key, spark.params);
   }, [
-    clientStreak,
     effectiveWeeklyGoalTarget,
     hasWeeklyGoal,
     streakOverview?.current_streak,
@@ -127,21 +115,12 @@ export function useDashboardPresentation({
   ]);
   const recentSessions = useMemo(() => visibleSessions.slice(0, 3), [visibleSessions]);
   const displayOverview = useMemo(
-    () =>
-      streakOverview
-        ? withResolvedWeeks(streakOverview, sessionDayKeys, t)
-        : buildFallbackStreakOverview({
-            loading,
-            clientStreak,
-            sessionDayKeys,
-            t,
-          }),
-    [clientStreak, loading, sessionDayKeys, streakOverview, t],
+    () => (streakOverview ? withResolvedWeeks(streakOverview, sessionDayKeys, t) : null),
+    [sessionDayKeys, streakOverview, t],
   );
   return {
     visibleSessions,
     recentSessions,
-    clientStreak,
     weekSessionsForGoal,
     effectiveWeeklyGoalTarget,
     todayStats,
@@ -193,37 +172,5 @@ function withResolvedWeeks(
     calendar_weeks,
     last_7_day_states: current?.days.map((day) => day.state) ?? overview.last_7_day_states,
     last_7_day_labels: current?.days.map((day) => day.label) ?? overview.last_7_day_labels,
-  };
-}
-
-function buildFallbackStreakOverview({
-  loading,
-  clientStreak,
-  sessionDayKeys,
-  t,
-}: {
-  loading: boolean;
-  clientStreak: number;
-  sessionDayKeys: Set<string>;
-  t: TFunction;
-}): StreakOverviewDto | null {
-  if (loading) return null;
-  const nextMilestone = STREAK_MILESTONES.find((milestone) => clientStreak < milestone.days);
-  const labels = weekdayShortLabels(t);
-  const calendar_weeks = buildCalendarWeeksFromDays(sessionDayKeys, new Set(), labels);
-  const current = calendar_weeks[calendar_weeks.length - 1];
-  return {
-    current_streak: clientStreak,
-    longest_streak: clientStreak,
-    last_7_day_states: current?.days.map((day) => day.state) ?? [],
-    last_7_day_labels: current?.days.map((day) => day.label) ?? labels,
-    calendar_weeks,
-    next_milestone_at: nextMilestone?.days ?? null,
-    next_milestone_title: nextMilestone ? streakMilestoneTitle(nextMilestone, t) : null,
-    days_to_next_milestone: nextMilestone ? nextMilestone.days - clientStreak : null,
-    freezes_remaining: 0,
-    can_use_freeze: false,
-    streak_at_risk: false,
-    tagline: t("dashboard.streakFallbackTagline"),
   };
 }

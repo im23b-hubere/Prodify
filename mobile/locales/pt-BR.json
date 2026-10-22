@@ -1642,6 +1642,8 @@
     "studioTodayValue": "{{minutes}} min",
     "notificationsA11y": "Notificações",
     "streakFallbackTagline": "Conecte-se para desbloquear a proteção de sequência e sincronizar marcos.",
+    "streakStale": "A sequência não pôde ser atualizada. Este é o último estado.",
+    "streakUnavailable": "A sequência não pôde ser carregada.",
     "naturalCountingStart": "Só começando…",
     "naturalCountingMins_one": "{{mins}} minuto e contando…",
     "naturalCountingMins_other": "{{mins}} minutos e contando…",

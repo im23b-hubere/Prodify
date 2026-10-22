@@ -1634,6 +1634,8 @@
     "studioTodayValue": "{{minutes}} min",
     "notificationsA11y": "Notifications",
     "streakFallbackTagline": "Connecte-toi pour débloquer le gel de série et synchroniser tes paliers.",
+    "streakStale": "La série n'a pas pu être actualisée. Voici le dernier état.",
+    "streakUnavailable": "La série n'a pas pu être chargée.",
     "naturalCountingStart": "Ça commence…",
     "naturalCountingMins_one": "{{mins}} minute et ça continue…",
     "naturalCountingMins_other": "{{mins}} minutes et ça continue…",
