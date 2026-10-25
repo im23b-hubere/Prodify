@@ -1,4 +1,7 @@
-import { perWeekLabel, weeklySavingPercent } from "../../../features/paywall/paywallPricing";
+import {
+  weeklyEquivalentPrice,
+  weeklySavingPercent,
+} from "../../../features/paywall/paywallPricing";
 
 const weekly = {
   price: 9.99,
@@ -13,16 +16,17 @@ const sixMonths = {
   pricePerWeekString: "$2.31",
 };
 
-describe("perWeekLabel", () => {
-  it("uses the store's own per-week price", () => {
-    expect(perWeekLabel(sixMonths)).toEqual({ amount: "$2.31", isPerWeek: true });
+describe("weeklyEquivalentPrice", () => {
+  it("offers the store's weekly rate as a comparison for a longer plan", () => {
+    expect(weeklyEquivalentPrice(sixMonths)).toBe("$2.31");
   });
 
-  it("falls back to the full price when the store sends no weekly rate", () => {
-    expect(perWeekLabel({ ...sixMonths, pricePerWeek: null, pricePerWeekString: null })).toEqual({
-      amount: "$59.99",
-      isPerWeek: false,
-    });
+  it("is null when the weekly rate would only repeat the billed price", () => {
+    expect(weeklyEquivalentPrice(weekly)).toBeNull();
+  });
+
+  it("is null when the store sends no weekly rate", () => {
+    expect(weeklyEquivalentPrice({ ...sixMonths, pricePerWeekString: null })).toBeNull();
   });
 });
 

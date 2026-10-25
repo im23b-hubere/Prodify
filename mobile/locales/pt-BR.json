@@ -891,9 +891,9 @@
       "streaks": "Sequências e resumo de domingo"
     },
     "plan": {
-      "perWeek": "/sem",
-      "billedWeekly": "{{price}} cobrado por semana",
-      "billedSixMonth": "{{price}} cobrado a cada 6 meses",
+      "perWeek": "por semana",
+      "everySixMonths": "a cada 6 meses",
+      "weeklyEquivalent": "≈ {{price}} por semana",
       "unavailable": "Preço indisponível"
     },
     "cancelAnytime": "Cancele quando quiser",
@@ -928,6 +928,8 @@
     },
     "legal": {
       "disclaimer": "Renova automaticamente até ser cancelada em ID Apple → Assinaturas.",
+      "renewalWeekly": "{{price}} por semana. Renova automaticamente até ser cancelada em ID Apple → Assinaturas.",
+      "renewalSixMonth": "{{price}} a cada 6 meses. Renova automaticamente até ser cancelada em ID Apple → Assinaturas.",
       "privacyLink": "Privacidade",
       "termsLink": "Termos"
     },

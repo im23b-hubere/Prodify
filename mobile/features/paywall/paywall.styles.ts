@@ -155,23 +155,13 @@ export const paywallStyles = StyleSheet.create({
     borderRadius: 3.5,
     backgroundColor: colors.textPrimary,
   },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-  },
-  priceAmount: {
+  price: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
     fontSize: 22,
     letterSpacing: -0.5,
   },
-  priceUnit: {
-    marginLeft: 2,
-    color: colors.textSecondary,
-    fontFamily: fontFamily.bodyMedium,
-    fontSize: 13,
-  },
-  billing: {
+  caption: {
     color: colors.textSecondary,
     fontFamily: fontFamily.body,
     fontSize: 12,
@@ -228,10 +218,10 @@ export const paywallStyles = StyleSheet.create({
   },
   disclaimer: {
     marginTop: 10,
-    color: "#6f6f6f",
+    color: "#8a8a8a",
     fontFamily: fontFamily.body,
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 16,
     textAlign: "center",
   },
   links: {

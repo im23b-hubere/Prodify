@@ -5,6 +5,8 @@ import { Pressable, Text, View } from "react-native";
 import { paywallStyles as styles } from "../paywall.styles";
 
 type Props = {
+  /** Price, period and how to cancel for the selected plan. */
+  renewalNote: string;
   busy: boolean;
   restoreDisabled: boolean;
   onRestore: () => void;
@@ -16,6 +18,7 @@ type Props = {
 
 /** The renewal note, then restore and the legal links the App Store asks for. */
 export function PaywallFooter({
+  renewalNote,
   busy,
   restoreDisabled,
   onRestore,
@@ -50,7 +53,7 @@ export function PaywallFooter({
 
   return (
     <View>
-      <Text style={styles.disclaimer}>{t("paywall.legal.disclaimer")}</Text>
+      <Text style={styles.disclaimer}>{renewalNote}</Text>
       <View style={styles.links}>
         {links.map((link, index) => (
           <Fragment key={link.a11yLabel}>

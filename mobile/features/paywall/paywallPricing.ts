@@ -5,11 +5,13 @@ type PricedProduct = Pick<
   "price" | "priceString" | "pricePerWeek" | "pricePerWeekString"
 >;
 
-/** The store's own per-week price for a plan ("$2.31"), or its full price if it has none. */
-export function perWeekLabel(product: PricedProduct): { amount: string; isPerWeek: boolean } {
-  return product.pricePerWeekString
-    ? { amount: product.pricePerWeekString, isPerWeek: true }
-    : { amount: product.priceString, isPerWeek: false };
+/**
+ * The store's weekly rate ("$2.31") as a comparison beneath a plan's billed price, or null when
+ * it would only repeat that price. Apple requires the billed amount to stay the prominent one.
+ */
+export function weeklyEquivalentPrice(product: PricedProduct): string | null {
+  const perWeek = product.pricePerWeekString;
+  return perWeek && perWeek !== product.priceString ? perWeek : null;
 }
 
 /** Whole percent the long plan saves per week against paying weekly; null when unknown. */

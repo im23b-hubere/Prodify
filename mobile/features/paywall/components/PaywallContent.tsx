@@ -16,6 +16,7 @@ import {
   PaywallPlans,
   planPackage,
   planPurchaseDisabled,
+  renewalNote,
   showsPlansError,
   type PlanKind,
 } from "./PaywallPlans";
@@ -93,6 +94,7 @@ export function PaywallContent({ controller, onOpenPrivacy, onOpenTerms }: Props
           />
         )}
         <PaywallFooter
+          renewalNote={renewalNote(pkg, plan, t)}
           busy={controller.busy}
           restoreDisabled={controller.busy || controller.expoGoPreviewMode}
           onRestore={() => void controller.onRestore()}

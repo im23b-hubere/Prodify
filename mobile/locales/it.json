@@ -883,9 +883,9 @@
       "streaks": "Serie e riepilogo della domenica"
     },
     "plan": {
-      "perWeek": "/sett.",
-      "billedWeekly": "{{price}} addebitati ogni settimana",
-      "billedSixMonth": "{{price}} addebitati ogni 6 mesi",
+      "perWeek": "a settimana",
+      "everySixMonths": "ogni 6 mesi",
+      "weeklyEquivalent": "≈ {{price}} a settimana",
       "unavailable": "Prezzo non disponibile"
     },
     "cancelAnytime": "Disdici quando vuoi",
@@ -920,6 +920,8 @@
     },
     "legal": {
       "disclaimer": "Si rinnova automaticamente finché non lo disdici in Apple ID → Abbonamenti.",
+      "renewalWeekly": "{{price}} a settimana. Si rinnova automaticamente finché non lo disdici in Apple ID → Abbonamenti.",
+      "renewalSixMonth": "{{price}} ogni 6 mesi. Si rinnova automaticamente finché non lo disdici in Apple ID → Abbonamenti.",
       "privacyLink": "Privacy",
       "termsLink": "Termini"
     },

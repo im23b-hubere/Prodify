@@ -24,8 +24,8 @@ jest.mock("react-i18next", () => ({
   }),
 }));
 
-function purchasesPackage(priceString: string): PurchasesPackage {
-  return { product: { priceString } } as PurchasesPackage;
+function purchasesPackage(priceString: string, pricePerWeekString: string): PurchasesPackage {
+  return { product: { priceString, pricePerWeekString } } as PurchasesPackage;
 }
 
 function controller(overrides: Partial<PaywallController> = {}): PaywallController {
@@ -33,8 +33,8 @@ function controller(overrides: Partial<PaywallController> = {}): PaywallControll
     copy: { title: "Go Pro", emphasis: "Pro" },
     loading: false,
     busy: false,
-    weeklyPkg: purchasesPackage("CHF 4.90"),
-    sixMonthPkg: purchasesPackage("CHF 49.00"),
+    weeklyPkg: purchasesPackage("CHF 4.90", "CHF 4.90"),
+    sixMonthPkg: purchasesPackage("CHF 49.00", "CHF 1.88"),
     error: null,
     purchaseEnabled: true,
     expoGoPreviewMode: false,
@@ -76,6 +76,30 @@ describe("PaywallContent", () => {
     expect(detail.onRestore).toHaveBeenCalledTimes(1);
     expect(navigation.onOpenPrivacy).toHaveBeenCalledTimes(1);
     expect(navigation.onOpenTerms).toHaveBeenCalledTimes(1);
+  });
+
+  it("prices each plan at what the store bills, with the weekly rate only as a caption", () => {
+    renderPaywall(controller());
+
+    expect(screen.getByText("CHF 4.90")).toBeTruthy();
+    expect(screen.getByText("paywall.plan.perWeek")).toBeTruthy();
+    expect(screen.getByText("CHF 49.00")).toBeTruthy();
+    expect(screen.getByText("paywall.plan.weeklyEquivalent:CHF 1.88")).toBeTruthy();
+    expect(screen.queryByText("CHF 1.88")).toBeNull();
+  });
+
+  it("states the selected plan's billed price in the renewal note", () => {
+    renderPaywall(controller());
+    expect(screen.getByText("paywall.legal.renewalSixMonth:CHF 49.00")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("paywall.cta.weekly"));
+    expect(screen.getByText("paywall.legal.renewalWeekly:CHF 4.90")).toBeTruthy();
+    expect(screen.queryByText("paywall.legal.renewalSixMonth:CHF 49.00")).toBeNull();
+  });
+
+  it("falls back to the general renewal note while no plan price is known", () => {
+    renderPaywall(controller({ loading: true, weeklyPkg: null, sixMonthPkg: null }));
+    expect(screen.getByText("paywall.legal.disclaimer")).toBeTruthy();
   });
 
   it("shows offering errors with a retry instead of plan buttons", () => {

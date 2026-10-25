@@ -891,9 +891,9 @@
       "streaks": "Streaks und Sonntags-Review"
     },
     "plan": {
-      "perWeek": "/Wo.",
-      "billedWeekly": "{{price}}, wöchentlich abgerechnet",
-      "billedSixMonth": "{{price}}, alle 6 Monate abgerechnet",
+      "perWeek": "pro Woche",
+      "everySixMonths": "alle 6 Monate",
+      "weeklyEquivalent": "≈ {{price}} pro Woche",
       "unavailable": "Preis nicht verfügbar"
     },
     "cancelAnytime": "Jederzeit kündbar",
@@ -928,6 +928,8 @@
     },
     "legal": {
       "disclaimer": "Verlängert sich automatisch, bis du in Apple-ID → Abonnements kündigst.",
+      "renewalWeekly": "{{price}} pro Woche. Verlängert sich automatisch, bis du in Apple-ID → Abonnements kündigst.",
+      "renewalSixMonth": "{{price}} alle 6 Monate. Verlängert sich automatisch, bis du in Apple-ID → Abonnements kündigst.",
       "privacyLink": "Datenschutz",
       "termsLink": "AGB"
     },

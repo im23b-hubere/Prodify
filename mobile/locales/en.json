@@ -865,9 +865,9 @@
       "streaks": "Streak reminders & Sunday review"
     },
     "plan": {
-      "perWeek": "/wk",
-      "billedWeekly": "{{price}} billed weekly",
-      "billedSixMonth": "{{price}} billed every 6 months",
+      "perWeek": "per week",
+      "everySixMonths": "every 6 months",
+      "weeklyEquivalent": "≈ {{price}} per week",
       "unavailable": "Price unavailable"
     },
     "cancelAnytime": "Cancel anytime",
@@ -902,6 +902,8 @@
     },
     "legal": {
       "disclaimer": "Auto-renews until canceled in Apple ID → Subscriptions.",
+      "renewalWeekly": "{{price}} per week. Auto-renews until canceled in Apple ID → Subscriptions.",
+      "renewalSixMonth": "{{price}} every 6 months. Auto-renews until canceled in Apple ID → Subscriptions.",
       "privacyLink": "Privacy",
       "termsLink": "Terms"
     },

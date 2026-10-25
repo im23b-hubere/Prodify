@@ -1,14 +1,14 @@
 import * as Haptics from "expo-haptics";
-import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 
 import { paywallStyles as styles } from "../paywall.styles";
 
 type Props = {
   title: string;
-  amount: string;
-  isPerWeek: boolean;
-  billing: string;
+  /** What the store bills for the plan: the most prominent price on the tile. */
+  price: string;
+  /** Subordinate line beneath the price, e.g. a weekly comparison. */
+  caption: string;
   /** A small label resting on the tile's top edge, e.g. the saving. */
   badge: string | null;
   selected: boolean;
@@ -18,7 +18,6 @@ type Props = {
 };
 
 export function PaywallPlanTile(props: Props) {
-  const { t } = useTranslation();
   const { selected } = props;
   return (
     <View style={styles.tileWrap}>
@@ -46,13 +45,11 @@ export function PaywallPlanTile(props: Props) {
             {selected ? <View style={styles.radioDot} /> : null}
           </View>
         </View>
-        <View style={styles.priceRow}>
-          <Text style={styles.priceAmount}>{props.amount}</Text>
-          {props.isPerWeek ? (
-            <Text style={styles.priceUnit}>{t("paywall.plan.perWeek")}</Text>
-          ) : null}
-        </View>
-        {props.billing ? <Text style={styles.billing}>{props.billing}</Text> : null}
+        {/* Local prices like "CHF 49.00" shrink a touch on narrow tiles instead of wrapping. */}
+        <Text style={styles.price} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+          {props.price}
+        </Text>
+        {props.caption ? <Text style={styles.caption}>{props.caption}</Text> : null}
       </Pressable>
       {props.badge ? (
         <View pointerEvents="none" style={styles.badgeAnchor}>

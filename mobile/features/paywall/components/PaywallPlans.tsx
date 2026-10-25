@@ -5,7 +5,7 @@ import { View } from "react-native";
 
 import { ErrorState } from "../../../components/states/ErrorState";
 import { paywallStyles as styles } from "../paywall.styles";
-import { perWeekLabel, weeklySavingPercent } from "../paywallPricing";
+import { weeklyEquivalentPrice, weeklySavingPercent } from "../paywallPricing";
 import type { PaywallController } from "../usePaywallController";
 import { PaywallPlanTile } from "./PaywallPlanTile";
 
@@ -48,7 +48,7 @@ export function PaywallPlans({ controller, selected, onSelect }: Props) {
         <PaywallPlanTile
           key={kind}
           title={t(`paywall.cta.${kind}`)}
-          {...tilePrice(controller, kind, t)}
+          {...tilePricing(controller, kind, t)}
           badge={badges[kind]}
           selected={selected === kind}
           disabled={controller.busy}
@@ -68,6 +68,14 @@ export function planPackage(controller: PaywallController, kind: PlanKind) {
   return kind === "sixMonth" ? controller.sixMonthPkg : controller.weeklyPkg;
 }
 
+/** The renewal terms for the selected plan with what it bills; general until a price is known. */
+export function renewalNote(pkg: PurchasesPackage | null, kind: PlanKind, t: TFunction) {
+  const price = pkg?.product.priceString;
+  if (!price) return t("paywall.legal.disclaimer");
+  const key = kind === "sixMonth" ? "paywall.legal.renewalSixMonth" : "paywall.legal.renewalWeekly";
+  return t(key, { price });
+}
+
 export function planPurchaseDisabled(pkg: PurchasesPackage | null, controller: PaywallController) {
   if (controller.busy) return true;
   if (controller.expoGoPreviewMode) return false;
@@ -78,18 +86,20 @@ function previewPrice(controller: PaywallController, kind: PlanKind) {
   return kind === "sixMonth" ? controller.previewSixMonthPrice : controller.previewWeeklyPrice;
 }
 
-/** What a tile shows: the per-week amount and, beneath it, what the store actually charges. */
-function tilePrice(controller: PaywallController, kind: PlanKind, t: TFunction) {
-  if (controller.expoGoPreviewMode) {
-    return { amount: previewPrice(controller, kind), isPerWeek: false, billing: "" };
-  }
-  if (controller.loading) return { amount: "…", isPerWeek: false, billing: t("common.loading") };
+/** What a tile shows: the amount the store bills, and beneath it a smaller caption. */
+function tilePricing(controller: PaywallController, kind: PlanKind, t: TFunction) {
+  if (controller.expoGoPreviewMode) return { price: previewPrice(controller, kind), caption: "" };
+  if (controller.loading) return { price: "…", caption: t("common.loading") };
   const product = planPackage(controller, kind)?.product;
-  if (!product) return { amount: "—", isPerWeek: false, billing: t("paywall.plan.unavailable") };
-  const { amount, isPerWeek } = perWeekLabel(product);
-  const billingKey =
-    kind === "sixMonth" ? "paywall.plan.billedSixMonth" : "paywall.plan.billedWeekly";
-  return { amount, isPerWeek, billing: t(billingKey, { price: product.priceString }) };
+  if (!product) return { price: "—", caption: t("paywall.plan.unavailable") };
+  if (kind === "weekly") return { price: product.priceString, caption: t("paywall.plan.perWeek") };
+  const weeklyEquivalent = weeklyEquivalentPrice(product);
+  return {
+    price: product.priceString,
+    caption: weeklyEquivalent
+      ? t("paywall.plan.weeklyEquivalent", { price: weeklyEquivalent })
+      : t("paywall.plan.everySixMonths"),
+  };
 }
 
 function tileAccessibilityLabel(controller: PaywallController, kind: PlanKind, t: TFunction) {
