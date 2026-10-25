@@ -13,6 +13,8 @@ os.environ.setdefault("RATE_LIMIT_AUTH_REGISTER", "1000/minute")
 # deterministic client-asserted billing sync path used by these endpoint tests.
 os.environ["ENVIRONMENT"] = "development"
 os.environ["REVENUECAT_SECRET_KEY"] = ""
+# Legal pages must show the operator's address, not whatever a local .env carries.
+os.environ["SUPPORT_EMAIL"] = ""
 
 from app.database import Base, engine  # noqa: E402
 from app.main import app  # noqa: E402
