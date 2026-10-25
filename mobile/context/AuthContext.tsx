@@ -19,7 +19,12 @@ import {
   type PremiumRequiredRejection,
 } from "../lib/client";
 import i18n from "../lib/i18n";
-import { readAccessToken, readRefreshToken, writeTokenPair } from "../lib/authTokenStorage";
+import {
+  discardTokensFromPreviousInstall,
+  readAccessToken,
+  readRefreshToken,
+  writeTokenPair,
+} from "../lib/authTokenStorage";
 import { isE2eModeEnabled } from "../lib/e2eMode";
 import { setNotificationUserContext } from "../lib/notificationInbox";
 import { syncPendingWeeklyGoal } from "../lib/onboardingGoalSync";
@@ -98,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
+        await discardTokensFromPreviousInstall();
         const stored = await readAccessToken();
         if (!cancelled) setToken(stored);
       } finally {

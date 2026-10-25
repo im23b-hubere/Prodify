@@ -55,6 +55,32 @@ describe("usePaywallExit", () => {
     expect(Alert.alert).not.toHaveBeenCalled();
   });
 
+  it("leaves a blocking paywall for login once the session ends", async () => {
+    const { rerender } = renderHook(
+      ({ authenticated }: { authenticated: boolean }) => usePaywallExit("post_auth", authenticated),
+      { initialProps: { authenticated: true } },
+    );
+
+    rerender({ authenticated: false });
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+      await Promise.resolve();
+    });
+
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+    expect(mockReplace).toHaveBeenCalledWith("/(auth)/login");
+  });
+
+  it("stays on a blocking paywall that never had a session", async () => {
+    renderHook(() => usePaywallExit("post_auth", false));
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+      await Promise.resolve();
+    });
+
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
   it("shows confirmation after a user-triggered purchase or restore", async () => {
     const { result } = renderHook(() => usePaywallExit("post_auth", true));
 

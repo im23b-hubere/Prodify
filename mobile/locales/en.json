@@ -907,6 +907,10 @@
       "privacyLink": "Privacy",
       "termsLink": "Terms"
     },
+    "account": {
+      "signedInAs": "Signed in as {{name}}",
+      "switch": "Use another account"
+    },
     "alerts": {
       "unavailableTitle": "Unavailable",
       "unavailableBody": "This package is not available right now.",

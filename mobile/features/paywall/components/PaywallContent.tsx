@@ -100,8 +100,14 @@ export function PaywallContent({ controller, onOpenPrivacy, onOpenTerms }: Props
           onRestore={() => void controller.onRestore()}
           onOpenPrivacy={onOpenPrivacy}
           onOpenTerms={onOpenTerms}
-          onDeleteAccount={
-            controller.canDeleteAccount ? controller.confirmDeleteAccount : undefined
+          account={
+            controller.isSignedIn
+              ? {
+                  name: controller.accountName,
+                  onSwitch: controller.confirmSignOut,
+                  onDelete: controller.confirmDeleteAccount,
+                }
+              : undefined
           }
         />
         {controller.expoGoPreviewMode ? (

@@ -30,8 +30,13 @@ export function usePaywallController() {
   /** Dev + Expo Go only: screenshot-friendly layout (no IAP). Never active in release builds. */
   const expoGoPreviewMode = e2ePreviewMode || (__DEV__ && isExpoGo);
 
-  // Deleting must stay reachable for someone who never subscribes and so never sees Settings.
-  const { confirmDeleteAccount } = useProfileAccountActions({ signOut, deleteAccount });
+  // Switching and deleting accounts must stay reachable for someone who never subscribes and so
+  // never sees Settings. usePaywallExit leads to login once the session ends.
+  const { confirmSignOut, confirmDeleteAccount } = useProfileAccountActions({
+    signOut,
+    deleteAccount,
+    afterSessionEnds: stayUntilPaywallExits,
+  });
 
   const appUserId = useMemo(() => (user?.id != null ? String(user.id) : null), [user?.id]);
 
@@ -98,9 +103,13 @@ export function usePaywallController() {
     purchasePackage,
     onRestore,
     onSkipSubscriptionForDev,
-    canDeleteAccount: Boolean(token),
+    isSignedIn: Boolean(token),
+    accountName: user?.username ?? null,
+    confirmSignOut,
     confirmDeleteAccount,
   };
 }
+
+function stayUntilPaywallExits() {}
 
 export type PaywallController = ReturnType<typeof usePaywallController>;

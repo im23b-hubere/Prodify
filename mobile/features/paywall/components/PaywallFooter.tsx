@@ -4,6 +4,13 @@ import { Pressable, Text, View } from "react-native";
 
 import { paywallStyles as styles } from "../paywall.styles";
 
+/** The signed-in account and the ways out for anyone who decides not to subscribe here. */
+export type PaywallAccount = {
+  name: string | null;
+  onSwitch: () => void;
+  onDelete: () => void;
+};
+
 type Props = {
   /** Price, period and how to cancel for the selected plan. */
   renewalNote: string;
@@ -12,11 +19,11 @@ type Props = {
   onRestore: () => void;
   onOpenPrivacy: () => void;
   onOpenTerms: () => void;
-  /** Signed in only: a quiet way out for anyone who decides not to subscribe. */
-  onDeleteAccount?: () => void;
+  /** Signed in only. */
+  account?: PaywallAccount;
 };
 
-/** The renewal note, then restore and the legal links the App Store asks for. */
+/** The renewal note, restore and the legal links the App Store asks for, then the account. */
 export function PaywallFooter({
   renewalNote,
   busy,
@@ -24,7 +31,7 @@ export function PaywallFooter({
   onRestore,
   onOpenPrivacy,
   onOpenTerms,
-  onDeleteAccount,
+  account,
 }: Props) {
   const { t } = useTranslation();
   const links = [
@@ -70,17 +77,44 @@ export function PaywallFooter({
           </Fragment>
         ))}
       </View>
-      {onDeleteAccount ? (
+      {account ? <PaywallAccountActions account={account} busy={busy} /> : null}
+    </View>
+  );
+}
+
+/** Someone signed in with the wrong account must be able to switch without deleting it. */
+function PaywallAccountActions({ account, busy }: { account: PaywallAccount; busy: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <View style={styles.links}>
+        {account.name ? (
+          <>
+            <Text style={styles.accountText}>
+              {t("paywall.account.signedInAs", { name: account.name })}
+            </Text>
+            <Text style={styles.linkDot}>·</Text>
+          </>
+        ) : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t("legal.deleteAccount.button")}
-          onPress={onDeleteAccount}
+          accessibilityLabel={t("paywall.account.switch")}
+          onPress={account.onSwitch}
           disabled={busy}
-          style={styles.deleteAccount}
+          style={styles.link}
         >
-          <Text style={styles.deleteAccountText}>{t("legal.deleteAccount.button")}</Text>
+          <Text style={styles.switchAccountText}>{t("paywall.account.switch")}</Text>
         </Pressable>
-      ) : null}
-    </View>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("legal.deleteAccount.button")}
+        onPress={account.onDelete}
+        disabled={busy}
+        style={styles.deleteAccount}
+      >
+        <Text style={styles.deleteAccountText}>{t("legal.deleteAccount.button")}</Text>
+      </Pressable>
+    </>
   );
 }

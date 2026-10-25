@@ -19,8 +19,10 @@ jest.mock("react-native-reanimated", () => {
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { price?: string }) =>
-      options?.price ? `${key}:${options.price}` : key,
+    t: (key: string, options?: { price?: string; name?: string }) => {
+      const value = options?.price ?? options?.name;
+      return value ? `${key}:${value}` : key;
+    },
   }),
 }));
 
@@ -44,7 +46,9 @@ function controller(overrides: Partial<PaywallController> = {}): PaywallControll
     purchasePackage: jest.fn().mockResolvedValue(undefined),
     onRestore: jest.fn().mockResolvedValue(undefined),
     onSkipSubscriptionForDev: jest.fn().mockResolvedValue(undefined),
-    canDeleteAccount: true,
+    isSignedIn: true,
+    accountName: "eric",
+    confirmSignOut: jest.fn(),
     confirmDeleteAccount: jest.fn(),
     ...overrides,
   };
@@ -140,7 +144,20 @@ describe("PaywallContent", () => {
     expect(signedIn.confirmDeleteAccount).toHaveBeenCalledTimes(1);
 
     screen.unmount();
-    renderPaywall(controller({ canDeleteAccount: false }));
+    renderPaywall(controller({ isSignedIn: false }));
     expect(screen.queryByLabelText("legal.deleteAccount.button")).toBeNull();
+  });
+
+  it("shows who is signed in and offers switching to another account", () => {
+    const signedIn = controller();
+    renderPaywall(signedIn);
+
+    expect(screen.getByText("paywall.account.signedInAs:eric")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("paywall.account.switch"));
+    expect(signedIn.confirmSignOut).toHaveBeenCalledTimes(1);
+
+    screen.unmount();
+    renderPaywall(controller({ isSignedIn: false }));
+    expect(screen.queryByLabelText("paywall.account.switch")).toBeNull();
   });
 });

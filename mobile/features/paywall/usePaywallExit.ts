@@ -67,6 +67,15 @@ export function usePaywallExit(source: PaywallSource, authenticated: boolean) {
     setAllowRemove(true);
   }, []);
 
+  // Signing out, deleting the account or an expired session all end here. The blocking paywall
+  // swallows any other navigation away from it, so it opens the way to login itself.
+  const wasAuthenticated = useRef(authenticated);
+  useEffect(() => {
+    const sessionEnded = wasAuthenticated.current && !authenticated;
+    wasAuthenticated.current = authenticated;
+    if (blockExit && sessionEnded) requestExit("login");
+  }, [authenticated, blockExit, requestExit]);
+
   const requestExitAfterUnlock = useCallback(
     (showConfirmation = false) => {
       if (unlockExitRequested.current) return;

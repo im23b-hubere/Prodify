@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 
-import { REFRESH_TOKEN_KEY } from "../constants/storageKeys";
+import { INSTALL_MARKER_KEY, REFRESH_TOKEN_KEY } from "../constants/storageKeys";
 import { isE2eModeEnabled } from "./e2eMode";
 
 export const ACCESS_TOKEN_KEY = "prodify_token";
@@ -51,4 +51,19 @@ export async function writeTokenPair(accessToken: string, refreshToken: string):
 export async function clearTokenPair(): Promise<void> {
   await deleteItem(ACCESS_TOKEN_KEY);
   await deleteItem(REFRESH_TOKEN_KEY);
+}
+
+/**
+ * The keychain outlives an uninstall, so a reinstalled app would wake up signed in to the old
+ * account. AsyncStorage does not, which makes a missing marker mean "fresh install". When the
+ * marker cannot be read or written the session stays, so a storage fault never signs anyone out.
+ */
+export async function discardTokensFromPreviousInstall(): Promise<void> {
+  try {
+    if ((await AsyncStorage.getItem(INSTALL_MARKER_KEY)) !== null) return;
+    await AsyncStorage.setItem(INSTALL_MARKER_KEY, "1");
+  } catch {
+    return;
+  }
+  await clearTokenPair();
 }

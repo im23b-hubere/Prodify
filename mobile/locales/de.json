@@ -933,6 +933,10 @@
       "privacyLink": "Datenschutz",
       "termsLink": "AGB"
     },
+    "account": {
+      "signedInAs": "Angemeldet als {{name}}",
+      "switch": "Anderen Account verwenden"
+    },
     "alerts": {
       "unavailableTitle": "Nicht verfügbar",
       "unavailableBody": "Dieses Paket ist gerade nicht verfügbar.",

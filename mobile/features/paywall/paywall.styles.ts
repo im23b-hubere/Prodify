@@ -243,6 +243,16 @@ export const paywallStyles = StyleSheet.create({
     color: "#4a4a4a",
     fontSize: 12,
   },
+  accountText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.body,
+    fontSize: 12,
+  },
+  switchAccountText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 12,
+  },
   deleteAccount: {
     alignSelf: "center",
     paddingVertical: 4,

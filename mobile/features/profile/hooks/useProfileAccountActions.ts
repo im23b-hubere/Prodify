@@ -9,14 +9,21 @@ import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 type UseProfileAccountActionsOptions = {
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  /** Where to go once the account is signed out or deleted; login unless the caller says otherwise. */
+  afterSessionEnds?: () => void;
 };
 
 export function useProfileAccountActions({
   signOut,
   deleteAccount,
+  afterSessionEnds,
 }: UseProfileAccountActionsOptions) {
   const { t } = useTranslation();
-  const router = useRouter();
+  const { replace } = useRouter();
+  const leave = useCallback(
+    () => (afterSessionEnds ? afterSessionEnds() : replace("/(auth)/login")),
+    [afterSessionEnds, replace],
+  );
 
   const confirmSignOut = useCallback(() => {
     Alert.alert(t("profile.signOutConfirmTitle"), t("profile.signOutConfirmMessage"), [
@@ -32,13 +39,13 @@ export function useProfileAccountActions({
             try {
               await signOut();
             } finally {
-              router.replace("/(auth)/login");
+              leave();
             }
           })();
         },
       },
     ]);
-  }, [router, signOut, t]);
+  }, [leave, signOut, t]);
 
   const confirmDeleteAccount = useCallback(() => {
     Alert.alert(t("legal.deleteAccount.confirmTitle"), t("legal.deleteAccount.confirmMessage"), [
@@ -50,7 +57,7 @@ export function useProfileAccountActions({
           void (async () => {
             try {
               await deleteAccount();
-              router.replace("/(auth)/login");
+              leave();
             } catch (error) {
               Alert.alert(
                 t("legal.deleteAccount.errorTitle"),
@@ -61,7 +68,7 @@ export function useProfileAccountActions({
         },
       },
     ]);
-  }, [deleteAccount, router, t]);
+  }, [deleteAccount, leave, t]);
 
   return { confirmSignOut, confirmDeleteAccount };
 }

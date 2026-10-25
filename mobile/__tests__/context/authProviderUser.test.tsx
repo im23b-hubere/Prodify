@@ -11,7 +11,7 @@ import {
   type PremiumRequiredRejection,
 } from "../../lib/client";
 import { clearLocalAuthSession } from "../../lib/authSessionService";
-import { readAccessToken } from "../../lib/authTokenStorage";
+import { discardTokensFromPreviousInstall, readAccessToken } from "../../lib/authTokenStorage";
 
 jest.mock("../../lib/client", () => ({
   ApiError: class ApiError extends Error {
@@ -34,6 +34,7 @@ jest.mock("../../lib/billing", () => ({
 
 jest.mock("../../lib/authTokenStorage", () => ({
   clearTokenPair: jest.fn().mockResolvedValue(undefined),
+  discardTokensFromPreviousInstall: jest.fn().mockResolvedValue(undefined),
   readAccessToken: jest.fn(),
   readRefreshToken: jest.fn().mockResolvedValue(null),
   writeTokenPair: jest.fn().mockResolvedValue(undefined),
@@ -104,6 +105,15 @@ describe("AuthProvider user exposure", () => {
     expect(clearLocalAuthSession).toHaveBeenCalledWith(ACCOUNT.id, false);
     expect(result.current.token).toBeNull();
     expect(result.current.user).toBeNull();
+  });
+
+  it("discards a previous install's tokens before restoring the session", async () => {
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    const discardedAt = jest.mocked(discardTokensFromPreviousInstall).mock.invocationCallOrder[0];
+    const restoredAt = mockReadAccessToken.mock.invocationCallOrder[0];
+    expect(discardedAt).toBeLessThan(restoredAt);
   });
 
   it("keeps the user null when there was never a token to begin with", async () => {

@@ -925,6 +925,10 @@
       "privacyLink": "Confidentialité",
       "termsLink": "Conditions"
     },
+    "account": {
+      "signedInAs": "Connecté en tant que {{name}}",
+      "switch": "Utiliser un autre compte"
+    },
     "alerts": {
       "unavailableTitle": "Indisponible",
       "unavailableBody": "Cette offre n'est pas disponible pour le moment.",

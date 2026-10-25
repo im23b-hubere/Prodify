@@ -925,6 +925,10 @@
       "privacyLink": "Privacidad",
       "termsLink": "Términos"
     },
+    "account": {
+      "signedInAs": "Sesión iniciada como {{name}}",
+      "switch": "Usar otra cuenta"
+    },
     "alerts": {
       "unavailableTitle": "No disponible",
       "unavailableBody": "Este paquete no está disponible en este momento.",
