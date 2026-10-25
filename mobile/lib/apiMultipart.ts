@@ -4,6 +4,7 @@ import { API_BASE_URL } from "../constants/api";
 import { apiErrorFromResponse, readResponsePayload } from "./apiResponse";
 import { addNetworkBreadcrumb, parseApiHost } from "./apiNetworkTelemetry";
 import i18n from "./i18n";
+import { reportPremiumRequired } from "./premiumRequired";
 
 export type ApiMultipartOptions = {
   token?: string | null;
@@ -30,15 +31,21 @@ export async function apiMultipart<T = unknown>(
   }
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const host = parseApiHost(API_BASE_URL);
+  const authToken = token?.trim() ?? "";
+  const requestStartedAtMs = Date.now();
   try {
     const response = await expoFetch(`${API_BASE_URL}${path}`, {
       method,
-      headers: token?.trim() ? { Authorization: `Bearer ${token.trim()}` } : undefined,
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
       body: formData,
       signal: controller.signal,
     });
     const payload = await readResponsePayload(response);
-    if (!response.ok) throw apiErrorFromResponse(response, payload);
+    if (!response.ok) {
+      const error = apiErrorFromResponse(response, payload);
+      reportPremiumRequired({ path, method, token: authToken, requestStartedAtMs }, error);
+      throw error;
+    }
     return payload as T;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {

@@ -67,13 +67,22 @@ skipped the router gate. They are not a Free tier.
 | `/auth/*`, `/billing/*`, `/legal/*`, `/feature-flags`, `/jobs/*`, `/health*` | Ungated (auth still required where the route says so) |
 | `DELETE /users/me` | Authenticated, no subscription |
 
-Unpaid callers receive `402` with `Premium entitlement required`.
+Unpaid callers receive `402` with `Premium entitlement required` and error code
+`PREMIUM_REQUIRED`. Other `402` responses (challenge, commitment and rescue limits) use
+`ERROR_402` and never mean the subscription ended.
 
 ## Mobile UX
 
 - Signed-out users see auth and onboarding.
 - Signed-in users without an entitlement are redirected to `/paywall`.
 - Subscribers enter the tabs. Gated APIs are fetched only when `hasPremiumAccess()` is true.
+- A `PREMIUM_REQUIRED` response while the app is open ends local access (memory cache, stored
+  entitlement, `is_premium` on the profile) and `AppAccessGate` replaces the screen with
+  `/paywall?source=post_auth`. `/billing/*` and `DELETE /users/me` never trigger it. A grant
+  cached after the rejected request started (purchase, restore) survives the rejection.
+- Leaving the paywall requires the server to agree: when `/billing/sync` answers `inactive`
+  after its own RevenueCat check, a stale device grant does not unlock the app. When the
+  server cannot be reached, the store's answer is kept.
 
 ## Paywall variants (`en.json`)
 

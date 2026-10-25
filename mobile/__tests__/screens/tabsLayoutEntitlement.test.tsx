@@ -128,6 +128,26 @@ describe("TabsLayout entitlement updates", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 
+  it("returns to the paywall when the server revokes access while the tabs are open", async () => {
+    mockCachedAccess = true;
+    const screen = render(<TabsLayout />);
+    await waitFor(() => expect(screen.getByTestId("tabs-layout")).toBeTruthy());
+
+    mockAccessPromise = Promise.resolve(false);
+    act(() => {
+      mockCachedAccess = false;
+      mockRevision += 1;
+      mockListeners.forEach((listener) => listener());
+    });
+
+    await waitFor(() =>
+      expect(mockRedirect).toHaveBeenLastCalledWith({
+        href: { pathname: "/paywall", params: { source: "post_auth" } },
+      }),
+    );
+    expect(screen.queryByTestId("tabs-layout")).toBeNull();
+  });
+
   it("redirects only after the authoritative check confirms no active subscription", async () => {
     render(<TabsLayout />);
 

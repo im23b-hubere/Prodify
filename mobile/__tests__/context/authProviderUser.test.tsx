@@ -2,7 +2,14 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import React from "react";
 
 import { AuthProvider, useAuth } from "../../context/AuthContext";
-import { ApiError, apiJson, setApiUnauthorizedHandler } from "../../lib/client";
+import { revokePremiumAccess } from "../../lib/billing";
+import {
+  ApiError,
+  apiJson,
+  setApiPremiumRequiredHandler,
+  setApiUnauthorizedHandler,
+  type PremiumRequiredRejection,
+} from "../../lib/client";
 import { clearLocalAuthSession } from "../../lib/authSessionService";
 import { readAccessToken } from "../../lib/authTokenStorage";
 
@@ -15,9 +22,14 @@ jest.mock("../../lib/client", () => ({
     }
   },
   apiJson: jest.fn(),
+  setApiPremiumRequiredHandler: jest.fn(),
   setApiUnauthorizedHandler: jest.fn(),
   setAuthRefreshBridge: jest.fn(),
   warmApi: jest.fn(),
+}));
+
+jest.mock("../../lib/billing", () => ({
+  revokePremiumAccess: jest.fn(),
 }));
 
 jest.mock("../../lib/authTokenStorage", () => ({
@@ -151,5 +163,49 @@ describe("AuthProvider user exposure", () => {
     });
 
     expect(result.current.user).toEqual(withPhoto);
+  });
+});
+
+describe("AuthProvider subscriber-gate rejection", () => {
+  const PREMIUM_ACCOUNT = { ...ACCOUNT, is_premium: true };
+  const REJECTION = { token: "stored-token", requestStartedAtMs: 1_000 };
+
+  function latestPremiumRequiredHandler() {
+    return (setApiPremiumRequiredHandler as jest.Mock).mock.calls
+      .map((call) => call[0])
+      .filter(Boolean)
+      .at(-1) as (rejection: PremiumRequiredRejection) => Promise<void>;
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockReadAccessToken.mockResolvedValue("stored-token");
+    mockApiJson.mockResolvedValue(PREMIUM_ACCOUNT);
+  });
+
+  it("ends premium on the profile so the access gate can show the paywall", async () => {
+    jest.mocked(revokePremiumAccess).mockResolvedValue(true);
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.user).toEqual(PREMIUM_ACCOUNT));
+
+    await act(async () => {
+      await latestPremiumRequiredHandler()(REJECTION);
+    });
+
+    expect(revokePremiumAccess).toHaveBeenCalledWith("stored-token", ACCOUNT.id, 1_000);
+    expect(result.current.user?.is_premium).toBe(false);
+    expect(result.current.token).toBe("stored-token");
+  });
+
+  it("keeps premium when a newer grant outranks the rejected request", async () => {
+    jest.mocked(revokePremiumAccess).mockResolvedValue(false);
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.user).toEqual(PREMIUM_ACCOUNT));
+
+    await act(async () => {
+      await latestPremiumRequiredHandler()(REJECTION);
+    });
+
+    expect(result.current.user?.is_premium).toBe(true);
   });
 });

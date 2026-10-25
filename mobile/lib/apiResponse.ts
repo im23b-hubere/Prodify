@@ -1,4 +1,6 @@
 import { ApiError, formatApiErrorDetail } from "./apiErrors";
+import i18n from "./i18n";
+import { PREMIUM_REQUIRED_CODE } from "./premiumRequired";
 
 export async function readResponsePayload(response: Response): Promise<unknown> {
   const raw = await response.text();
@@ -11,12 +13,13 @@ export async function readResponsePayload(response: Response): Promise<unknown> 
 }
 
 export function apiErrorFromResponse(response: Response, payload: unknown): ApiError {
-  return new ApiError(
-    response.status,
-    responseErrorMessage(response.status, payload),
-    payload,
-    responseErrorCode(payload),
-  );
+  const code = responseErrorCode(payload);
+  // Screens that surface `error.message` must never show the server's English gate text.
+  const message =
+    code === PREMIUM_REQUIRED_CODE
+      ? i18n.t("errors.premiumRequired")
+      : responseErrorMessage(response.status, payload);
+  return new ApiError(response.status, message, payload, code);
 }
 
 function responseErrorCode(payload: unknown): string | null {

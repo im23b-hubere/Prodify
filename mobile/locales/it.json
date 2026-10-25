@@ -934,7 +934,8 @@
       "purchaseFailed": "Acquisto non riuscito.",
       "restoreFailed": "Impossibile ripristinare gli acquisti.",
       "alreadySubscribedRestoreFailed": "Secondo Apple questo abbonamento esiste già, ma Prodify non è ancora riuscita a collegarlo a questo account. Tocca di nuovo Ripristina acquisti o gestisci l'abbonamento in Apple ID > Abbonamenti.",
-      "entitlementNotActive": "L'acquisto non ha attivato l'accesso all'app."
+      "entitlementNotActive": "L'acquisto non ha attivato l'accesso all'app.",
+      "accessNotConfirmed": "Non è stato possibile confermare il tuo abbonamento. Prova a ripristinare gli acquisti."
     },
     "a11y": {
       "skipSubscription": "Salta l'abbonamento"
@@ -2504,6 +2505,7 @@
     "requestTimeout": "Connessione scaduta. Controlla la rete e riprova.",
     "network": "Errore di rete. Controlla la connessione e riprova.",
     "serviceUnavailable": "Servizio temporaneamente non disponibile a causa della configurazione dell'app. Riprova più tardi.",
+    "premiumRequired": "Il tuo abbonamento non è più attivo.",
     "unexpectedResponse": "Risposta del server inattesa. Riprova.",
     "tooManyRequests": "Troppi tentativi. Attendi un momento e riprova.",
     "signInFailed": "Accesso non riuscito",

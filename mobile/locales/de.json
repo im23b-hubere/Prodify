@@ -942,7 +942,8 @@
       "purchaseFailed": "Kauf fehlgeschlagen.",
       "restoreFailed": "Käufe konnten nicht wiederhergestellt werden.",
       "alreadySubscribedRestoreFailed": "Laut Apple existiert dieses Abo bereits, aber Prodify konnte es noch nicht mit diesem Konto verknüpfen. Tippe erneut auf „Käufe wiederherstellen“ oder verwalte das Abo unter Apple-ID > Abonnements.",
-      "entitlementNotActive": "Der Kauf hat den App-Zugang nicht aktiviert."
+      "entitlementNotActive": "Der Kauf hat den App-Zugang nicht aktiviert.",
+      "accessNotConfirmed": "Dein Abo konnte nicht bestätigt werden. Versuch, deine Käufe wiederherzustellen."
     },
     "a11y": {
       "skipSubscription": "Abo überspringen"
@@ -2525,6 +2526,7 @@
     "requestTimeout": "Zeitüberschreitung der Verbindung. Prüf dein Netzwerk und versuch es noch mal.",
     "network": "Netzwerkfehler. Prüf deine Verbindung und versuch es noch mal.",
     "serviceUnavailable": "Dienst wegen der App-Konfiguration vorübergehend nicht verfügbar. Bitte versuch es später noch mal.",
+    "premiumRequired": "Dein Abo ist nicht mehr aktiv.",
     "unexpectedResponse": "Unerwartete Serverantwort. Bitte versuch es noch mal.",
     "tooManyRequests": "Zu viele Versuche. Bitte warte kurz und versuch es noch mal.",
     "signInFailed": "Anmeldung fehlgeschlagen",

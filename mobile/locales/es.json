@@ -934,7 +934,8 @@
       "purchaseFailed": "Error en la compra.",
       "restoreFailed": "No se pudieron restaurar las compras.",
       "alreadySubscribedRestoreFailed": "Apple indica que esta suscripción ya existe, pero Prodify aún no pudo vincularla a esta cuenta. Toca Restaurar compras otra vez o gestiona la suscripción en Apple ID > Suscripciones.",
-      "entitlementNotActive": "La compra no activó el acceso a la app."
+      "entitlementNotActive": "La compra no activó el acceso a la app.",
+      "accessNotConfirmed": "No pudimos confirmar tu suscripción. Intenta restaurar tus compras."
     },
     "a11y": {
       "skipSubscription": "Omitir suscripción"
@@ -2504,6 +2505,7 @@
     "requestTimeout": "Se agotó el tiempo de conexión. Revisa tu red e inténtalo de nuevo.",
     "network": "Error de red. Revisa tu conexión e inténtalo de nuevo.",
     "serviceUnavailable": "Servicio no disponible temporalmente por la configuración de la app. Inténtalo más tarde.",
+    "premiumRequired": "Tu suscripción ya no está activa.",
     "unexpectedResponse": "Respuesta inesperada del servidor. Inténtalo de nuevo.",
     "tooManyRequests": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
     "signInFailed": "No se pudo iniciar sesión",

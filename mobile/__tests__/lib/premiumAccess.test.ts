@@ -1,4 +1,9 @@
-import { fetchEntitlement, hasPremiumAccess, seedEntitlementCache } from "../../lib/billing";
+import {
+  fetchEntitlement,
+  hasPremiumAccess,
+  seedEntitlementCache,
+  syncEntitlement,
+} from "../../lib/billing";
 import { resolvePremiumAccess } from "../../lib/premiumAccess";
 import { configureRevenueCat, getRevenueCatCustomerInfo } from "../../lib/revenuecat";
 
@@ -37,6 +42,13 @@ jest.mock("../../lib/revenuecat", () => ({
   activeEntitlementExpiration: jest.fn(() => null),
 }));
 
+const INACTIVE = {
+  provider: "revenuecat",
+  entitlement: "inactive",
+  trial_active: false,
+  expires_at: null,
+};
+
 describe("resolvePremiumAccess", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -69,14 +81,34 @@ describe("resolvePremiumAccess", () => {
     await expect(resolvePremiumAccess("tok", "42")).resolves.toBe(true);
     expect(configureRevenueCat).toHaveBeenCalledWith("42");
     expect(getRevenueCatCustomerInfo).toHaveBeenCalled();
+    expect(syncEntitlement).toHaveBeenCalledWith(
+      "tok",
+      expect.objectContaining({ app_user_id: "42", entitlement: "premium" }),
+    );
+  });
+
+  it("denies access when the server's RevenueCat check rejects a stale device grant", async () => {
+    (fetchEntitlement as jest.Mock).mockResolvedValue(INACTIVE);
+    (getRevenueCatCustomerInfo as jest.Mock).mockResolvedValue({
+      entitlements: { active: { app_access: {} } },
+    });
+    (syncEntitlement as jest.Mock).mockResolvedValueOnce(INACTIVE);
+
+    await expect(resolvePremiumAccess("tok", "42")).resolves.toBe(false);
+    expect(seedEntitlementCache).not.toHaveBeenCalled();
+  });
+
+  it("trusts the store's grant when the server cannot be reached for the sync", async () => {
+    (fetchEntitlement as jest.Mock).mockResolvedValue(INACTIVE);
+    (getRevenueCatCustomerInfo as jest.Mock).mockResolvedValue({
+      entitlements: { active: { app_access: {} } },
+    });
+    (syncEntitlement as jest.Mock).mockRejectedValueOnce(new Error("network down"));
+
+    await expect(resolvePremiumAccess("tok", "42")).resolves.toBe(true);
     expect(seedEntitlementCache).toHaveBeenCalledWith(
       "tok",
-      {
-        provider: "revenuecat",
-        entitlement: "premium",
-        trial_active: false,
-        expires_at: null,
-      },
+      { provider: "revenuecat", entitlement: "premium", trial_active: false, expires_at: null },
       42,
     );
   });

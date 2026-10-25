@@ -1,5 +1,10 @@
 import NetInfo from "@react-native-community/netinfo";
-import { apiJson, apiMultipart, subscribeSuccessfulMutations } from "../../lib/client";
+import {
+  apiJson,
+  apiMultipart,
+  setApiPremiumRequiredHandler,
+  subscribeSuccessfulMutations,
+} from "../../lib/client";
 
 jest.mock("@react-native-community/netinfo", () => ({
   __esModule: true,
@@ -185,6 +190,80 @@ describe("apiJson error parsing", () => {
       }),
     ).resolves.toEqual({ ok: true });
     expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("subscriber-gate rejections", () => {
+  const originalFetch = global.fetch;
+  const onPremiumRequired = jest.fn();
+
+  function respond(status: number, code: string, message = "Premium entitlement required") {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status,
+      text: async () => JSON.stringify({ error: { code, message } }),
+    });
+  }
+
+  beforeEach(() => {
+    global.fetch = jest.fn() as typeof fetch;
+    onPremiumRequired.mockReset();
+    setApiPremiumRequiredHandler(onPremiumRequired);
+  });
+
+  afterEach(() => {
+    setApiPremiumRequiredHandler(null);
+    global.fetch = originalFetch;
+  });
+
+  it("reports a gated product call once and hides the server's English text", async () => {
+    respond(402, "PREMIUM_REQUIRED");
+
+    const failure = apiJson("/sessions/start", { method: "POST", token: "t", body: {} });
+
+    await expect(failure).rejects.toMatchObject({ status: 402, code: "PREMIUM_REQUIRED" });
+    await expect(failure).rejects.not.toThrow("Premium entitlement required");
+    expect(onPremiumRequired).toHaveBeenCalledTimes(1);
+    expect(onPremiumRequired).toHaveBeenCalledWith({
+      token: "t",
+      requestStartedAtMs: expect.any(Number),
+    });
+  });
+
+  it("reports a gated upload the same way as a JSON call", async () => {
+    respond(402, "PREMIUM_REQUIRED");
+
+    await expect(
+      apiMultipart("/users/me/profile-picture", { token: "t", formData: new FormData() }),
+    ).rejects.toMatchObject({ status: 402 });
+    expect(onPremiumRequired).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not treat a product limit with the same status as a lost subscription", async () => {
+    respond(402, "ERROR_402", "Upgrade to run longer challenges.");
+
+    await expect(
+      apiJson("/social/challenges", { method: "POST", token: "t", body: {} }),
+    ).rejects.toThrow("Upgrade to run longer challenges.");
+    expect(onPremiumRequired).not.toHaveBeenCalled();
+  });
+
+  it("leaves billing and account deletion out of the paywall redirect", async () => {
+    respond(402, "PREMIUM_REQUIRED");
+
+    await apiJson("/billing/sync", { method: "POST", token: "t", body: {} }).catch(() => undefined);
+    await apiJson("/users/me", { method: "DELETE", token: "t" }).catch(() => undefined);
+
+    expect(onPremiumRequired).not.toHaveBeenCalled();
+  });
+
+  it("keeps 401 on the sign-in path instead of the paywall", async () => {
+    respond(401, "ERROR_401", "Unauthorized");
+
+    await expect(apiJson("/goals/current", { token: "t" })).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(onPremiumRequired).not.toHaveBeenCalled();
   });
 });
 

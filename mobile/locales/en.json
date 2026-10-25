@@ -916,7 +916,8 @@
       "purchaseFailed": "Purchase failed.",
       "restoreFailed": "Could not restore purchases.",
       "alreadySubscribedRestoreFailed": "Apple says this subscription already exists, but Prodify could not attach it to this account yet. Tap Restore purchases again, or manage the subscription in Apple ID > Subscriptions.",
-      "entitlementNotActive": "Purchase did not activate app access."
+      "entitlementNotActive": "Purchase did not activate app access.",
+      "accessNotConfirmed": "We couldn't confirm your subscription. Try restoring your purchases."
     },
     "a11y": {
       "skipSubscription": "Skip subscription"
@@ -2499,6 +2500,7 @@
     "requestTimeout": "Connection timed out. Check your network and try again.",
     "network": "Network error. Check your connection and try again.",
     "serviceUnavailable": "Service temporarily unavailable due to app configuration. Please try again later.",
+    "premiumRequired": "Your subscription is no longer active.",
     "unexpectedResponse": "Unexpected server response. Please try again.",
     "tooManyRequests": "Too many attempts. Please wait a moment and try again.",
     "signInFailed": "Sign in failed",

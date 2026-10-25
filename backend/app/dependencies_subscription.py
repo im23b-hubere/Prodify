@@ -11,6 +11,9 @@ from app.contracts.billing import EntitlementPublic
 from app.models import User
 from app.services.subscription_service import resolve_effective_entitlement
 
+# The app ends local access only on this code; other 402 responses are product limits.
+PREMIUM_REQUIRED_CODE = "PREMIUM_REQUIRED"
+
 
 def get_entitlement_for_user(
     current: Annotated[User, Depends(get_current_user)],
@@ -30,7 +33,10 @@ def require_subscriber(
     """
     if entitlement.entitlement == "premium":
         return entitlement
-    raise HTTPException(status_code=402, detail="Premium entitlement required")
+    raise HTTPException(
+        status_code=402,
+        detail={"message": "Premium entitlement required", "code": PREMIUM_REQUIRED_CODE},
+    )
 
 
 def user_has_premium_access(db: Session, user: User) -> bool:

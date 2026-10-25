@@ -942,7 +942,8 @@
       "purchaseFailed": "Falha na compra.",
       "restoreFailed": "Não foi possível restaurar as compras.",
       "alreadySubscribedRestoreFailed": "A Apple informa que esta assinatura já existe, mas o Prodify ainda não conseguiu vinculá-la a esta conta. Toque em Restaurar compras de novo ou gerencie a assinatura em ID Apple > Assinaturas.",
-      "entitlementNotActive": "A compra não ativou o acesso ao app."
+      "entitlementNotActive": "A compra não ativou o acesso ao app.",
+      "accessNotConfirmed": "Não foi possível confirmar sua assinatura. Tente restaurar suas compras."
     },
     "a11y": {
       "skipSubscription": "Pular assinatura"
@@ -2512,6 +2513,7 @@
     "requestTimeout": "A conexão expirou. Verifique sua rede e tente de novo.",
     "network": "Erro de rede. Verifique sua conexão e tente de novo.",
     "serviceUnavailable": "Serviço temporariamente indisponível devido à configuração do app. Tente de novo mais tarde.",
+    "premiumRequired": "Sua assinatura não está mais ativa.",
     "unexpectedResponse": "Resposta inesperada do servidor. Tente de novo.",
     "tooManyRequests": "Muitas tentativas. Aguarde um momento e tente de novo.",
     "signInFailed": "Falha ao entrar",
