@@ -34,6 +34,10 @@ jest.mock("../../lib/streakNotifications", () => ({
   syncStreakRiskNotifications: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock("../../lib/streakWidget", () => ({
+  syncStreakWidget: jest.fn(),
+}));
+
 jest.mock("../../lib/weeklyRecapNotifications", () => ({
   syncWeeklyRecapReminder: jest.fn().mockResolvedValue(undefined),
 }));

@@ -2354,6 +2354,18 @@
     "slot2330Title": "Série en danger",
     "slot2330Body": "Plus qu'environ 30 minutes pour garder ta série de {{count}} jours."
   },
+  "streakWidget": {
+    "start": "Lance ta série aujourd'hui",
+    "secured": "Série assurée pour aujourd'hui",
+    "pending": "C'est l'heure d'une session studio",
+    "atRisk": "Ta série a besoin d'une session",
+    "lastChance": "Dernière chance aujourd'hui !",
+    "broken": "Série perdue. Recommence"
+  },
+  "sessionLiveActivity": {
+    "running": "En studio",
+    "paused": "En pause"
+  },
   "sessionInsights": {
     "impact": "Impact de la session",
     "focusScore": "Score de focus",

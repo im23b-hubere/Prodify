@@ -2354,6 +2354,18 @@
     "slot2330Title": "Racha en peligro",
     "slot2330Body": "Quedan unos 30 minutos para mantener tu racha de {{count}} días."
   },
+  "streakWidget": {
+    "start": "Empieza tu racha hoy",
+    "secured": "Racha asegurada por hoy",
+    "pending": "Hora de una sesión de estudio",
+    "atRisk": "Tu racha necesita una sesión",
+    "lastChance": "¡Última oportunidad hoy!",
+    "broken": "Racha perdida. Empieza de nuevo"
+  },
+  "sessionLiveActivity": {
+    "running": "En el estudio",
+    "paused": "En pausa"
+  },
   "sessionInsights": {
     "impact": "Impacto de la sesión",
     "focusScore": "Puntuación de foco",

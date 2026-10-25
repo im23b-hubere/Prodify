@@ -1,4 +1,6 @@
 import { apiJson } from "../../../lib/client";
+import { syncSessionLiveActivity } from "../../../lib/sessionLiveActivity";
+import { refreshStreakWidget } from "../../../lib/streakWidget";
 import {
   fetchActiveSession,
   fetchLongestCompletedSessionSeconds,
@@ -9,6 +11,10 @@ import {
 } from "../../../features/sessions/services/activeSessionApi";
 
 jest.mock("../../../lib/client", () => ({ apiJson: jest.fn() }));
+jest.mock("../../../lib/sessionLiveActivity", () => ({ syncSessionLiveActivity: jest.fn() }));
+jest.mock("../../../lib/streakWidget", () => ({
+  refreshStreakWidget: jest.fn().mockResolvedValue(undefined),
+}));
 
 const mockApiJson = apiJson as jest.MockedFunction<typeof apiJson>;
 const session = {
@@ -76,5 +82,28 @@ describe("active session API", () => {
       method: "POST",
       body: { session_id: 7 },
     });
+  });
+
+  it("ends the Live Activity once the session is stopped", async () => {
+    mockApiJson.mockResolvedValueOnce(session);
+
+    await stopActiveSession("token", 7);
+
+    expect(syncSessionLiveActivity).toHaveBeenCalledWith(null);
+  });
+
+  it("keeps the Live Activity when stopping fails", async () => {
+    mockApiJson.mockRejectedValueOnce(new Error("offline"));
+
+    await expect(stopActiveSession("token", 7)).rejects.toThrow("offline");
+    expect(syncSessionLiveActivity).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the streak widget once the session is stopped", async () => {
+    mockApiJson.mockResolvedValueOnce(session);
+
+    await stopActiveSession("token", 7);
+
+    expect(refreshStreakWidget).toHaveBeenCalledWith("token");
   });
 });

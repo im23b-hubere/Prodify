@@ -2336,6 +2336,18 @@
     "slot2330Title": "Streak at risk",
     "slot2330Body": "About 30 minutes left to keep your {{count}}-day streak."
   },
+  "streakWidget": {
+    "start": "Start your streak today",
+    "secured": "Streak secured for today",
+    "pending": "Time for a studio session",
+    "atRisk": "Your streak needs a session",
+    "lastChance": "Last chance today!",
+    "broken": "Streak lost. Start a new one"
+  },
+  "sessionLiveActivity": {
+    "running": "In the studio",
+    "paused": "Paused"
+  },
   "sessionInsights": {
     "impact": "Session impact",
     "focusScore": "Focus score",

@@ -9,6 +9,7 @@ import { useActiveSessionClock } from "./useActiveSessionClock";
 import { useActiveSessionLoader } from "./useActiveSessionLoader";
 import { useActiveSessionMetadata } from "./useActiveSessionMetadata";
 import { useActiveSessionPauseControls } from "./useActiveSessionPauseControls";
+import { useMirrorSessionLiveActivity } from "./useMirrorSessionLiveActivity";
 import { useSessionPresenceCheckIn } from "./useSessionPresenceCheckIn";
 import { useStopActiveSession } from "./useStopActiveSession";
 
@@ -45,6 +46,7 @@ export function useActiveSession(id: string | undefined) {
     [clock.elapsed, loader.longestCompletedSeconds, t],
   );
 
+  useMirrorSessionLiveActivity(loader.session);
   useSessionPresenceCheckIn({
     session: loader.session,
     sessionResolved: !loader.loading,

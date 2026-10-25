@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { useDashboardStreakData } from "../../features/dashboard/hooks/useDashboardStreakData";
 import { apiJson } from "../../lib/client";
 import { syncStreakRiskNotifications } from "../../lib/streakNotifications";
+import { syncStreakWidget } from "../../lib/streakWidget";
 import type { StreakOverviewDto } from "../../types/streak";
 
 jest.mock("../../lib/client", () => ({
@@ -13,8 +14,13 @@ jest.mock("../../lib/streakNotifications", () => ({
   syncStreakRiskNotifications: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock("../../lib/streakWidget", () => ({
+  syncStreakWidget: jest.fn(),
+}));
+
 const mockApiJson = apiJson as jest.MockedFunction<typeof apiJson>;
 const mockSync = syncStreakRiskNotifications as jest.MockedFunction<typeof syncStreakRiskNotifications>;
+const mockSyncWidget = syncStreakWidget as jest.MockedFunction<typeof syncStreakWidget>;
 
 const savedOverview: StreakOverviewDto = {
   current_streak: 12,
@@ -56,6 +62,32 @@ describe("useDashboardStreakData", () => {
     });
     expect(result.current.streakOverviewStale).toBe(true);
     expect(mockSync).toHaveBeenCalledTimes(1);
+    expect(mockSync).toHaveBeenCalledWith(true, 12);
+  });
+
+  it("pushes every loaded overview to the home screen streak widget", async () => {
+    mockApiJson.mockResolvedValueOnce(savedOverview);
+    const { result } = renderHook(() => useDashboardStreakData("token", 1));
+
+    await act(async () => {
+      await result.current.loadStreakOverview();
+    });
+
+    expect(mockSyncWidget).toHaveBeenCalledWith(savedOverview);
+  });
+
+  it("keeps a loaded overview fresh when the widget cannot be updated", async () => {
+    mockApiJson.mockResolvedValueOnce(savedOverview);
+    mockSyncWidget.mockImplementationOnce(() => {
+      throw new Error("no widget extension");
+    });
+    const { result } = renderHook(() => useDashboardStreakData("token", 1));
+
+    await act(async () => {
+      await result.current.loadStreakOverview();
+    });
+
+    expect(result.current.streakOverviewStale).toBe(false);
     expect(mockSync).toHaveBeenCalledWith(true, 12);
   });
 

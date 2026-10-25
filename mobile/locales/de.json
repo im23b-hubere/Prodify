@@ -2362,6 +2362,18 @@
     "slot2330Title": "Streak in Gefahr",
     "slot2330Body": "Noch etwa 30 Minuten, um deinen {{count}}-Tage-Streak zu halten."
   },
+  "streakWidget": {
+    "start": "Starte heute deinen Streak",
+    "secured": "Streak für heute gesichert",
+    "pending": "Zeit für eine Studio-Session",
+    "atRisk": "Dein Streak braucht eine Session",
+    "lastChance": "Letzte Chance für heute!",
+    "broken": "Streak verloren. Starte neu"
+  },
+  "sessionLiveActivity": {
+    "running": "Im Studio",
+    "paused": "Pausiert"
+  },
   "sessionInsights": {
     "impact": "Session-Impact",
     "focusScore": "Fokus-Score",

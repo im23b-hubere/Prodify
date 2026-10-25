@@ -2362,6 +2362,18 @@
     "slot2330Title": "Sequência em risco",
     "slot2330Body": "Faltam cerca de 30 minutos para manter sua sequência de {{count}} dias."
   },
+  "streakWidget": {
+    "start": "Comece sua sequência hoje",
+    "secured": "Sequência garantida por hoje",
+    "pending": "Hora de uma sessão de estúdio",
+    "atRisk": "Sua sequência precisa de uma sessão",
+    "lastChance": "Última chance hoje!",
+    "broken": "Sequência perdida. Comece de novo"
+  },
+  "sessionLiveActivity": {
+    "running": "No estúdio",
+    "paused": "Pausado"
+  },
   "sessionInsights": {
     "impact": "Impacto da sessão",
     "focusScore": "Pontuação de foco",
