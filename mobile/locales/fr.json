@@ -1865,6 +1865,10 @@
       "nextLine": "Niv. {{level}} · Prochain",
       "lockedLine": "Niv. {{level}} · Débloqué à {{xp}} XP",
       "nodeA11y": "Niveau {{level}}, {{name}}, {{status}}. {{detail}}",
+      "friendMarkerA11y": "{{name}} au niveau {{level}}",
+      "friendClusterA11y": "{{count}} amis au niveau {{level}}",
+      "friendClusterTitle": "Amis au Niv. {{level}}",
+      "friendOverflow": "+{{count}}",
       "status": {
         "cleared": "validé",
         "current": "ton rang actuel",
@@ -2182,6 +2186,15 @@
     "unfriendBody": "{{name}} sera retiré de ta liste d'amis.",
     "unfriendConfirm": "Retirer",
     "headToHeadTitle": "Face à face",
+    "rankCompareTitle": "Chemin des rangs",
+    "rankCompareVs": "vs",
+    "rankCompareOpen": "Ouvrir le chemin des rangs",
+    "rankCompareOpenA11y": "Ouvrir le chemin des rangs partagé",
+    "rankCompareVerdict": {
+      "you": "Tu es plus haut sur le chemin — continue de grimper.",
+      "them": "{{name}} est plus haut — rattrape-le sur le chemin.",
+      "tied": "Même rang — la prochaine session tranchera."
+    },
     "versusYou": "Toi",
     "versusMetric": {
       "streak": "Série",

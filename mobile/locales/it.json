@@ -1865,6 +1865,10 @@
       "nextLine": "Lv {{level}} · Il prossimo",
       "lockedLine": "Lv {{level}} · Si sblocca a {{xp}} XP",
       "nodeA11y": "Livello {{level}}, {{name}}, {{status}}. {{detail}}",
+      "friendMarkerA11y": "{{name}} al livello {{level}}",
+      "friendClusterA11y": "{{count}} amici al livello {{level}}",
+      "friendClusterTitle": "Amici al Lv {{level}}",
+      "friendOverflow": "+{{count}}",
       "status": {
         "cleared": "superato",
         "current": "il tuo grado attuale",
@@ -2182,6 +2186,15 @@
     "unfriendBody": "{{name}} verrà rimosso dalla tua lista amici.",
     "unfriendConfirm": "Rimuovi",
     "headToHeadTitle": "Testa a testa",
+    "rankCompareTitle": "Percorso dei gradi",
+    "rankCompareVs": "vs",
+    "rankCompareOpen": "Apri il percorso dei gradi",
+    "rankCompareOpenA11y": "Apri il percorso dei gradi condiviso",
+    "rankCompareVerdict": {
+      "you": "Sei più in alto sul percorso: continua a salire.",
+      "them": "{{name}} è più in alto: recupera sul percorso.",
+      "tied": "Stesso grado: decide la prossima sessione."
+    },
     "versusYou": "Tu",
     "versusMetric": {
       "streak": "Serie",
