@@ -1,12 +1,14 @@
 # EAS is invoked from mobile/, but the Git repository root is the archive boundary.
 # Keep only the mobile app inputs required by Expo prebuild.
+# The leading slash limits a rule to the repository root: mobile/scripts/ holds the
+# release config check that app.config.js requires.
 .git/
-.github/
-.tmp/
-artifacts/
-backend/
-docs/
-scripts/
+/.github/
+/.tmp/
+/artifacts/
+/backend/
+/docs/
+/scripts/
 
 # Local dependency and generated output
 node_modules/
