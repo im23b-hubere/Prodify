@@ -1549,6 +1549,17 @@
     "viewTrash": "Papelera"
   },
   "notificationsUi": {
+    "permission": {
+      "promptTitle": "Protege tu racha",
+      "promptBody": "Recibe un recordatorio antes de que se rompa tu racha y cuando tu repaso del domingo esté listo.",
+      "promptAccept": "Activar recordatorios",
+      "promptDismiss": "Ahora no",
+      "offTitle": "Las notificaciones están desactivadas",
+      "undecidedBody": "Actívalas para los recordatorios de racha y tu repaso del domingo.",
+      "declinedBody": "Están desactivadas en los ajustes de tu teléfono. Actívalas allí para los recordatorios de racha.",
+      "enable": "Activar",
+      "openSettings": "Abrir ajustes"
+    },
     "title": "Notificaciones",
     "filterAll": "Todas",
     "catStreak": "Racha",

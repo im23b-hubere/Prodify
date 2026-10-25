@@ -30,7 +30,8 @@ export function configureNotificationHandler() {
     });
 }
 
-async function ensureAndroidChannel() {
+/** Android 13 only shows the permission prompt once the app has a notification channel. */
+export async function ensureStreakNotificationChannel() {
   if (Platform.OS !== "android" || isE2eModeEnabled()) return;
   const Notifications = await import("expo-notifications");
   await Notifications.setNotificationChannelAsync("streak", {
@@ -101,7 +102,7 @@ export function streakReminderPlan(input: {
 export async function syncStreakRiskNotifications(atRisk: boolean, streakCount: number) {
   if (isE2eModeEnabled()) return;
 
-  await ensureAndroidChannel();
+  await ensureStreakNotificationChannel();
   await cancelStreakRiskScheduled();
 
   const plan = streakReminderPlan({

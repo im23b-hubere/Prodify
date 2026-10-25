@@ -37,6 +37,8 @@ export const NOTIFICATION_UNREAD_KEY = "prodify_notification_unread_v1";
 export const NOTIFICATION_SETTINGS_KEY = "prodify_notification_settings_v1";
 /** "1" once this device's push token reached the server, so server-side reminders can reach it. */
 export const SERVER_PUSH_CHANNEL_KEY = "prodify_server_push_channel_v1";
+/** "1" once the producer answered the reminder card, so it is offered a single time per device. */
+export const REMINDER_PROMPT_ANSWERED_KEY = "prodify_reminder_prompt_answered_v1";
 /** Legacy device-global sync cursor — superseded by user-scoped keys. */
 export const NOTIFICATION_SERVER_SYNC_MS_KEY = "prodify_notification_server_sync_ms_v1";
 /** Legacy device-global user-created-at — superseded by user-scoped keys. */

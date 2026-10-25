@@ -1549,6 +1549,17 @@
     "viewTrash": "Cestino"
   },
   "notificationsUi": {
+    "permission": {
+      "promptTitle": "Proteggi la tua serie",
+      "promptBody": "Ricevi un promemoria prima che la tua serie si interrompa e quando il riepilogo della domenica è pronto.",
+      "promptAccept": "Attiva i promemoria",
+      "promptDismiss": "Non ora",
+      "offTitle": "Le notifiche sono disattivate",
+      "undecidedBody": "Attivale per i promemoria della serie e il riepilogo della domenica.",
+      "declinedBody": "Sono disattivate nelle impostazioni del telefono. Attivale lì per i promemoria della serie.",
+      "enable": "Attiva",
+      "openSettings": "Apri impostazioni"
+    },
     "title": "Notifiche",
     "filterAll": "Tutte",
     "catStreak": "Serie",

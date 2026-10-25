@@ -11,6 +11,7 @@ import { colors } from "../../constants/theme";
 import type { InboxItem } from "../../lib/notificationInbox";
 import { NotificationFilterBar } from "./NotificationFilterBar";
 import { NotificationInboxItem } from "./NotificationInboxItem";
+import { NotificationPermissionBanner } from "./NotificationPermissionBanner";
 import { NotificationPreferences } from "./NotificationPreferences";
 import { notificationStyles as styles } from "./notification.styles";
 import { notificationSections, type NotificationSectionKey } from "./notificationPresentation";
@@ -79,6 +80,7 @@ export function NotificationInboxView({ inbox, preferences, onBack, onOpenAction
       <Text style={styles.screenTitle} accessibilityRole="header">
         {t("notificationsUi.title")}
       </Text>
+      <NotificationPermissionBanner />
       <NotificationFilterBar selected={inbox.filter} onSelect={inbox.setFilter} />
       <ServerSyncError error={inbox.token ? inbox.serverSyncError : null} onRetry={inbox.load} />
       {inbox.initialLoading && !inbox.refreshing ? (

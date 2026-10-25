@@ -1531,6 +1531,17 @@
     "viewTrash": "Trash"
   },
   "notificationsUi": {
+    "permission": {
+      "promptTitle": "Protect your streak",
+      "promptBody": "Get a reminder before your streak breaks and when your Sunday review is ready.",
+      "promptAccept": "Turn on reminders",
+      "promptDismiss": "Not now",
+      "offTitle": "Notifications are off",
+      "undecidedBody": "Turn them on for streak reminders and your Sunday review.",
+      "declinedBody": "They are turned off in your phone's settings. Turn them on there for streak reminders.",
+      "enable": "Turn on",
+      "openSettings": "Open Settings"
+    },
     "title": "Notifications",
     "filterAll": "All",
     "catStreak": "Streak",

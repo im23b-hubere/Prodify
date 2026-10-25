@@ -1557,6 +1557,17 @@
     "viewTrash": "Lixeira"
   },
   "notificationsUi": {
+    "permission": {
+      "promptTitle": "Proteja sua sequência",
+      "promptBody": "Receba um lembrete antes de sua sequência acabar e quando seu resumo de domingo estiver pronto.",
+      "promptAccept": "Ativar lembretes",
+      "promptDismiss": "Agora não",
+      "offTitle": "As notificações estão desativadas",
+      "undecidedBody": "Ative-as para lembretes de sequência e seu resumo de domingo.",
+      "declinedBody": "Elas estão desativadas nos ajustes do seu celular. Ative-as lá para lembretes de sequência.",
+      "enable": "Ativar",
+      "openSettings": "Abrir ajustes"
+    },
     "title": "Notificações",
     "filterAll": "Todas",
     "catStreak": "Sequência",

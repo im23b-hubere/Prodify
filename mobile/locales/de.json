@@ -1557,6 +1557,17 @@
     "viewTrash": "Papierkorb"
   },
   "notificationsUi": {
+    "permission": {
+      "promptTitle": "Schütze deinen Streak",
+      "promptBody": "Wir erinnern dich, bevor dein Streak reisst und wenn dein Sonntags-Review bereit ist.",
+      "promptAccept": "Erinnerungen aktivieren",
+      "promptDismiss": "Nicht jetzt",
+      "offTitle": "Benachrichtigungen sind aus",
+      "undecidedBody": "Aktiviere sie für Streak-Erinnerungen und dein Sonntags-Review.",
+      "declinedBody": "Sie sind in den Einstellungen deines Telefons ausgeschaltet. Aktiviere sie dort für Streak-Erinnerungen.",
+      "enable": "Aktivieren",
+      "openSettings": "Einstellungen öffnen"
+    },
     "title": "Mitteilungen",
     "filterAll": "Alle",
     "catStreak": "Streak",

@@ -1549,6 +1549,17 @@
     "viewTrash": "Corbeille"
   },
   "notificationsUi": {
+    "permission": {
+      "promptTitle": "Protège ta série",
+      "promptBody": "Reçois un rappel avant que ta série ne s’arrête et quand ton bilan du dimanche est prêt.",
+      "promptAccept": "Activer les rappels",
+      "promptDismiss": "Pas maintenant",
+      "offTitle": "Les notifications sont désactivées",
+      "undecidedBody": "Active-les pour les rappels de série et ton bilan du dimanche.",
+      "declinedBody": "Elles sont désactivées dans les réglages de ton téléphone. Active-les là-bas pour les rappels de série.",
+      "enable": "Activer",
+      "openSettings": "Ouvrir les réglages"
+    },
     "title": "Notifications",
     "filterAll": "Tout",
     "catStreak": "Série",

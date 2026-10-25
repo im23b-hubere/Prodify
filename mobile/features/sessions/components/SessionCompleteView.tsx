@@ -5,6 +5,7 @@ import { SessionCompleteWeekCard } from "../../../components/session/SessionComp
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { TextButton } from "../../../components/ui/TextButton";
 import { colors } from "../../../constants/theme";
+import { ReminderPromptCard } from "../../notifications/ReminderPromptCard";
 import type { SessionCompleteController } from "../hooks/useSessionCompleteController";
 import { styles } from "../sessionComplete.styles";
 import { SessionChallengeCreditsCard } from "./SessionChallengeCreditsCard";
@@ -39,6 +40,7 @@ export function SessionCompleteView({ controller }: { controller: SessionComplet
           weeklyGoalTarget={controller.weeklyGoalTarget}
           paceForecast={controller.paceForecast}
         />
+        <ReminderPromptCard />
         <SessionChallengeCreditsCard
           credits={controller.challengeCredits}
           currentUserId={controller.currentUserId}
