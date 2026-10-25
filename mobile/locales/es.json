@@ -312,7 +312,7 @@
     "deleteAccount": {
       "button": "Eliminar cuenta",
       "confirmTitle": "¿Eliminar cuenta?",
-      "confirmMessage": "Esto no se puede deshacer. Se eliminarán tus sesiones, rachas y amistades.",
+      "confirmMessage": "Esto no se puede deshacer. Se eliminarán tus sesiones, rachas y amistades.\n\nEliminar tu cuenta no cancela una suscripción activa. Apple la sigue cobrando hasta que la canceles en Ajustes > Cuenta de Apple > Suscripciones.",
       "confirmDelete": "Eliminar definitivamente",
       "errorTitle": "No se pudo eliminar",
       "errorFallback": "Inténtalo de nuevo más tarde o contacta con soporte."

@@ -320,7 +320,7 @@
     "deleteAccount": {
       "button": "Konto löschen",
       "confirmTitle": "Konto löschen?",
-      "confirmMessage": "Das kann nicht rückgängig gemacht werden. Deine Sessions, Streaks und Freundschaften werden entfernt.",
+      "confirmMessage": "Das kann nicht rückgängig gemacht werden. Deine Sessions, Streaks und Freundschaften werden entfernt.\n\nDas Löschen kündigt ein aktives Abo nicht. Apple rechnet weiter ab, bis du es unter Einstellungen > Apple-Account > Abonnements kündigst.",
       "confirmDelete": "Endgültig löschen",
       "errorTitle": "Löschen fehlgeschlagen",
       "errorFallback": "Bitte versuch es später noch einmal oder kontaktiere den Support."

@@ -294,7 +294,7 @@
     "deleteAccount": {
       "button": "Delete account",
       "confirmTitle": "Delete account?",
-      "confirmMessage": "This cannot be undone. Your sessions, streaks, and friendships will be removed.",
+      "confirmMessage": "This cannot be undone. Your sessions, streaks, and friendships will be removed.\n\nDeleting your account does not cancel an active subscription. Apple keeps billing until you cancel it in Settings > Apple ID > Subscriptions.",
       "confirmDelete": "Delete permanently",
       "errorTitle": "Deletion failed",
       "errorFallback": "Please try again later or contact support."

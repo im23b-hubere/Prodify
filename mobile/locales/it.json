@@ -312,7 +312,7 @@
     "deleteAccount": {
       "button": "Elimina account",
       "confirmTitle": "Eliminare l'account?",
-      "confirmMessage": "L'operazione è irreversibile. Le tue sessioni, serie e amicizie verranno rimosse.",
+      "confirmMessage": "L'operazione è irreversibile. Le tue sessioni, serie e amicizie verranno rimosse.\n\nEliminare l'account non annulla un abbonamento attivo. Apple continua ad addebitarlo finché non lo annulli in Impostazioni > Account Apple > Abbonamenti.",
       "confirmDelete": "Elimina definitivamente",
       "errorTitle": "Eliminazione non riuscita",
       "errorFallback": "Riprova più tardi o contatta l'assistenza."

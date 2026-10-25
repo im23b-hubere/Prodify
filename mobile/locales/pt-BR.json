@@ -320,7 +320,7 @@
     "deleteAccount": {
       "button": "Excluir conta",
       "confirmTitle": "Excluir conta?",
-      "confirmMessage": "Isso não pode ser desfeito. Suas sessões, sequências e amizades serão removidas.",
+      "confirmMessage": "Isso não pode ser desfeito. Suas sessões, sequências e amizades serão removidas.\n\nExcluir sua conta não cancela uma assinatura ativa. A Apple continua cobrando até você cancelá-la em Ajustes > Conta Apple > Assinaturas.",
       "confirmDelete": "Excluir permanentemente",
       "errorTitle": "Falha ao excluir",
       "errorFallback": "Tente novamente mais tarde ou fale com o suporte."

@@ -312,7 +312,7 @@
     "deleteAccount": {
       "button": "Supprimer le compte",
       "confirmTitle": "Supprimer le compte ?",
-      "confirmMessage": "Cette action est irréversible. Tes sessions, séries et amitiés seront supprimées.",
+      "confirmMessage": "Cette action est irréversible. Tes sessions, séries et amitiés seront supprimées.\n\nSupprimer ton compte n'annule pas un abonnement actif. Apple continue de le facturer jusqu'à ce que tu l'annules dans Réglages > Compte Apple > Abonnements.",
       "confirmDelete": "Supprimer définitivement",
       "errorTitle": "Échec de la suppression",
       "errorFallback": "Réessaie plus tard ou contacte le support."
