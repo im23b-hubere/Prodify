@@ -36,7 +36,7 @@ class NotificationDelivery(Base):
     opened_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     app_opened_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     session_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("sessions.id", ondelete="SET NULL"), index=True, nullable=True
     )
     session_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     outcome: Mapped[str] = mapped_column(String(16), nullable=False, default=DeliveryOutcome.PENDING)
