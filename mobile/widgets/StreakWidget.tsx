@@ -17,6 +17,7 @@ import {
   foregroundStyle,
   frame,
   kerning,
+  lineLimit,
   minimumScaleFactor,
   monospacedDigit,
   widgetAccentedRenderingMode,
@@ -99,7 +100,12 @@ const StreakWidget = (props: StreakWidgetProps, environment: WidgetEnvironment) 
         <VStack alignment="leading" spacing={1}>
           <HStack spacing={4}>
             <Image systemName={flameSymbol} size={15} />
-            <Text modifiers={[font({ size: 20, weight: "heavy", design: "rounded" }), monospacedDigit()]}>
+            <Text
+              modifiers={[
+                font({ size: 20, weight: "heavy", design: "rounded" }),
+                monospacedDigit(),
+              ]}
+            >
               {props.streak}
             </Text>
           </HStack>
@@ -112,44 +118,63 @@ const StreakWidget = (props: StreakWidgetProps, environment: WidgetEnvironment) 
     );
   }
 
-  const streakHero = (
-    <VStack alignment="leading" spacing={2}>
-      <Image
-        systemName={flameSymbol}
-        size={26}
-        color={accent}
-        modifiers={[widgetAccentedRenderingMode("accented")]}
-      />
-      <Spacer />
-      <Text
-        modifiers={[
-          font({ size: 46, weight: "heavy", design: "rounded" }),
-          monospacedDigit(),
-          minimumScaleFactor(0.5),
-          foregroundStyle("#FFFFFF"),
-        ]}
-      >
-        {props.streak}
-      </Text>
-      <Text modifiers={[font({ size: 11, weight: "bold" }), kerning(0.8), foregroundStyle("#888888")]}>
-        {props.streakLabel}
-      </Text>
-      <Text
-        modifiers={[
-          font({ size: 13, weight: "semibold" }),
-          minimumScaleFactor(0.8),
-          foregroundStyle(accent),
-        ]}
-      >
-        {props.headline}
-      </Text>
-    </VStack>
+  const flame = (
+    <Image
+      systemName={flameSymbol}
+      size={26}
+      color={accent}
+      modifiers={[widgetAccentedRenderingMode("accented")]}
+    />
+  );
+  const streakNumber = (
+    <Text
+      modifiers={[
+        font({ size: 46, weight: "heavy", design: "rounded" }),
+        monospacedDigit(),
+        lineLimit(1),
+        minimumScaleFactor(0.5),
+        foregroundStyle("#FFFFFF"),
+      ]}
+    >
+      {props.streak}
+    </Text>
+  );
+  const streakLabel = (
+    <Text
+      modifiers={[
+        font({ size: 11, weight: "bold" }),
+        kerning(0.8),
+        lineLimit(1),
+        minimumScaleFactor(0.7),
+        foregroundStyle("#888888"),
+      ]}
+    >
+      {props.streakLabel}
+    </Text>
+  );
+  const headline = (
+    <Text
+      modifiers={[
+        font({ size: 13, weight: "semibold" }),
+        lineLimit(2),
+        minimumScaleFactor(0.8),
+        foregroundStyle(accent),
+      ]}
+    >
+      {props.headline}
+    </Text>
   );
 
   if (environment.widgetFamily !== "systemMedium") {
     return (
       <HStack modifiers={[openStreakHistory, glowBackground, ...voiceOver]}>
-        {streakHero}
+        <VStack alignment="leading" spacing={2}>
+          {flame}
+          <Spacer />
+          {streakNumber}
+          {streakLabel}
+          {headline}
+        </VStack>
         <Spacer />
       </HStack>
     );
@@ -164,29 +189,54 @@ const StreakWidget = (props: StreakWidgetProps, environment: WidgetEnvironment) 
     return isFullColor ? "#161616" : "#FFFFFF1A";
   };
 
-  return (
-    <HStack spacing={12} modifiers={[openStreakHistory, glowBackground, ...voiceOver]}>
-      {streakHero}
-      <Spacer />
-      <HStack spacing={6}>
-        {props.week.map((day, index) => (
-          <VStack key={index} spacing={6}>
-            <Text
+  // Fixed columns keep every weekday on one line and every dot on one row, whatever the locale.
+  const weekStrip = (
+    <HStack spacing={4}>
+      {props.week.map((day, index) => (
+        <VStack key={index} spacing={6} modifiers={[frame({ width: 22 })]}>
+          <Text
+            modifiers={[
+              font({ size: 10, weight: day.isToday ? "heavy" : "semibold" }),
+              lineLimit(1),
+              minimumScaleFactor(0.7),
+              foregroundStyle(day.isToday ? "#FFFFFF" : "#666666"),
+            ]}
+          >
+            {day.label}
+          </Text>
+          <ZStack>
+            <Circle
               modifiers={[
-                font({ size: 10, weight: day.isToday ? "heavy" : "semibold" }),
-                foregroundStyle(day.isToday ? "#FFFFFF" : "#666666"),
+                foregroundStyle(dotColor(day.state, index)),
+                frame({ width: 20, height: 20 }),
               ]}
-            >
-              {day.label}
-            </Text>
-            <ZStack>
-              <Circle modifiers={[foregroundStyle(dotColor(day.state, index)), frame({ width: 20, height: 20 })]} />
-              {day.state === "session" ? <Image systemName="flame.fill" size={10} color="#0A0A0A" /> : null}
-              {day.state === "freeze" ? <Image systemName="snowflake" size={10} color="#0A0A0A" /> : null}
-            </ZStack>
-          </VStack>
-        ))}
-      </HStack>
+            />
+            {day.state === "session" ? (
+              <Image systemName="flame.fill" size={10} color="#0A0A0A" />
+            ) : null}
+            {day.state === "freeze" ? (
+              <Image systemName="snowflake" size={10} color="#0A0A0A" />
+            ) : null}
+          </ZStack>
+        </VStack>
+      ))}
+    </HStack>
+  );
+
+  return (
+    <HStack spacing={0} modifiers={[openStreakHistory, glowBackground, ...voiceOver]}>
+      <VStack alignment="leading" spacing={2}>
+        {flame}
+        <Spacer />
+        {streakNumber}
+        {streakLabel}
+      </VStack>
+      <Spacer minLength={12} />
+      <VStack alignment="leading" spacing={0}>
+        {headline}
+        <Spacer />
+        {weekStrip}
+      </VStack>
     </HStack>
   );
 };
