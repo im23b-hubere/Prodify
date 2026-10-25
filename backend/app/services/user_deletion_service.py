@@ -94,6 +94,12 @@ def delete_review_share_images(db: Session, user_id: int) -> None:
 
 
 def delete_user_account(db: Session, user: User) -> None:
+    purge_user(db, user)
+    db.commit()
+
+
+def purge_user(db: Session, user: User) -> None:
+    """Remove the user and everything tied to them; the caller owns the transaction."""
     _delete_anonymous_events_about(db, user)
     session_ids = list(
         db.scalars(select(ProductionSession.id).where(ProductionSession.user_id == user.id)).all()
@@ -154,7 +160,7 @@ def delete_user_account(db: Session, user: User) -> None:
         )
     )
     db.delete(user)
-    db.commit()
+    db.flush()
 
 
 def _delete_anonymous_events_about(db: Session, user: User) -> None:

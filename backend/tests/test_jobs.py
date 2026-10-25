@@ -158,3 +158,51 @@ def test_seed_screenshot_account_job_rejects_invalid_key(client, monkeypatch):
 
     assert response.status_code == 401
     assert calls == []
+
+
+REVIEW_JOB_KEY = "expected-key-123456789"
+REVIEW_ACCOUNT = {
+    "email": "app-review@example.org",
+    "username": "prodifyreview",
+    "password": "review-password-123",
+}
+
+
+def _seed_review_account(client, monkeypatch, body: dict, key: str = REVIEW_JOB_KEY):
+    monkeypatch.setattr("app.routers.jobs.settings.internal_job_key", REVIEW_JOB_KEY)
+    return client.post("/jobs/seed-review-account", headers={"X-Internal-Job-Key": key}, json=body)
+
+
+def test_seed_review_account_job_names_the_profiles_for_the_review_notes(client, monkeypatch):
+    response = _seed_review_account(client, monkeypatch, REVIEW_ACCOUNT)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["reviewer_username"] == "prodifyreview"
+    assert body["requester_username"]
+    assert body["open_profile_username"]
+    assert "password" not in json.dumps(body)
+
+
+def test_seed_review_account_job_rejects_invalid_key(client, monkeypatch):
+    response = _seed_review_account(client, monkeypatch, REVIEW_ACCOUNT, key="wrong-key")
+
+    assert response.status_code == 401
+
+
+def test_seed_review_account_job_rejects_a_level_beyond_the_rank_path(client, monkeypatch):
+    response = _seed_review_account(client, monkeypatch, {**REVIEW_ACCOUNT, "level": 21})
+
+    assert response.status_code == 422
+
+
+def test_seed_review_account_job_reports_a_collision_with_a_real_account(client, monkeypatch):
+    client.post(
+        "/auth/register",
+        json={"email": "real@example.org", "username": "prodifyreview", "password": "strong-pass-123"},
+    )
+
+    response = _seed_review_account(client, monkeypatch, REVIEW_ACCOUNT)
+
+    assert response.status_code == 409
+    assert "review_seed_collision" in json.dumps(response.json())

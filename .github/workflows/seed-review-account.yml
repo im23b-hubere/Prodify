@@ -1,14 +1,19 @@
 name: Seed Apple review account
 
-# Seeds the demo account Apple's reviewers sign in with.
+# Rebuilds the demo account Apple's reviewers sign in with, together with its demo producers.
 #
-# Destructive: the target account's password is reset and its sessions and friendships are
-# wiped. Credentials come from repository secrets so they never appear in this file, in the
-# workflow-dispatch form, or in the run logs (GitHub masks secret values in output).
+# Destructive for the review account only: the account and everything a reviewer did with it
+# (blocks, reports, accepted requests, a deleted account) is replaced by a fresh seed. Demo
+# producers use reserved example.com addresses and cannot sign in. Credentials come from
+# repository secrets so they never appear in this file, in the workflow-dispatch form, or in
+# the run logs (GitHub masks secret values in output).
+#
+# Run it right before submitting a build and again when Apple answers after more than four days:
+# the streak carries freezes for four review days, a duel invite expires after 48 hours.
 #
 # Required secrets:
 #   INTERNAL_JOB_KEY       Render → prodify-api → Environment → INTERNAL_JOB_KEY
-#   APPLE_REVIEW_EMAIL     Sign-in address given to App Review
+#   APPLE_REVIEW_EMAIL     Sign-in address given to App Review (no Apple/Google sign-in on it)
 #   APPLE_REVIEW_PASSWORD  Sign-in password given to App Review (min. 12 characters)
 
 on:
@@ -53,22 +58,14 @@ jobs:
           body=$(jq -n \
             --arg email "${APPLE_REVIEW_EMAIL}" \
             --arg password "${APPLE_REVIEW_PASSWORD}" \
-            '{
-              main_email: $email,
-              main_username: "prodifyreview",
-              main_password: $password,
-              friend_password: $password,
-              days_back: 84,
-              current_streak: 64,
-              longest_streak: 71,
-              main_level: 24
-            }')
-          curl -sS -f -X POST "${API_URL%/}/jobs/seed-screenshot-account" \
+            '{email: $email, username: "prodifyreview", password: $password}')
+          # The summary names the profiles the review notes refer to.
+          curl -sS --fail-with-body -X POST "${API_URL%/}/jobs/seed-review-account" \
             -H "Content-Type: application/json" \
             -H "X-Internal-Job-Key: ${INTERNAL_JOB_KEY}" \
             -d "${body}" | jq .
 
-      - name: Verify the reviewer can sign in and has premium access
+      - name: Verify the reviewer can sign in and sees the seeded state
         env:
           API_URL: ${{ inputs.api_url }}
           APPLE_REVIEW_EMAIL: ${{ secrets.APPLE_REVIEW_EMAIL }}
@@ -79,10 +76,14 @@ jobs:
             --arg email "${APPLE_REVIEW_EMAIL}" \
             --arg password "${APPLE_REVIEW_PASSWORD}" \
             '{email: $email, password: $password}')
-          # The login response holds access and refresh tokens, so only the derived
-          # entitlement and streak views are printed.
+          # The login response holds access and refresh tokens, so only derived views are printed.
           token=$(curl -sS -f -X POST "${API_URL%/}/auth/login" \
             -H "Content-Type: application/json" \
             -d "${login_body}" | jq -r .access_token)
-          curl -sS -f "${API_URL%/}/billing/entitlement" -H "Authorization: Bearer ${token}" | jq .
-          curl -sS -f "${API_URL%/}/streak/overview" -H "Authorization: Bearer ${token}" | jq '{current_streak, longest_streak}'
+          auth="Authorization: Bearer ${token}"
+          curl -sS -f "${API_URL%/}/billing/entitlement" -H "${auth}" | jq .
+          curl -sS -f "${API_URL%/}/streak/overview" -H "${auth}" | jq '{current_streak, longest_streak}'
+          curl -sS -f -X POST "${API_URL%/}/progression/sync" -H "${auth}" | jq '{current_level}'
+          curl -sS -f "${API_URL%/}/friends/incoming" -H "${auth}" | jq '[.[].username]'
+          curl -sS -f "${API_URL%/}/social/buddy" -H "${auth}" | jq '{status, buddy_username}'
+          curl -sS -f "${API_URL%/}/social/challenges" -H "${auth}" | jq '[.[] | {title, status}]'

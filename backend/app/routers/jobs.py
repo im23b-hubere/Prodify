@@ -10,7 +10,8 @@ from app.jobs.enforce_session_presence import run_session_presence_job
 from app.jobs.run_engagement_engine import run_engagement_job
 from app.jobs.send_streak_reminders import run_streak_reminder_job
 from app.jobs.settle_social_challenges import run_social_challenge_job
-from app.contracts.outcomes import SeedScreenshotAccountBody
+from app.contracts.outcomes import SeedReviewAccountBody, SeedReviewAccountResult, SeedScreenshotAccountBody
+from app.services.review_account_seed import DemoAccountCollisionError, ReviewAccountSpec, seed_review_account
 from app.services.screenshot_seed_scenario import seed_screenshot_account
 from app.services.social_challenge_notifications import PushChallengeEvents
 
@@ -74,6 +75,39 @@ def http_settle_social_challenges(
 ) -> dict:
     _require_internal_job_key(x_internal_job_key)
     return run_social_challenge_job(db, PushChallengeEvents(db, settings))
+
+
+@router.post("/seed-review-account", response_model=SeedReviewAccountResult)
+def http_seed_review_account(
+    body: SeedReviewAccountBody,
+    db: Annotated[Session, Depends(get_db)],
+    x_internal_job_key: Annotated[str | None, Header(alias="X-Internal-Job-Key")] = None,
+) -> SeedReviewAccountResult:
+    """Rebuild the Apple review account and its demo producers from scratch."""
+    _require_internal_job_key(x_internal_job_key)
+    spec = ReviewAccountSpec(
+        email=body.email,
+        username=body.username,
+        password=body.password,
+        streak_days=body.streak_days,
+        level=body.level,
+    )
+    try:
+        result = seed_review_account(db, spec)
+    except DemoAccountCollisionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "review_seed_collision", "message": str(error)},
+        ) from error
+    return SeedReviewAccountResult(
+        reviewer_user_id=result.reviewer_user_id,
+        reviewer_username=result.reviewer_username,
+        streak_days=result.streak_days,
+        level=result.level,
+        friend_usernames=list(result.friend_usernames),
+        requester_username=result.requester_username,
+        open_profile_username=result.open_profile_username,
+    )
 
 
 @router.post("/seed-screenshot-account")

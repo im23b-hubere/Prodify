@@ -23,6 +23,30 @@ class SeedScreenshotAccountBody(BaseModel):
     main_level: int = Field(default=24, ge=1, le=99)
 
 
+class SeedReviewAccountBody(BaseModel):
+    """
+    Rebuilds the Apple review account from scratch. The credentials have no defaults, so an
+    empty request cannot take over an account a default happened to name.
+    """
+
+    email: str = Field(max_length=255)
+    username: str = Field(min_length=2, max_length=64)
+    password: str = Field(min_length=12, max_length=128)
+    streak_days: int = Field(default=64, ge=1, le=365)
+    # The rank path ends at level 20; a higher level would hide the reviewer from it.
+    level: int = Field(default=12, ge=1, le=20)
+
+
+class SeedReviewAccountResult(BaseModel):
+    reviewer_user_id: int
+    reviewer_username: str
+    streak_days: int
+    level: int
+    friend_usernames: list[str]
+    requester_username: str
+    open_profile_username: str
+
+
 class ProgressionPublic(BaseModel):
     xp_total: int
     current_level: int
