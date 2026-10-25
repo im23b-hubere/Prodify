@@ -2519,6 +2519,7 @@
     "network": "Errore di rete. Controlla la connessione e riprova.",
     "serviceUnavailable": "Servizio temporaneamente non disponibile a causa della configurazione dell'app. Riprova più tardi.",
     "premiumRequired": "Il tuo abbonamento non è più attivo.",
+    "rescueLimitReached": "Hai già usato tutti i salvataggi della serie di questa settimana.",
     "unexpectedResponse": "Risposta del server inattesa. Riprova.",
     "tooManyRequests": "Troppi tentativi. Attendi un momento e riprova.",
     "signInFailed": "Accesso non riuscito",

@@ -13,6 +13,31 @@ describe("userFacingErrorMessage", () => {
     ).toBe("t:errors.auth.invalidCredentials");
   });
 
+  it("translates the upper-case codes the server sends", () => {
+    expect(
+      userFacingErrorMessage(
+        new ApiError(403, "This account has been suspended", null, "ACCOUNT_SUSPENDED"),
+        t,
+        "common.tryAgain",
+      ),
+    ).toBe("t:errors.auth.accountSuspended");
+  });
+
+  it("tells a producer who used every streak save this week without offering Premium", () => {
+    expect(
+      userFacingErrorMessage(
+        new ApiError(
+          409,
+          "You've used all your streak saves for this week.",
+          null,
+          "RESCUE_LIMIT_REACHED",
+        ),
+        t,
+        "dashboard.couldNotSendSupport",
+      ),
+    ).toBe("t:errors.rescueLimitReached");
+  });
+
   it("uses the fallback when there is no usable message", () => {
     expect(userFacingErrorMessage(undefined, t, "dashboard.loadFailed")).toBe("t:dashboard.loadFailed");
     expect(userFacingErrorMessage(new Error(""), t, "common.tryAgain")).toBe("t:common.tryAgain");

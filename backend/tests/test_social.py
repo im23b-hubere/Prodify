@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.database import SessionLocal
 from app.models import BuddyRelationship, BuddyStatus, CheckinLog, GrowthEvent, ProductionSession, SocialChallenge, Streak, User, utcnow
+from app.services import social_streak_service
 from app.services.social_challenge_service import complete_challenge
 
 
@@ -129,7 +130,8 @@ def test_commitment_status_behind_and_completed(client):
         assert len(witness_events) >= 1
 
 
-def test_streak_rescue_rules_and_limit(client):
+def _rescuer_with_buddy_at_risk(client) -> dict[str, str]:
+    """User 1 and user 2 are buddies; user 2 has a running streak without a session today."""
     a = _auth_headers(client, "social-e@example.com", "social-e")
     b = _auth_headers(client, "social-f@example.com", "social-f")
     _make_friends(client, a, b, "social-f")
@@ -148,6 +150,11 @@ def test_streak_rescue_rules_and_limit(client):
             row.longest_streak = max(int(row.longest_streak or 0), 3)
             row.frozen_day_keys = "[]"
         db.commit()
+    return a
+
+
+def test_streak_rescue_rules_and_limit(client):
+    a = _rescuer_with_buddy_at_risk(client)
 
     risk = client.get("/social/buddy/risk", headers=a)
     assert risk.status_code == 200
@@ -157,6 +164,18 @@ def test_streak_rescue_rules_and_limit(client):
 
     same_day = client.post("/social/streak/rescue", headers=a, json={"rescued_user_id": 2})
     assert same_day.status_code == 400
+
+
+def test_weekly_rescue_limit_is_a_conflict_not_an_upsell(client, monkeypatch):
+    a = _rescuer_with_buddy_at_risk(client)
+    monkeypatch.setattr(social_streak_service, "_weekly_rescue_limit", lambda *_args: 0)
+
+    response = client.post("/social/streak/rescue", headers=a, json={"rescued_user_id": 2})
+
+    assert response.status_code == 409
+    error = response.json()["error"]
+    assert error["code"] == "RESCUE_LIMIT_REACHED"
+    assert "Premium" not in error["message"]
 
 
 def test_social_challenge_comment_recap_and_leaderboard_context(client):

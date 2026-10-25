@@ -2519,6 +2519,7 @@
     "network": "Error de red. Revisa tu conexión e inténtalo de nuevo.",
     "serviceUnavailable": "Servicio no disponible temporalmente por la configuración de la app. Inténtalo más tarde.",
     "premiumRequired": "Tu suscripción ya no está activa.",
+    "rescueLimitReached": "Ya usaste todos tus rescates de racha de esta semana.",
     "unexpectedResponse": "Respuesta inesperada del servidor. Inténtalo de nuevo.",
     "tooManyRequests": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
     "signInFailed": "No se pudo iniciar sesión",

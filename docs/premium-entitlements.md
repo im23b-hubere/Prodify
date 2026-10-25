@@ -68,8 +68,9 @@ skipped the router gate. They are not a Free tier.
 | `DELETE /users/me` | Authenticated, no subscription |
 
 Unpaid callers receive `402` with `Premium entitlement required` and error code
-`PREMIUM_REQUIRED`. Other `402` responses (challenge, commitment and rescue limits) use
-`ERROR_402` and never mean the subscription ended.
+`PREMIUM_REQUIRED`. Other `402` responses (challenge and commitment limits) use
+`ERROR_402` and never mean the subscription ended. The weekly buddy-rescue limit applies to
+subscribers too, so it answers `409 RESCUE_LIMIT_REACHED` instead of an upsell.
 
 ## Mobile UX
 

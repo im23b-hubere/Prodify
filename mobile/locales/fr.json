@@ -2519,6 +2519,7 @@
     "network": "Erreur réseau. Vérifie ta connexion et réessaie.",
     "serviceUnavailable": "Service momentanément indisponible en raison de la configuration de l'app. Réessaie plus tard.",
     "premiumRequired": "Ton abonnement n'est plus actif.",
+    "rescueLimitReached": "Tu as utilisé tous tes sauvetages de série cette semaine.",
     "unexpectedResponse": "Réponse inattendue du serveur. Réessaie.",
     "tooManyRequests": "Trop de tentatives. Patiente un instant et réessaie.",
     "signInFailed": "Échec de la connexion",

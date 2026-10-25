@@ -2527,6 +2527,7 @@
     "network": "Erro de rede. Verifique sua conexão e tente de novo.",
     "serviceUnavailable": "Serviço temporariamente indisponível devido à configuração do app. Tente de novo mais tarde.",
     "premiumRequired": "Sua assinatura não está mais ativa.",
+    "rescueLimitReached": "Você já usou todos os resgates de sequência desta semana.",
     "unexpectedResponse": "Resposta inesperada do servidor. Tente de novo.",
     "tooManyRequests": "Muitas tentativas. Aguarde um momento e tente de novo.",
     "signInFailed": "Falha ao entrar",

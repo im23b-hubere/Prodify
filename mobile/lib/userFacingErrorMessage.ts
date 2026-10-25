@@ -17,6 +17,7 @@ const CODE_TO_KEY: Record<string, string> = {
   request_timeout: "errors.requestTimeout",
   network_error: "errors.network",
   service_unavailable: "errors.serviceUnavailable",
+  rescue_limit_reached: "errors.rescueLimitReached",
 };
 
 function looksLikeOpaqueDump(message: string): boolean {
@@ -33,7 +34,8 @@ function resolveUserFacingError(
   fallback: () => string,
 ): string {
   if (caught instanceof ApiError && caught.code) {
-    const key = CODE_TO_KEY[caught.code];
+    // The server sends upper-case codes (ACCOUNT_SUSPENDED); the table keys are lower-case.
+    const key = CODE_TO_KEY[caught.code.toLowerCase()];
     if (key) return t(key);
   }
 
