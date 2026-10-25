@@ -930,7 +930,8 @@
       "purchaseFailed": "Purchase failed.",
       "restoreFailed": "Could not restore purchases.",
       "alreadySubscribedRestoreFailed": "Apple says this subscription already exists, but Prodify could not attach it to this account yet. Tap Restore purchases again, or manage the subscription in Apple ID > Subscriptions.",
-      "entitlementNotActive": "Purchase did not activate app access."
+      "entitlementNotActive": "Purchase did not activate app access.",
+      "accessNotConfirmed": "We couldn't confirm your subscription. Try restoring your purchases."
     },
     "a11y": {
       "skipSubscription": "Skip subscription"
@@ -2347,6 +2348,18 @@
     "slot2330Title": "Streak at risk",
     "slot2330Body": "About 30 minutes left to keep your {{count}}-day streak."
   },
+  "streakWidget": {
+    "start": "Start your streak today",
+    "secured": "Streak secured for today",
+    "pending": "Time for a studio session",
+    "atRisk": "Your streak needs a session",
+    "lastChance": "Last chance today!",
+    "broken": "Streak lost. Start a new one"
+  },
+  "sessionLiveActivity": {
+    "running": "In the studio",
+    "paused": "Paused"
+  },
   "sessionInsights": {
     "impact": "Session impact",
     "focusScore": "Focus score",
@@ -2511,6 +2524,8 @@
     "requestTimeout": "Connection timed out. Check your network and try again.",
     "network": "Network error. Check your connection and try again.",
     "serviceUnavailable": "Service temporarily unavailable due to app configuration. Please try again later.",
+    "premiumRequired": "Your subscription is no longer active.",
+    "rescueLimitReached": "You've used all your streak saves for this week.",
     "unexpectedResponse": "Unexpected server response. Please try again.",
     "tooManyRequests": "Too many attempts. Please wait a moment and try again.",
     "signInFailed": "Sign in failed",

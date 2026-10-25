@@ -19,6 +19,7 @@ def test_unpaid_account_is_blocked_from_the_product(client):
     for method, path, body in _UNPAID_PRODUCT_CALLS:
         response = client.request(method, path, headers=headers, json=body)
         assert response.status_code == 402, f"{method} {path} -> {response.status_code} {response.text}"
+        assert response.json()["error"]["code"] == "PREMIUM_REQUIRED", f"{method} {path}"
 
 
 def test_unpaid_account_can_still_subscribe_or_leave(client):

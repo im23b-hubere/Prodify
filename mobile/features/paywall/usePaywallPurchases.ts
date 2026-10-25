@@ -24,11 +24,12 @@ type PaywallPurchasesOptions = {
   token?: string | null;
   appUserId: string | null;
   previewMode: boolean;
+  /** Resolves false when the server denies the access the store reported. */
   finalizeUnlock: (
     customerInfo: CustomerInfo | null,
     expiresAt?: string | null,
     showConfirmation?: boolean,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   refreshUser: () => Promise<unknown>;
   requestExit: (exit: PaywallExit) => void;
   resolveExitAfterUnlock: () => PaywallExit;
@@ -45,13 +46,15 @@ async function recoverExistingSubscription({
   t,
 }: Pick<PurchaseActionContext, "appUserId" | "finalizeUnlock" | "t">): Promise<boolean> {
   const customerInfo = await getRevenueCatCustomerInfo(appUserId ?? undefined).catch(() => null);
-  if (customerInfo && isPremiumActive(customerInfo)) {
-    await finalizeUnlock(customerInfo, undefined, true);
+  if (
+    customerInfo &&
+    isPremiumActive(customerInfo) &&
+    (await finalizeUnlock(customerInfo, undefined, true))
+  ) {
     return true;
   }
   const restored = await restoreRevenueCatPurchases(appUserId ?? undefined).catch(() => null);
-  if (restored && isPremiumActive(restored)) {
-    await finalizeUnlock(restored, undefined, true);
+  if (restored && isPremiumActive(restored) && (await finalizeUnlock(restored, undefined, true))) {
     return true;
   }
   Alert.alert(
@@ -72,10 +75,10 @@ function usePurchaseAction(context: PurchaseActionContext) {
       setBusy(true);
       try {
         const result = await purchaseRevenueCatPackage(pkg, appUserId ?? undefined);
-        if (!isPremiumActive(result.customerInfo)) {
-          throw new Error(t("paywall.errors.entitlementNotActive"));
-        }
-        await finalizeUnlock(result.customerInfo, undefined, true);
+        const unlocked =
+          isPremiumActive(result.customerInfo) &&
+          (await finalizeUnlock(result.customerInfo, undefined, true));
+        if (!unlocked) throw new Error(t("paywall.errors.entitlementNotActive"));
       } catch (purchaseError) {
         if (isPurchaseCancelledError(purchaseError)) return;
         if (isPurchaseAlreadyOwnedError(purchaseError)) {
@@ -119,12 +122,13 @@ function useRestoreAction(context: PurchaseActionContext) {
         }).catch(() => undefined);
         if (premium) await refreshUser().catch(() => undefined);
       }
-      if (premium) await finalizeUnlock(info, undefined, true);
-      else {
+      if (!premium) {
         Alert.alert(
           t("paywall.alerts.restoreCompleteTitle"),
           t("paywall.alerts.restoreCompleteNone"),
         );
+      } else if (!(await finalizeUnlock(info, undefined, true))) {
+        Alert.alert(t("paywall.alerts.restoreFailedTitle"), t("paywall.errors.accessNotConfirmed"));
       }
     } catch (restoreError) {
       Alert.alert(

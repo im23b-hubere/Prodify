@@ -2,6 +2,7 @@ import { finalizePremiumUnlock } from "../../../features/paywall/usePremiumUnloc
 import { seedEntitlementCache, syncEntitlement } from "../../../lib/billing";
 
 jest.mock("../../../lib/billing", () => ({
+  hasPremiumAccess: jest.requireActual("../../../lib/billing").hasPremiumAccess,
   seedEntitlementCache: jest.fn(),
   syncEntitlement: jest.fn(),
 }));
@@ -24,13 +25,26 @@ function options() {
 describe("premium unlock finalizer", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("seeds access immediately, syncs the backend and exits once", async () => {
+  it("opens the app once the server confirms access", async () => {
     (syncEntitlement as jest.Mock).mockResolvedValue({ entitlement: "premium" });
     const input = options();
 
-    await finalizePremiumUnlock(input);
+    await expect(finalizePremiumUnlock(input)).resolves.toBe(true);
 
-    expect(seedEntitlementCache).toHaveBeenCalledTimes(1);
+    expect(syncEntitlement).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({ app_user_id: "42", entitlement: "premium" }),
+    );
+    expect(input.refreshUser).toHaveBeenCalledTimes(1);
+    expect(input.requestExitAfterUnlock).toHaveBeenCalledWith(true);
+  });
+
+  it("keeps the store's grant and opens the app when the server cannot be reached", async () => {
+    (syncEntitlement as jest.Mock).mockRejectedValue(new Error("network down"));
+    const input = options();
+
+    await expect(finalizePremiumUnlock(input)).resolves.toBe(true);
+
     expect(seedEntitlementCache).toHaveBeenCalledWith(
       "token",
       {
@@ -41,22 +55,17 @@ describe("premium unlock finalizer", () => {
       },
       42,
     );
-    expect(syncEntitlement).toHaveBeenCalledWith(
-      "token",
-      expect.objectContaining({ app_user_id: "42", entitlement: "premium" }),
-    );
-    expect(input.refreshUser).toHaveBeenCalledTimes(1);
-    expect(input.requestExitAfterUnlock).toHaveBeenCalledWith(true);
+    expect(input.requestExitAfterUnlock).toHaveBeenCalledTimes(1);
   });
 
-  it("restores the optimistic premium cache when backend sync cannot confirm access", async () => {
-    (syncEntitlement as jest.Mock).mockResolvedValue(null);
+  it("stays on the paywall when the server's RevenueCat check denies access", async () => {
+    (syncEntitlement as jest.Mock).mockResolvedValue({ entitlement: "inactive" });
     const input = options();
 
-    await finalizePremiumUnlock(input);
+    await expect(finalizePremiumUnlock(input)).resolves.toBe(false);
 
-    expect(seedEntitlementCache).toHaveBeenCalledTimes(2);
-    expect(input.requestExitAfterUnlock).toHaveBeenCalledTimes(1);
+    expect(seedEntitlementCache).not.toHaveBeenCalled();
+    expect(input.requestExitAfterUnlock).not.toHaveBeenCalled();
   });
 
   it("exits without backend work for an anonymous preview unlock", async () => {

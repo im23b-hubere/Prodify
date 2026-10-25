@@ -1,4 +1,8 @@
-export type HeatmapDay = { date: string; seconds: number; intensity: number; counted: boolean };
+/** What the activity calendar draws; friends' public stats carry only this. */
+export type HeatmapCell = { date: string; seconds: number; intensity: number };
+
+/** The producer's own day: `counted` drives the studio week, not the calendar. */
+export type HeatmapDay = HeatmapCell & { counted: boolean };
 
 export type PersonalRecord = {
   key: string;

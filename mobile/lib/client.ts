@@ -7,8 +7,11 @@ import {
 import { performJsonRequest } from "./apiJsonTransport";
 import type { ApiOptions, InternalApiOptions } from "./apiRequestTypes";
 import { apiErrorFromResponse, readResponsePayload } from "./apiResponse";
+import { reportPremiumRequired } from "./premiumRequired";
 
 export { ApiError } from "./apiErrors";
+export { isPremiumRequiredError, setApiPremiumRequiredHandler } from "./premiumRequired";
+export type { PremiumRequiredRejection } from "./premiumRequired";
 export { apiMultipart } from "./apiMultipart";
 export type { ApiMultipartOptions } from "./apiMultipart";
 export type { ApiOptions } from "./apiRequestTypes";
@@ -73,6 +76,7 @@ export async function apiJson<T = unknown>(path: string, options: ApiOptions = {
 }
 
 async function apiJsonInternal<T>(path: string, options: InternalApiOptions): Promise<T> {
+  const requestStartedAtMs = Date.now();
   const response = await performJsonRequest(path, options);
   const payload = await readResponsePayload(response);
   if (response.ok) {
@@ -101,7 +105,12 @@ async function apiJsonInternal<T>(path: string, options: InternalApiOptions): Pr
   if (response.status === 401 && authToken && unauthorizedHandler) {
     void Promise.resolve(unauthorizedHandler()).catch(() => undefined);
   }
-  throw apiErrorFromResponse(response, payload);
+  const error = apiErrorFromResponse(response, payload);
+  reportPremiumRequired(
+    { path, method: options.method ?? "GET", token: authToken, requestStartedAtMs },
+    error,
+  );
+  throw error;
 }
 
 function shouldRefresh(

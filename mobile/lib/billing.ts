@@ -115,6 +115,37 @@ export async function peekStoredHasPremiumAccess(userId: number): Promise<boolea
   return hasPremiumAccess(ent);
 }
 
+function holdsGrantNewerThan(token: string, requestStartedAtMs: number): boolean {
+  return (
+    cachedEntitlement?.token === token &&
+    hasPremiumAccess(cachedEntitlement.value) &&
+    cachedEntitlement.atMs > requestStartedAtMs
+  );
+}
+
+/**
+ * End local access after the server's subscriber gate rejected a request.
+ * A grant cached after that request started (purchase, restore) is newer and stays.
+ * Returns whether access was revoked.
+ */
+export async function revokePremiumAccess(
+  token: string,
+  userId: number | null,
+  requestStartedAtMs: number,
+): Promise<boolean> {
+  if (holdsGrantNewerThan(token, requestStartedAtMs)) return false;
+  // The stored grant goes first: the gate re-reads storage as soon as the cache changes.
+  if (userId != null) await clearPersistedEntitlement(userId);
+  if (holdsGrantNewerThan(token, requestStartedAtMs)) return false;
+  entitlementInFlight = null;
+  writeEntitlementCache(
+    token,
+    { provider: "revenuecat", entitlement: "inactive", trial_active: false, expires_at: null },
+    userId,
+  );
+  return true;
+}
+
 /** Optimistically warm entitlement cache (e.g. after purchase or restore). */
 export function seedEntitlementCache(
   token: string,

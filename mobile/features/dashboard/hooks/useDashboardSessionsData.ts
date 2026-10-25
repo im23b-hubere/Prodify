@@ -1,8 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 
 import { apiJson } from "../../../lib/client";
 import { parseSessionList, tryParseSessionDto } from "../../../lib/sessionDto";
+import { syncSessionLiveActivity } from "../../../lib/sessionLiveActivity";
 import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { SessionDto } from "../../../types/session";
 import { useDashboardAuthReset } from "./dashboardAuthReset";
@@ -29,6 +30,10 @@ export function useDashboardSessionsData(
   }, []);
 
   useDashboardAuthReset(token, userId, resetSessionsState);
+
+  useEffect(() => {
+    if (activeResolved) syncSessionLiveActivity(active);
+  }, [active, activeResolved]);
 
   const loadSessions = useCallback(async () => {
     if (!token) return;

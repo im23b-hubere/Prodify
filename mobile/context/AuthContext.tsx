@@ -8,12 +8,15 @@ import React, {
   useState,
 } from "react";
 
+import { revokePremiumAccess } from "../lib/billing";
 import {
   ApiError,
   apiJson,
+  setApiPremiumRequiredHandler,
   setApiUnauthorizedHandler,
   setAuthRefreshBridge,
   warmApi,
+  type PremiumRequiredRejection,
 } from "../lib/client";
 import i18n from "../lib/i18n";
 import { readAccessToken, readRefreshToken, writeTokenPair } from "../lib/authTokenStorage";
@@ -119,6 +122,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiUnauthorizedHandler(() => dropLocalSession());
     return () => setApiUnauthorizedHandler(null);
   }, [dropLocalSession]);
+
+  useEffect(() => {
+    // AppAccessGate trusts `is_premium` before the cache, so both must drop for the paywall to show.
+    const endLocalAccess = async ({
+      token: rejectedToken,
+      requestStartedAtMs,
+    }: PremiumRequiredRejection) => {
+      const userId = sessionUserIdRef.current ?? null;
+      if (!(await revokePremiumAccess(rejectedToken, userId, requestStartedAtMs))) return;
+      setProfile((current) => (current?.is_premium ? { ...current, is_premium: false } : current));
+    };
+    setApiPremiumRequiredHandler(endLocalAccess);
+    return () => setApiPremiumRequiredHandler(null);
+  }, [sessionUserIdRef]);
 
   const refreshUser = useCallback(async () => {
     // No token means the derived user is already null, so there is nothing to fetch or clear.

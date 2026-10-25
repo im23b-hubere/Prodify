@@ -948,7 +948,8 @@
       "purchaseFailed": "Acquisto non riuscito.",
       "restoreFailed": "Impossibile ripristinare gli acquisti.",
       "alreadySubscribedRestoreFailed": "Secondo Apple questo abbonamento esiste già, ma Prodify non è ancora riuscita a collegarlo a questo account. Tocca di nuovo Ripristina acquisti o gestisci l'abbonamento in Apple ID > Abbonamenti.",
-      "entitlementNotActive": "L'acquisto non ha attivato l'accesso all'app."
+      "entitlementNotActive": "L'acquisto non ha attivato l'accesso all'app.",
+      "accessNotConfirmed": "Non è stato possibile confermare il tuo abbonamento. Prova a ripristinare gli acquisti."
     },
     "a11y": {
       "skipSubscription": "Salta l'abbonamento"
@@ -2168,15 +2169,6 @@
     "sentBody": "{{friend}} riceverà subito il tuo invito."
   },
   "friendProfile": {
-    "rankCompareTitle": "Percorso dei gradi",
-    "rankCompareVs": "vs",
-    "rankCompareOpen": "Apri il percorso dei gradi",
-    "rankCompareOpenA11y": "Apri il percorso dei gradi condiviso",
-    "rankCompareVerdict": {
-      "you": "Sei più in alto sul percorso — continua a salire.",
-      "them": "{{name}} è più in alto — recupera sul percorso.",
-      "tied": "Stesso grado — decide la prossima sessione."
-    },
     "challengeCta": "Sfida {{name}}",
     "invalidProfile": "Profilo non valido.",
     "loadError": "Impossibile caricare il profilo.",
@@ -2206,6 +2198,15 @@
     "unfriendBody": "{{name}} verrà rimosso dalla tua lista amici.",
     "unfriendConfirm": "Rimuovi",
     "headToHeadTitle": "Testa a testa",
+    "rankCompareTitle": "Percorso dei gradi",
+    "rankCompareVs": "vs",
+    "rankCompareOpen": "Apri il percorso dei gradi",
+    "rankCompareOpenA11y": "Apri il percorso dei gradi condiviso",
+    "rankCompareVerdict": {
+      "you": "Sei più in alto sul percorso: continua a salire.",
+      "them": "{{name}} è più in alto: recupera sul percorso.",
+      "tied": "Stesso grado: decide la prossima sessione."
+    },
     "versusYou": "Tu",
     "versusMetric": {
       "streak": "Serie",
@@ -2364,6 +2365,18 @@
     "slot23Body": "Ti resta un'ora oggi per mantenere la tua serie di {{count}} giorni.",
     "slot2330Title": "Serie a rischio",
     "slot2330Body": "Restano circa 30 minuti per mantenere la tua serie di {{count}} giorni."
+  },
+  "streakWidget": {
+    "start": "Inizia la tua serie oggi",
+    "secured": "Serie al sicuro per oggi",
+    "pending": "È ora di una sessione in studio",
+    "atRisk": "La tua serie ha bisogno di una sessione",
+    "lastChance": "Ultima occasione per oggi!",
+    "broken": "Serie persa. Ricomincia"
+  },
+  "sessionLiveActivity": {
+    "running": "In studio",
+    "paused": "In pausa"
   },
   "sessionInsights": {
     "impact": "Impatto della sessione",
@@ -2529,6 +2542,8 @@
     "requestTimeout": "Connessione scaduta. Controlla la rete e riprova.",
     "network": "Errore di rete. Controlla la connessione e riprova.",
     "serviceUnavailable": "Servizio temporaneamente non disponibile a causa della configurazione dell'app. Riprova più tardi.",
+    "premiumRequired": "Il tuo abbonamento non è più attivo.",
+    "rescueLimitReached": "Hai già usato tutti i salvataggi della serie di questa settimana.",
     "unexpectedResponse": "Risposta del server inattesa. Riprova.",
     "tooManyRequests": "Troppi tentativi. Attendi un momento e riprova.",
     "signInFailed": "Accesso non riuscito",

@@ -956,7 +956,8 @@
       "purchaseFailed": "Kauf fehlgeschlagen.",
       "restoreFailed": "Käufe konnten nicht wiederhergestellt werden.",
       "alreadySubscribedRestoreFailed": "Laut Apple existiert dieses Abo bereits, aber Prodify konnte es noch nicht mit diesem Konto verknüpfen. Tippe erneut auf „Käufe wiederherstellen“ oder verwalte das Abo unter Apple-ID > Abonnements.",
-      "entitlementNotActive": "Der Kauf hat den App-Zugang nicht aktiviert."
+      "entitlementNotActive": "Der Kauf hat den App-Zugang nicht aktiviert.",
+      "accessNotConfirmed": "Dein Abo konnte nicht bestätigt werden. Versuch, deine Käufe wiederherzustellen."
     },
     "a11y": {
       "skipSubscription": "Abo überspringen"
@@ -2373,6 +2374,18 @@
     "slot2330Title": "Streak in Gefahr",
     "slot2330Body": "Noch etwa 30 Minuten, um deinen {{count}}-Tage-Streak zu halten."
   },
+  "streakWidget": {
+    "start": "Starte heute deinen Streak",
+    "secured": "Streak für heute gesichert",
+    "pending": "Zeit für eine Studio-Session",
+    "atRisk": "Dein Streak braucht eine Session",
+    "lastChance": "Letzte Chance für heute!",
+    "broken": "Streak verloren. Starte neu"
+  },
+  "sessionLiveActivity": {
+    "running": "Im Studio",
+    "paused": "Pausiert"
+  },
   "sessionInsights": {
     "impact": "Session-Impact",
     "focusScore": "Fokus-Score",
@@ -2537,6 +2550,8 @@
     "requestTimeout": "Zeitüberschreitung der Verbindung. Prüf dein Netzwerk und versuch es noch mal.",
     "network": "Netzwerkfehler. Prüf deine Verbindung und versuch es noch mal.",
     "serviceUnavailable": "Dienst wegen der App-Konfiguration vorübergehend nicht verfügbar. Bitte versuch es später noch mal.",
+    "premiumRequired": "Dein Abo ist nicht mehr aktiv.",
+    "rescueLimitReached": "Du hast diese Woche alle Streak-Rettungen aufgebraucht.",
     "unexpectedResponse": "Unerwartete Serverantwort. Bitte versuch es noch mal.",
     "tooManyRequests": "Zu viele Versuche. Bitte warte kurz und versuch es noch mal.",
     "signInFailed": "Anmeldung fehlgeschlagen",

@@ -7,6 +7,8 @@ const allowedBuildOnlyAdvisories = new Set([
   "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
   // node-forge <= 1.4.0 (no patch yet): Expo CLI code-signing tooling, never bundled into the app.
   "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+  // zod < 4.6.6 (no 3.x patch; @expo/cli pins ^3): validates Expo CLI input at build time, never bundled.
+  "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
 ]);
 
 const npmCli = process.env.npm_execpath;

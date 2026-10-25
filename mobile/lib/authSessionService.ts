@@ -20,6 +20,8 @@ import {
   getRevenueCatCustomerInfo,
   isPremiumActive,
 } from "./revenuecat";
+import { syncSessionLiveActivity } from "./sessionLiveActivity";
+import { syncStreakWidget } from "./streakWidget";
 import { cancelWeeklyRecapScheduled } from "./weeklyRecapNotifications";
 
 export type AuthenticatedUser = {
@@ -98,6 +100,7 @@ export async function clearLocalAuthSession(
   }
   await setNotificationUserContext(null).catch(() => undefined);
   await cancelWeeklyRecapScheduled().catch(() => undefined);
+  clearWidgetSurfaces();
   await clearPendingDeepLinkPath();
   await clearDevBillingBypass();
   await configureRevenueCat(undefined).catch(() => undefined);
@@ -107,6 +110,16 @@ export async function clearLocalAuthSession(
   }
   clearProgressionSyncCache();
   clearLevelCatalogCache();
+}
+
+/** Home screen and Lock Screen show account data outside the app, so it must go with the account. */
+function clearWidgetSurfaces() {
+  syncSessionLiveActivity(null);
+  try {
+    syncStreakWidget(null);
+  } catch {
+    // A widget that cannot update must not block signing out.
+  }
 }
 
 function normalizeTokenPair(response: Partial<TokenPair>): TokenPair | null {

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { apiJson } from "../../../lib/client";
 import { syncStreakRiskNotifications } from "../../../lib/streakNotifications";
+import { syncStreakWidget } from "../../../lib/streakWidget";
 import type { StreakOverviewDto } from "../../../types/streak";
 import { useDashboardAuthReset } from "./dashboardAuthReset";
 
@@ -39,10 +40,16 @@ export function useDashboardStreakData(
   return { streakOverview, streakOverviewStale, loadStreakOverview };
 }
 
+/** Neither a missing widget nor a failed reminder makes the overview itself stale. */
 async function syncLoadedStreak(overview: StreakOverviewDto) {
+  try {
+    syncStreakWidget(overview);
+  } catch {
+    // The home screen widget is optional.
+  }
   try {
     await syncStreakRiskNotifications(overview.streak_at_risk, overview.current_streak);
   } catch {
-    // A reminder failure does not make the overview itself stale.
+    // Reminders are optional too.
   }
 }

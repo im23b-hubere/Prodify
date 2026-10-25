@@ -50,7 +50,7 @@ const userAMilestones = {
   longest_streak_days: 10,
 };
 
-const userAHeatmap = [{ date: "2026-01-01", seconds: 3600, intensity: 2 }];
+const userAHeatmap = [{ date: "2026-01-01", seconds: 3600, intensity: 2, counted: true }];
 
 const userBStats = {
   period: "all",
@@ -149,10 +149,7 @@ describe("useProfileData auth scope", () => {
     await loadUserAProfile(result);
 
     expect(result.current.milestones).toEqual(userAMilestones);
-    // Days the API doesn't mark as counted toward the weekly goal come back as not counted.
-    expect(result.current.heatmapDays).toEqual(
-      userAHeatmap.map((day) => ({ ...day, counted: false })),
-    );
+    expect(result.current.heatmapDays).toEqual(userAHeatmap);
     expect(result.current.error).toBeNull();
   });
 

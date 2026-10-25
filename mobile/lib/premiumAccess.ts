@@ -51,22 +51,25 @@ async function probeRevenueCatPremium(
     await configureRevenueCat(userId);
     const info = await getRevenueCatCustomerInfo(userId);
     if (!isPremiumActive(info)) return false;
+    const expiresAt = activeEntitlementExpiration(info);
+    // The server re-reads RevenueCat on sync, so its "inactive" outranks a stale device cache.
+    const synced = await syncEntitlement(token, {
+      app_user_id: userId,
+      entitlement: "premium",
+      trial_active: false,
+      expires_at: expiresAt,
+    }).catch(() => null);
+    if (synced) return hasPremiumAccess(synced);
     seedEntitlementCache(
       token,
       {
         provider: "revenuecat",
         entitlement: "premium",
         trial_active: false,
-        expires_at: activeEntitlementExpiration(info),
+        expires_at: expiresAt,
       },
       Number.isFinite(numericUserId) ? numericUserId : null,
     );
-    await syncEntitlement(token, {
-      app_user_id: userId,
-      entitlement: "premium",
-      trial_active: false,
-      expires_at: activeEntitlementExpiration(info),
-    }).catch(() => undefined);
     return true;
   } catch {
     return false;

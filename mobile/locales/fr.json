@@ -948,7 +948,8 @@
       "purchaseFailed": "Échec de l'achat.",
       "restoreFailed": "Impossible de restaurer les achats.",
       "alreadySubscribedRestoreFailed": "Apple indique que cet abonnement existe déjà, mais Prodify n'a pas encore pu le rattacher à ce compte. Appuie de nouveau sur Restaurer les achats, ou gère l'abonnement dans identifiant Apple > Abonnements.",
-      "entitlementNotActive": "L'achat n'a pas activé l'accès à l'app."
+      "entitlementNotActive": "L'achat n'a pas activé l'accès à l'app.",
+      "accessNotConfirmed": "Impossible de confirmer ton abonnement. Essaie de restaurer tes achats."
     },
     "a11y": {
       "skipSubscription": "Passer l'abonnement"
@@ -1878,7 +1879,7 @@
       "nodeA11y": "Niveau {{level}}, {{name}}, {{status}}. {{detail}}",
       "friendMarkerA11y": "{{name}} au niveau {{level}}",
       "friendClusterA11y": "{{count}} amis au niveau {{level}}",
-      "friendClusterTitle": "Amis au Nv {{level}}",
+      "friendClusterTitle": "Amis au Niv. {{level}}",
       "friendOverflow": "+{{count}}",
       "status": {
         "cleared": "validé",
@@ -2168,15 +2169,6 @@
     "sentBody": "{{friend}} va recevoir ton invitation tout de suite."
   },
   "friendProfile": {
-    "rankCompareTitle": "Chemin des rangs",
-    "rankCompareVs": "vs",
-    "rankCompareOpen": "Ouvrir le chemin des rangs",
-    "rankCompareOpenA11y": "Ouvrir le chemin des rangs partagé",
-    "rankCompareVerdict": {
-      "you": "Tu es plus haut sur le chemin — continue de grimper.",
-      "them": "{{name}} est plus haut — rattrape-le sur le chemin.",
-      "tied": "Même rang — la prochaine session décide."
-    },
     "challengeCta": "Défier {{name}}",
     "invalidProfile": "Profil invalide.",
     "loadError": "Impossible de charger le profil.",
@@ -2206,6 +2198,15 @@
     "unfriendBody": "{{name}} sera retiré de ta liste d'amis.",
     "unfriendConfirm": "Retirer",
     "headToHeadTitle": "Face à face",
+    "rankCompareTitle": "Chemin des rangs",
+    "rankCompareVs": "vs",
+    "rankCompareOpen": "Ouvrir le chemin des rangs",
+    "rankCompareOpenA11y": "Ouvrir le chemin des rangs partagé",
+    "rankCompareVerdict": {
+      "you": "Tu es plus haut sur le chemin — continue de grimper.",
+      "them": "{{name}} est plus haut — rattrape-le sur le chemin.",
+      "tied": "Même rang — la prochaine session tranchera."
+    },
     "versusYou": "Toi",
     "versusMetric": {
       "streak": "Série",
@@ -2364,6 +2365,18 @@
     "slot23Body": "Plus qu'une heure aujourd'hui pour garder ta série de {{count}} jours.",
     "slot2330Title": "Série en danger",
     "slot2330Body": "Plus qu'environ 30 minutes pour garder ta série de {{count}} jours."
+  },
+  "streakWidget": {
+    "start": "Lance ta série aujourd'hui",
+    "secured": "Série assurée pour aujourd'hui",
+    "pending": "C'est l'heure d'une session studio",
+    "atRisk": "Ta série a besoin d'une session",
+    "lastChance": "Dernière chance aujourd'hui !",
+    "broken": "Série perdue. Recommence"
+  },
+  "sessionLiveActivity": {
+    "running": "En studio",
+    "paused": "En pause"
   },
   "sessionInsights": {
     "impact": "Impact de la session",
@@ -2529,6 +2542,8 @@
     "requestTimeout": "La connexion a expiré. Vérifie ton réseau et réessaie.",
     "network": "Erreur réseau. Vérifie ta connexion et réessaie.",
     "serviceUnavailable": "Service momentanément indisponible en raison de la configuration de l'app. Réessaie plus tard.",
+    "premiumRequired": "Ton abonnement n'est plus actif.",
+    "rescueLimitReached": "Tu as utilisé tous tes sauvetages de série cette semaine.",
     "unexpectedResponse": "Réponse inattendue du serveur. Réessaie.",
     "tooManyRequests": "Trop de tentatives. Patiente un instant et réessaie.",
     "signInFailed": "Échec de la connexion",

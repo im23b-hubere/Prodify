@@ -948,7 +948,8 @@
       "purchaseFailed": "Error en la compra.",
       "restoreFailed": "No se pudieron restaurar las compras.",
       "alreadySubscribedRestoreFailed": "Apple indica que esta suscripción ya existe, pero Prodify aún no pudo vincularla a esta cuenta. Toca Restaurar compras otra vez o gestiona la suscripción en Apple ID > Suscripciones.",
-      "entitlementNotActive": "La compra no activó el acceso a la app."
+      "entitlementNotActive": "La compra no activó el acceso a la app.",
+      "accessNotConfirmed": "No pudimos confirmar tu suscripción. Intenta restaurar tus compras."
     },
     "a11y": {
       "skipSubscription": "Omitir suscripción"
@@ -1878,7 +1879,7 @@
       "nodeA11y": "Nivel {{level}}, {{name}}, {{status}}. {{detail}}",
       "friendMarkerA11y": "{{name}} en el nivel {{level}}",
       "friendClusterA11y": "{{count}} amigos en el nivel {{level}}",
-      "friendClusterTitle": "Amigos en Nv {{level}}",
+      "friendClusterTitle": "Amigos en Nv. {{level}}",
       "friendOverflow": "+{{count}}",
       "status": {
         "cleared": "superado",
@@ -2168,15 +2169,6 @@
     "sentBody": "{{friend}} recibirá tu invitación al instante."
   },
   "friendProfile": {
-    "rankCompareTitle": "Camino de rangos",
-    "rankCompareVs": "vs",
-    "rankCompareOpen": "Abrir camino de rangos",
-    "rankCompareOpenA11y": "Abrir el camino de rangos compartido",
-    "rankCompareVerdict": {
-      "you": "Estás más arriba en el camino — sigue subiendo.",
-      "them": "{{name}} está más arriba — alcánzale en el camino.",
-      "tied": "Mismo rango — la próxima sesión decide."
-    },
     "challengeCta": "Retar a {{name}}",
     "invalidProfile": "Perfil no válido.",
     "loadError": "No se pudo cargar el perfil.",
@@ -2206,6 +2198,15 @@
     "unfriendBody": "{{name}} se eliminará de tu lista de amigos.",
     "unfriendConfirm": "Eliminar",
     "headToHeadTitle": "Cara a cara",
+    "rankCompareTitle": "Camino de rangos",
+    "rankCompareVs": "vs",
+    "rankCompareOpen": "Abrir camino de rangos",
+    "rankCompareOpenA11y": "Abrir el camino de rangos compartido",
+    "rankCompareVerdict": {
+      "you": "Vas más arriba en el camino: sigue subiendo.",
+      "them": "{{name}} va más arriba: alcánzalo en el camino.",
+      "tied": "Mismo rango: la próxima sesión decide."
+    },
     "versusYou": "Tú",
     "versusMetric": {
       "streak": "Racha",
@@ -2364,6 +2365,18 @@
     "slot23Body": "Queda una hora hoy para mantener tu racha de {{count}} días.",
     "slot2330Title": "Racha en peligro",
     "slot2330Body": "Quedan unos 30 minutos para mantener tu racha de {{count}} días."
+  },
+  "streakWidget": {
+    "start": "Empieza tu racha hoy",
+    "secured": "Racha asegurada por hoy",
+    "pending": "Hora de una sesión de estudio",
+    "atRisk": "Tu racha necesita una sesión",
+    "lastChance": "¡Última oportunidad hoy!",
+    "broken": "Racha perdida. Empieza de nuevo"
+  },
+  "sessionLiveActivity": {
+    "running": "En el estudio",
+    "paused": "En pausa"
   },
   "sessionInsights": {
     "impact": "Impacto de la sesión",
@@ -2529,6 +2542,8 @@
     "requestTimeout": "Se agotó el tiempo de conexión. Revisa tu red e inténtalo de nuevo.",
     "network": "Error de red. Revisa tu conexión e inténtalo de nuevo.",
     "serviceUnavailable": "Servicio no disponible temporalmente por la configuración de la app. Inténtalo más tarde.",
+    "premiumRequired": "Tu suscripción ya no está activa.",
+    "rescueLimitReached": "Ya usaste todos tus rescates de racha de esta semana.",
     "unexpectedResponse": "Respuesta inesperada del servidor. Inténtalo de nuevo.",
     "tooManyRequests": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
     "signInFailed": "No se pudo iniciar sesión",

@@ -12,7 +12,8 @@ type PaywallOfferingsOptions = {
   appUserId: string | null;
   userIsPremium: boolean;
   previewMode: boolean;
-  onPremiumUnlock: (customerInfo: CustomerInfo | null) => Promise<void>;
+  /** Resolves false when the server denies the access the store reported. */
+  onPremiumUnlock: (customerInfo: CustomerInfo | null) => Promise<boolean>;
 };
 
 type OfferingSnapshot = {
@@ -67,8 +68,14 @@ export function usePaywallOfferings({
       .then(async (result) => {
         if (cancelled) return;
         if (result.kind === "premium_unlock") {
-          await onPremiumUnlock(result.customerInfo);
-          if (!cancelled) setResolved({ key: requestKey, offerings: EMPTY_OFFERINGS });
+          const unlocked = await onPremiumUnlock(result.customerInfo);
+          if (cancelled) return;
+          setResolved({
+            key: requestKey,
+            offerings: unlocked
+              ? EMPTY_OFFERINGS
+              : { ...EMPTY_OFFERINGS, error: t("paywall.errors.accessNotConfirmed") },
+          });
         } else {
           setResolved({ key: requestKey, offerings: result.value });
         }

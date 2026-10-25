@@ -1,5 +1,7 @@
 import { apiJson } from "../../../lib/client";
 import { parseSessionList, tryParseSessionDto } from "../../../lib/sessionDto";
+import { syncSessionLiveActivity } from "../../../lib/sessionLiveActivity";
+import { refreshStreakWidget } from "../../../lib/streakWidget";
 import type { SessionDto, SessionType } from "../../../types/session";
 
 export async function resolveActiveSessionId(
@@ -74,6 +76,8 @@ export async function stopActiveSession(token: string, sessionId: number): Promi
     method: "POST",
     body: { session_id: sessionId },
   });
+  syncSessionLiveActivity(null);
+  void refreshStreakWidget(token).catch(() => undefined);
 }
 
 function positiveId(value: string | number): number | null {

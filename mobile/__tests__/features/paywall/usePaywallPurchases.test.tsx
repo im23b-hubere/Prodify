@@ -40,8 +40,8 @@ const ACTIVE_CUSTOMER = {
 const INACTIVE_CUSTOMER = { entitlements: { active: {} } };
 const PACKAGE = { identifier: "$rc_weekly" };
 
-function renderPurchases() {
-  const finalizeUnlock = jest.fn().mockResolvedValue(undefined);
+function renderPurchases({ serverConfirmsAccess = true } = {}) {
+  const finalizeUnlock = jest.fn().mockResolvedValue(serverConfirmsAccess);
   const refreshUser = jest.fn().mockResolvedValue(undefined);
   const requestExit = jest.fn();
   const hook = renderHook(() =>
@@ -75,6 +75,35 @@ it("finalizes a purchase only after RevenueCat reports the premium entitlement",
   expect(finalizeUnlock).toHaveBeenCalledWith(ACTIVE_CUSTOMER, undefined, true);
   expect(result.current.busy).toBe(false);
   expect(Alert.alert).not.toHaveBeenCalled();
+});
+
+it("reports a failed purchase when the server denies the access the store reported", async () => {
+  (purchaseRevenueCatPackage as jest.Mock).mockResolvedValue({ customerInfo: ACTIVE_CUSTOMER });
+  const { result } = renderPurchases({ serverConfirmsAccess: false });
+
+  await act(async () => {
+    await result.current.purchasePackage(PACKAGE as never);
+  });
+
+  expect(Alert.alert).toHaveBeenCalledWith(
+    "paywall.alerts.purchaseFailedTitle",
+    "paywall.errors.entitlementNotActive",
+  );
+  expect(result.current.busy).toBe(false);
+});
+
+it("tells the producer when a restored subscription is not confirmed by the server", async () => {
+  (restoreRevenueCatPurchases as jest.Mock).mockResolvedValue(ACTIVE_CUSTOMER);
+  const { result } = renderPurchases({ serverConfirmsAccess: false });
+
+  await act(async () => {
+    await result.current.restore();
+  });
+
+  expect(Alert.alert).toHaveBeenCalledWith(
+    "paywall.alerts.restoreFailedTitle",
+    "paywall.errors.accessNotConfirmed",
+  );
 });
 
 it("treats an App Store cancellation as a neutral outcome", async () => {

@@ -71,6 +71,29 @@
           "recordAudioAndroid": false,
           "enableBackgroundPlayback": false
         }
+      ],
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.prodify.app.widgets",
+          "groupIdentifier": "group.com.prodify.app",
+          "widgets": [
+            {
+              "name": "StreakWidget",
+              "displayName": "Streak",
+              "description": "Keep your studio streak alive at a glance.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "accessoryCircular",
+                  "accessoryRectangular",
+                  "accessoryInline"
+                ]
+              }
+            }
+          ]
+        }
       ]
     ],
     "locales": {

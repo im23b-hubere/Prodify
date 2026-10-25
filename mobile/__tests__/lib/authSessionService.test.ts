@@ -1,10 +1,14 @@
-import { authenticate } from "../../lib/authSessionService";
+import { authenticate, clearLocalAuthSession } from "../../lib/authSessionService";
 import { apiJson } from "../../lib/client";
+import { syncSessionLiveActivity } from "../../lib/sessionLiveActivity";
+import { syncStreakWidget } from "../../lib/streakWidget";
 
 jest.mock("../../lib/client", () => ({ apiJson: jest.fn() }));
+jest.mock("../../lib/streakWidget", () => ({ syncStreakWidget: jest.fn() }));
+jest.mock("../../lib/sessionLiveActivity", () => ({ syncSessionLiveActivity: jest.fn() }));
 jest.mock("../../lib/revenuecat", () => ({
   activeEntitlementExpiration: jest.fn(),
-  configureRevenueCat: jest.fn(),
+  configureRevenueCat: jest.fn().mockResolvedValue(undefined),
   getRevenueCatCustomerInfo: jest.fn(),
   isPremiumActive: jest.fn(),
 }));
@@ -50,5 +54,17 @@ describe("auth session service", () => {
       }),
     ).rejects.toThrow("Unexpected response");
     expect(mockApiJson).toHaveBeenCalledTimes(1);
+  });
+
+  it("wipes the previous account's streak from the home screen widget", async () => {
+    await clearLocalAuthSession(7, false);
+
+    expect(syncStreakWidget).toHaveBeenCalledWith(null);
+  });
+
+  it("ends the previous account's session Live Activity", async () => {
+    await clearLocalAuthSession(7, false);
+
+    expect(syncSessionLiveActivity).toHaveBeenCalledWith(null);
   });
 });

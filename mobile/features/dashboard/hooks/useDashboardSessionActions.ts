@@ -6,7 +6,11 @@ import { Alert } from "react-native";
 
 import { useIsScreenFocused } from "../../../hooks/useIsScreenFocused";
 import { ApiError, apiJson } from "../../../lib/client";
-import { pauseActiveSession, resumeActiveSession } from "../../sessions/services/activeSessionApi";
+import {
+  pauseActiveSession,
+  resumeActiveSession,
+  stopActiveSession,
+} from "../../sessions/services/activeSessionApi";
 import { sessionSummaryHref } from "../../../lib/stackNavigation";
 import { debugLog } from "../../../lib/debugLog";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../../lib/sessionTime";
@@ -136,11 +140,7 @@ function useSessionCompletionActions(options: Options, router: Router) {
       try {
         ignoreHaptic(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
         debugLog("session", "stop_attempt", { sessionId: session.id });
-        await apiJson<SessionDto>("/sessions/stop", {
-          token,
-          method: "POST",
-          body: { session_id: session.id },
-        });
+        await stopActiveSession(token, session.id);
         debugLog("session", "stop_success", { sessionId: session.id });
         setActive(null);
         invalidateDashboard();

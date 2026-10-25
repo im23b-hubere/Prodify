@@ -69,8 +69,11 @@ def _social_streak_http_error(error: SocialStreakError) -> HTTPException:
         return HTTPException(status_code=400, detail="Buddy streak already rescued today")
     if isinstance(error, WeeklyRescueLimitError):
         return HTTPException(
-            status_code=402,
-            detail="Keep your creative run alive with Premium to unlock more saves.",
+            status_code=409,
+            detail={
+                "message": "You've used all your streak saves for this week.",
+                "code": "RESCUE_LIMIT_REACHED",
+            },
         )
     if isinstance(error, BuddyStreakNotFoundError):
         return HTTPException(status_code=404, detail="Buddy streak not found")

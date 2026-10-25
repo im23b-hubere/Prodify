@@ -29,6 +29,15 @@ jest.mock("expo-video", () => {
   };
 });
 
+jest.mock("./widgets/StreakWidget", () => ({
+  __esModule: true,
+  default: { updateTimeline: jest.fn() },
+}));
+jest.mock("./widgets/SessionActivity", () => ({
+  __esModule: true,
+  default: { start: jest.fn(), getInstances: jest.fn(() => []) },
+}));
+
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );

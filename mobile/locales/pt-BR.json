@@ -956,7 +956,8 @@
       "purchaseFailed": "Falha na compra.",
       "restoreFailed": "Não foi possível restaurar as compras.",
       "alreadySubscribedRestoreFailed": "A Apple informa que esta assinatura já existe, mas o Prodify ainda não conseguiu vinculá-la a esta conta. Toque em Restaurar compras de novo ou gerencie a assinatura em ID Apple > Assinaturas.",
-      "entitlementNotActive": "A compra não ativou o acesso ao app."
+      "entitlementNotActive": "A compra não ativou o acesso ao app.",
+      "accessNotConfirmed": "Não foi possível confirmar sua assinatura. Tente restaurar suas compras."
     },
     "a11y": {
       "skipSubscription": "Pular assinatura"
@@ -1886,7 +1887,7 @@
       "nodeA11y": "Nível {{level}}, {{name}}, {{status}}. {{detail}}",
       "friendMarkerA11y": "{{name}} no nível {{level}}",
       "friendClusterA11y": "{{count}} amigos no nível {{level}}",
-      "friendClusterTitle": "Amigos no Nv {{level}}",
+      "friendClusterTitle": "Amigos no Nv. {{level}}",
       "friendOverflow": "+{{count}}",
       "status": {
         "cleared": "concluído",
@@ -2176,15 +2177,6 @@
     "sentBody": "{{friend}} vai receber seu convite na hora."
   },
   "friendProfile": {
-    "rankCompareTitle": "Trilha de níveis",
-    "rankCompareVs": "vs",
-    "rankCompareOpen": "Abrir trilha de níveis",
-    "rankCompareOpenA11y": "Abrir a trilha de níveis compartilhada",
-    "rankCompareVerdict": {
-      "you": "Você está mais alto na trilha — continue subindo.",
-      "them": "{{name}} está mais alto — alcance na trilha.",
-      "tied": "Mesmo nível — a próxima sessão decide."
-    },
     "challengeCta": "Desafiar {{name}}",
     "invalidProfile": "Perfil inválido.",
     "loadError": "Não foi possível carregar o perfil.",
@@ -2214,6 +2206,15 @@
     "unfriendBody": "{{name}} será removido da sua lista de amigos.",
     "unfriendConfirm": "Remover",
     "headToHeadTitle": "Frente a frente",
+    "rankCompareTitle": "Trilha de ranking",
+    "rankCompareVs": "vs",
+    "rankCompareOpen": "Abrir trilha de ranking",
+    "rankCompareOpenA11y": "Abrir a trilha de ranking compartilhada",
+    "rankCompareVerdict": {
+      "you": "Você está mais alto na trilha — continue subindo.",
+      "them": "{{name}} está mais alto — alcance na trilha.",
+      "tied": "Mesmo ranking — a próxima sessão decide."
+    },
     "versusYou": "Você",
     "versusMetric": {
       "streak": "Sequência",
@@ -2372,6 +2373,18 @@
     "slot23Body": "Falta uma hora hoje para manter sua sequência de {{count}} dias.",
     "slot2330Title": "Sequência em risco",
     "slot2330Body": "Faltam cerca de 30 minutos para manter sua sequência de {{count}} dias."
+  },
+  "streakWidget": {
+    "start": "Comece sua sequência hoje",
+    "secured": "Sequência garantida por hoje",
+    "pending": "Hora de uma sessão de estúdio",
+    "atRisk": "Sua sequência precisa de uma sessão",
+    "lastChance": "Última chance hoje!",
+    "broken": "Sequência perdida. Comece de novo"
+  },
+  "sessionLiveActivity": {
+    "running": "No estúdio",
+    "paused": "Pausado"
   },
   "sessionInsights": {
     "impact": "Impacto da sessão",
@@ -2537,6 +2550,8 @@
     "requestTimeout": "A conexão expirou. Verifique sua rede e tente de novo.",
     "network": "Erro de rede. Verifique sua conexão e tente de novo.",
     "serviceUnavailable": "Serviço temporariamente indisponível devido à configuração do app. Tente de novo mais tarde.",
+    "premiumRequired": "Sua assinatura não está mais ativa.",
+    "rescueLimitReached": "Você já usou todos os resgates de sequência desta semana.",
     "unexpectedResponse": "Resposta inesperada do servidor. Tente de novo.",
     "tooManyRequests": "Muitas tentativas. Aguarde um momento e tente de novo.",
     "signInFailed": "Falha ao entrar",

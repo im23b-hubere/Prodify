@@ -4,6 +4,7 @@ import type { TFunction } from "i18next";
 import { useDashboardSessionsData } from "../../features/dashboard/hooks/useDashboardSessionsData";
 import { apiJson } from "../../lib/client";
 import { parseSessionList, tryParseSessionDto } from "../../lib/sessionDto";
+import { syncSessionLiveActivity } from "../../lib/sessionLiveActivity";
 
 const mockT = ((key: string) => key) as TFunction;
 
@@ -15,6 +16,8 @@ jest.mock("../../lib/sessionDto", () => ({
   parseSessionList: jest.fn(() => []),
   tryParseSessionDto: jest.fn(() => null),
 }));
+
+jest.mock("../../lib/sessionLiveActivity", () => ({ syncSessionLiveActivity: jest.fn() }));
 
 const mockApiJson = apiJson as jest.MockedFunction<typeof apiJson>;
 const mockParseSessionList = parseSessionList as jest.MockedFunction<typeof parseSessionList>;
@@ -94,6 +97,38 @@ describe("useDashboardSessionsData", () => {
 
     expect(result.current.activeResolved).toBe(true);
     expect(result.current.active).toEqual(userASession);
+  });
+
+  it("mirrors the running session in the Live Activity", async () => {
+    mockParseSessionList.mockReturnValue([userASession as never]);
+    const { result } = renderHook(() => useDashboardSessionsData("token", 1, mockT));
+
+    await act(async () => {
+      await result.current.loadSessions();
+    });
+
+    expect(syncSessionLiveActivity).toHaveBeenLastCalledWith(userASession);
+  });
+
+  it("ends the Live Activity when no session is running anymore", async () => {
+    const { result } = renderHook(() => useDashboardSessionsData("token", 1, mockT));
+
+    await act(async () => {
+      await result.current.loadSessions();
+    });
+
+    expect(syncSessionLiveActivity).toHaveBeenLastCalledWith(null);
+  });
+
+  it("leaves the Live Activity alone while the running session is unknown", async () => {
+    mockApiJson.mockRejectedValueOnce(new Error("network down"));
+    const { result } = renderHook(() => useDashboardSessionsData("token", 1, mockT));
+
+    await act(async () => {
+      await result.current.loadSessions();
+    });
+
+    expect(syncSessionLiveActivity).not.toHaveBeenCalled();
   });
 
   it("does not mark active resolved when the session list request fails", async () => {

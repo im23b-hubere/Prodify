@@ -215,7 +215,7 @@ def legal_documents():
             url=settings.legal_imprint_url,
             in_app_path="/legal/imprint",
         ),
-        support_email=settings.support_email,
+        support_email=_support_email(),
     )
 
 
@@ -242,7 +242,7 @@ def support_page() -> HTMLResponse:
             (
                 (
                     "Contact",
-                    f"Email {settings.support_email} for account, subscription, or "
+                    f"Email {_support_email()} for account, subscription, or "
                     "technical support. We usually reply within two business days.",
                 ),
                 (
@@ -267,6 +267,7 @@ def support_page() -> HTMLResponse:
 
 
 def _legal_page(title: str, sections: tuple[tuple[str, str], ...]) -> str:
+    support_email = escape(_support_email())
     section_html = "".join(
         f"<section><h2>{escape(heading)}</h2><p>{escape(body)}</p></section>"
         for heading, body in sections
@@ -276,5 +277,5 @@ def _legal_page(title: str, sections: tuple[tuple[str, str], ...]) -> str:
 <title>{escape(title)} · Prodify</title>
 <style>body{{background:#0a0a0a;color:#f5f5f5;font:16px/1.6 system-ui,sans-serif;margin:0}}main{{max-width:760px;margin:auto;padding:40px 24px}}h1,h2{{line-height:1.2}}h2{{margin-top:32px}}p,footer{{color:#c7c7c7}}a{{color:#9fd5ff}}</style></head>
 <body><main><h1>{escape(title)}</h1><p>Effective {escape(settings.legal_effective_date)} · Version {escape(settings.legal_version)}</p>
-{section_html}<footer><p>Questions or rights requests: <a href="mailto:{escape(settings.support_email)}">{escape(settings.support_email)}</a></p></footer>
+{section_html}<footer><p>Questions or rights requests: <a href="mailto:{support_email}">{support_email}</a></p></footer>
 </main></body></html>"""

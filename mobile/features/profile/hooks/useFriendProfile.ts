@@ -7,6 +7,7 @@ import { fetchBuddyStatus } from "../../../lib/social";
 import { userFacingErrorOrFallback } from "../../../lib/userFacingErrorMessage";
 import type { FriendCommitmentDto } from "../../../types/friends";
 import { subscribeFriendsSync } from "../../friends/sync/friendsSync";
+import type { HeatmapCell } from "../../stats/types";
 
 export type FriendStatus = "self" | "none" | "pending" | "accepted";
 export type PendingDirection = "outgoing" | "incoming";
@@ -47,7 +48,7 @@ export type FriendStatsPayload = {
   longest_streak: number;
   type_breakdown: Record<string, number>;
   best_day: string | null;
-  heatmap_days: { date: string; seconds: number; intensity: number }[];
+  heatmap_days: HeatmapCell[];
   achievements: { id: string; unlocked_at: string }[];
 };
 
