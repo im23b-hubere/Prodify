@@ -422,8 +422,6 @@
     "viewPublicProfile": "View public profile",
     "addPhotoA11y": "Add profile photo",
     "changePhotoA11y": "Change profile photo",
-    "photoPermissionTitle": "Photo access needed",
-    "photoPermissionBody": "Allow photo library access so you can set a profile picture.",
     "photoUploadFailedTitle": "Could not update photo",
     "photoUploadFailed": "Something went wrong while uploading your photo.",
     "photoUploadSignedOut": "Sign in again to upload a profile photo.",

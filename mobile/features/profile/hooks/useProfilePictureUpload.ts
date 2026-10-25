@@ -24,12 +24,8 @@ export function useProfilePictureUpload({ token, applyAuthenticatedUser }: Optio
       return;
     }
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(t("profile.photoPermissionTitle"), t("profile.photoPermissionBody"));
-      return;
-    }
-
+    // The system picker runs out of process and hands over only the chosen photo; asking for
+    // library access on top would break App Review 5.1.1(iii).
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,

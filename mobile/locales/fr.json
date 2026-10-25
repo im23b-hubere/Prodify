@@ -440,8 +440,6 @@
     "viewPublicProfile": "Voir le profil public",
     "addPhotoA11y": "Ajouter une photo de profil",
     "changePhotoA11y": "Changer la photo de profil",
-    "photoPermissionTitle": "Accès aux photos requis",
-    "photoPermissionBody": "Autorise l'accès à ta photothèque pour pouvoir définir une photo de profil.",
     "photoUploadFailedTitle": "Impossible de mettre à jour la photo",
     "photoUploadFailed": "Un problème est survenu pendant l'envoi de ta photo.",
     "photoUploadSignedOut": "Reconnecte-toi pour envoyer une photo de profil.",

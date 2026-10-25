@@ -448,8 +448,6 @@
     "viewPublicProfile": "Ver perfil público",
     "addPhotoA11y": "Adicionar foto de perfil",
     "changePhotoA11y": "Alterar foto de perfil",
-    "photoPermissionTitle": "Acesso às fotos necessário",
-    "photoPermissionBody": "Permita o acesso à fototeca para definir uma foto de perfil.",
     "photoUploadFailedTitle": "Não foi possível atualizar a foto",
     "photoUploadFailed": "Algo deu errado ao enviar sua foto.",
     "photoUploadSignedOut": "Entre novamente para enviar uma foto de perfil.",

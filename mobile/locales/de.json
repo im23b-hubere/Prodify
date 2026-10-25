@@ -448,8 +448,6 @@
     "viewPublicProfile": "Öffentliches Profil ansehen",
     "addPhotoA11y": "Profilfoto hinzufügen",
     "changePhotoA11y": "Profilfoto ändern",
-    "photoPermissionTitle": "Fotozugriff benötigt",
-    "photoPermissionBody": "Erlaube den Zugriff auf deine Fotomediathek, damit du ein Profilbild festlegen kannst.",
     "photoUploadFailedTitle": "Foto konnte nicht aktualisiert werden",
     "photoUploadFailed": "Beim Hochladen deines Fotos ist etwas schiefgelaufen.",
     "photoUploadSignedOut": "Melde dich erneut an, um ein Profilfoto hochzuladen.",
