@@ -149,7 +149,10 @@ describe("useProfileData auth scope", () => {
     await loadUserAProfile(result);
 
     expect(result.current.milestones).toEqual(userAMilestones);
-    expect(result.current.heatmapDays).toEqual(userAHeatmap);
+    // Days the API doesn't mark as counted toward the weekly goal come back as not counted.
+    expect(result.current.heatmapDays).toEqual(
+      userAHeatmap.map((day) => ({ ...day, counted: false })),
+    );
     expect(result.current.error).toBeNull();
   });
 

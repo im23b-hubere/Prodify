@@ -5,6 +5,8 @@ import { loadOnboardingQuiz } from "../../lib/onboardingQuiz";
 import type { PaywallSource } from "../../lib/postAuthNavigation";
 
 type PaywallVariant = "value" | "outcome" | "social_proof";
+/** A two-line headline; `emphasis` is the part shown in Prodify orange. */
+export type PaywallHeadline = { title: string; emphasis: string };
 
 function paywallVariant(rawVariant: string | undefined): PaywallVariant {
   return rawVariant === "outcome" || rawVariant === "social_proof" ? rawVariant : "value";
@@ -16,14 +18,11 @@ export function usePaywallCopy(source: PaywallSource, rawVariant: string | undef
   const defaultCopy = useMemo(
     () => ({
       title: t(`paywall.variants.${variant}.title`),
-      body: t(`paywall.variants.${variant}.body`),
+      emphasis: t(`paywall.variants.${variant}.emphasis`),
     }),
     [t, variant],
   );
-  const [personalizedCopy, setPersonalizedCopy] = useState<{
-    title: string;
-    body: string;
-  } | null>(null);
+  const [personalizedCopy, setPersonalizedCopy] = useState<PaywallHeadline | null>(null);
 
   const fromOnboarding = source === "onboarding";
 
@@ -34,9 +33,7 @@ export function usePaywallCopy(source: PaywallSource, rawVariant: string | undef
       if (cancelled || !quiz?.producerGoal) return;
       setPersonalizedCopy({
         title: t(`onboarding.quiz.paywall.${quiz.producerGoal}.title`),
-        body: t(`onboarding.quiz.paywall.${quiz.producerGoal}.body`, {
-          weekly: quiz.weeklyGoal ?? 7,
-        }),
+        emphasis: t(`onboarding.quiz.paywall.${quiz.producerGoal}.emphasis`),
       });
     });
     return () => {

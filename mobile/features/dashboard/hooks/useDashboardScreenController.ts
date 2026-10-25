@@ -37,7 +37,6 @@ export function useDashboardScreenController() {
     token,
     active: data.active,
     activeResolved: data.activeResolved,
-    suggestedSessionType: presentation.suggestedSessionType,
     displayOverview: presentation.displayOverview,
     t,
     setActive: data.setActive,

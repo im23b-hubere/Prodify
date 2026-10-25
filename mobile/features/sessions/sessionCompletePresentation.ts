@@ -16,14 +16,15 @@ export function shortenSessionLabel(value: string, maxLength = 14): string {
   return `${trimmed.slice(0, Math.max(1, maxLength - 1))}…`;
 }
 
+/**
+ * The hero's closing line. A reached weekly goal is left to the week card right below it,
+ * so the screen doesn't say "goal complete" twice.
+ */
 export function sessionHighlightKey(feedback: SessionFeedbackComputed): string {
+  if (feedback.remainingSessionsToGoal === 0) return feedback.emotionalMessageKey;
   const statusChanged =
     feedback.previousStatus != null && feedback.previousStatus !== feedback.newStatus;
-  if (
-    feedback.remainingSessionsToGoal === 0 ||
-    statusChanged ||
-    feedback.newStatus === "off_track"
-  ) {
+  if (statusChanged || feedback.newStatus === "off_track") {
     return feedback.statusMessageKey;
   }
   return feedback.emotionalMessageKey;

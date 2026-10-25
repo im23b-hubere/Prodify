@@ -269,7 +269,11 @@ function VisibleProfile({
         </StaggeredSection>
       ) : null}
       <StaggeredSection order={5}>
-        <StatsHeatmapSection t={t} days={stats.heatmap_days} />
+        {/* Friends' stats don't say which days counted toward a goal; the heatmap doesn't need it. */}
+        <StatsHeatmapSection
+          t={t}
+          days={stats.heatmap_days.map((day) => ({ ...day, counted: false }))}
+        />
       </StaggeredSection>
       <StaggeredSection order={6}>
         <FocusCard

@@ -32,8 +32,8 @@ describe("countedStudioDayKeys", () => {
   it("does not fill a day whose short sessions only add up past five minutes", () => {
     expect([
       ...countedStudioDayKeys([
-        { date: "2026-01-05", seconds: 360, counted: false },
-        { date: "2026-01-06", seconds: 100, counted: true },
+        { ...day("2026-01-05", 360), counted: false },
+        { ...day("2026-01-06", 100), counted: true },
       ]),
     ]).toEqual(["2026-01-06"]);
   });

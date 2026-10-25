@@ -6,7 +6,7 @@ import { Alert } from "react-native";
 
 import { useIsScreenFocused } from "../../../hooks/useIsScreenFocused";
 import { ApiError, apiJson } from "../../../lib/client";
-import { resumeActiveSession } from "../../sessions/services/activeSessionApi";
+import { pauseActiveSession, resumeActiveSession } from "../../sessions/services/activeSessionApi";
 import { sessionSummaryHref } from "../../../lib/stackNavigation";
 import { debugLog } from "../../../lib/debugLog";
 import { effectiveElapsedSeconds, formatDurationWords } from "../../../lib/sessionTime";
@@ -19,7 +19,6 @@ type Options = {
   token?: string | null;
   active: SessionDto | null;
   activeResolved: boolean;
-  suggestedSessionType: string;
   displayOverview: StreakOverviewDto | null;
   t: TFunction;
   setActive: (session: SessionDto | null) => void;
@@ -39,20 +38,26 @@ export function useDashboardSessionActions(options: Options) {
   const freeze = useFreezeActions(options);
   const { stopSession, ...completion } = useSessionCompletionActions(options, router);
   const resume = useResumePausedSession(options);
+  const pause = usePauseActiveSession(options);
   const dismissSession = useDismissSession(options);
   useDashboardSessionPresence(options, stopSession);
-  return { ...navigation, ...freeze, ...completion, ...resume, dismissSession };
+  /** Ends without the confirm dialog: the hold-to-stop gesture already confirmed it. */
+  const endSessionNow = useCallback(() => {
+    if (options.active) void stopSession(options.active);
+  }, [options.active, stopSession]);
+  return {
+    ...navigation,
+    ...freeze,
+    ...completion,
+    ...resume,
+    ...pause,
+    endSessionNow,
+    dismissSession,
+  };
 }
 
 function useSessionNavigation(options: Options, router: Router) {
-  const {
-    active,
-    activeResolved,
-    invalidateDashboard,
-    refreshDashboard,
-    setRefreshing,
-    suggestedSessionType,
-  } = options;
+  const { active, activeResolved, invalidateDashboard, refreshDashboard, setRefreshing } = options;
   const openFullscreenActive = useCallback(() => {
     if (!active || typeof active.id !== "number" || !Number.isFinite(active.id)) return;
     ignoreHaptic(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
@@ -76,11 +81,9 @@ function useSessionNavigation(options: Options, router: Router) {
     }
     ignoreHaptic(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
     invalidateDashboard();
-    router.push({
-      pathname: "/session/setup",
-      params: { suggestedType: suggestedSessionType, source: "dashboard" },
-    });
-  }, [active, activeResolved, invalidateDashboard, router, suggestedSessionType]);
+    // No preselected type: the producer picks one, and Start stays off until they do.
+    router.push({ pathname: "/session/setup", params: { source: "dashboard" } });
+  }, [active, activeResolved, invalidateDashboard, router]);
   return { openFullscreenActive, refresh, openSessionSetup };
 }
 
@@ -196,6 +199,31 @@ function useResumePausedSession({ active, loadSessions, setActive, setError, t, 
   return { resumePaused, resumeBusy };
 }
 
+function usePauseActiveSession({ active, loadSessions, setActive, setError, t, token }: Options) {
+  const [pauseBusy, setPauseBusy] = useState(false);
+  const pauseActive = useCallback(async () => {
+    if (!token || !active || active.pause_started_at) return;
+    setPauseBusy(true);
+    ignoreHaptic(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
+    try {
+      const updated = await pauseActiveSession(token, active.id);
+      if (updated && updated.stopped_at == null) {
+        setActive(updated);
+        return;
+      }
+      await loadSessions();
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 400)) {
+        setError(userFacingErrorMessage(error, t, "sessionActive.pauseFailed"));
+      }
+      await loadSessions().catch(() => undefined);
+    } finally {
+      setPauseBusy(false);
+    }
+  }, [active, loadSessions, setActive, setError, t, token]);
+  return { pauseActive, pauseBusy };
+}
+
 function useDismissSession({ loadSessions, setError, t, token }: Options) {
   return useCallback(
     async (sessionId: number) => {
@@ -232,4 +260,3 @@ function useDashboardSessionPresence(
     },
   });
 }
-

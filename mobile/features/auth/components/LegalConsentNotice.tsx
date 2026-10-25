@@ -1,9 +1,9 @@
-import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { pressFeedbackStyle } from "../../../components/ui/pressFeedback";
 import { fontFamily } from "../../../constants/fonts";
+import { openLegalPage } from "../../../constants/legal";
 import { colors, spacing, typography } from "../../../constants/theme";
 
 /** Links stay small visually but keep Apple's 44 pt touch target. */
@@ -12,17 +12,19 @@ const LINK_HIT_SLOP = { top: 12, bottom: 12, left: 8, right: 8 };
 /** Every way to create an account (email, Apple, Google) passes this notice (App Review 1.2). */
 export function LegalConsentNotice() {
   const { t } = useTranslation();
-  const { push } = useRouter();
 
   return (
     <View style={styles.root}>
       <Text style={styles.notice}>{t("auth.legalConsent.notice")}</Text>
       <View style={styles.links}>
-        <LegalLink label={t("auth.legalConsent.terms")} onPress={() => push("/legal/terms")} />
+        <LegalLink label={t("auth.legalConsent.terms")} onPress={() => openLegalPage("terms")} />
         <Text style={styles.separator} accessible={false}>
           ·
         </Text>
-        <LegalLink label={t("auth.legalConsent.privacy")} onPress={() => push("/legal/privacy")} />
+        <LegalLink
+          label={t("auth.legalConsent.privacy")}
+          onPress={() => openLegalPage("privacy")}
+        />
       </View>
     </View>
   );

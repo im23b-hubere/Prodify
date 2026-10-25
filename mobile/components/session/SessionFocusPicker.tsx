@@ -9,21 +9,31 @@ import { FocusSuggestions } from "./FocusSuggestions";
 import { SkillFocusChips } from "./SkillFocusChips";
 import { sessionSetupStyles as styles } from "./sessionSetup.styles";
 
+/**
+ * The optional focus picker, opened right under the selected type. The dashed outline and
+ * the "Optional" chip say it can be skipped: Start works without it.
+ */
 export function SessionFocusPicker({ form }: { form: SessionSetupFormState }) {
   const { t } = useTranslation();
   if (!form.selectedType) return null;
 
   return (
-    <Animated.View key={form.selectedType} entering={FadeIn.duration(motion.standard)}>
+    <Animated.View
+      key={form.selectedType}
+      entering={FadeIn.duration(motion.standard)}
+      style={styles.focusPanel}
+    >
       <View style={styles.focusHeader}>
         <Text style={[styles.sectionLabel, styles.focusHeaderLabel]}>
           {t("sessionSetup.focusSection")}
         </Text>
-        <Text style={styles.focusHint} accessibilityLiveRegion="polite">
-          {form.isFocusSelectionFull
-            ? t("sessionSetup.focusLimitReached", { max: MAX_PLANNED_FOCUSES_PER_SESSION })
-            : t("sessionSetup.focusHint", { max: MAX_PLANNED_FOCUSES_PER_SESSION })}
-        </Text>
+        <View style={styles.focusOptionalChip}>
+          <Text style={styles.focusHint} accessibilityLiveRegion="polite">
+            {form.isFocusSelectionFull
+              ? t("sessionSetup.focusLimitReached", { max: MAX_PLANNED_FOCUSES_PER_SESSION })
+              : t("sessionSetup.focusHint", { max: MAX_PLANNED_FOCUSES_PER_SESSION })}
+          </Text>
+        </View>
       </View>
       <FocusSuggestions suggestions={form.focusSuggestions} fields={form} />
       <SkillFocusChips sessionType={form.selectedType} fields={form} showPracticePrompts />

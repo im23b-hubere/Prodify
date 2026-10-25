@@ -1,12 +1,12 @@
 import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import { useAuth } from "../../context/AuthContext";
 import { isE2eModeEnabled } from "../../lib/e2eMode";
 import type { PaywallSource } from "../../lib/postAuthNavigation";
+import { useProfileAccountActions } from "../profile/hooks/useProfileAccountActions";
 import { useEntitlementCacheUnlock } from "./useEntitlementCacheUnlock";
-import { usePaywallAccountActions } from "./usePaywallAccountActions";
 import { usePaywallCopy } from "./usePaywallCopy";
 import { usePaywallExit } from "./usePaywallExit";
 import { usePaywallOfferings } from "./usePaywallOfferings";
@@ -15,7 +15,7 @@ import { usePremiumUnlockFinalizer } from "./usePremiumUnlockFinalizer";
 import { usePremiumUpdateListener } from "./usePremiumUpdateListener";
 
 export function usePaywallController() {
-  const { token, user, signOut, deleteAccount, refreshUser } = useAuth();
+  const { token, user, refreshUser, signOut, deleteAccount } = useAuth();
   const params = useLocalSearchParams<{ variant?: string; source?: string }>();
   const source: PaywallSource =
     params.source === "onboarding" || params.source === "post_auth" ? params.source : "in_app";
@@ -30,14 +30,10 @@ export function usePaywallController() {
   /** Dev + Expo Go only: screenshot-friendly layout (no IAP). Never active in release builds. */
   const expoGoPreviewMode = e2ePreviewMode || (__DEV__ && isExpoGo);
 
-  const appUserId = useMemo(() => (user?.id != null ? String(user.id) : null), [user?.id]);
+  // Deleting must stay reachable for someone who never subscribes and so never sees Settings.
+  const { confirmDeleteAccount } = useProfileAccountActions({ signOut, deleteAccount });
 
-  const exitToLogin = useCallback(() => requestExit("login"), [requestExit]);
-  const { confirmLogout, confirmDeleteAccount } = usePaywallAccountActions({
-    signOut,
-    deleteAccount,
-    exitToLogin,
-  });
+  const appUserId = useMemo(() => (user?.id != null ? String(user.id) : null), [user?.id]);
 
   const finalizePremiumUnlock = usePremiumUnlockFinalizer({
     token,
@@ -100,7 +96,7 @@ export function usePaywallController() {
     purchasePackage,
     onRestore,
     onSkipSubscriptionForDev,
-    confirmLogout,
+    canDeleteAccount: Boolean(token),
     confirmDeleteAccount,
   };
 }

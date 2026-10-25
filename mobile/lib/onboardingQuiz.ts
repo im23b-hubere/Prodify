@@ -9,6 +9,8 @@ export type ProducerGoal = "more_output" | "consistency" | "finish_tracks" | "le
 
 export type OnboardingQuizAnswers = {
   experience?: ProducerExperience;
+  /** Exact years picked on the timeline; `experience` is the bucket it falls in. */
+  experienceYears?: number;
   genre?: ProducerGenre;
   producerGoal?: ProducerGoal;
   weeklyGoal?: number;
@@ -27,6 +29,19 @@ export async function loadOnboardingQuiz(): Promise<OnboardingQuizAnswers | null
   } catch {
     return null;
   }
+}
+
+/** Years producing, as picked on the onboarding timeline, mapped to its bucket. */
+export function experienceFromYears(years: number): ProducerExperience {
+  if (years < 1) return "under_1y";
+  if (years < 3) return "1_3y";
+  if (years < 5) return "3_5y";
+  return "5y_plus";
+}
+
+/** Where the timeline starts for an answer saved before exact years were kept. */
+export function yearsFromExperience(experience: ProducerExperience): number {
+  return { under_1y: 0, "1_3y": 1, "3_5y": 3, "5y_plus": 5 }[experience];
 }
 
 export function experienceLabel(value: ProducerExperience, t: TFunction): string {

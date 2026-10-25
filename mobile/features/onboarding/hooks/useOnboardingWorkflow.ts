@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Haptics from "expo-haptics";
 import { type Href, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import {
   ONBOARDING_COMPLETE_KEY,
@@ -13,16 +12,14 @@ import { apiJson } from "../../../lib/client";
 import { loadPersistedEntitlement } from "../../../lib/entitlementStorage";
 import { savePendingWeeklyGoal } from "../../../lib/onboardingGoalSync";
 import {
+  experienceFromYears,
   saveOnboardingQuiz,
   type OnboardingQuizAnswers,
-  type ProducerExperience,
   type ProducerGenre,
   type ProducerGoal,
 } from "../../../lib/onboardingQuiz";
 import { resolvePremiumAccess } from "../../../lib/premiumAccess";
-import { INTRO_SLIDE_COUNT, type OnboardingStep } from "../onboardingConfig";
-
-const QUIZ_ADVANCE_DELAY_MS = 200;
+import { INTRO_SLIDE_COUNT, QUIZ_STEPS, type OnboardingStep } from "../onboardingConfig";
 
 type OnboardingUser = { id?: number | null; is_premium?: boolean | null } | null;
 type OnboardingDestination = "dashboard" | "register" | "paywall";
@@ -62,7 +59,6 @@ export async function completeOnboarding(input: {
   await saveOnboardingQuiz({ ...answers, weeklyGoal }).catch(() => undefined);
   await syncWeeklyGoal(token, weeklyGoal);
   await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "1").catch(() => undefined);
-  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   if (token && user && (await userHasPremium(token, user))) return "dashboard";
   return token ? "paywall" : "register";
 }
@@ -88,45 +84,55 @@ export function useOnboardingWorkflow() {
   const [step, setStep] = useState<OnboardingStep>("intro");
   const [introIndex, setIntroIndex] = useState(0);
   const [answers, setAnswers] = useState<OnboardingQuizAnswers>({ weeklyGoal: 7 });
-  const [busy, setBusy] = useState(false);
+  const pendingDestination = useRef<Promise<OnboardingDestination> | null>(null);
   const weeklyGoal = answers.weeklyGoal ?? 7;
 
-  const advanceQuiz = useCallback((nextStep: OnboardingStep) => {
-    setTimeout(() => setStep(nextStep), QUIZ_ADVANCE_DELAY_MS);
+  // Answers only select; the survey's Continue button moves on.
+  const pickExperienceYears = useCallback((experienceYears: number) => {
+    setAnswers((current) => ({
+      ...current,
+      experienceYears,
+      experience: experienceFromYears(experienceYears),
+    }));
   }, []);
 
-  const pickExperience = useCallback(
-    (experience: ProducerExperience) => {
-      setAnswers((current) => ({ ...current, experience }));
-      advanceQuiz("genre");
-    },
-    [advanceQuiz],
-  );
+  const pickGenre = useCallback((genre: ProducerGenre) => {
+    setAnswers((current) => ({ ...current, genre }));
+  }, []);
 
-  const pickGenre = useCallback(
-    (genre: ProducerGenre) => {
-      setAnswers((current) => ({ ...current, genre }));
-      advanceQuiz("producerGoal");
-    },
-    [advanceQuiz],
-  );
+  const pickProducerGoal = useCallback((producerGoal: ProducerGoal) => {
+    setAnswers((current) => ({ ...current, producerGoal }));
+  }, []);
 
-  const pickProducerGoal = useCallback(
-    (producerGoal: ProducerGoal) => {
-      setAnswers((current) => ({ ...current, producerGoal }));
-      advanceQuiz("weeklyGoal");
-    },
-    [advanceQuiz],
-  );
+  /** The next quiz step, or back from the first one to the last intro slide. */
+  const nextQuizStep = useCallback(() => {
+    const index = QUIZ_STEPS.indexOf(step as (typeof QUIZ_STEPS)[number]);
+    if (index >= 0 && index < QUIZ_STEPS.length - 1) setStep(QUIZ_STEPS[index + 1]);
+  }, [step]);
 
-  const finish = useCallback(async () => {
-    setBusy(true);
-    try {
-      const destination = await completeOnboarding({ answers, weeklyGoal, token, user });
-      navigateAfterOnboarding(router, destination);
-    } finally {
-      setBusy(false);
+  const previousQuizStep = useCallback(() => {
+    const index = QUIZ_STEPS.indexOf(step as (typeof QUIZ_STEPS)[number]);
+    if (index > 0) {
+      setStep(QUIZ_STEPS[index - 1]);
+      return;
     }
+    setIntroIndex(INTRO_SLIDE_COUNT - 1);
+    setStep("intro");
+  }, [step]);
+
+  /** Saves the answers in the background while the profile animation plays. */
+  const buildProfile = useCallback(() => {
+    pendingDestination.current = completeOnboarding({ answers, weeklyGoal, token, user }).catch(
+      (): OnboardingDestination => (token ? "paywall" : "register"),
+    );
+    setStep("building");
+  }, [answers, token, user, weeklyGoal]);
+
+  /** Once the animation has finished: on to wherever the saved answers lead. */
+  const leaveBuiltProfile = useCallback(async () => {
+    const destination = await (pendingDestination.current ??
+      completeOnboarding({ answers, weeklyGoal, token, user }));
+    navigateAfterOnboarding(router, destination);
   }, [answers, router, token, user, weeklyGoal]);
 
   return {
@@ -136,7 +142,7 @@ export function useOnboardingWorkflow() {
     setIntroIndex,
     answers,
     weeklyGoal,
-    busy,
+    signedIn: Boolean(token),
     skipIntro: () => setStep("experience"),
     openLogin: () =>
       router.replace({
@@ -147,11 +153,14 @@ export function useOnboardingWorkflow() {
       if (introIndex >= INTRO_SLIDE_COUNT - 1) setStep("experience");
       else setIntroIndex((current) => current + 1);
     },
-    pickExperience,
+    pickExperienceYears,
     pickGenre,
     pickProducerGoal,
+    nextQuizStep,
+    previousQuizStep,
     selectWeeklyGoal: (goal: number) => setAnswers((current) => ({ ...current, weeklyGoal: goal })),
-    finish,
+    buildProfile,
+    leaveBuiltProfile,
   };
 }
 

@@ -129,9 +129,7 @@ export function YourWeekProgress({ props, editor, model }: SectionProps) {
 function StudioDays({ model, t }: { model: YourWeekCardModel; t: YourWeekCardProps["t"] }) {
   return (
     <View testID="stats-studio-days">
-      <Text style={[styles.studioLabel, model.isFullWeek && styles.studioLabelFull]}>
-        {t(model.isFullWeek ? "stats.yourWeek.fullWeek" : "stats.yourWeek.studioDays")}
-      </Text>
+      <Text style={styles.studioLabel}>{t("stats.yourWeek.studioDays")}</Text>
       <View style={styles.dayRow}>
         {model.weekKeys.map((key, index) => {
           const active = model.activeDayKeys.has(key);
@@ -139,7 +137,9 @@ function StudioDays({ model, t }: { model: YourWeekCardModel; t: YourWeekCardPro
             <View
               key={key}
               style={styles.dayCell}
-              testID={active ? `stats-studio-day-filled-${index}` : `stats-studio-day-empty-${index}`}
+              testID={
+                active ? `stats-studio-day-filled-${index}` : `stats-studio-day-empty-${index}`
+              }
             >
               <View
                 style={[

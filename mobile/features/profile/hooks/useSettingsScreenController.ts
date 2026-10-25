@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Linking } from "react-native";
 
+import { openLegalPage } from "../../../constants/legal";
 import { useAuth } from "../../../context/AuthContext";
 import {
   APP_LANGUAGE_DEFINITIONS,
@@ -32,9 +33,9 @@ export function useSettingsScreenController() {
       },
       openNotifications: () =>
         router.push({ pathname: "/notifications", params: { source: "profile" } }),
-      openPrivacy: () => router.push("/legal/privacy" as never),
-      openTerms: () => router.push("/legal/terms" as never),
-      openImprint: () => router.push("/legal/imprint" as never),
+      openPrivacy: () => openLegalPage("privacy"),
+      openTerms: () => openLegalPage("terms"),
+      openImprint: () => openLegalPage("imprint"),
       openBlockedUsers: () => router.push("/blocked-users" as never),
       openEngagementDebug: () => router.push("/engagement-debug" as never),
     },

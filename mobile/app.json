@@ -47,6 +47,7 @@
         }
       ],
       "expo-asset",
+      "expo-video",
       "expo-apple-authentication",
       [
         "expo-image-picker",

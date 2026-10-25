@@ -1,9 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useMemo } from "react";
-import { Gesture } from "react-native-gesture-handler";
+import { useEffect } from "react";
 import {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -18,51 +15,23 @@ export function useActiveSessionController() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string | string[]; source?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const source = Array.isArray(params.source) ? params.source[0] : params.source;
   const state = useActiveSession(id);
   const pulse = useSharedValue(1);
-  const dismissDragY = useSharedValue(0);
 
+  // The LIVE dot breathes while the clock runs and holds still when paused.
   useEffect(() => {
     pulse.value = state.isPaused
       ? withTiming(1, { duration: 200 })
       : withRepeat(
-          withSequence(withTiming(1.04, { duration: 500 }), withTiming(1, { duration: 500 })),
+          withSequence(withTiming(0.3, { duration: 700 }), withTiming(1, { duration: 700 })),
           -1,
         );
   }, [pulse, state.isPaused]);
 
-  const minimize = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    returnTo(router, "/(tabs)/dashboard", { modal: true });
-  }, [router]);
-  const finishDrag = useCallback(
-    (translationY: number, velocityY: number) => {
-      if (translationY > 48 || velocityY > 650) return minimize();
-      dismissDragY.value = withTiming(0, { duration: 220 });
-    },
-    [dismissDragY, minimize],
-  );
-  const swipeDownGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .enabled(source === "dashboard")
-        .activeOffsetY(12)
-        .failOffsetX([-28, 28])
-        .onUpdate((event) => {
-          dismissDragY.value = Math.max(0, event.translationY);
-        })
-        .onEnd((event) => runOnJS(finishDrag)(event.translationY, event.velocityY)),
-    [dismissDragY, finishDrag, source],
-  );
-
   return {
     id,
     ...state,
-    fromDashboard: source === "dashboard",
-    pulseStyle: useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] })),
-    dismissDragStyle: useAnimatedStyle(() => ({ transform: [{ translateY: dismissDragY.value }] })),
-    swipeDownGesture,
+    pulseStyle: useAnimatedStyle(() => ({ opacity: pulse.value })),
     openDashboard: () => returnTo(router, "/(tabs)/dashboard", { modal: true }),
   };
 }

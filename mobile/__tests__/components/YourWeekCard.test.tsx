@@ -53,14 +53,13 @@ describe("YourWeekCard", () => {
     expect(screen.getByText('stats.yourWeek.nextStepRemaining:{"n":3}')).toBeTruthy();
     expect(screen.getByTestId("stats-studio-days")).toBeTruthy();
     expect(screen.getByText("stats.yourWeek.studioDays")).toBeTruthy();
-    expect(screen.queryByText("stats.yourWeek.fullWeek")).toBeNull();
   });
 
-  it("labels a full counted week without treating the session goal as the win", () => {
+  it("keeps the plain label on a full week: seven filled days say it already", () => {
     renderHero(week.map((date) => ({ date, seconds: 600, intensity: 2, counted: true })));
 
-    expect(screen.getByText("stats.yourWeek.fullWeek")).toBeTruthy();
-    expect(screen.queryByText("stats.yourWeek.studioDays")).toBeNull();
+    expect(screen.getByText("stats.yourWeek.studioDays")).toBeTruthy();
+    expect(screen.getByTestId("stats-studio-day-filled-6")).toBeTruthy();
   });
 
   it("leaves a short session day empty on the week chain", () => {

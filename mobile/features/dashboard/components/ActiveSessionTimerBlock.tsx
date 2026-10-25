@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 
 import { ActiveSessionBlock } from "./ActiveSessionBlock";
 import { effectiveElapsedSeconds } from "../../../lib/sessionTime";
@@ -8,22 +7,25 @@ import type { SessionDto } from "../../../types/session";
 type Props = {
   active: SessionDto;
   onOpenFullscreen: () => void;
-  onConfirmStop: () => void;
+  onStopNow: () => void;
+  onPause: () => void;
   onResume: () => void;
   stopBusy: boolean;
+  pauseBusy: boolean;
   resumeBusy: boolean;
 };
 
 export function ActiveSessionTimerBlock({
   active,
   onOpenFullscreen,
-  onConfirmStop,
+  onStopNow,
+  onPause,
   onResume,
   stopBusy,
+  pauseBusy,
   resumeBusy,
 }: Props) {
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const ringPulse = useSharedValue(1);
 
   const isPaused = !!active.pause_started_at;
 
@@ -35,18 +37,6 @@ export function ActiveSessionTimerBlock({
     return () => clearInterval(id);
   }, [isPaused]);
 
-  useEffect(() => {
-    if (isPaused) {
-      ringPulse.value = 1;
-      return;
-    }
-    ringPulse.value = withRepeat(
-      withSequence(withTiming(1.06, { duration: 1100 }), withTiming(1, { duration: 1100 })),
-      -1,
-      true,
-    );
-  }, [isPaused, ringPulse]);
-
   const activeSeconds = useMemo(() => effectiveElapsedSeconds(active, nowMs), [active, nowMs]);
 
   return (
@@ -54,11 +44,12 @@ export function ActiveSessionTimerBlock({
       active={active}
       activeSeconds={activeSeconds}
       isPaused={isPaused}
-      ringPulse={ringPulse}
       onOpenFullscreen={onOpenFullscreen}
-      onConfirmStop={onConfirmStop}
+      onStopNow={onStopNow}
+      onPause={onPause}
       onResume={onResume}
       stopBusy={stopBusy}
+      pauseBusy={pauseBusy}
       resumeBusy={resumeBusy}
     />
   );

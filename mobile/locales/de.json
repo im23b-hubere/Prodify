@@ -51,21 +51,25 @@
   },
   "onboarding": {
     "skip": "Überspringen",
+    "haveAccount": "Schon ein Konto?",
     "existingAccount": "Anmelden",
     "next": "Weiter",
     "continue": "Weiter",
     "footerPrivacy": "Datenschutzerklärung",
     "slide1": {
-      "title": "Willkommen bei Prodify",
-      "body": "Tracke deine Studiozeit. Bau Streaks auf. Bleib dran."
+      "title": "Jede Studio-Session\nzählt",
+      "emphasis": "zählt",
+      "body": "Starte den Timer, wenn du deine DAW öffnest. Jede Minute bringt XP."
     },
     "slide2": {
-      "title": "Bau deinen Streak auf",
-      "body": "Tägliches Momentum schlägt kurze Motivationsschübe. Wir schützen deine Kette mit smarten Erinnerungen."
+      "title": "Deine Skills wachsen\nmit jeder Session",
+      "emphasis": "wachsen",
+      "body": "Sieh, wohin deine Stunden gehen, und level jeden Skill hoch."
     },
     "slide3": {
-      "title": "Schlag deine Freunde",
-      "body": "Ranglisten und Aktivität halten dich bei der Stange – produzier, als wär's ein Sport."
+      "title": "Steig auf bis\nganz nach oben",
+      "emphasis": "oben",
+      "body": "Überhol deine Freunde und steig 20 Ränge bis zur Hall of Sound auf."
     },
     "goal": {
       "title": "Wöchentliches Session-Ziel",
@@ -101,6 +105,10 @@
       "experience": {
         "title": "Wie lange produzierst du schon?",
         "subtitle": "Wir passen dein Tempo und deine Erwartungen an.",
+        "yearsUnit_one": "Jahr",
+        "yearsUnit_other": "Jahre",
+        "dragHint": "Zieh an der Timeline",
+        "timelineA11y": "Jahre am Produzieren",
         "options": {
           "under_1y": "Weniger als 1 Jahr",
           "1_3y": "1–3 Jahre",
@@ -141,49 +149,42 @@
         "optionLabel": "{{count}} Sessions pro Woche",
         "session": "Session",
         "sessions": "Sessions",
-        "cta": "Meinen Plan ansehen",
-        "previewTitle": "{{goal}} Sessions pro Woche",
+        "cta": "Mein Studio einrichten",
+        "levels": {
+          "3": "Ruhiger Start",
+          "5": "Werktags-Routine",
+          "7": "Tägliche Gewohnheit",
+          "10": "Ernsthafter Grind",
+          "14": "Vollzeit-Producer"
+        },
         "previewBody": "Im Schnitt etwa {{daily}} {{unit}} pro Tag."
       },
-      "plan": {
-        "title": "Dein Prodify-Plan",
-        "subtitle": "Personalisiert nach deinen Antworten.",
-        "rowGenre": "Genre",
-        "rowFocus": "Fokus",
-        "rowWeekly": "Wochenziel",
-        "weeklyValue": "{{count}} Studio-Sessions",
-        "insightFallback": "Du peilst jede Woche {{count}} fokussierte Sessions an.",
-        "insights": {
-          "more_output": "Du willst mehr releasen – {{count}} Sessions/Woche sind dein Output-Rhythmus.",
-          "consistency": "Konstanz gewinnt – {{count}} Sessions/Woche bauen echtes Momentum auf.",
-          "finish_tracks": "Finish-Modus an – {{count}} Sessions/Woche bringen Projekte über die Ziellinie.",
-          "learn_skills": "Skill-Modus – mit {{count}} Sessions/Woche wächst du schnell."
+      "building": {
+        "headline": "Dein {brand}-Studio\nwird eingerichtet",
+        "steps": {
+          "genre": "Dein Genre wird abgestimmt",
+          "weeklyGoal": "Dein Wochenziel wird gesetzt",
+          "skillTree": "Dein Skill-Tree wird vorbereitet",
+          "ranks": "Dein Rang wird berechnet"
         },
-        "access": {
-          "more_output": "Prodify trackt dein Tempo, damit du merkst, wenn du abrutschst – bevor die Woche vorbei ist.",
-          "consistency": "Prodify gibt dir Streak-Erinnerungen und einen Sonntags-Rückblick, damit du dranbleibst.",
-          "finish_tracks": "Prodify macht aus deinen Sessions einen klaren Plan für nächste Woche.",
-          "learn_skills": "Prodify zeigt dir, welche Sessions dich wirklich weiterbringen."
-        },
-        "accessFallback": "Prodify bietet Prognose-Warnungen und einen Sonntags-Rückblick auf Basis deiner Sessions.",
-        "cta": "Weiter"
+        "done": "Dein Studio ist bereit"
       },
       "paywall": {
         "more_output": {
-          "title": "Halte dein Output-Tempo",
-          "body": "Prodify warnt dich früh, wenn du unter {{weekly}} Sessions/Woche rutschst – bevor die Woche verloren ist."
+          "title": "Mehr Releases,\nWoche für Woche",
+          "emphasis": "Woche für Woche"
         },
         "consistency": {
-          "title": "Mach Konstanz zur Gewohnheit",
-          "body": "Schaff {{weekly}} Sessions/Woche mit Prognose-Alerts und einem Sonntags-Rückblick, der dich dranhält."
+          "title": "Mach das Studio\nzur Gewohnheit",
+          "emphasis": "zur Gewohnheit"
         },
         "finish_tracks": {
-          "title": "Bring zu Ende, was du anfängst",
-          "body": "{{weekly}} Sessions/Woche plus Session-Insights – damit Tracks fertig werden statt im Backlog zu landen."
+          "title": "Mach aus Ideen\nfertige Tracks",
+          "emphasis": "fertige Tracks"
         },
         "learn_skills": {
-          "title": "Wachse mit jeder Session",
-          "body": "Tracke {{weekly}} Sessions/Woche mit Trends, die zeigen, was wirklich funktioniert."
+          "title": "Level deine\nProducer-Skills",
+          "emphasis": "Producer-Skills"
         }
       }
     }
@@ -880,28 +881,45 @@
     "gotIt": "Verstanden"
   },
   "paywall": {
-    "badge": "App-Zugang",
+    "eyebrow": "Prodify Premium",
+    "features": {
+      "sessions": "Tracke jede Session, sammle XP",
+      "stats": "Sieh, wohin deine Studiozeit geht",
+      "skills": "Level jeden deiner Skills hoch",
+      "ranks": "20 Ränge bis zur Hall of Sound",
+      "friends": "Schlag Freunde im 1v1-Duell",
+      "streaks": "Streaks und Sonntags-Review"
+    },
+    "plan": {
+      "perWeek": "/Wo.",
+      "billedWeekly": "{{price}}, wöchentlich abgerechnet",
+      "billedSixMonth": "{{price}}, alle 6 Monate abgerechnet",
+      "unavailable": "Preis nicht verfügbar"
+    },
+    "cancelAnytime": "Jederzeit kündbar",
     "loadingOfferings": "Abo-Optionen werden geladen…",
     "errorTitle": "Pläne konnten nicht geladen werden",
     "variants": {
       "value": {
-        "title": "Kenn deine Woche, bevor sie verloren ist",
-        "body": "Frühwarnungen und ein Sonntags-Review, damit deine Woche auf Kurs bleibt."
+        "title": "Schalte alles\nin Prodify frei",
+        "emphasis": "Prodify"
       },
       "outcome": {
-        "title": "Sieh Fortschritt, nicht nur Stunden",
-        "body": "Tracke fertige Arbeit und erkenne, was wirklich funktioniert."
+        "title": "Mach aus Studiozeit\nechten Fortschritt",
+        "emphasis": "echten Fortschritt"
       },
       "social_proof": {
-        "title": "Deine Crew hält dich am Ball",
-        "body": "Buddy-Check-ins und Challenges, damit du nicht mitten in der Woche abtauchst."
+        "title": "Lass deine Freunde\nhinter dir",
+        "emphasis": "hinter dir"
       }
     },
     "cta": {
+      "unlock": "Prodify freischalten",
       "bestValue": "Bestes Angebot",
+      "discount": "{{discount}} % sparen",
       "sixMonth": "6 Monate",
       "sixMonthWithPrice": "6 Monate · {{price}}",
-      "weekly": "1 Woche",
+      "weekly": "Wöchentlich",
       "weeklyWithPrice": "1 Woche · {{price}}",
       "continue": "Weiter",
       "restore": "Käufe wiederherstellen",
@@ -912,10 +930,6 @@
       "disclaimer": "Verlängert sich automatisch, bis du in Apple-ID → Abonnements kündigst.",
       "privacyLink": "Datenschutz",
       "termsLink": "AGB"
-    },
-    "account": {
-      "signOut": "Abmelden",
-      "deleteAccount": "Konto löschen"
     },
     "alerts": {
       "unavailableTitle": "Nicht verfügbar",
@@ -1234,7 +1248,6 @@
     "focusHint": "Optional · bis zu {{max}}",
     "focusLimitReached": "{{max}} gewählt · tippe zum Ändern auf einen",
     "practiceAreaPrompt": "Was übst du?",
-    "productionAreaPrompt": "Bereiche durchstöbern · aus jedem davon planen",
     "areaPicked_one": "{{area}}, {{count}} gewählt",
     "areaPicked_other": "{{area}}, {{count}} gewählt",
     "practiceTryThis": "Probier das · {{focus}}",
@@ -1266,8 +1279,6 @@
     "loadFailed": "Laden fehlgeschlagen",
     "loadingSession": "Session wird geladen…",
     "resumingSession": "Deine Session wird fortgesetzt…",
-    "minimizeHint": "Nach unten wischen zum Dashboard",
-    "inProgress": "Session läuft",
     "insightDefault": "Deine Session läuft.",
     "insightPastBest": "Über deiner bisherigen Bestmarke ({{prev}}).",
     "insightLongest": "Bisher längste: {{duration}}",
@@ -1276,10 +1287,12 @@
     "notes": "Notizen",
     "notesPlaceholder": "Woran arbeitest du?",
     "saving": "Wird gespeichert…",
-    "save": "Speichern",
+    "saved": "Gespeichert",
     "pause": "Pause",
     "resume": "Fortsetzen",
     "stopSession": "Session stoppen",
+    "holdToEnd": "Halten zum Beenden",
+    "holdToEndA11y": "Gedrückt halten, um die Session zu beenden",
     "pauseFailed": "Pausieren fehlgeschlagen",
     "resumeFailed": "Fortsetzen fehlgeschlagen",
     "saveNotesFailed": "Notizen konnten nicht gespeichert werden",
@@ -1763,7 +1776,6 @@
       "statusBehind": "Hinter dem Plan",
       "statusCompleted": "Ziel erreicht",
       "studioDays": "Studiotage",
-      "fullWeek": "Ganze Woche",
       "sharedWith": "Geteilt mit {{names}}",
       "sharedWithFriends": "Mit Freunden geteilt",
       "setTargetCta": "Wochenziel festlegen",

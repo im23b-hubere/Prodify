@@ -72,6 +72,10 @@ export function useActiveSession(id: string | undefined) {
     saveNotes: metadata.saveNotes,
     setSessionType: metadata.setSessionType,
     confirmStop: stop.confirmStop,
+    /** Ends without the confirm dialog: the hold-to-stop gesture already confirmed it. */
+    stopNow: () => {
+      if (loader.session) void stop.stopSession(loader.session.id);
+    },
   };
 }
 

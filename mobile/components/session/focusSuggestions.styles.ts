@@ -39,9 +39,13 @@ export const focusSuggestionStyles = StyleSheet.create({
   icon: {
     width: 32,
     height: 32,
-    borderRadius: radii.round,
+    borderRadius: 10,
+    borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   text: { flex: 1, gap: 2 },
   name: {

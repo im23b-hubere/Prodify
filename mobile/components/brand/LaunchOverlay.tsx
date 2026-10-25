@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
-  runOnJS,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -11,150 +10,151 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { colors } from "../../constants/theme";
 import { getLaunchPhase, setLaunchPhase, useLaunchPhase } from "../../lib/launch";
 import { ProdifyWordmark } from "./ProdifyWordmark";
 
-const DOT_COUNT = 3;
-/** Matches `imageWidth` of the expo-splash-screen plugin in app.json. */
-const LOGO_SIZE = 84;
-/** If no screen asks for the reveal by then (an unexpected entry route), reveal anyway. */
-const FALLBACK_REVEAL_MS = 5000;
+/** Same size as `imageWidth` in the expo-splash-screen plugin, so the hand-off is seamless. */
+const MARK_SIZE = 84;
+/** Reveal anyway if no screen asks for it (an unexpected entry route). */
+const SAFETY_REVEAL_MS = 5000;
+/** A four-step sequencer: the playhead lights each step in turn. */
+const STEPS = 4;
+const STEP_MS = 160;
+const STEP_LIT_MS = 110;
+/** Each step fades over two steps' time, so a soft tail trails the playhead. */
+const STEP_FADE_MS = STEP_MS * 2 - STEP_LIT_MS;
+const CYCLE_MS = STEPS * STEP_MS;
+/** The lift-off: the mark rises and fades while the dark layer dissolves. */
+const LIFT_MS = 420;
+const LIFT_PX = 28;
+const DISSOLVE_DELAY_MS = 120;
+const DISSOLVE_MS = 380;
 
-// The zoom, in ms from the start of the reveal: the wordmark goes and the logo gathers
-// itself, then it shoots up past the edges while the black falls away.
-const GATHER_MS = 180;
-const ZOOM_MS = 520;
-const ZOOM_SCALE = 16;
-const BACKDROP_FADE_AT = 300;
-const BACKDROP_FADE_MS = 360;
-const LOGO_FADE_AT = 420;
-const LOGO_FADE_MS = 280;
-
-function LoadingDot({ index }: { index: number }) {
-  const opacity = useSharedValue(0.2);
+/** One step of the sequencer: dark until the playhead reaches it, then a quick orange flash. */
+function SequencerStep({ index }: { index: number }) {
+  const lit = useSharedValue(0);
 
   useEffect(() => {
-    opacity.set(
+    lit.set(
       withDelay(
-        index * 180,
+        index * STEP_MS,
         withRepeat(
           withSequence(
-            withTiming(1, { duration: 350, easing: Easing.out(Easing.ease) }),
-            withTiming(0.2, { duration: 350, easing: Easing.in(Easing.ease) }),
+            withTiming(1, { duration: STEP_LIT_MS, easing: Easing.out(Easing.quad) }),
+            withTiming(0, { duration: STEP_FADE_MS, easing: Easing.in(Easing.quad) }),
+            withTiming(0, { duration: CYCLE_MS - STEP_LIT_MS - STEP_FADE_MS }),
           ),
           -1,
-          false,
         ),
       ),
     );
-  }, [index, opacity]);
+  }, [index, lit]);
 
-  const style = useAnimatedStyle(() => ({ opacity: opacity.get() }));
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: lit.get(),
+    transform: [{ scale: 1 + lit.get() * 0.3 }],
+  }));
+  return (
+    <View style={styles.step}>
+      <Animated.View style={[styles.stepLit, glowStyle]} />
+    </View>
+  );
+}
 
-  return <Animated.View style={[styles.dot, style]} />;
+/** Four steps lit one after another, like a beat playing across a sequencer row. */
+function SequencerDots() {
+  return (
+    <View style={styles.sequencer}>
+      {Array.from({ length: STEPS }, (_, index) => (
+        <SequencerStep key={index} index={index} />
+      ))}
+    </View>
+  );
 }
 
 /**
- * The launch layer: the same logo as the native splash, in the same place, with the
- * wordmark and loading dots fading in below. It sits above the app while the start route
- * decides where to go, then zooms away to reveal that screen.
+ * Covers the app at launch with the native splash's mark (same place, same size), the
+ * wordmark and a row of sequencer dots. When the start route has opened the first screen,
+ * the mark lifts off and the dark layer dissolves to show it.
  */
 export function LaunchOverlay() {
   const phase = useLaunchPhase();
   const reduceMotion = useReducedMotion();
 
-  const textOpacity = useSharedValue(0);
-  const textShift = useSharedValue(8);
-  const logoScale = useSharedValue(1);
-  const logoOpacity = useSharedValue(1);
-  const backdrop = useSharedValue(1);
+  const caption = useSharedValue(0);
+  const lift = useSharedValue(0);
+  const cover = useSharedValue(1);
 
   useEffect(() => {
-    textOpacity.set(withTiming(1, { duration: 500 }));
-    textShift.set(withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }));
-    const fallback = setTimeout(() => {
+    caption.set(withTiming(1, { duration: 450, easing: Easing.out(Easing.quad) }));
+    const safety = setTimeout(() => {
       if (getLaunchPhase() === "splash") setLaunchPhase("revealing");
-    }, FALLBACK_REVEAL_MS);
-    return () => clearTimeout(fallback);
-  }, [textOpacity, textShift]);
+    }, SAFETY_REVEAL_MS);
+    return () => clearTimeout(safety);
+  }, [caption]);
 
   useEffect(() => {
     if (phase !== "revealing") return;
     const finish = () => setLaunchPhase("done");
-
-    textOpacity.set(withTiming(0, { duration: GATHER_MS }));
-    textShift.set(withTiming(6, { duration: GATHER_MS }));
+    const ease = Easing.out(Easing.cubic);
 
     if (reduceMotion) {
-      // No zoom: one calm crossfade.
-      logoOpacity.set(withTiming(0, { duration: 300 }));
-      backdrop.set(
-        withTiming(0, { duration: 320 }, (done) => {
-          if (done) runOnJS(finish)();
+      cover.set(
+        withTiming(0, { duration: 300 }, (finished) => {
+          if (finished) scheduleOnRN(finish);
         }),
       );
       return;
     }
-
-    logoScale.set(
-      withSequence(
-        withTiming(0.86, { duration: GATHER_MS, easing: Easing.inOut(Easing.quad) }),
-        withTiming(ZOOM_SCALE, { duration: ZOOM_MS, easing: Easing.in(Easing.exp) }),
-      ),
-    );
-    logoOpacity.set(withDelay(LOGO_FADE_AT, withTiming(0, { duration: LOGO_FADE_MS })));
-    backdrop.set(
+    lift.set(withTiming(1, { duration: LIFT_MS, easing: ease }));
+    cover.set(
       withDelay(
-        BACKDROP_FADE_AT,
-        withTiming(0, { duration: BACKDROP_FADE_MS, easing: Easing.out(Easing.quad) }, (done) => {
-          if (done) runOnJS(finish)();
+        DISSOLVE_DELAY_MS,
+        withTiming(0, { duration: DISSOLVE_MS, easing: ease }, (finished) => {
+          if (finished) scheduleOnRN(finish);
         }),
       ),
     );
-  }, [phase, reduceMotion, textOpacity, textShift, logoScale, logoOpacity, backdrop]);
+  }, [phase, reduceMotion, lift, cover]);
 
-  const backdropStyle = useAnimatedStyle(() => ({ opacity: backdrop.get() }));
-  const logoStyle = useAnimatedStyle(() => ({
-    opacity: logoOpacity.get(),
-    transform: [{ scale: logoScale.get() }],
+  const coverStyle = useAnimatedStyle(() => ({ opacity: cover.get() }));
+  const markStyle = useAnimatedStyle(() => ({
+    opacity: 1 - lift.get(),
+    transform: [{ translateY: -LIFT_PX * lift.get() }],
   }));
-  const textStyle = useAnimatedStyle(() => ({
-    opacity: textOpacity.get(),
-    transform: [{ translateY: textShift.get() }],
+  const captionStyle = useAnimatedStyle(() => ({
+    opacity: caption.get() * (1 - lift.get()),
+    transform: [{ translateY: -LIFT_PX * lift.get() + (1 - caption.get()) * 6 }],
   }));
 
   if (phase === "done") return null;
 
   return (
-    <View
-      style={StyleSheet.absoluteFill}
-      // Taps go to the app as soon as it starts showing.
+    <Animated.View
+      style={[StyleSheet.absoluteFill, styles.cover, coverStyle]}
+      // Taps reach the app as soon as it starts showing.
       pointerEvents={phase === "splash" ? "auto" : "none"}
       accessibilityElementsHidden={phase !== "splash"}
     >
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]} />
       <View style={styles.center} pointerEvents="none">
         <Animated.Image
           source={require("../../assets/branding/logo-startup.png")}
-          style={[styles.logo, logoStyle]}
+          style={[styles.mark, markStyle]}
         />
-        <Animated.View style={[styles.below, textStyle]}>
+        <Animated.View style={[styles.caption, captionStyle]}>
           <ProdifyWordmark style={styles.wordmark} />
-          <View style={styles.dotsRow}>
-            {Array.from({ length: DOT_COUNT }).map((_, i) => (
-              <LoadingDot key={i} index={i} />
-            ))}
-          </View>
+          <SequencerDots />
         </Animated.View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  cover: {
     backgroundColor: colors.background,
   },
   center: {
@@ -162,37 +162,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // Same rounded tile as the native splash. The corner shape is in the image,
-  // so a second border radius would clip it again.
-  logo: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
+  // The rounded corners are part of the image; a border radius here would clip them twice.
+  mark: {
+    width: MARK_SIZE,
+    height: MARK_SIZE,
   },
-  // Wordmark and dots hang below the centred logo.
-  below: {
+  // Hangs below the centred mark without moving it off the native splash's position.
+  caption: {
     position: "absolute",
     top: "50%",
     left: 0,
     right: 0,
-    marginTop: LOGO_SIZE / 2 + 12,
+    marginTop: MARK_SIZE / 2 + 14,
     alignItems: "center",
-    gap: 12,
+    gap: 14,
   },
   wordmark: {
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 30,
+    lineHeight: 36,
     letterSpacing: -1,
   },
-  dotsRow: {
-    height: 18,
+  sequencer: {
+    height: 14,
     flexDirection: "row",
-    gap: 8,
     alignItems: "center",
+    gap: 7,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  step: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#2a2a2a",
+  },
+  stepLit: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 3.5,
     backgroundColor: colors.primary,
   },
 });

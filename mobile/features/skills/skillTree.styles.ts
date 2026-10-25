@@ -61,7 +61,11 @@ export const styles = StyleSheet.create({
     borderRadius: 4,
   },
   headerCopy: { flex: 1 },
-  headerTitle: { color: colors.textPrimary, fontFamily: fontFamily.heading, ...typography.cardTitle },
+  headerTitle: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    ...typography.cardTitle,
+  },
   headerSummary: { color: colors.textSecondary, ...typography.meta },
   iconButton: {
     ...glassSurface,
@@ -82,7 +86,11 @@ export const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radii.round,
   },
-  neglectedChipText: { color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, ...typography.meta },
+  neglectedChipText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.meta,
+  },
   loadingPill: {
     ...glassSurface,
     alignSelf: "center",
@@ -112,6 +120,9 @@ export const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   cardTitleWrap: { flex: 1 },
   cardEyebrow: {
@@ -172,7 +183,12 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(10,10,10,0.72)",
   },
   branchLabel: { fontFamily: fontFamily.bodyBold, fontSize: 13 },
-  centerCount: { color: colors.textPrimary, fontFamily: fontFamily.heading, fontSize: 24, lineHeight: 28 },
+  centerCount: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.heading,
+    fontSize: 24,
+    lineHeight: 28,
+  },
   centerTotal: { color: colors.textSecondary, fontSize: 11, lineHeight: 13 },
   centerLabel: {
     color: colors.textSecondary,
@@ -200,10 +216,20 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  listRowName: { flex: 1, color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, ...typography.caption },
+  listRowName: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.caption,
+  },
   listRowNameLocked: { color: colors.textSecondary },
   listRowMeta: { color: colors.textSecondary, ...typography.meta },
-  listBranchTitle: { flex: 1, color: colors.textPrimary, fontFamily: fontFamily.bodyBold, ...typography.body },
+  listBranchTitle: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.body,
+  },
 
   sectionBody: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   sectionBranches: { flex: 1, gap: spacing.sm + 2 },
@@ -217,12 +243,31 @@ export const styles = StyleSheet.create({
   },
   sectionBranchRow: { gap: 6 },
   sectionBranchTop: { flexDirection: "row", alignItems: "center", gap: spacing.xs + 2 },
-  sectionBranchName: { flex: 1, color: colors.textPrimary, fontFamily: fontFamily.bodyMedium, ...typography.meta },
-  sectionBranchLevel: { color: colors.textSecondary, fontFamily: fontFamily.bodyBold, ...typography.meta },
+  sectionBranchName: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyMedium,
+    ...typography.meta,
+  },
+  sectionBranchLevel: {
+    color: colors.textSecondary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.meta,
+  },
   sectionEmpty: { flex: 1, color: colors.textSecondary, ...typography.meta },
   sectionPlaceholderBar: { height: 10, borderRadius: radii.round, backgroundColor: colors.border },
-  thinTrack: { height: 4, borderRadius: radii.round, backgroundColor: "rgba(255,255,255,0.06)", overflow: "hidden" },
+  thinTrack: {
+    height: 4,
+    borderRadius: radii.round,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    overflow: "hidden",
+  },
   thinFill: { height: 4, borderRadius: radii.round },
-  sectionError: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  sectionError: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
   sectionRetry: { color: colors.primary, fontFamily: fontFamily.bodyBold, ...typography.caption },
 });

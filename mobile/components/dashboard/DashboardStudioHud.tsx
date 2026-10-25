@@ -24,7 +24,9 @@ type Props = {
   stopBusy: boolean;
   onQuickStart: () => void;
   onOpenFullscreen: () => void;
-  onConfirmStop: () => void;
+  onStopNow: () => void;
+  onPause: () => void;
+  pauseBusy: boolean;
   onResume: () => void;
   resumeBusy: boolean;
   hasWeeklyGoal: boolean;
@@ -71,9 +73,7 @@ export const DashboardStudioHud = memo(function DashboardStudioHud(props: Props)
 
 function WeeklyGoalBlock({ props }: { props: Props }) {
   if (!props.hasWeeklyGoal || props.weeklyGoalTarget == null) {
-    return (
-      <WeeklyQuestCard mode="setup" t={props.t} onOpen={props.onOpenStats} />
-    );
+    return <WeeklyQuestCard mode="setup" t={props.t} onOpen={props.onOpenStats} />;
   }
   return (
     <WeeklyQuestCard
@@ -94,9 +94,11 @@ function SessionAction({ props }: { props: Props }) {
         <ActiveSessionTimerBlock
           active={props.active}
           onOpenFullscreen={props.onOpenFullscreen}
-          onConfirmStop={props.onConfirmStop}
+          onStopNow={props.onStopNow}
+          onPause={props.onPause}
           onResume={props.onResume}
           stopBusy={props.stopBusy}
+          pauseBusy={props.pauseBusy}
           resumeBusy={props.resumeBusy}
         />
       </View>

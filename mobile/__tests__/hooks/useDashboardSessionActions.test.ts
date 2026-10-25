@@ -12,7 +12,8 @@ const mockT = ((key: string) => key) as TFunction;
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn() }),
-  useFocusEffect: (effect: () => void | (() => void)) => jest.requireActual("react").useEffect(effect, [effect]),
+  useFocusEffect: (effect: () => void | (() => void)) =>
+    jest.requireActual("react").useEffect(effect, [effect]),
 }));
 
 jest.mock("expo-haptics", () => ({
@@ -31,14 +32,11 @@ jest.mock("../../features/sessions/services/activeSessionApi", () => ({
   resumeActiveSession: jest.fn(),
 }));
 
-function createOptions(
-  overrides: Partial<Parameters<typeof useDashboardSessionActions>[0]> = {},
-) {
+function createOptions(overrides: Partial<Parameters<typeof useDashboardSessionActions>[0]> = {}) {
   return {
     token: "token",
     active: null,
     activeResolved: true,
-    suggestedSessionType: "beat_making",
     displayOverview: null,
     t: mockT,
     setActive: jest.fn(),
@@ -70,7 +68,7 @@ describe("useDashboardSessionActions openSessionSetup", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("opens setup when active session is resolved and none is running", () => {
+  it("opens setup with nothing preselected when no session is running", () => {
     const options = createOptions({ activeResolved: true, active: null });
     const { result } = renderHook(() => useDashboardSessionActions(options));
 
@@ -80,7 +78,7 @@ describe("useDashboardSessionActions openSessionSetup", () => {
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/session/setup",
-      params: { suggestedType: "beat_making", source: "dashboard" },
+      params: { source: "dashboard" },
     });
     expect(options.invalidateDashboard).toHaveBeenCalledTimes(1);
   });
@@ -164,7 +162,9 @@ describe("useDashboardSessionActions resumePaused", () => {
 
   it("reloads when the paused session was already stopped", async () => {
     const options = createOptions({ active: pausedSession() });
-    jest.mocked(resumeActiveSession).mockRejectedValue(new ApiError(400, "Session already stopped"));
+    jest
+      .mocked(resumeActiveSession)
+      .mockRejectedValue(new ApiError(400, "Session already stopped"));
     const { result } = renderHook(() => useDashboardSessionActions(options));
 
     await act(async () => {

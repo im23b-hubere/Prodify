@@ -50,12 +50,16 @@ export function rootStackScreenOptions(name: string): Record<string, unknown> {
       };
     case "challenge/[id]":
       return { ...HORIZONTAL_CARD_SWIPE };
+    // A sheet, not a full-screen takeover: the screen behind peeks out at the top, so
+    // swiping it down is self-explanatory and needs no hint.
     case "session-active":
       return {
-        presentation: "fullScreenModal",
-        animation: "slide_from_bottom",
-        gestureDirection: "vertical",
+        presentation: "formSheet",
+        sheetAllowedDetents: [0.9],
+        sheetGrabberVisible: true,
+        sheetCornerRadius: 28,
         gestureEnabled: true,
+        contentStyle: { backgroundColor: colors.background },
       };
     default:
       return {};

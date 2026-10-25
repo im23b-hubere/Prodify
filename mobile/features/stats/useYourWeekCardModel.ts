@@ -42,7 +42,6 @@ export function useYourWeekCardModel(props: YourWeekCardProps, editor: YourWeekG
     weekKeys,
     weekdayLetters: WEEKDAY_LETTERS,
     activeDayKeys,
-    isFullWeek: weekFill.isComplete,
     todayKey,
     nextStep,
     primaryLabel,

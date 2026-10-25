@@ -93,8 +93,9 @@ function SuggestionPill({
         pressed && styles.pillPressed,
       ]}
     >
-      <View style={[styles.icon, { backgroundColor: `${accent}${isSelected ? "40" : "1f"}` }]}>
-        <Icon size={16} color={isSelected ? colors.textPrimary : accent} strokeWidth={2.2} />
+      {/* Only the glyph carries the area's colour; the tile stays neutral until picked. */}
+      <View style={[styles.icon, isSelected && { borderColor: `${accent}99` }]}>
+        <Icon size={16} color={accent} strokeWidth={2.2} />
       </View>
       <View style={styles.text}>
         <Text style={styles.name} numberOfLines={1}>

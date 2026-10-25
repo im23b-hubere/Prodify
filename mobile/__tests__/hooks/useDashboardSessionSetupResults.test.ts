@@ -59,10 +59,8 @@ describe("useDashboardSessionSetupResults", () => {
     afterClose();
     await Promise.resolve();
     expect(dependencies.refreshDashboard).toHaveBeenCalledWith({ force: true });
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/session-active",
-      params: { id: "42", source: "dashboard" },
-    });
+    // The running session opens from its dashboard card, not on start.
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("keeps crash recovery and active-session conflict paths explicit", () => {

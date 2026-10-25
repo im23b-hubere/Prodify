@@ -1,6 +1,7 @@
 import { SKILL_BRANCHES, SKILL_FOCUSES } from "../../../constants/skills";
 import {
   buildSkillTreeLayout,
+  edgesBounds,
   labelAlignment,
   type SkillTreeNodeLayout,
 } from "../../../features/skills/skillTreeLayout";
@@ -12,7 +13,9 @@ type LabelBox = { x: number; y: number; width: number; height: number };
 type LabeledNode = SkillTreeNodeLayout & { label: LabelBox };
 
 function labeledNodes(): LabeledNode[] {
-  return layout.nodes.filter((node): node is LabeledNode => node.kind !== "center" && "label" in node);
+  return layout.nodes.filter(
+    (node): node is LabeledNode => node.kind !== "center" && "label" in node,
+  );
 }
 
 function labelCenter(box: LabelBox) {
@@ -62,6 +65,50 @@ describe("buildSkillTreeLayout", () => {
       expect(edge.length).toBeGreaterThanOrEqual(straight - 0.01);
       expect(edge.length).toBeLessThan(straight * 1.5);
     }
+  });
+
+  it("stops every edge outside the rings of the two nodes it joins", () => {
+    const nodeAt = (id: string) => layout.nodes.find((node) => node.id === id);
+    for (const edge of layout.edges) {
+      const toNode = nodeAt(edge.toId);
+      const fromNode = layout.nodes.find(
+        (node) =>
+          node !== toNode &&
+          Math.hypot(node.x - edge.from.x, node.y - edge.from.y) < ringRadius(node) + 10,
+      );
+      if (!toNode || !fromNode) throw new Error(`edge ${edge.id} lost its nodes`);
+      expect(Math.hypot(edge.to.x - toNode.x, edge.to.y - toNode.y)).toBeGreaterThan(
+        ringRadius(toNode),
+      );
+      expect(Math.hypot(edge.from.x - fromNode.x, edge.from.y - fromNode.y)).toBeGreaterThan(
+        ringRadius(fromNode),
+      );
+    }
+  });
+
+  it("boxes every edge tightly around both of its ends", () => {
+    for (const edge of layout.edges) {
+      const { bounds } = edge;
+      for (const end of [edge.from, edge.to]) {
+        expect(end.x).toBeGreaterThanOrEqual(bounds.x);
+        expect(end.y).toBeGreaterThanOrEqual(bounds.y);
+        expect(end.x).toBeLessThanOrEqual(bounds.x + bounds.width);
+        expect(end.y).toBeLessThanOrEqual(bounds.y + bounds.height);
+      }
+      expect(bounds.width * bounds.height).toBeLessThan(layout.size * layout.size * 0.25);
+    }
+  });
+
+  it("joins edge boxes into one padded box that covers each of them", () => {
+    const fan = layout.edges.filter((edge) => edge.branch === SKILL_BRANCHES[0]);
+    const box = edgesBounds(fan, 12);
+    for (const { bounds } of fan) {
+      expect(bounds.x - 12).toBeGreaterThanOrEqual(box.x);
+      expect(bounds.y - 12).toBeGreaterThanOrEqual(box.y);
+      expect(bounds.x + bounds.width + 12).toBeLessThanOrEqual(box.x + box.width);
+      expect(bounds.y + bounds.height + 12).toBeLessThanOrEqual(box.y + box.height);
+    }
+    expect(box.width * box.height).toBeLessThan(layout.size * layout.size);
   });
 
   it("places a name on every area and focus, further from you than the node", () => {

@@ -44,7 +44,7 @@ export function SessionCompleteWeekCard({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     width: "100%",
   },
 });

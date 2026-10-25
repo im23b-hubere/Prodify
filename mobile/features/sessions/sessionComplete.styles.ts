@@ -16,6 +16,9 @@ export const ADD_NUDGE_PULSE = {
   animationTimingFunction: cubicBezier(0.77, 0, 0.175, 1),
 } as const satisfies CSSAnimationProperties;
 
+/** Height of the zig-zag teeth along the receipt's torn bottom edge. */
+export const RECEIPT_TOOTH_DEPTH = 6;
+
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, padding: ui.screenPadding },
   centered: {
@@ -25,16 +28,16 @@ export const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  scrollContent: { paddingBottom: spacing.xl },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: spacing.md },
+  footer: { paddingTop: spacing.md },
+  /** The receipt itself is drawn behind the content (a torn edge needs an SVG, not a border). */
   heroCard: {
-    borderRadius: 24,
-    padding: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: RECEIPT_TOOTH_DEPTH,
     alignItems: "center",
     gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: "rgba(255,61,0,0.22)",
-    overflow: "hidden",
   },
   heroEyebrow: {
     color: colors.success,
@@ -114,6 +117,31 @@ export const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     lineHeight: 22,
   },
+  stub: {
+    alignSelf: "stretch",
+    marginHorizontal: -spacing.lg,
+    marginTop: spacing.sm,
+  },
+  stubPressed: { backgroundColor: "rgba(255,255,255,0.04)" },
+  /** Dashed tear line across the card, running between the two side notches. */
+  stubPerforation: {
+    marginHorizontal: 18,
+    borderTopWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "rgba(255,255,255,0.22)",
+  },
+  stubRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    minHeight: 48,
+  },
+  stubText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamily.bodyBold,
+    ...typography.caption,
+  },
   loadingTitle: {
     color: colors.textPrimary,
     fontFamily: fontFamily.heading,
@@ -123,12 +151,12 @@ export const styles = StyleSheet.create({
   muted: { color: colors.textSecondary, ...typography.meta, textAlign: "center" },
   actions: { marginTop: spacing.xl, gap: spacing.md },
   focusCard: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     borderRadius: radii.xl,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   focusCardNudge: {
     borderColor: colors.primary,
@@ -322,7 +350,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    minHeight: 52,
+    minHeight: 44,
     paddingVertical: spacing.xs,
   },
   creditIcon: {

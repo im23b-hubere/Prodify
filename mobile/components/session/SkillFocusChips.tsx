@@ -50,11 +50,7 @@ export function SkillFocusChips({
     <>
       {isBrowsingAreas ? (
         <AreaChips
-          prompt={
-            isProduction
-              ? t("sessionSetup.productionAreaPrompt")
-              : t("sessionSetup.practiceAreaPrompt")
-          }
+          prompt={isProduction ? undefined : t("sessionSetup.practiceAreaPrompt")}
           role="radio"
           isSelected={(branch) => fields.practiceBranch === branch}
           onPress={fields.selectPracticeBranch}
@@ -94,7 +90,8 @@ export function PracticeBranchChips({
 }
 
 type AreaChipsProps = {
-  prompt: string;
+  /** A line above the chips; left out where the chips speak for themselves. */
+  prompt?: string;
   role: "checkbox" | "radio";
   isSelected: (branch: SkillBranch) => boolean;
   onPress: (branch: SkillBranch) => void;
@@ -114,7 +111,7 @@ export function AreaChips({
   const { t } = useTranslation();
   return (
     <View style={styles.focusGroup}>
-      <Text style={styles.focusGroupTitle}>{prompt}</Text>
+      {prompt ? <Text style={styles.focusGroupTitle}>{prompt}</Text> : null}
       <View
         style={styles.focusChipRow}
         accessibilityRole={role === "radio" ? "radiogroup" : undefined}

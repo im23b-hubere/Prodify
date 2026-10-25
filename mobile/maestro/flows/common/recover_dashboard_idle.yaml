@@ -6,13 +6,9 @@ appId: com.prodify.app
       visible:
         id: dashboard-stop-session
     commands:
-      - tapOn:
+      # Ending is press-and-hold; there is no confirm dialog.
+      - longPressOn:
           id: dashboard-stop-session
-      # The dashboard button behind the alert has the same label.
-      - tapOn:
-          text: "End session"
-          rightOf:
-            text: "Keep going"
       - extendedWaitUntil:
           visible:
             id: session-complete-screen

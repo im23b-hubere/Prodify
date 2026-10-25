@@ -51,21 +51,25 @@
   },
   "onboarding": {
     "skip": "Pular",
+    "haveAccount": "Já tem uma conta?",
     "existingAccount": "Entrar",
     "next": "Próximo",
     "continue": "Continuar",
     "footerPrivacy": "Política de privacidade",
     "slide1": {
-      "title": "Boas-vindas ao Prodify",
-      "body": "Registre seu tempo de estúdio. Crie sequências. Mantenha a constância."
+      "title": "Faça cada\nsessão valer",
+      "emphasis": "valer",
+      "body": "Aperte play ao abrir sua DAW. Cada minuto te dá XP."
     },
     "slide2": {
-      "title": "Construa sua sequência",
-      "body": "Ritmo diário vale mais que picos de motivação. Vamos proteger sua sequência com lembretes inteligentes."
+      "title": "Suas habilidades crescem\na cada sessão",
+      "emphasis": "crescem",
+      "body": "Veja para onde vão suas horas e suba o nível de cada habilidade."
     },
     "slide3": {
-      "title": "Supere seus amigos",
-      "body": "Rankings e atividade te mantêm no compromisso — produza como se fosse esporte."
+      "title": "Suba os níveis\naté o topo",
+      "emphasis": "topo",
+      "body": "Passe seus amigos e suba 20 níveis até o Hall of Sound."
     },
     "goal": {
       "title": "Meta semanal de sessões",
@@ -101,6 +105,10 @@
       "experience": {
         "title": "Há quanto tempo você produz?",
         "subtitle": "Vamos ajustar seu ritmo e suas expectativas.",
+        "yearsUnit_one": "ano",
+        "yearsUnit_other": "anos",
+        "dragHint": "Arraste a linha do tempo",
+        "timelineA11y": "Anos produzindo",
         "options": {
           "under_1y": "Menos de 1 ano",
           "1_3y": "1–3 anos",
@@ -141,49 +149,42 @@
         "optionLabel": "{{count}} sessões por semana",
         "session": "sessão",
         "sessions": "sessões",
-        "cta": "Ver meu plano",
-        "previewTitle": "{{goal}} sessões por semana",
+        "cta": "Preparar meu estúdio",
+        "levels": {
+          "3": "Começo constante",
+          "5": "Rotina de semana",
+          "7": "Hábito diário",
+          "10": "Grind sério",
+          "14": "Produtor em tempo integral"
+        },
         "previewBody": "Cerca de {{daily}} {{unit}} por dia, em média."
       },
-      "plan": {
-        "title": "Seu plano Prodify",
-        "subtitle": "Personalizado a partir das suas respostas.",
-        "rowGenre": "Gênero",
-        "rowFocus": "Foco",
-        "rowWeekly": "Meta semanal",
-        "weeklyValue": "{{count}} sessões de estúdio",
-        "insightFallback": "Você quer fazer {{count}} sessões focadas por semana.",
-        "insights": {
-          "more_output": "Você quer lançar mais — {{count}} sessões/semana é seu ritmo de produção.",
-          "consistency": "Constância vence — {{count}} sessões/semana geram ritmo de verdade.",
-          "finish_tracks": "Modo finalizar ativado — {{count}} sessões/semana levam projetos até a linha de chegada.",
-          "learn_skills": "Modo evolução — {{count}} sessões/semana rendem rápido."
+      "building": {
+        "headline": "Preparando seu\nestúdio {brand}",
+        "steps": {
+          "genre": "Ajustando ao seu gênero",
+          "weeklyGoal": "Definindo sua meta semanal",
+          "skillTree": "Preparando sua árvore de habilidades",
+          "ranks": "Calculando seu nível"
         },
-        "access": {
-          "more_output": "O Prodify acompanha seu ritmo para você perceber quando está ficando para trás antes da semana acabar.",
-          "consistency": "O Prodify traz lembretes de sequência e uma revisão de domingo para te manter no caminho.",
-          "finish_tracks": "O Prodify transforma suas sessões em um plano claro para a próxima semana.",
-          "learn_skills": "O Prodify mostra quais sessões realmente fazem diferença."
-        },
-        "accessFallback": "O Prodify inclui alertas de previsão e uma revisão de domingo feita a partir das suas sessões.",
-        "cta": "Continuar"
+        "done": "Seu estúdio está pronto"
       },
       "paywall": {
         "more_output": {
-          "title": "Proteja seu ritmo de produção",
-          "body": "O Prodify te avisa cedo quando você sai das {{weekly}} sessões/semana — antes que a semana esteja perdida."
+          "title": "Lance mais música,\nsemana após semana",
+          "emphasis": "semana após semana"
         },
         "consistency": {
-          "title": "Deixe a constância no automático",
-          "body": "Bata {{weekly}} sessões/semana com alertas de previsão e uma revisão de domingo que te mantém no compromisso."
+          "title": "Faça do estúdio\num hábito",
+          "emphasis": "um hábito"
         },
         "finish_tracks": {
-          "title": "Termine o que você começa",
-          "body": "{{weekly}} sessões/semana mais insights de sessão — para suas tracks cruzarem a linha de chegada, não irem para a gaveta."
+          "title": "Transforme ideias\nem faixas prontas",
+          "emphasis": "faixas prontas"
         },
         "learn_skills": {
-          "title": "Evolua a cada sessão",
-          "body": "Registre {{weekly}} sessões/semana com tendências que mostram o que realmente funciona."
+          "title": "Evolua como\nprodutor",
+          "emphasis": "produtor"
         }
       }
     }
@@ -880,28 +881,45 @@
     "gotIt": "Entendi"
   },
   "paywall": {
-    "badge": "Acesso ao app",
+    "eyebrow": "Prodify Premium",
+    "features": {
+      "sessions": "Registre cada sessão e ganhe XP",
+      "stats": "Veja para onde vão suas horas",
+      "skills": "Evolua cada habilidade",
+      "ranks": "20 níveis até o Hall of Sound",
+      "friends": "Vença amigos em duelos 1v1",
+      "streaks": "Sequências e resumo de domingo"
+    },
+    "plan": {
+      "perWeek": "/sem",
+      "billedWeekly": "{{price}} cobrado por semana",
+      "billedSixMonth": "{{price}} cobrado a cada 6 meses",
+      "unavailable": "Preço indisponível"
+    },
+    "cancelAnytime": "Cancele quando quiser",
     "loadingOfferings": "Carregando opções de assinatura…",
     "errorTitle": "Não foi possível carregar os planos",
     "variants": {
       "value": {
-        "title": "Saiba como vai sua semana antes de perdê-la",
-        "body": "Alertas antecipados e uma revisão de domingo para manter sua semana no caminho."
+        "title": "Desbloqueie tudo\nno Prodify",
+        "emphasis": "Prodify"
       },
       "outcome": {
-        "title": "Veja progresso, não só horas",
-        "body": "Acompanhe o trabalho finalizado e descubra o que realmente funciona."
+        "title": "Transforme horas em\nprogresso real",
+        "emphasis": "progresso real"
       },
       "social_proof": {
-        "title": "Sua crew te mantém constante",
-        "body": "Check-ins com parceiro e desafios para você não sumir no meio da semana."
+        "title": "Fique à frente\ndos seus amigos",
+        "emphasis": "dos seus amigos"
       }
     },
     "cta": {
+      "unlock": "Desbloquear Prodify",
       "bestValue": "Melhor custo-benefício",
+      "discount": "Economize {{discount}}%",
       "sixMonth": "6 meses",
       "sixMonthWithPrice": "6 meses · {{price}}",
-      "weekly": "1 semana",
+      "weekly": "Semanal",
       "weeklyWithPrice": "1 semana · {{price}}",
       "continue": "Continuar",
       "restore": "Restaurar compras",
@@ -912,10 +930,6 @@
       "disclaimer": "Renova automaticamente até ser cancelada em ID Apple → Assinaturas.",
       "privacyLink": "Privacidade",
       "termsLink": "Termos"
-    },
-    "account": {
-      "signOut": "Sair",
-      "deleteAccount": "Excluir conta"
     },
     "alerts": {
       "unavailableTitle": "Indisponível",
@@ -1234,7 +1248,6 @@
     "focusHint": "Opcional · até {{max}}",
     "focusLimitReached": "{{max}} selecionados · toque em um para trocar",
     "practiceAreaPrompt": "O que você está praticando?",
-    "productionAreaPrompt": "Explore as áreas · planeje a partir de qualquer uma",
     "areaPicked_one": "{{area}}, {{count}} selecionado",
     "areaPicked_other": "{{area}}, {{count}} selecionados",
     "practiceTryThis": "Experimente · {{focus}}",
@@ -1266,8 +1279,6 @@
     "loadFailed": "Falha ao carregar",
     "loadingSession": "Carregando sessão…",
     "resumingSession": "Retomando sua sessão…",
-    "minimizeHint": "Deslize para baixo para ir ao painel",
-    "inProgress": "Sessão em andamento",
     "insightDefault": "Sua sessão está rodando.",
     "insightPastBest": "Você passou do seu recorde anterior ({{prev}}).",
     "insightLongest": "Mais longa até agora: {{duration}}",
@@ -1276,10 +1287,12 @@
     "notes": "Notas",
     "notesPlaceholder": "No que você está trabalhando?",
     "saving": "Salvando…",
-    "save": "Salvar",
+    "saved": "Salvo",
     "pause": "Pausar",
     "resume": "Retomar",
     "stopSession": "Encerrar sessão",
+    "holdToEnd": "Segure para encerrar",
+    "holdToEndA11y": "Segure para encerrar a sessão",
     "pauseFailed": "Falha ao pausar",
     "resumeFailed": "Falha ao retomar",
     "saveNotesFailed": "Não foi possível salvar as notas",
@@ -1763,7 +1776,6 @@
       "statusBehind": "Abaixo do ritmo",
       "statusCompleted": "Meta alcançada",
       "studioDays": "Dias de estúdio",
-      "fullWeek": "Semana completa",
       "sharedWith": "Compartilhado com {{names}}",
       "sharedWithFriends": "Compartilhado com amigos",
       "setTargetCta": "Definir meta semanal",
@@ -1872,6 +1884,10 @@
       "nextLine": "Nv. {{level}} · Próximo",
       "lockedLine": "Nv. {{level}} · Desbloqueia com {{xp}} XP",
       "nodeA11y": "Nível {{level}}, {{name}}, {{status}}. {{detail}}",
+      "friendMarkerA11y": "{{name}} no nível {{level}}",
+      "friendClusterA11y": "{{count}} amigos no nível {{level}}",
+      "friendClusterTitle": "Amigos no Nv {{level}}",
+      "friendOverflow": "+{{count}}",
       "status": {
         "cleared": "concluído",
         "current": "seu ranking atual",
@@ -2160,6 +2176,15 @@
     "sentBody": "{{friend}} vai receber seu convite na hora."
   },
   "friendProfile": {
+    "rankCompareTitle": "Trilha de níveis",
+    "rankCompareVs": "vs",
+    "rankCompareOpen": "Abrir trilha de níveis",
+    "rankCompareOpenA11y": "Abrir a trilha de níveis compartilhada",
+    "rankCompareVerdict": {
+      "you": "Você está mais alto na trilha — continue subindo.",
+      "them": "{{name}} está mais alto — alcance na trilha.",
+      "tied": "Mesmo nível — a próxima sessão decide."
+    },
     "challengeCta": "Desafiar {{name}}",
     "invalidProfile": "Perfil inválido.",
     "loadError": "Não foi possível carregar o perfil.",

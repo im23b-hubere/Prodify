@@ -13,20 +13,29 @@ const mockReplace = jest.fn();
 const mockUseAuth = jest.fn();
 
 jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
+jest.mock("react-native-gesture-handler", () => require("../../test/gestureHandlerStub"));
 
 jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
   const { View } = require("react-native");
   return {
     SafeAreaView: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
   };
 });
 
 jest.mock("react-native-reanimated", () => {
   const Reanimated = require("react-native-reanimated/mock");
-  const chain = { duration: () => chain, springify: () => chain, delay: () => chain };
+  const chain = {
+    duration: () => chain,
+    springify: () => chain,
+    delay: () => chain,
+    easing: () => chain,
+  };
+  Reanimated.FadeIn = chain;
   Reanimated.FadeInDown = chain;
   Reanimated.FadeInUp = chain;
+  Reanimated.useAnimatedReaction = () => undefined;
   return Reanimated;
 });
 
@@ -110,39 +119,40 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-function skipIntroAndCompleteQuiz(
-  getByText: ReturnType<typeof render>["getByText"],
-  options?: { weeklyGoal?: string },
-) {
-  fireEvent.press(getByText("onboarding.skip"));
-  fireEvent.press(getByText("onboarding.quiz.experience.options.under_1y"));
-  act(() => jest.advanceTimersByTime(200));
+type GetByText = ReturnType<typeof render>["getByText"];
+
+/** Through the three intro pages to the first question. */
+function passIntro(getByText: GetByText) {
+  fireEvent.press(getByText("onboarding.next"));
+  fireEvent.press(getByText("onboarding.next"));
+  fireEvent.press(getByText("onboarding.continue"));
+}
+
+/** Answers every question (the timeline starts on "<1 year") and lets the set-up finish. */
+function answerQuiz(getByText: GetByText, options?: { weeklyGoal?: string }) {
+  fireEvent.press(getByText("onboarding.continue"));
   fireEvent.press(getByText("onboarding.quiz.genre.options.hip_hop"));
-  act(() => jest.advanceTimersByTime(200));
+  fireEvent.press(getByText("onboarding.continue"));
   fireEvent.press(getByText("onboarding.quiz.producerGoal.options.finish_tracks"));
-  act(() => jest.advanceTimersByTime(200));
+  fireEvent.press(getByText("onboarding.continue"));
   if (options?.weeklyGoal) fireEvent.press(getByText(options.weeklyGoal));
   fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
-  fireEvent.press(getByText("onboarding.quiz.plan.cta"));
+  // Let the studio set-up animation finish so the workflow moves on.
+  act(() => jest.advanceTimersByTime(6000));
+}
+
+function skipIntroAndCompleteQuiz(getByText: GetByText, options?: { weeklyGoal?: string }) {
+  passIntro(getByText);
+  answerQuiz(getByText, options);
 }
 
 describe("Onboarding navigation and quiz", () => {
   it("requires quiz answers before sending anonymous users to account creation", async () => {
-    const { getByText, queryByText } = render(<OnboardingScreen />);
+    const { getByText } = render(<OnboardingScreen />);
 
-    fireEvent.press(getByText("onboarding.skip"));
+    passIntro(getByText);
     expect(getByText("onboarding.quiz.experience.title")).toBeTruthy();
-    expect(queryByText("onboarding.skip")).toBeNull();
-
-    fireEvent.press(getByText("onboarding.quiz.experience.options.under_1y"));
-    act(() => jest.advanceTimersByTime(200));
-    fireEvent.press(getByText("onboarding.quiz.genre.options.hip_hop"));
-    act(() => jest.advanceTimersByTime(200));
-    fireEvent.press(getByText("onboarding.quiz.producerGoal.options.finish_tracks"));
-    act(() => jest.advanceTimersByTime(200));
-    fireEvent.press(getByText("10"));
-    fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
-    fireEvent.press(getByText("onboarding.quiz.plan.cta"));
+    answerQuiz(getByText, { weeklyGoal: "10" });
 
     await waitFor(() => {
       expect(savePendingWeeklyGoal).toHaveBeenCalledWith(10);
@@ -187,21 +197,20 @@ describe("Onboarding navigation and quiz", () => {
     fireEvent.press(getByText("onboarding.continue"));
     expect(getByText("onboarding.quiz.experience.title")).toBeTruthy();
 
-    fireEvent.press(getByText("onboarding.quiz.experience.options.under_1y"));
-    act(() => jest.advanceTimersByTime(200));
+    fireEvent.press(getByText("onboarding.continue"));
     expect(getByText("onboarding.quiz.genre.title")).toBeTruthy();
 
     fireEvent.press(getByText("onboarding.quiz.genre.options.hip_hop"));
-    act(() => jest.advanceTimersByTime(200));
+    fireEvent.press(getByText("onboarding.continue"));
     expect(getByText("onboarding.quiz.producerGoal.title")).toBeTruthy();
 
     fireEvent.press(getByText("onboarding.quiz.producerGoal.options.finish_tracks"));
-    act(() => jest.advanceTimersByTime(200));
+    fireEvent.press(getByText("onboarding.continue"));
     expect(getByText("onboarding.quiz.weeklyGoal.title")).toBeTruthy();
 
     fireEvent.press(getByText("14"));
     fireEvent.press(getByText("onboarding.quiz.weeklyGoal.cta"));
-    expect(getByText("onboarding.quiz.plan.title")).toBeTruthy();
+    expect(getByText("onboarding.quiz.building.steps.genre")).toBeTruthy();
   });
 });
 

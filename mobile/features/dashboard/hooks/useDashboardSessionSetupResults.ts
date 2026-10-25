@@ -1,9 +1,7 @@
-import { useRouter } from "expo-router";
 import { useCallback } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { TFunction } from "i18next";
 
-import { runningSessionHref } from "../../../lib/stackNavigation";
 import { tryParseSessionDto } from "../../../lib/sessionDto";
 import type { SessionDto } from "../../../types/session";
 
@@ -26,7 +24,6 @@ export function useDashboardSessionSetupResults({
   setError,
   t,
 }: Dependencies) {
-  const router = useRouter();
   const recoverFromCrash = useCallback(
     () => closeSetupModal(openSetupScreen),
     [closeSetupModal, openSetupScreen],
@@ -49,12 +46,11 @@ export function useDashboardSessionSetupResults({
 
       setActive(session);
       setSessions((previous) => [session, ...previous.filter((item) => item.id !== session.id)]);
-      router.push(runningSessionHref(session.id, "dashboard"));
       closeSetupModal(() => {
         void refreshDashboard({ force: true }).catch(() => undefined);
       });
     },
-    [closeSetupModal, refreshDashboard, router, setActive, setError, setSessions, t],
+    [closeSetupModal, refreshDashboard, setActive, setError, setSessions, t],
   );
 
   return { recoverFromCrash, resolveActiveSessionConflict, handleSessionStarted };

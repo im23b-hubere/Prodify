@@ -11,10 +11,10 @@ import type { SessionStatsDto } from "../../../types/session";
 
 describe("stats heatmap utils", () => {
   const days = [
-    { date: "2026-07-01", seconds: 0, intensity: 0 },
-    { date: "2026-07-02", seconds: 600, intensity: 2 },
-    { date: "2026-07-03", seconds: 0, intensity: 0 },
-    { date: "2026-07-04", seconds: 900, intensity: 3 },
+    { date: "2026-07-01", seconds: 0, intensity: 0, counted: false },
+    { date: "2026-07-02", seconds: 600, intensity: 2, counted: true },
+    { date: "2026-07-03", seconds: 0, intensity: 0, counted: false },
+    { date: "2026-07-04", seconds: 900, intensity: 3, counted: true },
   ];
 
   it("counts active heatmap days", () => {
@@ -45,7 +45,7 @@ describe("stats heatmap utils", () => {
     const ninetyDays = Array.from({ length: 90 }, (_, index) => {
       const date = new Date(2026, 5, 21 + index);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-      return { date: key, seconds: 0, intensity: 0 };
+      return { date: key, seconds: 0, intensity: 0, counted: false };
     });
 
     const grid = buildHeatmapWeekGrid(ninetyDays);

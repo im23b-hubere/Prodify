@@ -6,12 +6,19 @@ import { colors } from "../constants/theme";
 
 import { useAuth } from "../context/AuthContext";
 import { getLaunchPhase, setLaunchPhase } from "../lib/launch";
-import { readOnboardingComplete, resolvePostAuthRoute, toHref } from "../lib/postAuthNavigation";
+import {
+  readOnboardingComplete,
+  resolvePostAuthRoute,
+  toHref,
+  type ResolvedRoute,
+} from "../lib/postAuthNavigation";
 
 /** The logo stays at least this long, so the launch reads as a beat, not a flash. */
 const MIN_SPLASH_MS = 1300;
 /** Time for the first screen to draw underneath before the logo zooms away. */
 const SETTLE_MS = 260;
+/** Dev only: open onboarding on every launch, ignoring the stored "done" flag. */
+const DEV_FORCE_ONBOARDING = __DEV__ && false;
 
 /**
  * The start route. The logo layer (LaunchOverlay in the root layout) covers it; this
@@ -33,12 +40,14 @@ export default function Index() {
   useEffect(() => {
     if (!hydrated || onboarded === null) return;
 
-    const route = resolvePostAuthRoute({
-      hasToken: Boolean(token),
-      onboardingComplete: onboarded,
-      entryPoint: "app_launch",
-      allowPaywallPrompt: false,
-    });
+    const route: ResolvedRoute = DEV_FORCE_ONBOARDING
+      ? { pathname: "/onboarding" }
+      : resolvePostAuthRoute({
+          hasToken: Boolean(token),
+          onboardingComplete: onboarded,
+          entryPoint: "app_launch",
+          allowPaywallPrompt: false,
+        });
     // Later visits to "/" (e2e bootstrap, dev redirects) have no logo to hold.
     if (getLaunchPhase() !== "splash") {
       router.replace(toHref(route));

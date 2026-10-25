@@ -24,6 +24,11 @@ const CURVE_CONTROL_RADIUS = 351;
 const CANVAS_PAD = 16;
 /** Empty slots between two areas keep their fans visually apart. */
 const GAP_SLOTS_PER_BRANCH = 3;
+/**
+ * Room left between an edge's end and the ring around the node it joins. Edges stop there
+ * instead of at the node's centre, so where many meet, their glow never covers the icon.
+ */
+const EDGE_RING_CLEARANCE = 4;
 
 export type TreePoint = { x: number; y: number };
 
@@ -60,6 +65,8 @@ export type SkillTreeEdgeLayout = {
   path: string;
   /** Drawn length, so the edge can be traced in from its start. */
   length: number;
+  /** Box the centre line stays inside: a curve never leaves the triangle of its points. */
+  bounds: SkillTreeLabelBox;
 };
 
 export type SkillTreeLayout = {
@@ -111,14 +118,21 @@ export function buildSkillTreeLayout(): SkillTreeLayout {
       size: BRANCH_NODE_SIZE,
       label: nodeLabel({ ...branchPoint, size: BRANCH_NODE_SIZE, kind: "branch" }, origin),
     });
+    const spoke = trimLine(
+      origin,
+      branchPoint,
+      edgeClearance(CENTER_NODE_SIZE),
+      edgeClearance(BRANCH_NODE_SIZE),
+    );
     edges.push({
       id: `center-${branch}`,
       branch,
       toId: branch,
-      from: origin,
-      to: branchPoint,
-      path: `M ${origin.x} ${origin.y} L ${branchPoint.x} ${branchPoint.y}`,
-      length: Math.hypot(branchPoint.x - origin.x, branchPoint.y - origin.y),
+      from: spoke.start,
+      to: spoke.end,
+      path: `M ${spoke.start.x} ${spoke.start.y} L ${spoke.end.x} ${spoke.end.y}`,
+      length: Math.hypot(spoke.end.x - spoke.start.x, spoke.end.y - spoke.start.y),
+      bounds: boxAround([spoke.start, spoke.end]),
     });
 
     focuses.forEach(({ id }, index) => {
@@ -134,14 +148,22 @@ export function buildSkillTreeLayout(): SkillTreeLayout {
         size: FOCUS_NODE_SIZE,
         label: nodeLabel({ ...focusPoint, size: FOCUS_NODE_SIZE, kind: "focus" }, origin),
       });
+      const curve = trimQuadratic(
+        branchPoint,
+        control,
+        focusPoint,
+        edgeClearance(BRANCH_NODE_SIZE),
+        edgeClearance(FOCUS_NODE_SIZE),
+      );
       edges.push({
         id: `${branch}-${id}`,
         branch,
         toId: id,
-        from: branchPoint,
-        to: focusPoint,
-        path: `M ${branchPoint.x} ${branchPoint.y} Q ${control.x} ${control.y} ${focusPoint.x} ${focusPoint.y}`,
-        length: quadraticCurveLength(branchPoint, control, focusPoint),
+        from: curve.start,
+        to: curve.end,
+        path: `M ${curve.start.x} ${curve.start.y} Q ${curve.control.x} ${curve.control.y} ${curve.end.x} ${curve.end.y}`,
+        length: quadraticCurveLength(curve.start, curve.control, curve.end),
+        bounds: boxAround([curve.start, curve.control, curve.end]),
       });
     });
     slot += focuses.length + GAP_SLOTS_PER_BRANCH;
@@ -153,6 +175,26 @@ export function buildSkillTreeLayout(): SkillTreeLayout {
     nodes,
     edges,
   };
+}
+
+function boxAround(points: TreePoint[]): SkillTreeLabelBox {
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
+
+/**
+ * One box around several edges, grown by `pad` on every side so thick strokes and round caps
+ * stay inside. Lets a layer draw just the part of the canvas its edges cover.
+ */
+export function edgesBounds(edges: readonly SkillTreeEdgeLayout[], pad: number): SkillTreeLabelBox {
+  const left = Math.min(...edges.map((edge) => edge.bounds.x)) - pad;
+  const top = Math.min(...edges.map((edge) => edge.bounds.y)) - pad;
+  const right = Math.max(...edges.map((edge) => edge.bounds.x + edge.bounds.width)) + pad;
+  const bottom = Math.max(...edges.map((edge) => edge.bounds.y + edge.bounds.height)) + pad;
+  return { x: left, y: top, width: right - left, height: bottom - top };
 }
 
 function canvasRadius() {
@@ -175,7 +217,9 @@ function nodeLabel(
   const sin = dy / length;
   const tangent = { x: -sin, y: cos };
   const dir =
-    node.kind === "branch" ? normalize(cos + tangent.x * 1.35, sin + tangent.y * 1.35) : { x: cos, y: sin };
+    node.kind === "branch"
+      ? normalize(cos + tangent.x * 1.35, sin + tangent.y * 1.35)
+      : { x: cos, y: sin };
   const dirX = dir.x;
   const dirY = dir.y;
   const inwardExtent = Math.abs(dirX) * (width / 2) + Math.abs(dirY) * (height / 2);
@@ -203,8 +247,10 @@ export type LabelAlignment = {
  */
 export function labelAlignment(node: TreePoint, box: SkillTreeLabelBox): LabelAlignment {
   const dir = normalize(box.x + box.width / 2 - node.x, box.y + box.height / 2 - node.y);
-  const towardNodeX = dir.x > LABEL_HUG_THRESHOLD ? "start" : dir.x < -LABEL_HUG_THRESHOLD ? "end" : "center";
-  const towardNodeY = dir.y > LABEL_HUG_THRESHOLD ? "start" : dir.y < -LABEL_HUG_THRESHOLD ? "end" : "center";
+  const towardNodeX =
+    dir.x > LABEL_HUG_THRESHOLD ? "start" : dir.x < -LABEL_HUG_THRESHOLD ? "end" : "center";
+  const towardNodeY =
+    dir.y > LABEL_HUG_THRESHOLD ? "start" : dir.y < -LABEL_HUG_THRESHOLD ? "end" : "center";
   const flex = { start: "flex-start", center: "center", end: "flex-end" } as const;
   const text = { start: "left", center: "center", end: "right" } as const;
   return {
@@ -217,6 +263,67 @@ export function labelAlignment(node: TreePoint, box: SkillTreeLabelBox): LabelAl
 function normalize(x: number, y: number): TreePoint {
   const length = Math.hypot(x, y) || 1;
   return { x: x / length, y: y / length };
+}
+
+function edgeClearance(nodeSize: number) {
+  return ringRadius(nodeSize) + EDGE_RING_CLEARANCE;
+}
+
+function trimLine(start: TreePoint, end: TreePoint, startCut: number, endCut: number) {
+  const dir = normalize(end.x - start.x, end.y - start.y);
+  return {
+    start: { x: start.x + dir.x * startCut, y: start.y + dir.y * startCut },
+    end: { x: end.x - dir.x * endCut, y: end.y - dir.y * endCut },
+  };
+}
+
+function quadraticPoint(start: TreePoint, control: TreePoint, end: TreePoint, t: number) {
+  return {
+    x: (1 - t) ** 2 * start.x + 2 * (1 - t) * t * control.x + t ** 2 * end.x,
+    y: (1 - t) ** 2 * start.y + 2 * (1 - t) * t * control.y + t ** 2 * end.y,
+  };
+}
+
+/** The curve parameter where the curve first gets `distance` away from `anchor`. */
+function quadraticParamAtDistance(
+  start: TreePoint,
+  control: TreePoint,
+  end: TreePoint,
+  anchor: TreePoint,
+  distance: number,
+  fromEnd: boolean,
+) {
+  let low = 0;
+  let high = 1;
+  for (let i = 0; i < 30; i += 1) {
+    const mid = (low + high) / 2;
+    const point = quadraticPoint(start, control, end, mid);
+    const away = Math.hypot(point.x - anchor.x, point.y - anchor.y);
+    // From the start, distance grows with t; from the end it shrinks.
+    if (fromEnd ? away > distance : away < distance) low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
+}
+
+/**
+ * The same quadratic curve, cut short at both ends: its end points move in along the curve
+ * and the control point is re-derived (blossoming), so the shape doesn't change.
+ */
+function trimQuadratic(
+  start: TreePoint,
+  control: TreePoint,
+  end: TreePoint,
+  startCut: number,
+  endCut: number,
+) {
+  const t0 = quadraticParamAtDistance(start, control, end, start, startCut, false);
+  const t1 = quadraticParamAtDistance(start, control, end, end, endCut, true);
+  const blossom = (a: number, b: number) => ({
+    x: (1 - a) * (1 - b) * start.x + ((1 - a) * b + a * (1 - b)) * control.x + a * b * end.x,
+    y: (1 - a) * (1 - b) * start.y + ((1 - a) * b + a * (1 - b)) * control.y + a * b * end.y,
+  });
+  return { start: blossom(t0, t0), control: blossom(t0, t1), end: blossom(t1, t1) };
 }
 
 function quadraticCurveLength(start: TreePoint, control: TreePoint, end: TreePoint, steps = 24) {

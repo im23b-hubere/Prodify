@@ -5,19 +5,18 @@ import type { ComponentProps } from "react";
 import { DashboardStudioHud } from "../../../components/dashboard/DashboardStudioHud";
 import type { SessionDto } from "../../../types/session";
 
-jest.mock("lucide-react-native", () => ({
-  Shield: () => null,
-  Play: () => null,
-  Flame: () => null,
-  Clock: () => null,
-}));
+jest.mock("lucide-react-native", () => new Proxy({}, { get: () => () => null }));
 
 jest.mock("react-native-reanimated", () => {
   const Reanimated = require("react-native-reanimated/mock");
-  Reanimated.useSharedValue = (value: number) => ({ value });
+  Reanimated.useSharedValue = (value: number) => {
+    const shared = { value, get: () => shared.value, set: (next: number) => (shared.value = next) };
+    return shared;
+  };
   Reanimated.withRepeat = (value: unknown) => value;
   Reanimated.withSequence = (...values: unknown[]) => values[0];
   Reanimated.withTiming = (value: unknown) => value;
+  Reanimated.cancelAnimation = () => undefined;
   return Reanimated;
 });
 
@@ -51,7 +50,9 @@ const baseProps = {
   stopBusy: false,
   onQuickStart: mockOnQuickStart,
   onOpenFullscreen: jest.fn(),
-  onConfirmStop: jest.fn(),
+  onStopNow: jest.fn(),
+  onPause: jest.fn(),
+  pauseBusy: false,
   onResume: jest.fn(),
   resumeBusy: false,
   hasWeeklyGoal: false,
@@ -127,6 +128,31 @@ describe("DashboardStudioHud session start gate", () => {
     expect(screen.queryByTestId("dashboard-start-session-loading")).toBeNull();
     expect(screen.getByTestId("dashboard-stop-session")).toBeTruthy();
     expect(screen.getByText("Live")).toBeTruthy();
+  });
+
+  it("pauses a live session from its round pause key", () => {
+    const onPause = jest.fn();
+    render(
+      <DashboardStudioHud
+        {...baseProps}
+        activeResolved={true}
+        onPause={onPause}
+        active={
+          {
+            id: 9,
+            user_id: 1,
+            started_at: "2026-08-31T10:00:00.000Z",
+            stopped_at: null,
+            duration_seconds: 300,
+            session_type: "beat_making",
+            notes: null,
+          } satisfies SessionDto
+        }
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("dashboard-pause-session"));
+    expect(onPause).toHaveBeenCalledTimes(1);
   });
 
   it("shows a paused session as paused, with resume beside end", () => {

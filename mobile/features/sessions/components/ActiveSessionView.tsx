@@ -1,11 +1,10 @@
 import { useKeepAwake } from "expo-keep-awake";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
-import { GestureDetector } from "react-native-gesture-handler";
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated from "react-native-reanimated";
 
-import { PrimaryButton } from "../../../components/ui/PrimaryButton";
+import { HoldToStopButton, PauseButton } from "../../../components/session/SessionTransport";
 import { sessionTypeLabel } from "../../../lib/sessionI18n";
 import { formatDurationWords } from "../../../lib/sessionTime";
 import { formatSessionClock } from "../activeSessionPresentation";
@@ -17,14 +16,10 @@ import { ActiveSessionEditor } from "./ActiveSessionEditor";
 export function ActiveSessionView({ controller }: { controller: ActiveSessionController }) {
   useKeepAwake();
   if (!controller.session) return <ActiveSessionBoot controller={controller} />;
-  const body = <ActiveSessionBody controller={controller} />;
+  // Presented as a sheet: the top inset belongs to the screen peeking out behind it.
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      {controller.fromDashboard ? (
-        <Animated.View style={[styles.flex, controller.dismissDragStyle]}>{body}</Animated.View>
-      ) : (
-        body
-      )}
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+      <ActiveSessionBody controller={controller} />
     </SafeAreaView>
   );
 }
@@ -39,55 +34,54 @@ function ActiveSessionBody({ controller }: { controller: ActiveSessionController
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={8}
     >
-      {controller.fromDashboard ? (
-        <GestureDetector gesture={controller.swipeDownGesture}>
-          <View style={styles.minimizeStrip}>
-            <View style={styles.grabber} />
-            <Text style={styles.minimizeHint}>{t("sessionActive.minimizeHint")}</Text>
-          </View>
-        </GestureDetector>
-      ) : null}
-      <View style={styles.header}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{sessionTypeLabel(session.session_type, t)}</Text>
-        </View>
-        <Text style={styles.warn}>{t("sessionActive.inProgress")}</Text>
+      <View style={styles.liveRow}>
+        {controller.isPaused ? null : (
+          <Animated.View style={[styles.liveDot, controller.pulseStyle]} />
+        )}
+        <Text style={controller.isPaused ? styles.pausedLabel : styles.liveLabel}>
+          {controller.isPaused ? t("dashboard.pausedLabel") : t("dashboard.liveLabel")}
+        </Text>
+        <Text style={styles.liveSep}>·</Text>
+        <Text style={styles.typeLabel}>{sessionTypeLabel(session.session_type, t)}</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Animated.View style={[styles.timerWrap, controller.pulseStyle]}>
-          <Text style={styles.timer}>{formatSessionClock(controller.elapsed)}</Text>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.timerWrap}>
+          <Text style={[styles.timer, controller.isPaused && styles.timerPaused]}>
+            {formatSessionClock(controller.elapsed)}
+          </Text>
           <Text style={styles.subTimer}>{formatDurationWords(controller.elapsed, t)}</Text>
-        </Animated.View>
-        <View style={styles.insightCard}>
-          <Text style={styles.insightText}>{controller.insightLine}</Text>
+          <Text style={styles.insight}>{controller.insightLine}</Text>
         </View>
         <ActiveSessionEditor controller={controller} />
         {controller.error ? <Text style={styles.err}>{controller.error}</Text> : null}
-        <View style={styles.actions}>
-          {controller.isPaused ? (
-            <PrimaryButton
-              label={t("sessionActive.resume")}
-              onPress={() => void controller.resume()}
-              loading={controller.busy}
-            />
-          ) : (
-            <Pressable
-              style={styles.pauseOutline}
-              onPress={() => void controller.pause()}
-              disabled={controller.busy}
-            >
-              <Text style={styles.pauseText}>{t("sessionActive.pause")}</Text>
-            </Pressable>
-          )}
-        </View>
-        <Pressable
-          style={styles.stopBtn}
-          onPress={controller.confirmStop}
-          disabled={controller.busy}
-        >
-          <Text style={styles.stopTxt}>{t("sessionActive.stopSession")}</Text>
-        </Pressable>
       </ScrollView>
+      <ActionBar controller={controller} />
     </KeyboardAvoidingView>
+  );
+}
+
+/** The same round transport keys as the dashboard deck: pause, and hold to stop. */
+function ActionBar({ controller }: { controller: ActiveSessionController }) {
+  const { t } = useTranslation();
+  const paused = controller.isPaused;
+  return (
+    <View style={styles.actionBar}>
+      <PauseButton
+        paused={paused}
+        disabled={controller.busy}
+        label={paused ? t("sessionActive.resume") : t("sessionActive.pause")}
+        onPress={() => void (paused ? controller.resume() : controller.pause())}
+      />
+      <HoldToStopButton
+        disabled={controller.busy}
+        label={t("sessionActive.holdToEnd")}
+        accessibilityHint={t("sessionActive.holdToEndA11y")}
+        onHoldComplete={controller.stopNow}
+      />
+    </View>
   );
 }

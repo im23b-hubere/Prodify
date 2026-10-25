@@ -19,7 +19,7 @@ import { skillFocusText } from "../../../lib/skillI18n";
 import { SkillProgressBar } from "../../sessions/components/SkillProgressBar";
 import { formatCompactDuration } from "../../sessions/skillProgressPresentation";
 import type { SkillTreeNodeId } from "../hooks/useSkillTreeScreen";
-import { LOCKED_ICON_COLOR, LOCKED_NODE_FILL, styles } from "../skillTree.styles";
+import { LOCKED_ICON_COLOR, styles } from "../skillTree.styles";
 import { daysSince, type SkillNodeState, type SkillTreeModel } from "../skillTreePresentation";
 
 type SkillNodeDetailCardProps = {
@@ -198,12 +198,8 @@ function CardHeader({
   return (
     <View style={styles.cardHeader}>
       {IconComponent ? (
-        <View
-          style={[
-            styles.cardIcon,
-            { backgroundColor: isUnlocked ? `${accent}24` : LOCKED_NODE_FILL },
-          ]}
-        >
+        // A neutral tile: only the glyph carries the area's colour.
+        <View style={styles.cardIcon}>
           <IconComponent size={22} color={isUnlocked ? accent : LOCKED_ICON_COLOR} />
         </View>
       ) : null}

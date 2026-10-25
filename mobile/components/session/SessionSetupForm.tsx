@@ -42,8 +42,11 @@ export function SessionSetupForm({
         <Text style={[styles.sectionLabel, styles.sectionLabelFirst]}>
           {t("sessionActive.sessionType")}
         </Text>
-        <SessionTypeSelector selectedType={form.selectedType} onSelect={form.setSelectedType} />
-        <SessionFocusPicker form={form} />
+        <SessionTypeSelector
+          selectedType={form.selectedType}
+          onSelect={form.setSelectedType}
+          belowSelected={<SessionFocusPicker form={form} />}
+        />
         <Pressable
           style={({ pressed }) => [styles.optionalToggle, pressed && styles.optionalTogglePressed]}
           onPress={() => {

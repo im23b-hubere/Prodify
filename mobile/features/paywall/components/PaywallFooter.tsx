@@ -1,65 +1,83 @@
+import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 
 import { paywallStyles as styles } from "../paywall.styles";
 
 type Props = {
-  signedIn: boolean;
   busy: boolean;
+  restoreDisabled: boolean;
+  onRestore: () => void;
   onOpenPrivacy: () => void;
   onOpenTerms: () => void;
-  onLogout: () => void;
-  onDeleteAccount: () => void;
+  /** Signed in only: a quiet way out for anyone who decides not to subscribe. */
+  onDeleteAccount?: () => void;
 };
 
-export function PaywallFooter(props: Props) {
+/** The renewal note, then restore and the legal links the App Store asks for. */
+export function PaywallFooter({
+  busy,
+  restoreDisabled,
+  onRestore,
+  onOpenPrivacy,
+  onOpenTerms,
+  onDeleteAccount,
+}: Props) {
   const { t } = useTranslation();
-  return (
-    <View style={styles.footer}>
-      <Text style={styles.disclaimer}>{t("paywall.legal.disclaimer")}</Text>
-      <View style={styles.legalRow}>
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={t("paywall.legal.privacyLink")}
-          onPress={props.onOpenPrivacy}
-        >
-          <Text style={styles.legalLink}>{t("paywall.legal.privacyLink")}</Text>
-        </Pressable>
-        <Text style={styles.legalSep}>·</Text>
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={t("paywall.legal.termsLink")}
-          onPress={props.onOpenTerms}
-        >
-          <Text style={styles.legalLink}>{t("paywall.legal.termsLink")}</Text>
-        </Pressable>
-      </View>
-      {props.signedIn ? <PaywallAccountActions {...props} /> : null}
-    </View>
-  );
-}
+  const links = [
+    {
+      label: busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore"),
+      a11yLabel: t("paywall.cta.restore"),
+      role: "button" as const,
+      onPress: onRestore,
+      disabled: restoreDisabled,
+    },
+    {
+      label: t("paywall.legal.termsLink"),
+      a11yLabel: t("paywall.legal.termsLink"),
+      role: "link" as const,
+      onPress: onOpenTerms,
+      disabled: false,
+    },
+    {
+      label: t("paywall.legal.privacyLink"),
+      a11yLabel: t("paywall.legal.privacyLink"),
+      role: "link" as const,
+      onPress: onOpenPrivacy,
+      disabled: false,
+    },
+  ];
 
-function PaywallAccountActions({ busy, onLogout, onDeleteAccount }: Props) {
-  const { t } = useTranslation();
   return (
-    <View style={styles.legalRow}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t("paywall.account.signOut")}
-        onPress={onLogout}
-        disabled={busy}
-      >
-        <Text style={styles.accountActionText}>{t("paywall.account.signOut")}</Text>
-      </Pressable>
-      <Text style={styles.legalSep}>·</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t("paywall.account.deleteAccount")}
-        onPress={onDeleteAccount}
-        disabled={busy}
-      >
-        <Text style={styles.accountActionText}>{t("paywall.account.deleteAccount")}</Text>
-      </Pressable>
+    <View>
+      <Text style={styles.disclaimer}>{t("paywall.legal.disclaimer")}</Text>
+      <View style={styles.links}>
+        {links.map((link, index) => (
+          <Fragment key={link.a11yLabel}>
+            {index > 0 ? <Text style={styles.linkDot}>·</Text> : null}
+            <Pressable
+              accessibilityRole={link.role}
+              accessibilityLabel={link.a11yLabel}
+              onPress={link.onPress}
+              disabled={link.disabled}
+              style={styles.link}
+            >
+              <Text style={styles.linkText}>{link.label}</Text>
+            </Pressable>
+          </Fragment>
+        ))}
+      </View>
+      {onDeleteAccount ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("legal.deleteAccount.button")}
+          onPress={onDeleteAccount}
+          disabled={busy}
+          style={styles.deleteAccount}
+        >
+          <Text style={styles.deleteAccountText}>{t("legal.deleteAccount.button")}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

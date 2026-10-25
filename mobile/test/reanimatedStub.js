@@ -28,6 +28,8 @@ module.exports = {
   FadeInLeft: enter,
   FadeInRight: enter,
   ZoomIn: enter,
+  ZoomOut: enter,
+  LinearTransition: enter,
   SlideInDown: enter,
   SlideOutDown: enter,
   useSharedValue: (initial) => {

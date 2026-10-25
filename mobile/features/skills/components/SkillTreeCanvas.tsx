@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { sessionTypeAccent } from "../../../components/session/SkillFocusChips";
 import { SKILL_BRANCH_ICONS, SKILL_FOCUS_ICONS } from "../../../constants/skillIcons";
@@ -33,13 +34,19 @@ const PATH_TIMING = {
 const ENTER_BASE_DELAY = 40;
 const ENTER_DELAY_PER_POINT = 0.75;
 
-/** Traces the unlocked edges in once the profile has arrived. */
+/** Uncovers the edges once the profile has arrived; `isRevealed` once that has finished. */
 function useTreeReveal(isReady: boolean) {
   const reveal = useSharedValue(0);
+  const [isRevealed, setIsRevealed] = useState(false);
   useEffect(() => {
-    if (isReady) reveal.set(withTiming(1, REVEAL_TIMING));
+    if (!isReady) return;
+    reveal.set(
+      withTiming(1, REVEAL_TIMING, (finished) => {
+        if (finished) scheduleOnRN(setIsRevealed, true);
+      }),
+    );
   }, [isReady, reveal]);
-  return reveal;
+  return { reveal, isRevealed };
 }
 
 /** Retraces you → area → skill each time a node is selected. */
@@ -64,7 +71,7 @@ function enterDelayFor(node: SkillTreeNodeLayout) {
 export function SkillTreeCanvas({ screen }: { screen: SkillTreeScreenState }) {
   const { viewport, model, highlighted, isReady, selectedId } = screen;
   const { size } = SKILL_TREE_LAYOUT;
-  const reveal = useTreeReveal(isReady);
+  const { reveal, isRevealed } = useTreeReveal(isReady);
   const pathReveal = usePathReveal(selectedId);
   return (
     <GestureDetector gesture={viewport.gesture}>
@@ -88,6 +95,7 @@ export function SkillTreeCanvas({ screen }: { screen: SkillTreeScreenState }) {
                 layout={SKILL_TREE_LAYOUT}
                 model={model}
                 reveal={reveal}
+                isRevealed={isRevealed}
                 pathReveal={pathReveal}
                 selectedId={selectedId}
                 highlighted={highlighted}

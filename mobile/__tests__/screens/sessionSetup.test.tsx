@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import SessionSetupScreen from "../../app/session/setup";
 
 const mockReplace = jest.fn();
+const mockDismiss = jest.fn();
 const mockParams: { source?: string } = {};
 
 jest.mock("expo-router", () => ({
@@ -12,7 +13,7 @@ jest.mock("expo-router", () => ({
     canGoBack: () => true,
     dismissTo: jest.fn(),
     canDismiss: () => true,
-    dismiss: jest.fn(),
+    dismiss: mockDismiss,
   }),
   useLocalSearchParams: () => mockParams,
 }));
@@ -49,30 +50,27 @@ jest.mock("../../components/session/SessionSetupForm", () => {
 describe("SessionSetupScreen", () => {
   beforeEach(() => {
     mockReplace.mockClear();
+    mockDismiss.mockClear();
     delete mockParams.source;
   });
 
-  it("replaces itself with the running session after a start", () => {
+  it("closes after a start instead of opening the running session", () => {
     mockParams.source = "friends";
     render(<SessionSetupScreen />);
 
     fireEvent.press(screen.getByTestId("session-started"));
 
-    expect(mockReplace).toHaveBeenCalledWith({
-      pathname: "/session-active",
-      params: { id: "5", source: "friends" },
-    });
+    expect(mockDismiss).toHaveBeenCalledTimes(1);
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it("replaces itself with the session a 409 already named", () => {
+  it("closes when a 409 names a session that is already running", () => {
     mockParams.source = "stats";
     render(<SessionSetupScreen />);
 
     fireEvent.press(screen.getByTestId("session-conflict"));
 
-    expect(mockReplace).toHaveBeenCalledWith({
-      pathname: "/session-active",
-      params: { id: "8", source: "stats" },
-    });
+    expect(mockDismiss).toHaveBeenCalledTimes(1);
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 });

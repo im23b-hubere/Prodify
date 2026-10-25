@@ -2,10 +2,10 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { LegalConsentNotice } from "../../../features/auth/components/LegalConsentNotice";
 
-const mockPush = jest.fn();
+const mockOpenLegalPage = jest.fn();
 
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush }),
+jest.mock("../../../constants/legal", () => ({
+  openLegalPage: (page: string) => mockOpenLegalPage(page),
 }));
 
 jest.mock("react-i18next", () => ({
@@ -28,7 +28,7 @@ describe("LegalConsentNotice", () => {
 
     fireEvent.press(screen.getByRole("link", { name: "auth.legalConsent.terms" }));
 
-    expect(mockPush).toHaveBeenCalledWith("/legal/terms");
+    expect(mockOpenLegalPage).toHaveBeenCalledWith("terms");
   });
 
   it("opens the privacy policy", () => {
@@ -36,6 +36,6 @@ describe("LegalConsentNotice", () => {
 
     fireEvent.press(screen.getByRole("link", { name: "auth.legalConsent.privacy" }));
 
-    expect(mockPush).toHaveBeenCalledWith("/legal/privacy");
+    expect(mockOpenLegalPage).toHaveBeenCalledWith("privacy");
   });
 });

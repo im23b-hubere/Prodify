@@ -9,7 +9,7 @@ import { CrashBoundary } from "../../components/ui/CrashBoundary";
 import { ScreenTopBar } from "../../components/ui/ScreenTopBar";
 import { SESSION_TYPE_IDS, type SessionType } from "../../constants/sessionTypes";
 import { colors, spacing, ui } from "../../constants/theme";
-import { returnTo, runningSessionHref } from "../../lib/stackNavigation";
+import { returnTo } from "../../lib/stackNavigation";
 
 export default function SessionSetupScreen() {
   const router = useRouter();
@@ -28,9 +28,6 @@ export default function SessionSetupScreen() {
   const planningMode = source === "plan_next";
 
   const closeSetup = () => returnTo(router, "/(tabs)/dashboard", { modal: true });
-  const openRunningSession = (sessionId: number) => {
-    router.replace(runningSessionHref(sessionId, source));
-  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -53,10 +50,10 @@ export default function SessionSetupScreen() {
             submitLabel={
               planningMode ? t("sessionSetup.startWhenReadyCta") : t("sessionSetup.startCta")
             }
-            onStarted={(session) => openRunningSession(session.id)}
-            onActiveSessionConflict={(sessionId) => {
-              if (sessionId != null) openRunningSession(sessionId);
-            }}
+            // Starting lands back where setup was opened; the running session's card there
+            // opens the full timer only when tapped.
+            onStarted={closeSetup}
+            onActiveSessionConflict={closeSetup}
             onRequestClose={closeSetup}
           />
         </>

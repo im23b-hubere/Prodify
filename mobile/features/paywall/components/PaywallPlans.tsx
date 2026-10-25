@@ -1,100 +1,100 @@
-import { useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import type { PurchasesPackage } from "react-native-purchases";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 
 import { ErrorState } from "../../../components/states/ErrorState";
-import { PaywallPlansSkeleton } from "../../../components/states/PaywallPlansSkeleton";
-import { PrimaryButton } from "../../../components/ui/PrimaryButton";
 import { paywallStyles as styles } from "../paywall.styles";
+import { perWeekLabel, weeklySavingPercent } from "../paywallPricing";
 import type { PaywallController } from "../usePaywallController";
-import { PaywallPlanOption } from "./PaywallPlanOption";
+import { PaywallPlanTile } from "./PaywallPlanTile";
 
-type PlanKind = "weekly" | "sixMonth";
-type Props = { controller: PaywallController };
+export type PlanKind = "weekly" | "sixMonth";
 
-export function PaywallPlans({ controller }: Props) {
+type Props = {
+  controller: PaywallController;
+  selected: PlanKind;
+  onSelect: (kind: PlanKind) => void;
+};
+
+/** The two plans next to each other, both quoted per week so the longer one's saving shows. */
+export function PaywallPlans({ controller, selected, onSelect }: Props) {
   const { t } = useTranslation();
-  const [selected, setSelected] = useState<PlanKind>("sixMonth");
 
-  if (controller.loading) return <PaywallPlansSkeleton />;
+  if (showsPlansError(controller)) {
+    return (
+      <ErrorState
+        title={t("paywall.errorTitle")}
+        message={controller.error ?? ""}
+        retryLabel={t("common.tryAgain")}
+        onRetry={controller.retry}
+      />
+    );
+  }
 
-  const showError = Boolean(controller.error && !controller.expoGoPreviewMode);
-  const selectedPkg = selected === "sixMonth" ? controller.sixMonthPkg : controller.weeklyPkg;
+  const saving = weeklySavingPercent(
+    controller.weeklyPkg?.product,
+    controller.sixMonthPkg?.product,
+  );
+  const badges: Record<PlanKind, string | null> = {
+    weekly: null,
+    sixMonth:
+      saving != null ? t("paywall.cta.discount", { discount: saving }) : t("paywall.cta.bestValue"),
+  };
 
   return (
     <View style={styles.plans}>
-      {showError ? (
-        <ErrorState
-          title={t("paywall.errorTitle")}
-          message={controller.error ?? ""}
-          retryLabel={t("common.tryAgain")}
-          onRetry={controller.retry}
+      {(["weekly", "sixMonth"] as const).map((kind) => (
+        <PaywallPlanTile
+          key={kind}
+          title={t(`paywall.cta.${kind}`)}
+          {...tilePrice(controller, kind, t)}
+          badge={badges[kind]}
+          selected={selected === kind}
+          disabled={controller.busy}
+          accessibilityLabel={tileAccessibilityLabel(controller, kind, t)}
+          onSelect={() => onSelect(kind)}
         />
-      ) : (
-        <>
-          <PaywallPlanOption
-            index={0}
-            period={t("paywall.cta.sixMonth")}
-            price={planPrice(controller, "sixMonth")}
-            badge={t("paywall.cta.bestValue")}
-            selected={selected === "sixMonth"}
-            disabled={controller.busy}
-            accessibilityLabel={planAccessibilityLabel(controller, "sixMonth", t)}
-            onPress={() => setSelected("sixMonth")}
-          />
-          <PaywallPlanOption
-            index={1}
-            period={t("paywall.cta.weekly")}
-            price={planPrice(controller, "weekly")}
-            selected={selected === "weekly"}
-            disabled={controller.busy}
-            accessibilityLabel={planAccessibilityLabel(controller, "weekly", t)}
-            onPress={() => setSelected("weekly")}
-          />
-          <View style={styles.continueWrap}>
-            <PrimaryButton
-              label={controller.busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.continue")}
-              loading={controller.busy}
-              onPress={() => void controller.purchasePackage(selectedPkg)}
-              disabled={planDisabled(selectedPkg, controller)}
-              accessibilityLabel={t("paywall.cta.continue")}
-            />
-          </View>
-        </>
-      )}
-      <Pressable
-        style={styles.restore}
-        onPress={() => void controller.onRestore()}
-        disabled={controller.busy || controller.expoGoPreviewMode}
-        accessibilityRole="button"
-        accessibilityLabel={t("paywall.cta.restore")}
-      >
-        <Text style={styles.restoreText}>
-          {controller.busy ? t("paywall.cta.pleaseWait") : t("paywall.cta.restore")}
-        </Text>
-      </Pressable>
+      ))}
     </View>
   );
 }
 
-function planPrice(controller: PaywallController, kind: PlanKind): string | null {
-  if (controller.expoGoPreviewMode) {
-    return kind === "sixMonth" ? controller.previewSixMonthPrice : controller.previewWeeklyPrice;
-  }
-  const pkg = kind === "sixMonth" ? controller.sixMonthPkg : controller.weeklyPkg;
-  return pkg?.product.priceString ?? null;
+export function showsPlansError(controller: PaywallController) {
+  return Boolean(controller.error && !controller.expoGoPreviewMode);
 }
 
-function planAccessibilityLabel(controller: PaywallController, kind: PlanKind, t: TFunction): string {
-  const price = planPrice(controller, kind);
-  const priced = price ? t(`paywall.cta.${kind}WithPrice`, { price }) : t(`paywall.cta.${kind}`);
-  return kind === "sixMonth" ? `${t("paywall.cta.bestValue")}. ${priced}` : priced;
+export function planPackage(controller: PaywallController, kind: PlanKind) {
+  return kind === "sixMonth" ? controller.sixMonthPkg : controller.weeklyPkg;
 }
 
-function planDisabled(pkg: PurchasesPackage | null, controller: PaywallController) {
+export function planPurchaseDisabled(pkg: PurchasesPackage | null, controller: PaywallController) {
   if (controller.busy) return true;
   if (controller.expoGoPreviewMode) return false;
   return !pkg || !controller.purchaseEnabled;
+}
+
+function previewPrice(controller: PaywallController, kind: PlanKind) {
+  return kind === "sixMonth" ? controller.previewSixMonthPrice : controller.previewWeeklyPrice;
+}
+
+/** What a tile shows: the per-week amount and, beneath it, what the store actually charges. */
+function tilePrice(controller: PaywallController, kind: PlanKind, t: TFunction) {
+  if (controller.expoGoPreviewMode) {
+    return { amount: previewPrice(controller, kind), isPerWeek: false, billing: "" };
+  }
+  if (controller.loading) return { amount: "…", isPerWeek: false, billing: t("common.loading") };
+  const product = planPackage(controller, kind)?.product;
+  if (!product) return { amount: "—", isPerWeek: false, billing: t("paywall.plan.unavailable") };
+  const { amount, isPerWeek } = perWeekLabel(product);
+  const billingKey =
+    kind === "sixMonth" ? "paywall.plan.billedSixMonth" : "paywall.plan.billedWeekly";
+  return { amount, isPerWeek, billing: t(billingKey, { price: product.priceString }) };
+}
+
+function tileAccessibilityLabel(controller: PaywallController, kind: PlanKind, t: TFunction) {
+  const price = controller.expoGoPreviewMode
+    ? previewPrice(controller, kind)
+    : planPackage(controller, kind)?.product.priceString;
+  return price ? t(`paywall.cta.${kind}WithPrice`, { price }) : t(`paywall.cta.${kind}`);
 }

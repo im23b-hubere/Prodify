@@ -18,6 +18,16 @@ jest.mock("expo-audio", () => {
     setAudioModeAsync: jest.fn(() => Promise.resolve()),
   };
 });
+jest.mock("expo-video", () => {
+  const player = { play: jest.fn(), pause: jest.fn(), currentTime: 0, loop: false, muted: false };
+  return {
+    useVideoPlayer: (_source: unknown, setup?: (p: typeof player) => void) => {
+      setup?.(player);
+      return player;
+    },
+    VideoView: () => null,
+  };
+});
 
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),

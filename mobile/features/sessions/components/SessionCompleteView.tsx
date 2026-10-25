@@ -3,7 +3,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SessionCompleteWeekCard } from "../../../components/session/SessionCompleteWeekCard";
 import { PrimaryButton } from "../../../components/ui/PrimaryButton";
-import { SecondaryButton } from "../../../components/ui/SecondaryButton";
 import { TextButton } from "../../../components/ui/TextButton";
 import { colors } from "../../../constants/theme";
 import type { SessionCompleteController } from "../hooks/useSessionCompleteController";
@@ -18,7 +17,13 @@ export function SessionCompleteView({ controller }: { controller: SessionComplet
   const { t } = controller;
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]} testID="session-complete-screen">
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* Sized to fit one screen; it only scrolls once the Worked-on editor grows. */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={false}
+      >
         <SessionCompleteHero controller={controller} />
         {controller.session && controller.focusReflectionType ? (
           <SessionCompleteFocusCard
@@ -38,18 +43,14 @@ export function SessionCompleteView({ controller }: { controller: SessionComplet
           credits={controller.challengeCredits}
           currentUserId={controller.currentUserId}
         />
-        <View style={styles.actions}>
-          <PrimaryButton
-            label={t("sessionComplete.viewDetails")}
-            onPress={controller.openDetails}
-          />
-          <SecondaryButton
-            label={t("sessionComplete.backToDashboard")}
-            onPress={controller.openDashboard}
-            testID="session-complete-back"
-          />
-        </View>
       </ScrollView>
+      <View style={styles.footer}>
+        <PrimaryButton
+          label={t("sessionComplete.backToDashboard")}
+          onPress={controller.openDashboard}
+          testID="session-complete-back"
+        />
+      </View>
     </SafeAreaView>
   );
 }
