@@ -331,7 +331,7 @@
       "blocks": [
         {
           "heading": "1. Verantwortlicher",
-          "body": "Eric Huber (Zürich, Schweiz) ist der Verantwortliche für die personenbezogenen Daten, die im Zusammenhang mit Prodify verarbeitet werden. Kontakt: support@prodify.app. Siehe auch das Impressum."
+          "body": "Eric Huber (Zürich, Schweiz) ist der Verantwortliche für die personenbezogenen Daten, die im Zusammenhang mit Prodify verarbeitet werden. Kontakt: prodify@gmx.net. Siehe auch das Impressum."
         },
         {
           "heading": "2. Verarbeitete Daten",
@@ -367,7 +367,7 @@
         },
         {
           "heading": "10. Kontakt",
-          "body": "Um deine Rechte auszuüben oder Fragen zu stellen, kontaktiere support@prodify.app."
+          "body": "Um deine Rechte auszuüben oder Fragen zu stellen, kontaktiere prodify@gmx.net."
         }
       ]
     },
@@ -410,7 +410,7 @@
         },
         {
           "heading": "9. Kontakt",
-          "body": "Fragen zu diesen Bedingungen oder eine Meldung: support@prodify.app. Angaben zum Anbieter findest du im Impressum."
+          "body": "Fragen zu diesen Bedingungen oder eine Meldung: prodify@gmx.net. Angaben zum Anbieter findest du im Impressum."
         }
       ]
     },
@@ -429,7 +429,7 @@
         },
         {
           "heading": "3. Kontakt",
-          "body": "E-Mail: support@prodify.app. Für Anfragen zu deinen Datenschutzrechten nutze bitte dieselbe Adresse."
+          "body": "E-Mail: prodify@gmx.net. Für Anfragen zu deinen Datenschutzrechten nutze bitte dieselbe Adresse."
         },
         {
           "heading": "4. Verantwortlich für den Inhalt",
@@ -2520,7 +2520,7 @@
       "socialTokenInvalid": "Wir konnten deine Anmeldung nicht bestätigen. Bitte versuch es noch mal.",
       "socialProviderUnavailable": "Diese Anmeldeoption ist gerade nicht verfügbar. Bitte nutze stattdessen deine E-Mail.",
       "usernameRejected": "Dieser Benutzername ist nicht erlaubt. Bitte wähl einen anderen.",
-      "accountSuspended": "Dieses Konto wurde wegen Verstößen gegen unsere Community-Richtlinien gesperrt. Schreib an support@prodify.app, wenn du denkst, dass das ein Fehler ist."
+      "accountSuspended": "Dieses Konto wurde wegen Verstößen gegen unsere Community-Richtlinien gesperrt. Schreib an prodify@gmx.net, wenn du denkst, dass das ein Fehler ist."
     },
     "requestTimeout": "Zeitüberschreitung der Verbindung. Prüf dein Netzwerk und versuch es noch mal.",
     "network": "Netzwerkfehler. Prüf deine Verbindung und versuch es noch mal.",

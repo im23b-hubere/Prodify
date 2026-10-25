@@ -331,7 +331,7 @@
       "blocks": [
         {
           "heading": "1. Controlador",
-          "body": "Eric Huber (Zurique, Suíça) é o controlador dos dados pessoais tratados em conexão com o Prodify. Contato: support@prodify.app. Veja também as Informações legais."
+          "body": "Eric Huber (Zurique, Suíça) é o controlador dos dados pessoais tratados em conexão com o Prodify. Contato: prodify@gmx.net. Veja também as Informações legais."
         },
         {
           "heading": "2. Dados que tratamos",
@@ -367,7 +367,7 @@
         },
         {
           "heading": "10. Contato",
-          "body": "Para exercer seus direitos ou tirar dúvidas, entre em contato pelo support@prodify.app."
+          "body": "Para exercer seus direitos ou tirar dúvidas, entre em contato pelo prodify@gmx.net."
         }
       ]
     },
@@ -410,7 +410,7 @@
         },
         {
           "heading": "9. Contato",
-          "body": "Dúvidas sobre estes termos ou uma denúncia: support@prodify.app. Os dados do provedor estão nas Informações legais."
+          "body": "Dúvidas sobre estes termos ou uma denúncia: prodify@gmx.net. Os dados do provedor estão nas Informações legais."
         }
       ]
     },
@@ -429,7 +429,7 @@
         },
         {
           "heading": "3. Contato",
-          "body": "E-mail: support@prodify.app. Para solicitações relacionadas a direitos de privacidade, use o mesmo endereço."
+          "body": "E-mail: prodify@gmx.net. Para solicitações relacionadas a direitos de privacidade, use o mesmo endereço."
         },
         {
           "heading": "4. Responsável pelo conteúdo",
@@ -2507,7 +2507,7 @@
       "socialTokenInvalid": "Não foi possível verificar seu login. Tente de novo.",
       "socialProviderUnavailable": "Esta opção de login não está disponível no momento. Use o e-mail.",
       "usernameRejected": "Este nome de usuário não é permitido. Escolha outro.",
-      "accountSuspended": "Esta conta foi suspensa por violar nossas diretrizes da comunidade. Entre em contato com support@prodify.app se achar que é um engano."
+      "accountSuspended": "Esta conta foi suspensa por violar nossas diretrizes da comunidade. Entre em contato com prodify@gmx.net se achar que é um engano."
     },
     "requestTimeout": "A conexão expirou. Verifique sua rede e tente de novo.",
     "network": "Erro de rede. Verifique sua conexão e tente de novo.",

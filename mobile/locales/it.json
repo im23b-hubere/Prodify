@@ -323,7 +323,7 @@
       "blocks": [
         {
           "heading": "1. Titolare del trattamento",
-          "body": "Eric Huber (Zurigo, Svizzera) è il titolare del trattamento dei dati personali trattati in relazione a Prodify. Contatto: support@prodify.app. Vedi anche le Note legali."
+          "body": "Eric Huber (Zurigo, Svizzera) è il titolare del trattamento dei dati personali trattati in relazione a Prodify. Contatto: prodify@gmx.net. Vedi anche le Note legali."
         },
         {
           "heading": "2. Dati che trattiamo",
@@ -359,7 +359,7 @@
         },
         {
           "heading": "10. Contatti",
-          "body": "Per esercitare i tuoi diritti o porre domande, contatta support@prodify.app."
+          "body": "Per esercitare i tuoi diritti o porre domande, contatta prodify@gmx.net."
         }
       ]
     },
@@ -402,7 +402,7 @@
         },
         {
           "heading": "9. Contatti",
-          "body": "Domande su questi termini o una segnalazione: support@prodify.app. I dati del fornitore si trovano nelle Note legali."
+          "body": "Domande su questi termini o una segnalazione: prodify@gmx.net. I dati del fornitore si trovano nelle Note legali."
         }
       ]
     },
@@ -421,7 +421,7 @@
         },
         {
           "heading": "3. Contatti",
-          "body": "Email: support@prodify.app. Per richieste relative ai diritti sulla privacy usa lo stesso indirizzo."
+          "body": "Email: prodify@gmx.net. Per richieste relative ai diritti sulla privacy usa lo stesso indirizzo."
         },
         {
           "heading": "4. Responsabile dei contenuti",
@@ -2499,7 +2499,7 @@
       "socialTokenInvalid": "Non siamo riusciti a verificare il tuo accesso. Riprova.",
       "socialProviderUnavailable": "Questa opzione di accesso non è disponibile al momento. Usa invece l'email.",
       "usernameRejected": "Questo nome utente non è consentito. Scegline un altro.",
-      "accountSuspended": "Questo account è stato sospeso per violazione delle nostre linee guida della community. Scrivi a support@prodify.app se pensi che si tratti di un errore."
+      "accountSuspended": "Questo account è stato sospeso per violazione delle nostre linee guida della community. Scrivi a prodify@gmx.net se pensi che si tratti di un errore."
     },
     "requestTimeout": "Connessione scaduta. Controlla la rete e riprova.",
     "network": "Errore di rete. Controlla la connessione e riprova.",
