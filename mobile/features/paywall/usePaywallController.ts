@@ -75,13 +75,15 @@ export function usePaywallController() {
     resolveExitAfterUnlock,
   });
 
+  // While a purchase or restore runs, that flow owns the exit and its confirmation alert.
+  const watchOutsideUnlocks = !busy && !expoGoPreviewMode;
   usePremiumUpdateListener({
-    enabled: !loading && !busy && !expoGoPreviewMode,
+    enabled: !loading && watchOutsideUnlocks,
     onPremium: finalizePremiumUnlock,
   });
   useEntitlementCacheUnlock({
     token: token ?? null,
-    enabled: !expoGoPreviewMode,
+    enabled: watchOutsideUnlocks,
     onPremium: () => requestExitAfterUnlock(false),
   });
 
