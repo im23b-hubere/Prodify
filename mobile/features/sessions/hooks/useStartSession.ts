@@ -1,7 +1,6 @@
 import * as Haptics from "expo-haptics";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert } from "react-native";
 
 import type { SessionType } from "../../../constants/sessionTypes";
 import type { SkillFocusId } from "../../../constants/skills";
@@ -54,7 +53,6 @@ export function useStartSession(args: Args) {
       debugLog("session", "start_success", { sessionId: session.id });
       if (guard.mounted.current) await Promise.resolve(args.onStarted(session));
     } catch (cause) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       const message = cause instanceof Error ? cause.message : args.t("sessionSetup.startFailed");
       debugLog("session", "start_failure", {
         status: cause instanceof ApiError ? cause.status : 0,
@@ -64,7 +62,9 @@ export function useStartSession(args: Args) {
         cause instanceof ApiError && cause.status === 409
           ? await resolveConflict(cause, token, args)
           : false;
-      if (guard.mounted.current && !resumed)
+      if (resumed) return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+      if (guard.mounted.current)
         setError(
           cause instanceof ApiError && cause.status === 409
             ? args.t("sessionSetup.activeSessionError")
@@ -117,32 +117,40 @@ async function requestSession(token: string, args: Args): Promise<SessionDto> {
 }
 
 async function resolveConflict(error: ApiError, token: string, args: Args): Promise<boolean> {
-  const payload = error.payload as {
-    detail?: { session_id?: unknown };
-    session_id?: unknown;
-  } | null;
-  const candidate = payload?.session_id ?? payload?.detail?.session_id;
-  const id =
-    typeof candidate === "number" && Number.isFinite(candidate) && candidate > 0 ? candidate : null;
-  if (!id) {
+  const id = sessionIdFromConflict(error);
+  if (id == null) {
     args.onConflict?.();
     return false;
   }
-  try {
-    const session = tryParseSessionDto(await apiJson<unknown>(`/sessions/item/${id}`, { token }));
-    if (session) {
-      Alert.alert(
-        args.t("sessionSetup.activeSessionTitle"),
-        args.t("sessionSetup.activeSessionBody"),
-        [{ text: args.t("common.continue") }],
-      );
-      args.onStarted(session);
-      args.onConflict?.(id);
-      return true;
-    }
-  } catch {
-    /* Parent still refreshes using the known id. */
+  const session = await readRunningSession(token, id);
+  if (session) {
+    args.onStarted(session);
+    return true;
   }
-  args.onConflict?.(id);
-  return false;
+  if (!args.onConflict) return false;
+  args.onConflict(id);
+  return true;
+}
+
+function sessionIdFromConflict(error: ApiError): number | null {
+  const payload = error.payload;
+  if (typeof payload !== "object" || payload === null) return null;
+  const record = payload as {
+    detail?: { session_id?: unknown };
+    session_id?: unknown;
+    error?: { details?: { session_id?: unknown } };
+  };
+  const candidate =
+    record.error?.details?.session_id ?? record.session_id ?? record.detail?.session_id;
+  return typeof candidate === "number" && Number.isFinite(candidate) && candidate > 0
+    ? candidate
+    : null;
+}
+
+async function readRunningSession(token: string, id: number): Promise<SessionDto | null> {
+  try {
+    return tryParseSessionDto(await apiJson<unknown>(`/sessions/item/${id}`, { token }));
+  } catch {
+    return null;
+  }
 }

@@ -3,6 +3,12 @@ import { act, renderHook } from "@testing-library/react-native";
 import { useDashboardSessionSetupResults } from "../../features/dashboard/hooks/useDashboardSessionSetupResults";
 import { mockTFunction } from "../helpers/mockTFunction";
 
+const mockPush = jest.fn();
+
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 function createDependencies() {
   return {
     closeSetupModal: jest.fn(),
@@ -16,6 +22,9 @@ function createDependencies() {
 }
 
 describe("useDashboardSessionSetupResults", () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+  });
   it("falls back to reloading when a created session is invalid", () => {
     const dependencies = createDependencies();
     const { result } = renderHook(() => useDashboardSessionSetupResults(dependencies));
@@ -27,6 +36,7 @@ describe("useDashboardSessionSetupResults", () => {
     afterClose?.();
     expect(dependencies.refreshDashboard).toHaveBeenCalledWith({ force: true });
     expect(dependencies.setActive).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("stores a valid session once and refreshes dashboard snapshots after closing", async () => {
@@ -49,6 +59,10 @@ describe("useDashboardSessionSetupResults", () => {
     afterClose();
     await Promise.resolve();
     expect(dependencies.refreshDashboard).toHaveBeenCalledWith({ force: true });
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/session-active",
+      params: { id: "42", source: "dashboard" },
+    });
   });
 
   it("keeps crash recovery and active-session conflict paths explicit", () => {

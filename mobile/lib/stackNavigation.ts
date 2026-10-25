@@ -42,3 +42,11 @@ export function dismissToTab(router: { dismissTo: (href: Href) => void }, href: 
 export function sessionSummaryHref(sessionId: number): Href {
   return { pathname: "/session/complete", params: { id: String(sessionId) } };
 }
+
+/** The live session. `source` is the tab that opened it, so leaving returns there. */
+export function runningSessionHref(sessionId: number, source?: string): Href {
+  return {
+    pathname: "/session-active",
+    params: source ? { id: String(sessionId), source } : { id: String(sessionId) },
+  };
+}

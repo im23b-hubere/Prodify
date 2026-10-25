@@ -2,6 +2,7 @@ import {
   dismissToTab,
   openTab,
   returnTo,
+  runningSessionHref,
   sessionSummaryHref,
 } from "../../lib/stackNavigation";
 
@@ -79,6 +80,15 @@ describe("sessionSummaryHref", () => {
     expect(sessionSummaryHref(12)).toEqual({
       pathname: "/session/complete",
       params: { id: "12" },
+    });
+  });
+});
+
+describe("runningSessionHref", () => {
+  it("replaces setup with the running session and remembers who opened it", () => {
+    expect(runningSessionHref(9, "stats")).toEqual({
+      pathname: "/session-active",
+      params: { id: "9", source: "stats" },
     });
   });
 });
