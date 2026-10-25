@@ -1,8 +1,8 @@
 {
   "ios": {
     "CFBundleDisplayName": "Prodify",
-    "NSPhotoLibraryUsageDescription": "Prodify necesita acceso a tus fotos para que puedas elegir una foto de perfil.",
-    "NSUserNotificationsUsageDescription": "Prodify te envía recordatorios para ayudarte a mantener tu racha en el estudio."
+    "NSPhotoLibraryUsageDescription": "Prodify usa tus fotos para tu foto de perfil y como fondo de tus tarjetas para compartir.",
+    "NSPhotoLibraryAddUsageDescription": "Prodify guarda tus tarjetas para compartir en tus fotos cuando eliges «Guardar imagen»."
   },
   "android": {
     "app_name": "Prodify"

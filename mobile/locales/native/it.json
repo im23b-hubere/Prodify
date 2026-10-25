@@ -1,8 +1,8 @@
 {
   "ios": {
     "CFBundleDisplayName": "Prodify",
-    "NSPhotoLibraryUsageDescription": "Prodify ha bisogno di accedere alle tue foto per permetterti di impostare un’immagine del profilo.",
-    "NSUserNotificationsUsageDescription": "Prodify ti invia promemoria per aiutarti a mantenere la tua serie in studio."
+    "NSPhotoLibraryUsageDescription": "Prodify usa le tue foto per l’immagine del profilo e come sfondo delle schede da condividere.",
+    "NSPhotoLibraryAddUsageDescription": "Prodify salva le schede da condividere nelle tue foto quando scegli «Salva immagine»."
   },
   "android": {
     "app_name": "Prodify"

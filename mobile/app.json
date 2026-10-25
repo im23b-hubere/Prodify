@@ -14,8 +14,7 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSUserNotificationsUsageDescription": "Prodify sends reminders to help you keep your studio streak.",
-        "NSPhotoLibraryUsageDescription": "Prodify needs access to your photos so you can set a profile picture."
+        "NSPhotoLibraryAddUsageDescription": "Prodify saves your share cards to your photos when you choose Save Image."
       }
     },
     "android": {
@@ -32,7 +31,12 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       "expo-font",
       "expo-notifications",
       "@sentry/react-native",
@@ -52,7 +56,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Prodify needs access to your photos so you can set a profile picture."
+          "photosPermission": "Prodify uses your photos for your profile picture and as the background of share cards.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [

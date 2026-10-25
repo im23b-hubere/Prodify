@@ -1,8 +1,8 @@
 {
   "ios": {
     "CFBundleDisplayName": "Prodify",
-    "NSPhotoLibraryUsageDescription": "Prodify needs access to your photos so you can set a profile picture.",
-    "NSUserNotificationsUsageDescription": "Prodify sends reminders to help you keep your studio streak."
+    "NSPhotoLibraryUsageDescription": "Prodify uses your photos for your profile picture and as the background of share cards.",
+    "NSPhotoLibraryAddUsageDescription": "Prodify saves your share cards to your photos when you choose Save Image."
   },
   "android": {
     "app_name": "Prodify"

@@ -1,8 +1,8 @@
 {
   "ios": {
     "CFBundleDisplayName": "Prodify",
-    "NSPhotoLibraryUsageDescription": "Prodify braucht Zugriff auf deine Fotos, damit du ein Profilbild festlegen kannst.",
-    "NSUserNotificationsUsageDescription": "Prodify schickt dir Erinnerungen, damit du deinen Studio-Streak hältst."
+    "NSPhotoLibraryUsageDescription": "Prodify nutzt deine Fotos für dein Profilbild und als Hintergrund deiner Teilen-Karten.",
+    "NSPhotoLibraryAddUsageDescription": "Prodify speichert deine Teilen-Karten in deinen Fotos, wenn du „Bild sichern“ wählst."
   },
   "android": {
     "app_name": "Prodify"
