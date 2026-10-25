@@ -43,8 +43,10 @@ account stays and the request returns 502 so the producer can retry.
 
 | Product ID | Plan | Notes |
 |------------|------|-------|
-| `prodify_weekly_access` | Weekly | Target Swiss price: CHF 10.00; no free trial |
-| `prodify_6month_access` | 6 months | Target Swiss price: CHF 49.99; primary best-value plan; no intro/trial period in Store |
+| `prodify_weekly_access` | Weekly | Base price (US): $8.99; no free trial |
+| `prodify_6month_access` | 6 months | Base price (US): $49.99; primary best-value plan; no intro/trial period in Store |
+
+Other storefronts use Apple's automatic equalization from the US base price (e.g. CHF 8.00 / CHF 40.00, €9.99 / €59.99 in the Eurozone).
 
 Disable **Introductory Offers / Free Trial** on both products in App Store Connect. Paywall copy uses live Store prices from RevenueCat.
 

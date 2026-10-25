@@ -918,8 +918,8 @@
       "restoreFailedTitle": "Restore failed"
     },
     "expoPreview": {
-      "weeklyPricePlaceholder": "CHF 10.00",
-      "sixMonthPricePlaceholder": "CHF 49.99"
+      "weeklyPricePlaceholder": "$8.99",
+      "sixMonthPricePlaceholder": "$49.99"
     },
     "errors": {
       "storeUnavailable": "Store currently unavailable. You can continue and try again later.",

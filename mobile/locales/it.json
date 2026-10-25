@@ -936,8 +936,8 @@
       "restoreFailedTitle": "Ripristino non riuscito"
     },
     "expoPreview": {
-      "weeklyPricePlaceholder": "CHF 10.00",
-      "sixMonthPricePlaceholder": "CHF 49.99"
+      "weeklyPricePlaceholder": "$8.99",
+      "sixMonthPricePlaceholder": "$49.99"
     },
     "errors": {
       "storeUnavailable": "Store al momento non disponibile. Puoi continuare e riprovare più tardi.",
