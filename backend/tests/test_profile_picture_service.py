@@ -1,3 +1,4 @@
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -46,6 +47,39 @@ def test_replace_profile_picture_cleans_up_new_file_when_commit_fails(monkeypatc
     assert session.rolled_back is True
     assert user.profile_picture_url == "/uploads/profile_pictures/old.png"
     assert deleted_urls == ["/uploads/profile_pictures/new.png"]
+
+
+def _jpeg_with_gps_exif() -> bytes:
+    from PIL import Image
+
+    exif = Image.Exif()
+    exif[0x8825] = {1: "N", 2: (47.0, 22.0, 0.0)}  # GPSInfo: where the photo was taken
+    output = BytesIO()
+    Image.new("RGB", (8, 8), "red").save(output, format="JPEG", exif=exif)
+    return output.getvalue()
+
+
+def test_normalize_image_strips_location_metadata_from_photos() -> None:
+    from PIL import Image
+
+    original = _jpeg_with_gps_exif()
+    assert Image.open(BytesIO(original)).getexif()
+
+    normalized = profile_picture_service.normalize_image(original, "image/jpeg")
+
+    assert normalized != original
+    assert not Image.open(BytesIO(normalized)).getexif()
+
+
+def test_normalize_image_keeps_png_transparency() -> None:
+    from PIL import Image
+
+    output = BytesIO()
+    Image.new("RGBA", (4, 4), (0, 0, 0, 0)).save(output, format="PNG")
+
+    normalized = profile_picture_service.normalize_image(output.getvalue(), "image/png")
+
+    assert Image.open(BytesIO(normalized)).getpixel((0, 0)) == (0, 0, 0, 0)
 
 
 def test_public_profile_picture_url_keeps_absolute_urls() -> None:
