@@ -12,6 +12,7 @@ from app.contracts.social import (
 )
 from app.dependencies_subscription import user_has_premium_access
 from app.models import SocialChallenge, SocialChallengeMember, User, utcnow
+from app.services.content_filter import reject_objectionable
 from app.services.friend_graph import friend_user_ids
 from app.services.progression_service import grant_xp
 from app.services.social_challenge_events import IGNORED_CHALLENGE_EVENTS, ChallengeEvents
@@ -135,6 +136,7 @@ def create_challenge(
     owner: User,
     request: SocialChallengeCreateBody,
 ) -> SocialChallengePublic:
+    reject_objectionable(request.title)
     premium = user_has_premium_access(db, owner)
     active_count = len(
         db.scalars(
@@ -324,6 +326,7 @@ def update_challenge(
     if challenge.challenge_kind == "duel" and changes_terms:
         raise DuelTermsLockedError
     if request.title is not None:
+        reject_objectionable(request.title)
         challenge.title = request.title.strip()
     if request.target_sessions is not None:
         _apply_target(db, challenge, request.target_sessions)

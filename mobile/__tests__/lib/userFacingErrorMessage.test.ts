@@ -38,6 +38,26 @@ describe("userFacingErrorMessage", () => {
     ).toBe("t:errors.rescueLimitReached");
   });
 
+  it("explains in the producer's language when shared text uses forbidden language", () => {
+    expect(
+      userFacingErrorMessage(
+        new ApiError(422, "This contains language that isn't allowed.", null, "CONTENT_REJECTED"),
+        t,
+        "common.tryAgain",
+      ),
+    ).toBe("t:errors.contentRejected");
+  });
+
+  it("explains in the producer's language when shared text uses forbidden language", () => {
+    expect(
+      userFacingErrorMessage(
+        new ApiError(422, "This contains language that isn't allowed.", null, "CONTENT_REJECTED"),
+        t,
+        "common.tryAgain",
+      ),
+    ).toBe("t:errors.contentRejected");
+  });
+
   it("uses the fallback when there is no usable message", () => {
     expect(userFacingErrorMessage(undefined, t, "dashboard.loadFailed")).toBe("t:dashboard.loadFailed");
     expect(userFacingErrorMessage(new Error(""), t, "common.tryAgain")).toBe("t:common.tryAgain");

@@ -19,7 +19,6 @@ from app.services.social_feed_service import (
     FeedAccessDeniedError,
     FeedCommentNotFoundError,
     FeedSessionNotFoundError,
-    ObjectionableCommentError,
     add_session_comment as create_comment,
     delete_session_comment as remove_comment,
     list_session_comments as get_comments,
@@ -104,8 +103,3 @@ def _translate_feed_errors(operation, *args):
         raise HTTPException(status_code=404, detail="Comment not found") from error
     except FeedAccessDeniedError as error:
         raise HTTPException(status_code=403, detail="Not allowed") from error
-    except ObjectionableCommentError as error:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail={"code": "CONTENT_REJECTED", "message": "This comment contains language that isn't allowed."},
-        ) from error

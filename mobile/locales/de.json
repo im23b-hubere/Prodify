@@ -2567,6 +2567,7 @@
     "serviceUnavailable": "Dienst wegen der App-Konfiguration vorübergehend nicht verfügbar. Bitte versuch es später noch mal.",
     "premiumRequired": "Dein Abo ist nicht mehr aktiv.",
     "rescueLimitReached": "Du hast diese Woche alle Streak-Rettungen aufgebraucht.",
+    "contentRejected": "Das enthält Wörter, die nicht erlaubt sind. Bitte formuliere es um.",
     "unexpectedResponse": "Unerwartete Serverantwort. Bitte versuch es noch mal.",
     "tooManyRequests": "Zu viele Versuche. Bitte warte kurz und versuch es noch mal.",
     "signInFailed": "Anmeldung fehlgeschlagen",

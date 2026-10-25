@@ -9,7 +9,7 @@ from app.contracts.social import (
     SocialReactionUserPublic,
 )
 from app.models import ProductionSession, SocialComment, SocialReaction, User
-from app.services.content_filter import is_objectionable
+from app.services.content_filter import reject_objectionable
 from app.services.user_block_service import hidden_user_ids, visible_friend_ids
 
 
@@ -25,10 +25,6 @@ class FeedCommentNotFoundError(ValueError):
     pass
 
 
-class ObjectionableCommentError(ValueError):
-    pass
-
-
 def add_session_comment(
     db: Session,
     session_id: int,
@@ -36,8 +32,7 @@ def add_session_comment(
     body: str,
 ) -> SocialCommentPublic:
     _require_visible_session(db, session_id, author.id)
-    if is_objectionable(body):
-        raise ObjectionableCommentError
+    reject_objectionable(body)
     comment = SocialComment(
         target_type="session",
         target_id=session_id,

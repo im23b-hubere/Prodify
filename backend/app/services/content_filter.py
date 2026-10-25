@@ -51,6 +51,16 @@ _BLOCKED_FRAGMENTS = (
 )
 
 
+class ObjectionableContentError(Exception):
+    """Text other people would read uses language the community guidelines forbid."""
+
+
+def reject_objectionable(*texts: str | None) -> None:
+    """Guards every text another producer can read: comments, challenge titles, shared session details."""
+    if any(text and is_objectionable(text) for text in texts):
+        raise ObjectionableContentError
+
+
 def is_objectionable(text: str) -> bool:
     words = _words(text)
     if any(word in _BLOCKED_WORDS for word in words):

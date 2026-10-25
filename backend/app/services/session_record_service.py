@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.contracts.sessions import SessionUpdate
 from app.models import ProductionSession, SocialComment, SocialReaction, utcnow
+from app.services.content_filter import reject_objectionable
 from app.services.user_block_service import visible_friend_ids
 from app.services.kpi_tracker import track_event_deduped
 from app.services.session_skill_focus_service import (
@@ -89,8 +90,11 @@ def update_session_record(
     session = _owned_session(db, session_id, user_id)
     if session.deleted_at is not None:
         raise DeletedSessionEditError
+    updates = request.model_dump(exclude_unset=True)
+    # Friends can open this session, so its notes, tags and track title are shared text.
+    reject_objectionable(updates.get("notes"), updates.get("track_title"), *(updates.get("tags") or []))
     focuses_before = _focus_snapshot(session)
-    _apply_updates(session, request.model_dump(exclude_unset=True))
+    _apply_updates(session, updates)
     if session.stopped_at is not None and _focus_snapshot(session) != focuses_before:
         _track_focus_reflection(db, session, had_planned_focus=bool(focuses_before[0]))
     db.commit()

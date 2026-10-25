@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 
 import { recordMomentumAction } from "../../../lib/momentum";
 import { createChallenge } from "../../../lib/social";
+import { userFacingErrorOrFallback } from "../../../lib/userFacingErrorMessage";
 import type { DuelCreateRequest } from "../challengeDraft";
 
 type SubmitState =
@@ -22,7 +23,7 @@ export function useChallengeSubmit(token: string | null, userId: number | undefi
         await createChallenge(token, request);
       } catch (e) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-        setSubmitState({ status: "error", message: e instanceof Error ? e.message : null });
+        setSubmitState({ status: "error", message: userFacingErrorOrFallback(e, "") || null });
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);

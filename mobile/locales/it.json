@@ -2559,6 +2559,7 @@
     "serviceUnavailable": "Servizio temporaneamente non disponibile a causa della configurazione dell'app. Riprova più tardi.",
     "premiumRequired": "Il tuo abbonamento non è più attivo.",
     "rescueLimitReached": "Hai già usato tutti i salvataggi della serie di questa settimana.",
+    "contentRejected": "Il testo contiene parole non consentite. Per favore, riformulalo.",
     "unexpectedResponse": "Risposta del server inattesa. Riprova.",
     "tooManyRequests": "Troppi tentativi. Attendi un momento e riprova.",
     "signInFailed": "Accesso non riuscito",

@@ -2559,6 +2559,7 @@
     "serviceUnavailable": "Service momentanément indisponible en raison de la configuration de l'app. Réessaie plus tard.",
     "premiumRequired": "Ton abonnement n'est plus actif.",
     "rescueLimitReached": "Tu as utilisé tous tes sauvetages de série cette semaine.",
+    "contentRejected": "Ce texte contient des mots qui ne sont pas autorisés. Reformule-le, s’il te plaît.",
     "unexpectedResponse": "Réponse inattendue du serveur. Réessaie.",
     "tooManyRequests": "Trop de tentatives. Patiente un instant et réessaie.",
     "signInFailed": "Échec de la connexion",

@@ -2541,6 +2541,7 @@
     "serviceUnavailable": "Service temporarily unavailable due to app configuration. Please try again later.",
     "premiumRequired": "Your subscription is no longer active.",
     "rescueLimitReached": "You've used all your streak saves for this week.",
+    "contentRejected": "This contains language that isn't allowed. Please rephrase it.",
     "unexpectedResponse": "Unexpected server response. Please try again.",
     "tooManyRequests": "Too many attempts. Please wait a moment and try again.",
     "signInFailed": "Sign in failed",

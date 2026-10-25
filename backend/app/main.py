@@ -12,8 +12,15 @@ from sqlalchemy import text
 from app.config import is_sqlite_database_url, settings
 from app.database import engine
 from app.dependencies_subscription import require_subscriber
-from app.errors import APIError, account_suspended_handler, api_error_handler, http_exception_handler
+from app.errors import (
+    APIError,
+    account_suspended_handler,
+    api_error_handler,
+    http_exception_handler,
+    objectionable_content_handler,
+)
 from app.services.auth_token_service import AccountSuspendedError
+from app.services.content_filter import ObjectionableContentError
 from app.middleware.security import SecurityHeadersMiddleware
 from app.observability import init_observability
 from app.rate_limit import limiter
@@ -87,6 +94,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_exception_handler(APIError, api_error_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(AccountSuspendedError, account_suspended_handler)
+app.add_exception_handler(ObjectionableContentError, objectionable_content_handler)
 
 app.add_middleware(
     CORSMiddleware,

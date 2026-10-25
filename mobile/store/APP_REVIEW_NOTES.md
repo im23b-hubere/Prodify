@@ -41,7 +41,9 @@ Profile → Settings (gear icon) → Delete account. Also available on the paywa
 without a subscription can be deleted too.
 
 USER-GENERATED CONTENT
-Comments are filtered for objectionable language. On a friend's profile, the "…" menu offers
+Everything other producers can read is filtered for objectionable language: usernames,
+comments, challenge titles and the notes, tags and track titles of sessions shared with
+friends. On a friend's profile, the "…" menu offers
 Report and Block. Comments: press and hold a comment on a session for Report, Block or Delete.
 Reports reach the moderators immediately; we review every report within 24 hours.
 Contact: prodify@gmx.net

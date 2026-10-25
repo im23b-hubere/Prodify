@@ -66,6 +66,62 @@ def test_objectionable_comment_is_rejected(client, thread):
     assert response.json()["error"]["code"] == "CONTENT_REJECTED"
 
 
+def _rejected_as_objectionable(response) -> bool:
+    return response.status_code == 422 and response.json()["error"]["code"] == "CONTENT_REJECTED"
+
+
+def _create_group_challenge(client, headers: dict[str, str], title: str):
+    return client.post(
+        "/social/challenges",
+        headers=headers,
+        json={"challenge_kind": "group", "title": title, "target_sessions": 3, "duration_days": 7},
+    )
+
+
+def test_objectionable_challenge_title_is_rejected(client):
+    headers = auth_headers(client, "filter-title@example.com", "filter-title")
+
+    response = _create_group_challenge(client, headers, "shit week")
+
+    assert _rejected_as_objectionable(response)
+    assert client.get("/social/challenges", headers=headers).json() == []
+
+
+def test_renaming_a_challenge_to_an_objectionable_title_keeps_the_old_title(client):
+    headers = auth_headers(client, "filter-rename@example.com", "filter-rename")
+    challenge_id = _create_group_challenge(client, headers, "Clean week").json()["id"]
+
+    response = client.patch(f"/social/challenges/{challenge_id}", headers=headers, json={"title": "bitch week"})
+
+    assert _rejected_as_objectionable(response)
+    assert client.get(f"/social/challenges/{challenge_id}", headers=headers).json()["title"] == "Clean week"
+
+
+def test_objectionable_session_notes_are_rejected_when_starting(client):
+    headers = auth_headers(client, "filter-start@example.com", "filter-start")
+
+    response = client.post("/sessions/start", headers=headers, json={"session_type": "mixing", "notes": "fuck this"})
+
+    assert _rejected_as_objectionable(response)
+    assert client.get("/sessions/active", headers=headers).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("update", "field"),
+    [
+        ({"notes": "what a shit mix"}, "notes"),
+        ({"track_outcome": "finished", "track_title": "Hitler Beat"}, "track_title"),
+        ({"tags": ["lofi", "cunt"]}, "tags"),
+    ],
+)
+def test_session_text_friends_can_read_is_filtered(client, thread, update, field):
+    response = client.patch(f"/sessions/item/{thread['session_id']}", headers=thread["host"], json=update)
+
+    assert _rejected_as_objectionable(response)
+    session = client.get(f"/sessions/item/{thread['session_id']}", headers=thread["host"]).json()
+    assert session[field] != update[field]
+
+
 def test_objectionable_username_is_rejected_at_registration(client):
     response = client.post(
         "/auth/register",

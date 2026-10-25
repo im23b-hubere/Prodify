@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.achievementsutil import compute_focus_score_for_session, grant_achievements_after_completed_session
 from app.models import CheckinLog, ProductionSession, Streak, utcnow
+from app.services.content_filter import reject_objectionable
 from app.services.engagement.deliveries import attribute_session_start
 from app.services.engagement.events import EngagementEvent
 from app.services.engagement.learning_store import refresh_learning
@@ -59,6 +60,7 @@ def create_session(
     skill_focus_ids: list[str] | None = None,
     suggested_skill_focus_ids: list[str] | None = None,
 ) -> ProductionSession:
+    reject_objectionable(notes, *(tags or []))
     session = ProductionSession(
         user_id=user_id,
         started_at=utcnow(),

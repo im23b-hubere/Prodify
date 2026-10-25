@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 
 import { updateChallenge } from "../../../lib/social";
+import { userFacingErrorMessage } from "../../../lib/userFacingErrorMessage";
 import type { SocialChallengeDto } from "../../../types/friends";
 import { challengeTermsLocked, parseChallengeEditDraft } from "../challengeEditDraft";
 
@@ -48,7 +49,7 @@ export function useChallengeEdit(
     } catch (updateError) {
       Alert.alert(
         t("friendsScreen.couldNotUpdateChallenge"),
-        updateError instanceof Error ? updateError.message : t("common.tryAgain"),
+        userFacingErrorMessage(updateError, t, "common.tryAgain"),
       );
     } finally {
       setEditBusy(false);

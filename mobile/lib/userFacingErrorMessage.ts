@@ -18,6 +18,7 @@ const CODE_TO_KEY: Record<string, string> = {
   network_error: "errors.network",
   service_unavailable: "errors.serviceUnavailable",
   rescue_limit_reached: "errors.rescueLimitReached",
+  content_rejected: "errors.contentRejected",
 };
 
 function looksLikeOpaqueDump(message: string): boolean {
