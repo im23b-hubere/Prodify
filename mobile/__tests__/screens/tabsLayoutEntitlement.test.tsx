@@ -2,8 +2,10 @@ import { act, render, waitFor } from "@testing-library/react-native";
 
 import TabsLayout from "../../app/(tabs)/_layout";
 
-let mockCachedAccess = false;
+let mockCachedAccess: boolean | null = false;
+let mockStoredAccess = false;
 let mockIsPremium = false;
+let mockProfileLoaded = true;
 let mockRevision = 0;
 let mockResolveAccess!: (value: boolean) => void;
 let mockRejectAccess!: (reason: Error) => void;
@@ -38,7 +40,8 @@ jest.mock("react-i18next", () => ({
 jest.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
     token: "token",
-    user: { id: 1, is_premium: mockIsPremium },
+    user: mockProfileLoaded ? { id: 1, is_premium: mockIsPremium } : null,
+    userId: 1,
     hydrated: true,
   }),
 }));
@@ -54,7 +57,7 @@ jest.mock("../../hooks/useAppOpenReporting", () => ({
 jest.mock("../../lib/billing", () => ({
   getEntitlementCacheRevision: () => mockRevision,
   peekCachedHasPremiumAccess: () => mockCachedAccess,
-  peekStoredHasPremiumAccess: jest.fn().mockResolvedValue(false),
+  peekStoredHasPremiumAccess: () => Promise.resolve(mockStoredAccess),
   subscribeEntitlementCache: (listener: () => void) => {
     mockListeners.add(listener);
     return () => mockListeners.delete(listener);
@@ -87,7 +90,9 @@ describe("TabsLayout entitlement updates", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockCachedAccess = false;
+    mockStoredAccess = false;
     mockIsPremium = false;
+    mockProfileLoaded = true;
     mockRevision = 0;
     mockAccessPromise = new Promise((resolve, reject) => {
       mockResolveAccess = resolve;
@@ -200,6 +205,21 @@ describe("TabsLayout entitlement updates", () => {
     });
     act(() => {
       jest.advanceTimersByTime(10_000);
+    });
+
+    expect(mockRedirect).not.toHaveBeenCalled();
+    expect(screen.getByTestId("tabs-layout")).toBeTruthy();
+  });
+
+  it("lets a subscriber in from the stored grant while the server is still waking up", async () => {
+    mockProfileLoaded = false;
+    mockCachedAccess = null;
+    mockStoredAccess = true;
+    const screen = render(<TabsLayout />);
+
+    await waitFor(() => expect(screen.getByTestId("tabs-layout")).toBeTruthy());
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10_000);
     });
 
     expect(mockRedirect).not.toHaveBeenCalled();

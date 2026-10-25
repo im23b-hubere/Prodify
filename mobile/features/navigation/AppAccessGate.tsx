@@ -13,10 +13,10 @@ import { usePremiumAccess } from "./usePremiumAccess";
  * layout wrap their `Stack`; standalone screens wrap their own component.
  */
 export function AppAccessGate({ children }: { children: ReactNode }) {
-  const { token, user, hydrated } = useAuth();
+  const { token, user, userId, hydrated } = useAuth();
   const { hasAccess, waitingForAccess } = usePremiumAccess({
     token,
-    userId: user?.id,
+    userId,
     userIsPremium: Boolean(user?.is_premium),
   });
 

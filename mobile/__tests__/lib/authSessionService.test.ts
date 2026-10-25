@@ -1,6 +1,7 @@
 import { authenticate, clearLocalAuthSession } from "../../lib/authSessionService";
 import { apiJson } from "../../lib/client";
 import { syncSessionLiveActivity } from "../../lib/sessionLiveActivity";
+import { readSessionUserId, rememberSessionUserId } from "../../lib/sessionUserStorage";
 import { syncStreakWidget } from "../../lib/streakWidget";
 
 jest.mock("../../lib/client", () => ({ apiJson: jest.fn() }));
@@ -66,5 +67,13 @@ describe("auth session service", () => {
     await clearLocalAuthSession(7, false);
 
     expect(syncSessionLiveActivity).toHaveBeenCalledWith(null);
+  });
+
+  it("forgets who was signed in, so the next launch does not restore that account", async () => {
+    await rememberSessionUserId(7);
+
+    await clearLocalAuthSession(7, false);
+
+    await expect(readSessionUserId()).resolves.toBeNull();
   });
 });

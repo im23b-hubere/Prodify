@@ -1,10 +1,12 @@
 import { renderHook } from "@testing-library/react-native";
 
 import { usePaywallController } from "../../../features/paywall/usePaywallController";
+import { usePaywallOfferings } from "../../../features/paywall/usePaywallOfferings";
 import { usePremiumUpdateListener } from "../../../features/paywall/usePremiumUpdateListener";
 
 let mockBusy = false;
 let mockCachedPremium: boolean | null = null;
+let mockProfileLoaded = true;
 const mockRequestExitAfterUnlock = jest.fn();
 
 jest.mock("expo-constants", () => ({ __esModule: true, default: { appOwnership: null } }));
@@ -12,7 +14,8 @@ jest.mock("expo-router", () => ({ useLocalSearchParams: () => ({ source: "post_a
 jest.mock("../../../context/AuthContext", () => ({
   useAuth: () => ({
     token: "token",
-    user: { id: 1, is_premium: false },
+    user: mockProfileLoaded ? { id: 1, is_premium: false } : null,
+    userId: 1,
     signOut: jest.fn(),
     deleteAccount: jest.fn(),
     refreshUser: jest.fn(),
@@ -37,12 +40,12 @@ jest.mock("../../../features/paywall/usePaywallExit", () => ({
   }),
 }));
 jest.mock("../../../features/paywall/usePaywallOfferings", () => ({
-  usePaywallOfferings: () => ({
+  usePaywallOfferings: jest.fn(() => ({
     loading: false,
     error: null,
     purchaseEnabled: true,
     retry: jest.fn(),
-  }),
+  })),
 }));
 jest.mock("../../../features/paywall/usePaywallPurchases", () => ({
   usePaywallPurchases: () => ({
@@ -64,6 +67,17 @@ describe("usePaywallController unlock ownership", () => {
     jest.clearAllMocks();
     mockBusy = false;
     mockCachedPremium = null;
+    mockProfileLoaded = true;
+  });
+
+  it("asks billing about the signed-in account before its profile has loaded", () => {
+    mockProfileLoaded = false;
+
+    renderHook(() => usePaywallController());
+
+    expect(usePaywallOfferings).toHaveBeenLastCalledWith(
+      expect.objectContaining({ appUserId: "1" }),
+    );
   });
 
   it("leaves the exit to a running purchase so its confirmation alert is shown", () => {

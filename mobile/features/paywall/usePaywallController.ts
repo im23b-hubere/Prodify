@@ -15,7 +15,7 @@ import { usePremiumUnlockFinalizer } from "./usePremiumUnlockFinalizer";
 import { usePremiumUpdateListener } from "./usePremiumUpdateListener";
 
 export function usePaywallController() {
-  const { token, user, refreshUser, signOut, deleteAccount } = useAuth();
+  const { token, user, userId, refreshUser, signOut, deleteAccount } = useAuth();
   const params = useLocalSearchParams<{ variant?: string; source?: string }>();
   const source: PaywallSource =
     params.source === "onboarding" || params.source === "post_auth" ? params.source : "in_app";
@@ -38,7 +38,7 @@ export function usePaywallController() {
     afterSessionEnds: stayUntilPaywallExits,
   });
 
-  const appUserId = useMemo(() => (user?.id != null ? String(user.id) : null), [user?.id]);
+  const appUserId = useMemo(() => (userId != null ? String(userId) : null), [userId]);
 
   const finalizePremiumUnlock = usePremiumUnlockFinalizer({
     token,

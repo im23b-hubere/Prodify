@@ -29,6 +29,7 @@ import { isE2eModeEnabled } from "../lib/e2eMode";
 import { setNotificationUserContext } from "../lib/notificationInbox";
 import { syncPendingWeeklyGoal } from "../lib/onboardingGoalSync";
 import { configureRevenueCat } from "../lib/revenuecat";
+import { readSessionUserId, rememberSessionUserId } from "../lib/sessionUserStorage";
 import { useLatestRef } from "../hooks/useLatestRef";
 import {
   authenticate,
@@ -43,6 +44,11 @@ import type { AppleCredential } from "../lib/socialSignIn";
 type AuthContextValue = {
   token: string | null;
   user: AuthenticatedUser | null;
+  /**
+   * The signed-in account's id, known at launch from the last session while `user` still waits
+   * for the server. Access and billing checks use it, so a slow server never hides a subscription.
+   */
+  userId: number | null;
   hydrated: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, username: string, password: string) => Promise<void>;
@@ -72,12 +78,14 @@ const AUTH_IDENTITY_TIMEOUT_MS = 30_000;
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<AuthenticatedUser | null>(null);
+  const [rememberedUserId, setRememberedUserId] = useState<number | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const dropLocalSessionRef = useRef<Promise<void> | null>(null);
 
   // A profile only means anything while a token backs it. Deriving the exposed user keeps that
   // invariant structural instead of relying on every sign-out path to remember to clear it.
   const user = token ? profile : null;
+  const userId = token ? (profile?.id ?? rememberedUserId) : null;
   const sessionUserIdRef = useLatestRef(profile?.id);
 
   const persistTokenPair = useCallback(async (pair: TokenPair) => {
@@ -92,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await clearLocalAuthSession(previousUserId, false);
       setToken(null);
       setProfile(null);
+      setRememberedUserId(null);
     })();
     dropLocalSessionRef.current = run.finally(() => {
       dropLocalSessionRef.current = null;
@@ -105,7 +114,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await discardTokensFromPreviousInstall();
         const stored = await readAccessToken();
-        if (!cancelled) setToken(stored);
+        const remembered = await readSessionUserId();
+        if (!cancelled) {
+          setRememberedUserId(remembered);
+          setToken(stored);
+        }
       } finally {
         if (!cancelled) setHydrated(true);
       }
@@ -170,9 +183,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [hydrated, token, refreshUser]);
 
   useEffect(() => {
-    if (!token || user?.id == null || isE2eModeEnabled()) return;
-    void configureRevenueCat(String(user.id)).catch(() => undefined);
-  }, [token, user?.id]);
+    if (token && profile?.id != null) void rememberSessionUserId(profile.id);
+  }, [token, profile?.id]);
+
+  useEffect(() => {
+    if (userId == null || isE2eModeEnabled()) return;
+    void configureRevenueCat(String(userId)).catch(() => undefined);
+  }, [userId]);
 
   useEffect(() => {
     if (!token || !user?.is_premium) return;
@@ -193,8 +210,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         identityTimeoutMs: AUTH_IDENTITY_TIMEOUT_MS,
         unexpectedResponseMessage: i18n.t("errors.unexpectedResponse"),
       });
-      await persistTokenPair(pair);
+      // The profile goes first, so no render pairs the new token with a previous account's id.
       setProfile(authenticatedUser);
+      await persistTokenPair(pair);
       void setNotificationUserContext(authenticatedUser.id, authenticatedUser.created_at ?? null).catch(
         () => undefined,
       );
@@ -253,6 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearLocalAuthSession(previousUserId, true);
     setToken(null);
     setProfile(null);
+    setRememberedUserId(null);
   }, [token, user?.id]);
 
   const applyAuthenticatedUser = useCallback((next: AuthenticatedUser) => {
@@ -263,6 +282,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       token,
       user,
+      userId,
       hydrated,
       signIn,
       signUp,
@@ -276,6 +296,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [
       token,
       user,
+      userId,
       hydrated,
       signIn,
       signUp,

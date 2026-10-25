@@ -21,6 +21,7 @@ import {
   isPremiumActive,
 } from "./revenuecat";
 import { syncSessionLiveActivity } from "./sessionLiveActivity";
+import { forgetSessionUserId } from "./sessionUserStorage";
 import { syncStreakWidget } from "./streakWidget";
 import { cancelWeeklyRecapScheduled } from "./weeklyRecapNotifications";
 
@@ -95,6 +96,7 @@ export async function clearLocalAuthSession(
   clearOnboarding: boolean,
 ): Promise<void> {
   await clearTokenPair();
+  await forgetSessionUserId();
   if (clearOnboarding) {
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY).catch(() => undefined);
   }

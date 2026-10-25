@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import React from "react";
 
@@ -12,6 +13,8 @@ import {
 } from "../../lib/client";
 import { clearLocalAuthSession } from "../../lib/authSessionService";
 import { discardTokensFromPreviousInstall, readAccessToken } from "../../lib/authTokenStorage";
+import { configureRevenueCat } from "../../lib/revenuecat";
+import { readSessionUserId, rememberSessionUserId } from "../../lib/sessionUserStorage";
 
 jest.mock("../../lib/client", () => ({
   ApiError: class ApiError extends Error {
@@ -81,8 +84,9 @@ function renderAuth() {
 }
 
 describe("AuthProvider user exposure", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    await AsyncStorage.clear();
     mockReadAccessToken.mockResolvedValue("stored-token");
     mockApiJson.mockResolvedValue(ACCOUNT);
   });
@@ -114,6 +118,42 @@ describe("AuthProvider user exposure", () => {
     const discardedAt = jest.mocked(discardTokensFromPreviousInstall).mock.invocationCallOrder[0];
     const restoredAt = mockReadAccessToken.mock.invocationCallOrder[0];
     expect(discardedAt).toBeLessThan(restoredAt);
+  });
+
+  it("knows who is signed in from the last session while the server has not answered yet", async () => {
+    await rememberSessionUserId(ACCOUNT.id);
+    mockApiJson.mockReturnValue(new Promise(() => undefined));
+
+    const { result } = renderAuth();
+
+    await waitFor(() => expect(result.current.userId).toBe(ACCOUNT.id));
+    expect(result.current.user).toBeNull();
+  });
+
+  it("identifies the remembered account to billing before the profile arrives", async () => {
+    await rememberSessionUserId(ACCOUNT.id);
+    mockApiJson.mockReturnValue(new Promise(() => undefined));
+
+    renderAuth();
+
+    await waitFor(() => expect(configureRevenueCat).toHaveBeenCalledWith(String(ACCOUNT.id)));
+  });
+
+  it("remembers the account once the server confirms who is signed in", async () => {
+    const { result } = renderAuth();
+
+    await waitFor(() => expect(result.current.user).toEqual(ACCOUNT));
+    await waitFor(async () => expect(await readSessionUserId()).toBe(ACCOUNT.id));
+  });
+
+  it("knows no account without a token, even when one is still remembered", async () => {
+    await rememberSessionUserId(ACCOUNT.id);
+    mockReadAccessToken.mockResolvedValue(null);
+
+    const { result } = renderAuth();
+
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    expect(result.current.userId).toBeNull();
   });
 
   it("keeps the user null when there was never a token to begin with", async () => {

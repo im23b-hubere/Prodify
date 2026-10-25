@@ -2,6 +2,8 @@
 export const REFRESH_TOKEN_KEY = "prodify_refresh_token_v1";
 /** AsyncStorage: "1" once this install started; missing after a reinstall, unlike the keychain. */
 export const INSTALL_MARKER_KEY = "prodify_install_marker_v1";
+/** AsyncStorage: id of the signed-in account, known at launch before the server answers. */
+export const SESSION_USER_ID_KEY = "prodify_session_user_id_v1";
 
 /** Last streak value we showed — used to detect a broken streak on next load. */
 export const LAST_KNOWN_STREAK_KEY = "prodify_last_known_streak_v1";
