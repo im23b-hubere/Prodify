@@ -18,6 +18,8 @@ mobile/coverage/
 mobile/ios/
 mobile/android/
 mobile/.kotlin/
+mobile/.jest-cache/
+mobile/.expo-export-check/
 
 # Local environments, caches, credentials, and editor files
 mobile/.env

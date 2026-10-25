@@ -9,6 +9,8 @@ coverage/
 ios/
 android/
 .kotlin/
+.jest-cache/
+.expo-export-check/
 
 # Local environments, caches, and credentials
 .env
