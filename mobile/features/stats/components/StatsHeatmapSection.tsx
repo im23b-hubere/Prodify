@@ -11,12 +11,12 @@ import {
   getRecentHeatmapDays,
   hasRecentHeatmapActivity,
 } from "../utils/heatmap";
-import type { HeatmapDay } from "../types";
+import type { HeatmapCell } from "../types";
 import { StatsSection } from "./StatsSection";
 
 type Props = {
   t: TFunction;
-  days: HeatmapDay[];
+  days: HeatmapCell[];
 };
 
 export function StatsHeatmapSection({ t, days }: Props) {

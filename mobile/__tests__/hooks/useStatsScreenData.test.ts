@@ -43,7 +43,7 @@ const userAPrimary = {
     recent_sessions: [],
     productivity_hint: null,
   },
-  heatmapDays: [{ date: "2026-01-01", seconds: 3600, intensity: 2 }],
+  heatmapDays: [{ date: "2026-01-01", seconds: 3600, intensity: 2, counted: true }],
   records: [
     {
       key: "longest_session",
@@ -100,7 +100,7 @@ const userBPrimary = {
     recent_sessions: [],
     productivity_hint: null,
   },
-  heatmapDays: [{ date: "2026-01-02", seconds: 1800, intensity: 1 }],
+  heatmapDays: [{ date: "2026-01-02", seconds: 1800, intensity: 1, counted: true }],
   records: [
     {
       key: "longest_session",

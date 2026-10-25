@@ -1,21 +1,21 @@
 import { localDateKey } from "../../../lib/weekCalendar";
 import { STATS_HEATMAP_RECENT_DAYS } from "../constants";
-import type { HeatmapDay } from "../types";
+import type { HeatmapCell } from "../types";
 
-export function countHeatmapActiveDays(days: HeatmapDay[]): number {
+export function countHeatmapActiveDays(days: HeatmapCell[]): number {
   return days.filter((day) => (day.intensity ?? 0) > 0 || (day.seconds ?? 0) > 0).length;
 }
 
-export function getRecentHeatmapDays(
-  days: HeatmapDay[],
+export function getRecentHeatmapDays<T extends HeatmapCell>(
+  days: T[],
   count = STATS_HEATMAP_RECENT_DAYS,
-): HeatmapDay[] {
+): T[] {
   if (days.length <= count) return days;
   return days.slice(-count);
 }
 
 export function hasRecentHeatmapActivity(
-  days: HeatmapDay[],
+  days: HeatmapCell[],
   count = STATS_HEATMAP_RECENT_DAYS,
 ): boolean {
   return getRecentHeatmapDays(days, count).some(
@@ -24,7 +24,7 @@ export function hasRecentHeatmapActivity(
 }
 
 export type HeatmapWeekColumn = {
-  days: (HeatmapDay | null)[];
+  days: (HeatmapCell | null)[];
 };
 
 function parseDayKey(iso: string): Date | null {
@@ -34,7 +34,7 @@ function parseDayKey(iso: string): Date | null {
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
-export function buildHeatmapWeekGrid(days: HeatmapDay[]): HeatmapWeekColumn[] {
+export function buildHeatmapWeekGrid(days: HeatmapCell[]): HeatmapWeekColumn[] {
   if (days.length === 0) return [];
   const byDate = new Map(days.map((day) => [day.date, day]));
   const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
@@ -55,13 +55,13 @@ export function buildHeatmapWeekGrid(days: HeatmapDay[]): HeatmapWeekColumn[] {
   const columns: HeatmapWeekColumn[] = [];
   const cursor = new Date(start);
   while (cursor <= last && columns.length < 16) {
-    const week: (HeatmapDay | null)[] = [];
+    const week: (HeatmapCell | null)[] = [];
     for (let index = 0; index < 7; index += 1) {
       const key = localDateKey(cursor);
       if (cursor < first || cursor > last) {
         week.push(null);
       } else {
-        week.push(byDate.get(key) ?? { date: key, seconds: 0, intensity: 0, counted: false });
+        week.push(byDate.get(key) ?? { date: key, seconds: 0, intensity: 0 });
       }
       cursor.setDate(cursor.getDate() + 1);
     }

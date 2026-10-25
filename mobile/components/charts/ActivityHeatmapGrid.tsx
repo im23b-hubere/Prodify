@@ -3,13 +3,13 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { fontFamily } from "../../constants/fonts";
 import { colors } from "../../constants/theme";
-import type { HeatmapDay } from "../../features/stats/types";
+import type { HeatmapCell } from "../../features/stats/types";
 import { buildHeatmapWeekGrid } from "../../features/stats/utils/heatmap";
 import { heatmapCellColor } from "../../lib/heatmapStyle";
 import { WEEKDAY_LETTERS } from "../../lib/weekCalendar";
 import { ActivityHeatmapLegend } from "./ActivityHeatmapLegend";
 
-type Props = { days: HeatmapDay[] };
+type Props = { days: HeatmapCell[] };
 
 /** Activity calendar used everywhere: one column per week, Monday–Sunday rows, legend below. */
 export function ActivityHeatmapGrid({ days }: Props) {

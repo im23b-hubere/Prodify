@@ -50,7 +50,7 @@ const userAMilestones = {
   longest_streak_days: 10,
 };
 
-const userAHeatmap = [{ date: "2026-01-01", seconds: 3600, intensity: 2 }];
+const userAHeatmap = [{ date: "2026-01-01", seconds: 3600, intensity: 2, counted: true }];
 
 const userBStats = {
   period: "all",
