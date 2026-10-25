@@ -10,12 +10,14 @@ from app.models import User
 from app.services.review_account_seed import (
     DemoAccountCollisionError,
     ReviewAccountSpec,
+    ReviewCredentials,
     ReviewSeedResult,
     seed_review_account,
+    seed_unsubscribed_review_account,
 )
 from app.services.streak_reconcile_service import load_streak_snapshot
 from app.streakutil import compute_current_streak
-from tests.auth_helpers import auth_headers
+from tests.auth_helpers import auth_headers, grant_subscriber
 
 SPEC = ReviewAccountSpec(
     email="app-review@example.org",
@@ -207,6 +209,73 @@ def test_reseeding_recreates_an_account_the_reviewer_deleted(client):
     _seed()
 
     assert _sign_in(client).status_code == 200
+
+
+UNSUBSCRIBED = ReviewCredentials(
+    email="app-review-paywall@example.org",
+    username="prodifypaywall",
+    password="paywall-password-123",
+)
+
+
+def _seed_unsubscribed() -> int:
+    with SessionLocal() as db:
+        return seed_unsubscribed_review_account(db, UNSUBSCRIBED)
+
+
+def _unsubscribed_token(client) -> str:
+    response = _sign_in(client, UNSUBSCRIBED.email, UNSUBSCRIBED.password)
+    assert response.status_code == 200, response.text
+    return response.json()["access_token"]
+
+
+def _bearer(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_unsubscribed_reviewer_signs_in_and_meets_the_paywall(client):
+    _seed_unsubscribed()
+
+    response = client.get("/streak/overview", headers=_bearer(_unsubscribed_token(client)))
+
+    assert response.status_code == 402
+    assert "PREMIUM_REQUIRED" in response.text
+
+
+def test_unsubscribed_reviewer_has_no_entitlement_to_restore(client):
+    _seed_unsubscribed()
+
+    entitlement = client.get("/billing/entitlement", headers=_bearer(_unsubscribed_token(client)))
+
+    assert entitlement.json()["entitlement"] == "inactive"
+
+
+def test_reseeding_takes_back_the_subscription_the_previous_reviewer_bought(client):
+    _seed_unsubscribed()
+    grant_subscriber(client, _unsubscribed_token(client))
+
+    _seed_unsubscribed()
+
+    response = client.get("/streak/overview", headers=_bearer(_unsubscribed_token(client)))
+    assert response.status_code == 402
+
+
+def test_unsubscribed_seed_leaves_the_subscribed_reviewer_untouched(client):
+    _seed()
+    _seed_unsubscribed()
+
+    assert client.get("/streak/overview", headers=_reviewer(client)).status_code == 200
+
+
+def test_unsubscribed_seed_refuses_to_take_over_a_real_account_holding_its_username(client):
+    auth_headers(client, "real-producer@example.org", UNSUBSCRIBED.username)
+
+    with pytest.raises(DemoAccountCollisionError):
+        _seed_unsubscribed()
+
+    with SessionLocal() as db:
+        real_producer = db.scalar(select(User).where(User.username == UNSUBSCRIBED.username))
+    assert real_producer.email == "real-producer@example.org"
 
 
 def test_seed_refuses_to_take_over_a_real_account_holding_a_demo_username(client):

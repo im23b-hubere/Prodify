@@ -1,20 +1,25 @@
-name: Seed Apple review account
+name: Seed Apple review accounts
 
-# Rebuilds the demo account Apple's reviewers sign in with, together with its demo producers.
+# Rebuilds the two accounts Apple's reviewers sign in with, together with the demo producers:
+#   - the subscribed reviewer sees every feature (goes into App Store Connect's sign-in fields),
+#   - the unsubscribed reviewer meets the paywall and buys in the sandbox (goes into the
+#     review notes), because the app never offers plans to a subscriber.
 #
-# Destructive for the review account only: the account and everything a reviewer did with it
-# (blocks, reports, accepted requests, a deleted account) is replaced by a fresh seed. Demo
-# producers use reserved example.com addresses and cannot sign in. Credentials come from
-# repository secrets so they never appear in this file, in the workflow-dispatch form, or in
-# the run logs (GitHub masks secret values in output).
+# Destructive for the review accounts only: everything a reviewer did with them (blocks,
+# reports, accepted requests, a sandbox purchase, a deleted account) is replaced by a fresh
+# seed. Demo producers use reserved example.com addresses and cannot sign in. Credentials come
+# from repository secrets so they never appear in this file, in the workflow-dispatch form, or
+# in the run logs (GitHub masks secret values in output).
 #
 # Run it right before submitting a build and again when Apple answers after more than four days:
 # the streak carries freezes for four review days, a duel invite expires after 48 hours.
 #
 # Required secrets:
-#   INTERNAL_JOB_KEY       Render → prodify-api → Environment → INTERNAL_JOB_KEY
-#   APPLE_REVIEW_EMAIL     Sign-in address given to App Review (no Apple/Google sign-in on it)
-#   APPLE_REVIEW_PASSWORD  Sign-in password given to App Review (min. 12 characters)
+#   INTERNAL_JOB_KEY               Render → prodify-api → Environment → INTERNAL_JOB_KEY
+#   APPLE_REVIEW_EMAIL             Subscribed reviewer's address (no Apple/Google sign-in on it)
+#   APPLE_REVIEW_PASSWORD          Subscribed reviewer's password (min. 12 characters)
+#   APPLE_REVIEW_PAYWALL_EMAIL     Unsubscribed reviewer's address (a different review-only address)
+#   APPLE_REVIEW_PAYWALL_PASSWORD  Unsubscribed reviewer's password (min. 12 characters)
 
 on:
   workflow_dispatch:
@@ -34,31 +39,40 @@ jobs:
           INTERNAL_JOB_KEY: ${{ secrets.INTERNAL_JOB_KEY }}
           APPLE_REVIEW_EMAIL: ${{ secrets.APPLE_REVIEW_EMAIL }}
           APPLE_REVIEW_PASSWORD: ${{ secrets.APPLE_REVIEW_PASSWORD }}
+          APPLE_REVIEW_PAYWALL_EMAIL: ${{ secrets.APPLE_REVIEW_PAYWALL_EMAIL }}
+          APPLE_REVIEW_PAYWALL_PASSWORD: ${{ secrets.APPLE_REVIEW_PAYWALL_PASSWORD }}
         run: |
           set -euo pipefail
           missing=""
           [ -n "${INTERNAL_JOB_KEY}" ] || missing="${missing} INTERNAL_JOB_KEY"
           [ -n "${APPLE_REVIEW_EMAIL}" ] || missing="${missing} APPLE_REVIEW_EMAIL"
           [ -n "${APPLE_REVIEW_PASSWORD}" ] || missing="${missing} APPLE_REVIEW_PASSWORD"
+          [ -n "${APPLE_REVIEW_PAYWALL_EMAIL}" ] || missing="${missing} APPLE_REVIEW_PAYWALL_EMAIL"
+          [ -n "${APPLE_REVIEW_PAYWALL_PASSWORD}" ] || missing="${missing} APPLE_REVIEW_PAYWALL_PASSWORD"
           if [ -n "${missing}" ]; then
             echo "Missing repository secrets:${missing}" >&2
             echo "Add them under Settings → Secrets and variables → Actions." >&2
             exit 1
           fi
 
-      - name: Seed review account on production
+      - name: Seed review accounts on production
         env:
           API_URL: ${{ inputs.api_url }}
           INTERNAL_JOB_KEY: ${{ secrets.INTERNAL_JOB_KEY }}
           APPLE_REVIEW_EMAIL: ${{ secrets.APPLE_REVIEW_EMAIL }}
           APPLE_REVIEW_PASSWORD: ${{ secrets.APPLE_REVIEW_PASSWORD }}
+          APPLE_REVIEW_PAYWALL_EMAIL: ${{ secrets.APPLE_REVIEW_PAYWALL_EMAIL }}
+          APPLE_REVIEW_PAYWALL_PASSWORD: ${{ secrets.APPLE_REVIEW_PAYWALL_PASSWORD }}
         run: |
           set -euo pipefail
           # Built with jq so the secrets are never interpolated into a shell string.
           body=$(jq -n \
             --arg email "${APPLE_REVIEW_EMAIL}" \
             --arg password "${APPLE_REVIEW_PASSWORD}" \
-            '{email: $email, username: "prodifyreview", password: $password}')
+            --arg paywall_email "${APPLE_REVIEW_PAYWALL_EMAIL}" \
+            --arg paywall_password "${APPLE_REVIEW_PAYWALL_PASSWORD}" \
+            '{email: $email, username: "prodifyreview", password: $password,
+              unsubscribed: {email: $paywall_email, username: "prodifypaywall", password: $paywall_password}}')
           # The summary names the profiles the review notes refer to.
           curl -sS --fail-with-body -X POST "${API_URL%/}/jobs/seed-review-account" \
             -H "Content-Type: application/json" \
@@ -87,3 +101,25 @@ jobs:
           curl -sS -f "${API_URL%/}/friends/incoming" -H "${auth}" | jq '[.[].username]'
           curl -sS -f "${API_URL%/}/social/buddy" -H "${auth}" | jq '{status, buddy_username}'
           curl -sS -f "${API_URL%/}/social/challenges" -H "${auth}" | jq '[.[] | {title, status}]'
+
+      - name: Verify the unsubscribed reviewer can sign in and meets the paywall
+        env:
+          API_URL: ${{ inputs.api_url }}
+          APPLE_REVIEW_PAYWALL_EMAIL: ${{ secrets.APPLE_REVIEW_PAYWALL_EMAIL }}
+          APPLE_REVIEW_PAYWALL_PASSWORD: ${{ secrets.APPLE_REVIEW_PAYWALL_PASSWORD }}
+        run: |
+          set -euo pipefail
+          login_body=$(jq -n \
+            --arg email "${APPLE_REVIEW_PAYWALL_EMAIL}" \
+            --arg password "${APPLE_REVIEW_PAYWALL_PASSWORD}" \
+            '{email: $email, password: $password}')
+          token=$(curl -sS -f -X POST "${API_URL%/}/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "${login_body}" | jq -r .access_token)
+          auth="Authorization: Bearer ${token}"
+          entitlement=$(curl -sS -f "${API_URL%/}/billing/entitlement" -H "${auth}" | jq -r .entitlement)
+          echo "entitlement: ${entitlement}"
+          [ "${entitlement}" != "premium" ] || { echo "The unsubscribed reviewer already has access." >&2; exit 1; }
+          status=$(curl -sS -o /dev/null -w "%{http_code}" "${API_URL%/}/streak/overview" -H "${auth}")
+          echo "product route status: ${status}"
+          [ "${status}" = "402" ] || { echo "Expected the paywall (402), got ${status}." >&2; exit 1; }

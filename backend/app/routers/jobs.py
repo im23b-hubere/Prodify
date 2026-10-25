@@ -10,8 +10,19 @@ from app.jobs.enforce_session_presence import run_session_presence_job
 from app.jobs.run_engagement_engine import run_engagement_job
 from app.jobs.send_streak_reminders import run_streak_reminder_job
 from app.jobs.settle_social_challenges import run_social_challenge_job
-from app.contracts.outcomes import SeedReviewAccountBody, SeedReviewAccountResult, SeedScreenshotAccountBody
-from app.services.review_account_seed import DemoAccountCollisionError, ReviewAccountSpec, seed_review_account
+from app.contracts.outcomes import (
+    ReviewCredentialsBody,
+    SeedReviewAccountBody,
+    SeedReviewAccountResult,
+    SeedScreenshotAccountBody,
+)
+from app.services.review_account_seed import (
+    DemoAccountCollisionError,
+    ReviewAccountSpec,
+    ReviewCredentials,
+    seed_review_account,
+    seed_unsubscribed_review_account,
+)
 from app.services.screenshot_seed_scenario import seed_screenshot_account
 from app.services.social_challenge_notifications import PushChallengeEvents
 
@@ -83,7 +94,7 @@ def http_seed_review_account(
     db: Annotated[Session, Depends(get_db)],
     x_internal_job_key: Annotated[str | None, Header(alias="X-Internal-Job-Key")] = None,
 ) -> SeedReviewAccountResult:
-    """Rebuild the Apple review account and its demo producers from scratch."""
+    """Rebuild the Apple review accounts and the demo producers from scratch."""
     _require_internal_job_key(x_internal_job_key)
     spec = ReviewAccountSpec(
         email=body.email,
@@ -94,6 +105,7 @@ def http_seed_review_account(
     )
     try:
         result = seed_review_account(db, spec)
+        unsubscribed_user_id = _seed_unsubscribed_reviewer(db, body.unsubscribed)
     except DemoAccountCollisionError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -107,7 +119,15 @@ def http_seed_review_account(
         friend_usernames=list(result.friend_usernames),
         requester_username=result.requester_username,
         open_profile_username=result.open_profile_username,
+        unsubscribed_user_id=unsubscribed_user_id,
     )
+
+
+def _seed_unsubscribed_reviewer(db: Session, body: ReviewCredentialsBody | None) -> int | None:
+    if body is None:
+        return None
+    credentials = ReviewCredentials(email=body.email, username=body.username, password=body.password)
+    return seed_unsubscribed_review_account(db, credentials)
 
 
 @router.post("/seed-screenshot-account")

@@ -184,6 +184,46 @@ def test_seed_review_account_job_names_the_profiles_for_the_review_notes(client,
     assert "password" not in json.dumps(body)
 
 
+UNSUBSCRIBED_REVIEW_ACCOUNT = {
+    "email": "app-review-paywall@example.org",
+    "username": "prodifypaywall",
+    "password": "paywall-password-123",
+}
+
+
+def test_seed_review_account_job_also_rebuilds_the_unsubscribed_account(client, monkeypatch):
+    body = {**REVIEW_ACCOUNT, "unsubscribed": UNSUBSCRIBED_REVIEW_ACCOUNT}
+
+    response = _seed_review_account(client, monkeypatch, body)
+
+    assert response.status_code == 200, response.text
+    assert isinstance(response.json()["unsubscribed_user_id"], int)
+    login = client.post(
+        "/auth/login",
+        json={
+            "email": UNSUBSCRIBED_REVIEW_ACCOUNT["email"],
+            "password": UNSUBSCRIBED_REVIEW_ACCOUNT["password"],
+        },
+    )
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    assert client.get("/billing/entitlement", headers=headers).json()["entitlement"] == "inactive"
+
+
+def test_seed_review_account_job_still_works_without_an_unsubscribed_account(client, monkeypatch):
+    response = _seed_review_account(client, monkeypatch, REVIEW_ACCOUNT)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["unsubscribed_user_id"] is None
+
+
+def test_seed_review_account_job_rejects_a_weak_unsubscribed_password(client, monkeypatch):
+    unsubscribed = {**UNSUBSCRIBED_REVIEW_ACCOUNT, "password": "short"}
+
+    response = _seed_review_account(client, monkeypatch, {**REVIEW_ACCOUNT, "unsubscribed": unsubscribed})
+
+    assert response.status_code == 422
+
+
 def test_seed_review_account_job_rejects_invalid_key(client, monkeypatch):
     response = _seed_review_account(client, monkeypatch, REVIEW_ACCOUNT, key="wrong-key")
 

@@ -1,8 +1,11 @@
-"""Seed the demo account Apple's reviewers sign in with.
+"""Seed the demo accounts Apple's reviewers sign in with.
 
-Every run rebuilds the reviewer and the demo producers from scratch, so whatever the last
-reviewer blocked, reported, accepted or deleted is gone. Demo producers live on the reserved
-example.com domain and have no password: nobody can sign in as them or receive their mail.
+The subscribed reviewer sees every feature with demo producers around it. The unsubscribed
+reviewer meets the paywall and buys in the sandbox, because a subscriber is never offered plans.
+
+Every run rebuilds both from scratch, so whatever the last reviewer blocked, reported, accepted,
+bought or deleted is gone. Demo producers live on the reserved example.com domain and have no
+password: nobody can sign in as them or receive their mail.
 """
 
 from __future__ import annotations
@@ -106,6 +109,13 @@ class ReviewAccountSpec:
 
 
 @dataclass(frozen=True)
+class ReviewCredentials:
+    email: str
+    username: str
+    password: str
+
+
+@dataclass(frozen=True)
 class ReviewSeedResult:
     reviewer_user_id: int
     reviewer_username: str
@@ -144,9 +154,26 @@ def seed_review_account(db: Session, spec: ReviewAccountSpec) -> ReviewSeedResul
     )
 
 
+def seed_unsubscribed_review_account(db: Session, credentials: ReviewCredentials) -> int:
+    """A fresh account without a subscription; returns its user id."""
+    previous = _previous_reviewer(db, email=credentials.email, username=credentials.username)
+    if previous is not None:
+        _delete_stored_media(db, previous)
+        purge_user(db, previous)
+    reviewer = _create_user(
+        db,
+        email=_normalize(credentials.email),
+        username=_normalize(credentials.username),
+        hashed_password=hash_password(credentials.password),
+    )
+    reviewer.timezone = REVIEWER_TIMEZONE
+    db.commit()
+    return reviewer.id
+
+
 def _remove_previous_seed(db: Session, spec: ReviewAccountSpec) -> None:
     """Checks every account first, so a collision leaves the database untouched."""
-    reviewer = _previous_reviewer(db, spec)
+    reviewer = _previous_reviewer(db, email=spec.email, username=spec.username)
     producers = [_previous_demo_producer(db, producer) for producer in DEMO_PRODUCERS]
     if reviewer is not None:
         _delete_stored_media(db, reviewer)
@@ -156,14 +183,14 @@ def _remove_previous_seed(db: Session, spec: ReviewAccountSpec) -> None:
             purge_user(db, producer)
 
 
-def _previous_reviewer(db: Session, spec: ReviewAccountSpec) -> User | None:
-    email = _normalize(spec.email)
-    holders = _accounts_holding(db, email=email, username=_normalize(spec.username))
-    if any(holder.email != email for holder in holders):
-        raise DemoAccountCollisionError(f"@{spec.username} belongs to another account")
+def _previous_reviewer(db: Session, *, email: str, username: str) -> User | None:
+    normalized_email = _normalize(email)
+    holders = _accounts_holding(db, email=normalized_email, username=_normalize(username))
+    if any(holder.email != normalized_email for holder in holders):
+        raise DemoAccountCollisionError(f"@{username} belongs to another account")
     reviewer = holders[0] if holders else None
     if reviewer is not None and _has_social_sign_in(db, reviewer):
-        raise DemoAccountCollisionError(f"{spec.email} signs in with Apple or Google; pick a review-only address")
+        raise DemoAccountCollisionError(f"{email} signs in with Apple or Google; pick a review-only address")
     return reviewer
 
 
