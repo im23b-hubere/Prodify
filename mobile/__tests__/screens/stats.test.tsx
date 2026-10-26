@@ -153,6 +153,10 @@ function collectTestIds(node: unknown, ids: string[] = []): string[] {
 }
 
 describe("Stats Screen", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
@@ -191,7 +195,6 @@ describe("Stats Screen", () => {
       return Promise.resolve(null);
     });
   });
-
 
   it("shows period filters and week hero after stats load", async () => {
     const { findByText, findByTestId } = render(<StatsScreen />);
@@ -383,6 +386,19 @@ describe("Stats Screen", () => {
   });
 
   it("names a chart best only after choosing among several marked days", async () => {
+    // A Wednesday, so "yesterday" is in the same Monday-to-Sunday week the chart shows.
+    jest.useFakeTimers({
+      now: new Date(2026, 9, 21, 12),
+      doNotFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "setImmediate",
+        "nextTick",
+        "queueMicrotask",
+      ],
+    });
     const today = localStatsDateKey(new Date());
     const yesterdayDate = new Date();
     yesterdayDate.setHours(0, 0, 0, 0);
