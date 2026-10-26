@@ -33,6 +33,7 @@ function createController(): SettingsScreenController {
       openImprint: jest.fn(),
       openBlockedUsers: jest.fn(),
       openEngagementDebug: jest.fn(),
+      openSubscriptionManagement: jest.fn(),
     },
   } as unknown as SettingsScreenController;
 }
@@ -58,6 +59,15 @@ describe("SettingsScreenView", () => {
     expect(controller.navigation.openImprint).toHaveBeenCalledTimes(1);
     expect(controller.accountActions.confirmSignOut).toHaveBeenCalledTimes(1);
     expect(controller.accountActions.confirmDeleteAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets a subscriber manage or cancel the subscription from inside the app", () => {
+    const controller = createController();
+    render(<SettingsScreenView controller={controller} />);
+
+    fireEvent.press(screen.getByLabelText("profile.manageSubscription"));
+
+    expect(controller.navigation.openSubscriptionManagement).toHaveBeenCalledTimes(1);
   });
 
   it("leads to the list of blocked users", () => {

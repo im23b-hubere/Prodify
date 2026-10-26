@@ -3,6 +3,7 @@ import {
   Bell,
   Building2,
   ChevronRight,
+  CreditCard,
   FileText,
   Languages,
   LogOut,
@@ -23,6 +24,7 @@ type Props = {
       SettingsScreenController["navigation"],
       | "openLanguageSettings"
       | "openNotifications"
+      | "openSubscriptionManagement"
       | "openPrivacy"
       | "openTerms"
       | "openImprint"
@@ -85,6 +87,12 @@ export function ProfileSettingsSection({ controller }: Props) {
           label={t("profile.manageNotifications")}
           Icon={Bell}
           onPress={navigation.openNotifications}
+        />
+        <View style={styles.legalDivider} />
+        <SettingsLink
+          label={t("profile.manageSubscription")}
+          Icon={CreditCard}
+          onPress={navigation.openSubscriptionManagement}
         />
         <View style={styles.legalDivider} />
         <SettingsLink

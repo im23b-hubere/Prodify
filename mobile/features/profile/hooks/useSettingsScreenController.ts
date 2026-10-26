@@ -9,6 +9,7 @@ import {
   FALLBACK_APP_LANGUAGE,
   isAppLanguage,
 } from "../../../lib/i18nLanguages";
+import { openSubscriptionManagement } from "../../../lib/revenuecat";
 import { useProfileAccountActions } from "./useProfileAccountActions";
 
 /** Everything the settings screen offers: language, notification preferences, legal links and the account. */
@@ -33,6 +34,7 @@ export function useSettingsScreenController() {
       },
       openNotifications: () =>
         router.push({ pathname: "/notifications", params: { source: "profile" } }),
+      openSubscriptionManagement: () => void openSubscriptionManagement(),
       openPrivacy: () => openLegalPage("privacy"),
       openTerms: () => openLegalPage("terms"),
       openImprint: () => openLegalPage("imprint"),

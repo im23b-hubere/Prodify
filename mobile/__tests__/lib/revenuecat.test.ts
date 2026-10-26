@@ -30,6 +30,7 @@ jest.mock("react-native-purchases", () => ({
     setLogLevel: jest.fn(),
     addCustomerInfoUpdateListener: jest.fn(),
     removeCustomerInfoUpdateListener: jest.fn(),
+    showManageSubscriptions: jest.fn(),
   },
 }));
 
@@ -148,5 +149,38 @@ describe("subscribeToCustomerInfoUpdates", () => {
     unsubscribe();
 
     expect(purchases.addCustomerInfoUpdateListener).not.toHaveBeenCalled();
+  });
+});
+
+describe("openSubscriptionManagement", () => {
+  const { Linking } = require("react-native") as typeof import("react-native");
+
+  beforeEach(() => {
+    jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("presents Apple's subscription sheet once billing is set up", async () => {
+    const { revenueCat, purchases } = loadRevenueCat("42");
+    await revenueCat.configureRevenueCat("42");
+    purchases.showManageSubscriptions.mockResolvedValue(undefined);
+
+    await revenueCat.openSubscriptionManagement();
+
+    expect(purchases.showManageSubscriptions).toHaveBeenCalledTimes(1);
+    expect(Linking.openURL).not.toHaveBeenCalled();
+  });
+
+  it("opens the App Store's subscription page when the sheet cannot be shown", async () => {
+    const { revenueCat, purchases } = loadRevenueCat("42");
+    await revenueCat.configureRevenueCat("42");
+    purchases.showManageSubscriptions.mockRejectedValue(new Error("unavailable"));
+
+    await revenueCat.openSubscriptionManagement();
+
+    expect(Linking.openURL).toHaveBeenCalledWith("https://apps.apple.com/account/subscriptions");
   });
 });

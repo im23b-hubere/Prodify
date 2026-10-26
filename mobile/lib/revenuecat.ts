@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 import Purchases, {
   type CustomerInfo,
   type MakePurchaseResult,
@@ -229,6 +229,27 @@ export async function purchaseRevenueCatPackage(
     "purchase",
     REVENUECAT_PURCHASE_TIMEOUT_MS,
   );
+}
+
+const STORE_SUBSCRIPTIONS_URL = Platform.select({
+  android: "https://play.google.com/store/account/subscriptions",
+  default: "https://apps.apple.com/account/subscriptions",
+});
+
+/**
+ * Lets a subscriber change or cancel the plan without leaving the app: the store's own sheet,
+ * or its subscriptions page where the sheet is unavailable (Expo Go, SDK not configured).
+ */
+export async function openSubscriptionManagement(): Promise<void> {
+  if (sdkConfigured) {
+    try {
+      await Purchases.showManageSubscriptions();
+      return;
+    } catch {
+      // Fall through to the store's subscriptions page.
+    }
+  }
+  await Linking.openURL(STORE_SUBSCRIPTIONS_URL).catch(() => undefined);
 }
 
 /** Listen for SDK-pushed customer changes (renewals, purchases finished elsewhere). */
