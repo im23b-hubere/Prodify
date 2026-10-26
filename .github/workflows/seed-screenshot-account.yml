@@ -38,7 +38,7 @@ jobs:
             --arg password "${SCREENSHOT_PASSWORD}" \
             '{
               main_email: "eric.lab@prodify.app",
-              main_username: "eric.lab",
+              main_username: "erix",
               main_password: $password,
               friend_password: $password,
               days_back: 84,
