@@ -1,50 +1,43 @@
 # App Review notes (App Store Connect)
 
-Paste the block below into **App Store Connect → App Review Information → Notes**. Put the
-subscribed account into the **Sign-In Information** fields and replace the two placeholders for
-the unsubscribed account. Never commit the real credentials.
+Paste the block below into **App Store Connect → App Review Information → Notes** when the build
+that contains these features is attached to the version. The demo account goes into the
+**Sign-In Information** fields as well. Never commit the real passwords.
 
 Before every submission (and again when Apple answers after more than four days), run the
-GitHub workflow **Seed Apple review accounts**. It rebuilds both accounts, undoes what the last
-reviewer did (including a sandbox purchase) and checks that the second account meets the paywall.
+GitHub workflow **Seed Apple review accounts**. It rebuilds both review accounts, undoes what the
+last reviewer did (including a sandbox purchase) and checks that the second account meets the
+paywall. If the second account is not set up, delete the "SECOND ACCOUNT" paragraph below; the
+"create a new account" route still works.
 
-Also make sure both subscriptions (`prodify_weekly_access`, `prodify_6month_access`) are
-"Ready to Submit" and attached to this version under **In-App Purchases and Subscriptions**.
+Also make sure both subscriptions (`prodify_weekly_access`, `prodify_6month_access`) are added for
+review together with this version (**Add for Review** in their subscription group).
 
 ---
 
 ```text
-Prodify is a subscription-only app for music producers: it tracks studio sessions, streaks,
-weekly goals and progress, with friends, 1v1 duels and comments. An account is required because
-sessions, streaks and friends sync across devices and are shared with friends.
+Prodify is a subscription-only app that helps music producers track studio sessions, keep a daily streak and stay accountable with friends. An account is required because sessions, streaks and friends sync across devices and are shared with friends.
 
-TWO REVIEW ACCOUNTS
+DEMO ACCOUNT (premium access already active, no purchase needed)
+Email: appreview@prodify.app
+Password: <see Sign-In Information>
 On the first screen, tap "Sign in".
 
-1) Subscribed account (Sign-In Information above)
-   Full access with demo data: a 64-day streak, friends, an active buddy, a running duel,
-   a duel invite from ines.synth, a friend request from kai.loops and comments on the latest
-   session.
+The account contains sample data: a 64-day streak, level 12, sessions over the last two months, 6 friends with activity, a running duel, a duel invite, a buddy and comments from friends. All other profiles are demo accounts.
 
-2) Unsubscribed account, to review the in-app purchases
-   Email: <APPLE_REVIEW_PAYWALL_EMAIL>
-   Password: <APPLE_REVIEW_PAYWALL_PASSWORD>
-   After signing in, the paywall shows both auto-renewable subscriptions (Weekly and
-   6 Months). Purchases use the sandbox and unlock the app right away. "Restore purchases",
-   Terms and Privacy are on the paywall.
+WHAT TO TRY
+1. Dashboard: tap "Start session", stop it after a minute and see the summary, XP and streak. After the session, a card offers streak reminders; the system permission prompt appears only if you tap "Turn on reminders".
+2. Stats and Skill Tree: weekly goal, activity calendar and skill progress.
+3. Friends tab: accept the friend request from @kai.loops, accept or decline the duel invite from @ines.synth, see your buddy @mila.waves and the running duel. To send a friend request, search the username @noah.strings.
+4. User-generated content: open your most recent session; friends commented on it. Press and hold a comment to report it or block its author. Profiles of other users also offer Report and Block. Blocked users are listed under Profile > Settings > Blocked users. Everything other producers can read is filtered for objectionable language: usernames, comments, challenge titles and the notes, tags and track titles of sessions shared with friends.
+5. Subscription: Profile > Settings > Manage subscription opens the App Store subscription sheet.
+6. Account deletion: Profile > Settings > Delete account. It is also available on the paywall, so an account without a subscription can be deleted too.
 
-A subscriber is never shown the plans, so the subscriptions are only visible with account 2.
-To move between the accounts on the paywall, tap "Use another account".
+IN-APP PURCHASE
+The demo account already has access, so it never sees the paywall. To test the purchase, sign in with an account without a subscription:
+- SECOND ACCOUNT: Email <APPLE_REVIEW_PAYWALL_EMAIL>, Password <APPLE_REVIEW_PAYWALL_PASSWORD>, or
+- create a new account (email or Sign in with Apple); the paywall appears right after sign-up.
+The paywall shows both auto-renewable subscriptions (weekly and 6 months) with the billed price, plus Restore purchases, Terms and Privacy. To switch accounts on the paywall, tap "Use another account".
 
-ACCOUNT DELETION
-Profile → Settings (gear icon) → Delete account. Also available on the paywall, so an account
-without a subscription can be deleted too.
-
-USER-GENERATED CONTENT
-Everything other producers can read is filtered for objectionable language: usernames,
-comments, challenge titles and the notes, tags and track titles of sessions shared with
-friends. On a friend's profile, the "…" menu offers
-Report and Block. Comments: press and hold a comment on a session for Report, Block or Delete.
-Reports reach the moderators immediately; we review every report within 24 hours.
-Contact: prodify@gmx.net
+Contact: eric.huber.ch@gmail.com
 ```
