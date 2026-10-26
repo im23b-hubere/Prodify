@@ -5,8 +5,14 @@
 | Change | Ship as | Command |
 |--------|---------|---------|
 | JavaScript/TypeScript, copy, styles, images | **OTA update** to existing builds | `npm run update:production -- "<message>"` |
+| Paywall, prices, plans, subscription or renewal copy, sign-in and account deletion, permission prompts, new features | **New store build** for App Review, even when only JavaScript changed | `eas build --platform ios --profile production --auto-submit` |
 | Native dependency added/upgraded, config plugin, `app.json`/`app.config.js` native fields, permissions, Expo SDK upgrade | **New store build** | `eas build --platform ios --profile production --auto-submit` |
 | New public version in the App Store | **New store build** after bumping `expo.version` | same as above |
+
+OTA updates may fix and polish what App Review saw, but must not change the app's purpose, its
+purchase flow or what it asks the user for (App Review Guideline 2.5.2, Developer Program License
+Agreement 3.3.1(b)). An OTA that changes the paywall would put a purchase flow in front of
+customers that Apple never reviewed, so those changes always go through a store build.
 
 OTA updates reach only builds with the same runtime. `runtimeVersion` follows `expo.version`
 (`appVersion` policy), so bumping `version` cuts the new build off from earlier updates and vice
