@@ -1,0 +1,67 @@
+name: Seed screenshot account
+
+# One-off: fills eric.lab@prodify.app on the TestFlight API with screenshot data.
+# Credentials stay in repository secrets and are masked in the logs.
+
+on:
+  push:
+    branches:
+      - chore/seed-screenshot-account
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Seed screenshot account on production
+        env:
+          API_URL: https://prodify-api-46b1.onrender.com
+          INTERNAL_JOB_KEY: ${{ secrets.INTERNAL_JOB_KEY }}
+          SCREENSHOT_PASSWORD: ${{ secrets.PRODIFY_SCREENSHOT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          code="000"
+          for _ in 1 2 3 4 5 6; do
+            code=$(curl -sS -m 90 -o /dev/null -w "%{http_code}" "${API_URL}/health" || true)
+            echo "health ${code}"
+            if [ "${code}" = "200" ]; then
+              break
+            fi
+            sleep 15
+          done
+          if [ "${code}" != "200" ]; then
+            echo "API did not become healthy" >&2
+            exit 1
+          fi
+
+          body=$(jq -n \
+            --arg password "${SCREENSHOT_PASSWORD}" \
+            '{
+              main_email: "eric.lab@prodify.app",
+              main_username: "eric.lab",
+              main_password: $password,
+              friend_password: $password,
+              days_back: 84,
+              current_streak: 18,
+              longest_streak: 41,
+              main_level: 16
+            }')
+          curl -sS --fail-with-body -m 300 -X POST "${API_URL}/jobs/seed-screenshot-account" \
+            -H "Content-Type: application/json" \
+            -H "X-Internal-Job-Key: ${INTERNAL_JOB_KEY}" \
+            -d "${body}" \
+            | jq '{status, main_username, main_user_id, sessions_created, current_streak, longest_streak, friends_seeded, premium_enabled}'
+
+          login_body=$(jq -n \
+            --arg password "${SCREENSHOT_PASSWORD}" \
+            '{email: "eric.lab@prodify.app", password: $password}')
+          token=$(curl -sS --fail-with-body -m 60 -X POST "${API_URL}/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "${login_body}" | jq -r .access_token)
+          auth="Authorization: Bearer ${token}"
+          curl -sS --fail-with-body -m 60 "${API_URL}/billing/entitlement" -H "${auth}" \
+            | jq '{is_premium, entitlement}'
+          curl -sS --fail-with-body -m 60 "${API_URL}/streak/overview" -H "${auth}" \
+            | jq '{current_streak, longest_streak}'
+          curl -sS --fail-with-body -m 60 "${API_URL}/friends/leaderboard?period=week" -H "${auth}" \
+            | jq '[.entries[] | {username, current_streak_days, sessions_in_period}]'
