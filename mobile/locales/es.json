@@ -15,7 +15,8 @@
       "placeholderPassword": "Tu contraseña",
       "signIn": "Iniciar sesión",
       "signInFailed": "No se pudo iniciar sesión",
-      "noAccount": "¿Aún no tienes cuenta? Regístrate"
+      "noAccount": "¿Aún no tienes cuenta? Regístrate",
+      "forgotPassword": "¿Olvidaste tu contraseña?"
     },
     "register": {
       "title": "¡Empecemos!",
@@ -29,6 +30,21 @@
       "createAccount": "Crear cuenta",
       "registerFailed": "No se pudo completar el registro",
       "hasAccount": "¿Ya tienes cuenta? Inicia sesión"
+    },
+    "reset": {
+      "title": "Restablecer contraseña",
+      "subtitle": "Introduce el correo de tu cuenta. Te enviaremos un código de 6 dígitos para crear una contraseña nueva.",
+      "codeSent": "Si existe una cuenta para {{email}}, el código ya va en camino. Revisa también la carpeta de spam.",
+      "code": "Código",
+      "placeholderCode": "Código de 6 dígitos",
+      "newPassword": "Contraseña nueva",
+      "placeholderNewPassword": "Mínimo 8 caracteres",
+      "sendCode": "Enviar código",
+      "submit": "Guardar e iniciar sesión",
+      "resend": "Enviar otro código",
+      "changeEmail": "Cambiar correo",
+      "backToLogin": "Volver a iniciar sesión",
+      "failed": "No se pudo restablecer la contraseña"
     },
     "legalConsent": {
       "notice": "Al continuar, aceptas nuestros Términos de uso y reconoces nuestra Política de privacidad.",
@@ -2423,7 +2439,9 @@
       "usernameRequired": "Escribe un nombre de usuario.",
       "usernameShort": "El nombre de usuario es demasiado corto (mínimo 2 caracteres).",
       "usernameLong": "El nombre de usuario es demasiado largo (máximo 64 caracteres).",
-      "passwordLong": "La contraseña es demasiado larga (máximo 128 caracteres)."
+      "passwordLong": "La contraseña es demasiado larga (máximo 128 caracteres).",
+      "codeRequired": "Introduce el código del correo.",
+      "codeInvalid": "El código tiene 6 dígitos."
     },
     "auth": {
       "emailTaken": "Este correo ya está registrado. Intenta iniciar sesión.",
@@ -2434,7 +2452,8 @@
       "socialTokenInvalid": "No pudimos verificar tu inicio de sesión. Inténtalo de nuevo.",
       "socialProviderUnavailable": "Esta opción de inicio de sesión no está disponible ahora. Usa tu correo electrónico.",
       "usernameRejected": "Este nombre de usuario no está permitido. Elige otro.",
-      "accountSuspended": "Esta cuenta se suspendió por infringir nuestras normas de la comunidad. Escribe a prodify@gmx.net si crees que es un error."
+      "accountSuspended": "Esta cuenta se suspendió por infringir nuestras normas de la comunidad. Escribe a prodify@gmx.net si crees que es un error.",
+      "resetCodeInvalid": "Este código es incorrecto o ha caducado. Pide uno nuevo."
     },
     "requestTimeout": "Se agotó el tiempo de conexión. Revisa tu red e inténtalo de nuevo.",
     "network": "Error de red. Revisa tu conexión e inténtalo de nuevo.",

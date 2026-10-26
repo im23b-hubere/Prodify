@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 
 import {
   loginErrorMessage,
+  passwordResetErrorMessage,
   registrationErrorMessage,
   socialSignInErrorMessage,
 } from "../../../features/auth/authErrorMessage";
@@ -26,6 +27,12 @@ describe("auth form error mapping", () => {
     expect(registrationErrorMessage(new ApiError(422, "ignored", null, "USERNAME_REJECTED"), t)).toBe(
       "errors.auth.usernameRejected",
     );
+  });
+
+  it("explains a wrong or expired reset code", () => {
+    expect(
+      passwordResetErrorMessage(new ApiError(400, "ignored", null, "RESET_CODE_INVALID"), t),
+    ).toBe("errors.auth.resetCodeInvalid");
   });
 
   it("explains a suspension on password and social sign-in", () => {

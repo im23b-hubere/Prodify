@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import RegisterScreen from "../../../app/(auth)/register";
 import LoginScreen from "../../../app/(auth)/login";
@@ -32,6 +32,7 @@ const mockForm = {
   showConnectionHint: false,
   openLogin: jest.fn(),
   openRegistration: jest.fn(),
+  openPasswordReset: jest.fn(),
   finishSignIn: jest.fn(),
   finishSignUp: jest.fn(),
 };
@@ -54,5 +55,13 @@ describe("legal consent on auth screens", () => {
     render(<LoginScreen />);
 
     expect(screen.getByText("legal-consent-notice")).toBeTruthy();
+  });
+
+  it("offers a way to reset a forgotten password from the sign-in screen", () => {
+    render(<LoginScreen />);
+
+    fireEvent.press(screen.getByText("auth.login.forgotPassword"));
+
+    expect(mockForm.openPasswordReset).toHaveBeenCalled();
   });
 });

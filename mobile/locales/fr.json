@@ -15,7 +15,8 @@
       "placeholderPassword": "Ton mot de passe",
       "signIn": "Se connecter",
       "signInFailed": "Échec de la connexion",
-      "noAccount": "Pas encore de compte ? Inscris-toi"
+      "noAccount": "Pas encore de compte ? Inscris-toi",
+      "forgotPassword": "Mot de passe oublié ?"
     },
     "register": {
       "title": "C'est parti",
@@ -29,6 +30,21 @@
       "createAccount": "Créer un compte",
       "registerFailed": "Échec de l'inscription",
       "hasAccount": "Déjà un compte ? Connecte-toi"
+    },
+    "reset": {
+      "title": "Réinitialiser le mot de passe",
+      "subtitle": "Saisis l'e-mail de ton compte. Nous t'enverrons un code à 6 chiffres pour choisir un nouveau mot de passe.",
+      "codeSent": "Si un compte existe pour {{email}}, un code est en route. Pense à vérifier tes spams.",
+      "code": "Code",
+      "placeholderCode": "Code à 6 chiffres",
+      "newPassword": "Nouveau mot de passe",
+      "placeholderNewPassword": "8 caractères minimum",
+      "sendCode": "Envoyer le code",
+      "submit": "Enregistrer et se connecter",
+      "resend": "Renvoyer un code",
+      "changeEmail": "Changer d'e-mail",
+      "backToLogin": "Retour à la connexion",
+      "failed": "Impossible de réinitialiser le mot de passe"
     },
     "legalConsent": {
       "notice": "En continuant, tu acceptes nos Conditions d'utilisation et reconnais avoir pris connaissance de notre Politique de confidentialité.",
@@ -2423,7 +2439,9 @@
       "usernameRequired": "Saisis un nom d'utilisateur.",
       "usernameShort": "Nom d'utilisateur trop court (2 caractères minimum).",
       "usernameLong": "Nom d'utilisateur trop long (64 caractères max).",
-      "passwordLong": "Mot de passe trop long (128 caractères max)."
+      "passwordLong": "Mot de passe trop long (128 caractères max).",
+      "codeRequired": "Saisis le code reçu par e-mail.",
+      "codeInvalid": "Le code comporte 6 chiffres."
     },
     "auth": {
       "emailTaken": "Cet e-mail est déjà inscrit. Essaie de te connecter.",
@@ -2434,7 +2452,8 @@
       "socialTokenInvalid": "Impossible de vérifier ta connexion. Réessaie.",
       "socialProviderUnavailable": "Cette option de connexion n'est pas disponible pour le moment. Utilise plutôt ton e-mail.",
       "usernameRejected": "Ce nom d'utilisateur n'est pas autorisé. Choisis-en un autre.",
-      "accountSuspended": "Ce compte a été suspendu pour non-respect de nos règles de la communauté. Écris à prodify@gmx.net si tu penses qu'il s'agit d'une erreur."
+      "accountSuspended": "Ce compte a été suspendu pour non-respect de nos règles de la communauté. Écris à prodify@gmx.net si tu penses qu'il s'agit d'une erreur.",
+      "resetCodeInvalid": "Ce code est incorrect ou a expiré. Demandes-en un nouveau."
     },
     "requestTimeout": "La connexion a expiré. Vérifie ton réseau et réessaie.",
     "network": "Erreur réseau. Vérifie ta connexion et réessaie.",

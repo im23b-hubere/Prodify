@@ -62,6 +62,15 @@ export default function LoginScreen() {
             onChangeText={form.setPassword}
             accessibilityLabel={t("auth.login.password")}
           />
+          <Pressable
+            style={styles.inlineLinkWrap}
+            accessibilityRole="button"
+            onPress={form.openPasswordReset}
+            hitSlop={8}
+            testID="forgot-password-link"
+          >
+            <Text style={styles.link}>{t("auth.login.forgotPassword")}</Text>
+          </Pressable>
 
           {form.error ? (
             <Text testID="login-error" accessibilityLiveRegion="polite" style={styles.error}>

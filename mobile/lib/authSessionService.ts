@@ -36,7 +36,12 @@ export type AuthenticatedUser = {
 
 export type TokenPair = { access_token: string; refresh_token: string };
 
-export type AuthenticatePath = "/auth/login" | "/auth/register" | "/auth/apple" | "/auth/google";
+export type AuthenticatePath =
+  | "/auth/login"
+  | "/auth/register"
+  | "/auth/apple"
+  | "/auth/google"
+  | "/auth/password-reset/confirm";
 
 type AuthenticateOptions = {
   path: AuthenticatePath;

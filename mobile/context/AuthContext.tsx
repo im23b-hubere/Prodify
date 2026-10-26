@@ -56,6 +56,8 @@ type AuthContextValue = {
   signInWithApple: (credential: AppleCredential) => Promise<void>;
   /** Signs in or creates the account linked to this Google account. */
   signInWithGoogle: (idToken: string) => Promise<void>;
+  /** Sets a new password with the emailed code and signs in; every other session ends. */
+  resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
   /** Permanently deletes the account on the server and clears local session data. */
   deleteAccount: () => Promise<void>;
@@ -253,6 +255,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [completeAuthentication],
   );
 
+  const resetPassword = useCallback(
+    (email: string, code: string, newPassword: string) =>
+      completeAuthentication(
+        "/auth/password-reset/confirm",
+        { email, code, new_password: newPassword },
+        0,
+      ),
+    [completeAuthentication],
+  );
+
   const signOut = useCallback(async () => {
     const t = (token?.trim() || (await readAccessToken())) ?? "";
     if (t) {
@@ -288,6 +300,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signInWithApple,
       signInWithGoogle,
+      resetPassword,
       signOut,
       deleteAccount,
       refreshUser,
@@ -302,6 +315,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signInWithApple,
       signInWithGoogle,
+      resetPassword,
       signOut,
       deleteAccount,
       refreshUser,

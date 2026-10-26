@@ -114,6 +114,18 @@ describe("useLoginForm existing-account onboarding path", () => {
     });
   });
 
+  it("opens the password reset with the email typed so far", () => {
+    const { result } = renderHook(() => useLoginForm(t));
+    act(() => result.current.setEmail(" user@example.com "));
+
+    act(() => result.current.openPasswordReset());
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/(auth)/forgot-password",
+      params: { email: "user@example.com" },
+    });
+  });
+
   it("keeps ordinary dashboard login when onboarding was already completed", async () => {
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue("1");
     const { result } = renderHook(() => useLoginForm(t));

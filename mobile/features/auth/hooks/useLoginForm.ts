@@ -7,11 +7,10 @@ import { ONBOARDING_COMPLETE_KEY } from "../../../constants/storageKeys";
 import { useAuth } from "../../../context/AuthContext";
 import { getE2eTestCredentials } from "../../../lib/e2eCredentials";
 import { isE2eModeEnabled } from "../../../lib/e2eMode";
-import { replaceWithPendingDeepLinkOrDashboard } from "../../../lib/pendingDeepLink";
-import { resolvePostAuthRouteFromStorage, toHref } from "../../../lib/postAuthNavigation";
 import { useConnectionHint } from "./useConnectionHint";
 import { loginErrorMessage } from "../authErrorMessage";
 import { resolveLoginCredentials } from "../loginCredentials";
+import { markOnboardingComplete, navigateAfterSignIn } from "../navigateAfterSignIn";
 
 const TUTORIAL_SEEN_KEY = "prodify_tutorial_v1";
 
@@ -43,12 +42,7 @@ export function useLoginForm(t: TFunction) {
       });
       return;
     }
-    const route = await resolvePostAuthRouteFromStorage({ hasToken: true, entryPoint: "login" });
-    if (route.pathname === "/(tabs)/dashboard") {
-      await replaceWithPendingDeepLinkOrDashboard(router);
-    } else {
-      router.replace(toHref(route));
-    }
+    await navigateAfterSignIn(router);
   }, [existingAccountLogin, paywallVariant, pendingPaywall, router]);
 
   const submit = useCallback(async () => {
@@ -83,6 +77,14 @@ export function useLoginForm(t: TFunction) {
     });
   }, [paywallVariant, pendingPaywall, router]);
 
+  const openPasswordReset = useCallback(() => {
+    const typedEmail = email.trim();
+    router.push({
+      pathname: "/(auth)/forgot-password",
+      params: typedEmail ? { email: typedEmail } : undefined,
+    });
+  }, [email, router]);
+
   return {
     email,
     setEmail,
@@ -94,11 +96,8 @@ export function useLoginForm(t: TFunction) {
     submit,
     finishSignIn,
     openRegistration,
+    openPasswordReset,
   };
-}
-
-async function markOnboardingComplete(): Promise<void> {
-  await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "1").catch(() => undefined);
 }
 
 async function prepareE2eAccount(): Promise<void> {

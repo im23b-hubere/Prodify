@@ -15,7 +15,8 @@
       "placeholderPassword": "Dein Passwort",
       "signIn": "Anmelden",
       "signInFailed": "Anmeldung fehlgeschlagen",
-      "noAccount": "Noch kein Konto? Registrieren"
+      "noAccount": "Noch kein Konto? Registrieren",
+      "forgotPassword": "Passwort vergessen?"
     },
     "register": {
       "title": "Los geht's",
@@ -29,6 +30,21 @@
       "createAccount": "Konto erstellen",
       "registerFailed": "Registrierung fehlgeschlagen",
       "hasAccount": "Schon ein Konto? Anmelden"
+    },
+    "reset": {
+      "title": "Passwort zurücksetzen",
+      "subtitle": "Gib die E-Mail-Adresse deines Kontos ein. Wir schicken dir einen 6-stelligen Code für ein neues Passwort.",
+      "codeSent": "Falls ein Konto für {{email}} existiert, ist ein Code unterwegs. Schau auch im Spam-Ordner nach.",
+      "code": "Code",
+      "placeholderCode": "6-stelliger Code",
+      "newPassword": "Neues Passwort",
+      "placeholderNewPassword": "Mindestens 8 Zeichen",
+      "sendCode": "Code senden",
+      "submit": "Speichern und anmelden",
+      "resend": "Neuen Code senden",
+      "changeEmail": "E-Mail ändern",
+      "backToLogin": "Zurück zur Anmeldung",
+      "failed": "Passwort konnte nicht zurückgesetzt werden"
     },
     "legalConsent": {
       "notice": "Indem du fortfährst, stimmst du unseren Nutzungsbedingungen zu und nimmst unsere Datenschutzerklärung zur Kenntnis.",
@@ -2431,7 +2447,9 @@
       "usernameRequired": "Bitte gib einen Benutzernamen ein.",
       "usernameShort": "Benutzername ist zu kurz (mindestens 2 Zeichen).",
       "usernameLong": "Benutzername ist zu lang (max. 64 Zeichen).",
-      "passwordLong": "Passwort ist zu lang (max. 128 Zeichen)."
+      "passwordLong": "Passwort ist zu lang (max. 128 Zeichen).",
+      "codeRequired": "Bitte gib den Code aus der E-Mail ein.",
+      "codeInvalid": "Der Code hat 6 Ziffern."
     },
     "auth": {
       "emailTaken": "Diese E-Mail ist schon registriert. Versuch dich anzumelden.",
@@ -2442,7 +2460,8 @@
       "socialTokenInvalid": "Wir konnten deine Anmeldung nicht bestätigen. Bitte versuch es noch mal.",
       "socialProviderUnavailable": "Diese Anmeldeoption ist gerade nicht verfügbar. Bitte nutze stattdessen deine E-Mail.",
       "usernameRejected": "Dieser Benutzername ist nicht erlaubt. Bitte wähl einen anderen.",
-      "accountSuspended": "Dieses Konto wurde wegen Verstößen gegen unsere Community-Richtlinien gesperrt. Schreib an prodify@gmx.net, wenn du denkst, dass das ein Fehler ist."
+      "accountSuspended": "Dieses Konto wurde wegen Verstößen gegen unsere Community-Richtlinien gesperrt. Schreib an prodify@gmx.net, wenn du denkst, dass das ein Fehler ist.",
+      "resetCodeInvalid": "Dieser Code ist falsch oder abgelaufen. Fordere einen neuen an."
     },
     "requestTimeout": "Zeitüberschreitung der Verbindung. Prüf dein Netzwerk und versuch es noch mal.",
     "network": "Netzwerkfehler. Prüf deine Verbindung und versuch es noch mal.",

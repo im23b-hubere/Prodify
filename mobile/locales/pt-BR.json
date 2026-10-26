@@ -15,7 +15,8 @@
       "placeholderPassword": "Sua senha",
       "signIn": "Entrar",
       "signInFailed": "Falha ao entrar",
-      "noAccount": "Ainda não tem conta? Crie uma"
+      "noAccount": "Ainda não tem conta? Crie uma",
+      "forgotPassword": "Esqueceu a senha?"
     },
     "register": {
       "title": "Bora começar",
@@ -29,6 +30,21 @@
       "createAccount": "Criar conta",
       "registerFailed": "Falha ao criar conta",
       "hasAccount": "Já tem uma conta? Entre"
+    },
+    "reset": {
+      "title": "Redefinir senha",
+      "subtitle": "Digite o e-mail da sua conta. Vamos enviar um código de 6 dígitos para você criar uma senha nova.",
+      "codeSent": "Se existir uma conta para {{email}}, o código está a caminho. Confira também a pasta de spam.",
+      "code": "Código",
+      "placeholderCode": "Código de 6 dígitos",
+      "newPassword": "Nova senha",
+      "placeholderNewPassword": "Pelo menos 8 caracteres",
+      "sendCode": "Enviar código",
+      "submit": "Salvar e entrar",
+      "resend": "Enviar novo código",
+      "changeEmail": "Trocar e-mail",
+      "backToLogin": "Voltar para o login",
+      "failed": "Não foi possível redefinir a senha"
     },
     "legalConsent": {
       "notice": "Ao continuar, você concorda com nossos Termos de Uso e reconhece nossa Política de Privacidade.",
@@ -2431,7 +2447,9 @@
       "usernameRequired": "Digite um nome de usuário.",
       "usernameShort": "O nome de usuário é muito curto (pelo menos 2 caracteres).",
       "usernameLong": "O nome de usuário é muito longo (máximo de 64 caracteres).",
-      "passwordLong": "A senha é muito longa (máximo de 128 caracteres)."
+      "passwordLong": "A senha é muito longa (máximo de 128 caracteres).",
+      "codeRequired": "Digite o código do e-mail.",
+      "codeInvalid": "O código tem 6 dígitos."
     },
     "auth": {
       "emailTaken": "Este e-mail já está cadastrado. Tente entrar.",
@@ -2442,7 +2460,8 @@
       "socialTokenInvalid": "Não foi possível verificar seu login. Tente de novo.",
       "socialProviderUnavailable": "Esta opção de login não está disponível no momento. Use o e-mail.",
       "usernameRejected": "Este nome de usuário não é permitido. Escolha outro.",
-      "accountSuspended": "Esta conta foi suspensa por violar nossas diretrizes da comunidade. Entre em contato com prodify@gmx.net se achar que é um engano."
+      "accountSuspended": "Esta conta foi suspensa por violar nossas diretrizes da comunidade. Entre em contato com prodify@gmx.net se achar que é um engano.",
+      "resetCodeInvalid": "Este código está errado ou expirou. Peça um novo."
     },
     "requestTimeout": "A conexão expirou. Verifique sua rede e tente de novo.",
     "network": "Erro de rede. Verifique sua conexão e tente de novo.",

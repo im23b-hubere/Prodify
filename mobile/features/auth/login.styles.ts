@@ -64,4 +64,6 @@ export const styles = StyleSheet.create({
   },
   linkWrap: { marginTop: 18, alignItems: "center" },
   link: { color: colors.textSecondary, fontFamily: fontFamily.bodyMedium, ...typography.caption },
+  inlineLinkWrap: { alignSelf: "flex-end", marginTop: -6, marginBottom: 14, paddingVertical: 4 },
+  secondaryActions: { marginTop: 14, flexDirection: "row", justifyContent: "space-between", gap: 12 },
 });
