@@ -20,6 +20,7 @@ from app.models import (
     LeaderboardSnapshot,
     NotificationDelivery,
     NotificationReadState,
+    PasswordResetCode,
     ProductionSession,
     PublicGoal,
     PushToken,
@@ -52,6 +53,7 @@ from app.models import (
 USER_OWNED_MODELS = (
     AnalyticsEventDedupe,
     RefreshToken,
+    PasswordResetCode,
     UserIdentity,
     PushToken,
     NotificationReadState,

@@ -34,6 +34,33 @@ class UserLogin(BaseModel):
         return str(value).strip().lower()
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+    # The app's language (e.g. "de-CH"), so the code arrives in words the user reads.
+    locale: str | None = Field(default=None, max_length=35)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
+
+
+class PasswordResetConfirm(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\s*\d{6}\s*$")
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
+
+    @field_validator("code")
+    @classmethod
+    def strip_code(cls, value: str) -> str:
+        return value.strip()
+
+
 class AppleSignIn(BaseModel):
     identity_token: str = Field(min_length=20, max_length=8192)
     # One-time code from the device; exchanged for an Apple refresh token so deletion can revoke it.

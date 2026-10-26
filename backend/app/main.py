@@ -30,6 +30,7 @@ init_observability()
 from app.routers import (
     achievements as achievements_router,
     auth,
+    auth_password_reset as auth_password_reset_router,
     billing as billing_router,
     challenges as challenges_router,
     engagement as engagement_router,
@@ -114,6 +115,7 @@ _subscriber = [Depends(require_subscriber)]
 
 # Reachable without a subscription: sign-in, billing, legal, flags, jobs, health.
 app.include_router(auth.router)
+app.include_router(auth_password_reset_router.router)
 app.include_router(feature_flags_router.router)
 app.include_router(billing_router.router)
 app.include_router(legal_router.router)

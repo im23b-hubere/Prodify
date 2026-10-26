@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     environment: Literal["development", "production"] = "development"
     rate_limit_auth_login: str = "10/minute"
     rate_limit_auth_register: str = "5/minute"
+    rate_limit_auth_password_reset: str = "5/minute"
     # Optional: Expo push (https://expo.dev/accounts/[account]/settings/access-tokens)
     expo_access_token: str | None = None
     # Optional: FCM HTTP v1 — JSON string of Firebase service account, or filesystem path
@@ -93,6 +94,14 @@ class Settings(BaseSettings):
     legal_effective_date: str = "2026-10-14"
     legal_version: str = "2026.10"
     support_email: str = "prodify@gmx.net"
+    # Outgoing mail (password reset codes) through any SMTP server. Port 465 uses implicit TLS,
+    # every other port upgrades with STARTTLS. Without SMTP_HOST no mail is sent.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    # Sender address; defaults to SMTP_USERNAME, because most providers reject any other From.
+    mail_from: str | None = None
     # Shown on /legal/imprint (TMG / Swiss identification). Address can be refined via env.
     legal_operator_name: str = "Eric Huber"
     legal_operator_address: str = "Zurich, Switzerland"

@@ -88,6 +88,21 @@ class RefreshToken(Base):
     user: Mapped["User"] = relationship("User", back_populates="refresh_tokens")
 
 
+class PasswordResetCode(Base):
+    """The one emailed code that may currently reset a user's password (keyed HMAC only)."""
+
+    __tablename__ = "password_reset_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True, nullable=False
+    )
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class SocialProvider(str, enum.Enum):
     apple = "apple"
     google = "google"

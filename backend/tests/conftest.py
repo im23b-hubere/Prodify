@@ -8,6 +8,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./test_suite.db")
 os.environ.setdefault("CORS_ORIGINS", '["http://localhost:8081"]')
 os.environ.setdefault("RATE_LIMIT_AUTH_LOGIN", "1000/minute")
 os.environ.setdefault("RATE_LIMIT_AUTH_REGISTER", "1000/minute")
+os.environ.setdefault("RATE_LIMIT_AUTH_PASSWORD_RESET", "1000/minute")
+# Tests must never reach a real mail server from a developer's local .env.
+os.environ["SMTP_HOST"] = ""
 # Unit/integration tests must never call the live RevenueCat API from a developer's
 # local .env. In development, an unconfigured secret intentionally exercises the
 # deterministic client-asserted billing sync path used by these endpoint tests.
