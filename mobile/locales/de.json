@@ -315,8 +315,6 @@
     "linksPrivacy": "Datenschutz",
     "linksTerms": "Nutzungsbedingungen",
     "linksImprint": "Impressum",
-    "sectionTitle": "Rechtliches",
-    "documentBodyMissing": "Die Abschnitte dieses Dokuments sind in der aktuellen Sprache nicht verfügbar. Versuch es auf Englisch oder aktualisiere die App.",
     "deleteAccount": {
       "button": "Konto löschen",
       "confirmTitle": "Konto löschen?",
@@ -324,123 +322,6 @@
       "confirmDelete": "Endgültig löschen",
       "errorTitle": "Löschen fehlgeschlagen",
       "errorFallback": "Bitte versuch es später noch einmal oder kontaktiere den Support."
-    },
-    "privacy": {
-      "screenTitle": "Datenschutzerklärung",
-      "updated": "Zuletzt aktualisiert: Oktober 2026",
-      "intro": "Diese Erklärung beschreibt, wie Prodify personenbezogene Daten verarbeitet. Sie stellt keine Rechtsberatung dar.",
-      "blocks": [
-        {
-          "heading": "1. Verantwortlicher",
-          "body": "Eric Huber (Zürich, Schweiz) ist der Verantwortliche für die personenbezogenen Daten, die im Zusammenhang mit Prodify verarbeitet werden. Kontakt: prodify@gmx.net. Siehe auch das Impressum."
-        },
-        {
-          "heading": "2. Verarbeitete Daten",
-          "body": "Wir verarbeiten Kontodaten (E-Mail-Adresse, Benutzername, optional ein Profilbild), Authentifizierungsdaten, wenn du „Mit Apple anmelden“ oder Google verwendest, technische Daten, die für den Betrieb und die Sicherheit des Dienstes erforderlich sind, von dir erstellte Inhalte zu Studio-Sessions (Zeiten, Arten, optionale Notizen, Stimmung und Tags), Streak- und Freundschaftsdaten, Kommentare und soziale Aktivitäten, Meldungen und Blockierungen, den Abonnement- und Berechtigungsstatus, Push-Tokens, wenn Mitteilungen aktiviert sind, sowie Absturz- und Leistungsdiagnosen."
-        },
-        {
-          "heading": "3. Zwecke und Rechtsgrundlagen",
-          "body": "Wir verwenden diese Daten, um den Dienst bereitzustellen, dich zu authentifizieren, die Sicherheit deines Kontos zu gewährleisten, Missbrauch zu verhindern, Community-Inhalte zu moderieren, Abonnements abzuwickeln, von dir aktivierte Mitteilungen zuzustellen und die App zuverlässig zu betreiben. Die Verarbeitung ist zur Vertragserfüllung erforderlich (Art. 6 Abs. 1 lit. b DSGVO), dient dem Schutz der Sicherheit und der Verhinderung von Missbrauch (berechtigte Interessen, Art. 6 Abs. 1 lit. f DSGVO) und erfolgt – soweit du eingewilligt hast – für Push-Mitteilungen (Art. 6 Abs. 1 lit. a DSGVO)."
-        },
-        {
-          "heading": "4. Anmeldeanbieter",
-          "body": "Wenn du dich für „Mit Apple anmelden“ oder Google entscheidest, überprüft der Anbieter deine Identität und übermittelt Prodify eine Kennung sowie – abhängig von deinen Einstellungen – deine E-Mail-Adresse, damit wir dein Konto erstellen oder dich anmelden können. Apple und Google verarbeiten Daten gemäß ihren eigenen Datenschutzerklärungen."
-        },
-        {
-          "heading": "5. Personalisierte Erinnerungen",
-          "body": "Prodify nutzt deine Aktivitätsmuster, um Erinnerungen zu personalisieren und dir zu helfen, deine Produktionsroutine beizubehalten. Dafür verwenden wir ausschließlich eigene Daten aus deiner Nutzung von Prodify: wann und wie lange du produzierst, deine Streaks, Challenges und die Aktivität deiner Freunde auf Prodify sowie, ob eine Erinnerung geöffnet wurde oder auf sie eine Session folgte. Wir verwenden weder deinen Standort, dein WLAN, deine Kontakte noch Daten aus anderen Apps, und wir erstellen keinen Fingerabdruck deines Geräts (Fingerprinting). Du kannst smarte Mitteilungen oder einzelne Kategorien jederzeit in den Mitteilungseinstellungen deaktivieren."
-        },
-        {
-          "heading": "6. Sicherheit und Moderation",
-          "body": "Wenn du jemanden meldest oder blockierst, speichern wir die Meldung (Grund, optionale Notiz, den gemeldeten Nutzer bzw. Kommentar und dein Konto) sowie die Blockierung. Moderatoren verwenden Meldungen und Blockierungen ausschließlich, um Meldungen zu prüfen, Inhalte mit Verstößen zu entfernen und Konten zu sperren. Dem gemeldeten Nutzer wird niemals mitgeteilt, wer ihn gemeldet hat."
-        },
-        {
-          "heading": "7. Dienstleister",
-          "body": "Wir setzen spezialisierte Auftragsverarbeiter nur ein, soweit dies für den Betrieb von Prodify erforderlich ist: Render (Hosting und PostgreSQL-Datenbank, EU-Region, sofern konfiguriert), Cloudflare R2 (Speicherung von Profilbildern), RevenueCat (Abonnementstatus und Validierung von App-Store-Kaufbelegen), Apple und Google (Anmeldung und In-App-Käufe), Sentry (Absturz- und Leistungsdiagnosen, wobei sensible Felder entfernt werden) sowie Expo Push / Push-Dienste der Plattformen (Zustellung der von dir aktivierten Mitteilungen)."
-        },
-        {
-          "heading": "8. Speicherdauer",
-          "body": "Wir speichern Daten, solange dein Konto besteht. Du kannst dein Konto in der App endgültig löschen (Profil → Einstellungen → Konto löschen). Nach der Löschung entfernen wir die zugehörigen personenbezogenen Daten, sofern keine gesetzliche Aufbewahrungspflicht besteht."
-        },
-        {
-          "heading": "9. Deine Rechte",
-          "body": "Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und Datenübertragbarkeit sowie das Recht auf Widerspruch, soweit die Verarbeitung auf berechtigten Interessen beruht. Du kannst eine erteilte Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen. Du kannst Beschwerde bei einer Aufsichtsbehörde einlegen."
-        },
-        {
-          "heading": "10. Kontakt",
-          "body": "Um deine Rechte auszuüben oder Fragen zu stellen, kontaktiere prodify@gmx.net."
-        }
-      ]
-    },
-    "terms": {
-      "screenTitle": "Nutzungsbedingungen",
-      "updated": "Zuletzt aktualisiert: Oktober 2026",
-      "intro": "Mit der Nutzung von Prodify stimmst du diesen Bedingungen zu. Bitte lies sie sorgfältig durch.",
-      "blocks": [
-        {
-          "heading": "1. Dienst",
-          "body": "Prodify hilft dir, Studio-Sessions und Streaks zu erfassen und zu analysieren, und bietet soziale Funktionen unter Freunden. Prodify setzt ein aktives Abonnement voraus. Funktionen und Verfügbarkeit können sich weiterentwickeln."
-        },
-        {
-          "heading": "2. Konto",
-          "body": "Du bist dafür verantwortlich, dein Passwort sicher aufzubewahren. Von dir übermittelte Inhalte dürfen keine Rechte Dritter verletzen und nicht gegen geltendes Recht verstoßen."
-        },
-        {
-          "heading": "3. Community-Richtlinien",
-          "body": "Prodify toleriert keinerlei anstößige Inhalte und missbräuchliches Verhalten von Nutzern. Poste oder sende keine Inhalte, die andere belästigen, bedrohen oder mobben, Hass oder Diskriminierung fördern, sexuell, gewalttätig oder rechtswidrig sind oder Spam bzw. Identitätsmissbrauch darstellen. Kommentare mit unzulässiger Sprache werden automatisch gefiltert."
-        },
-        {
-          "heading": "4. Melden und Blockieren",
-          "body": "Du kannst Nutzer und Kommentare direkt in der App melden und Nutzer blockieren. Wir prüfen jede Meldung innerhalb von 24 Stunden, entfernen Inhalte, die gegen diese Bedingungen verstoßen, und sperren die verantwortlichen Konten vorübergehend oder dauerhaft. Blockierte Nutzer können dich nicht mehr finden, nicht mehr hinzufügen und deine Aktivität nicht mehr sehen."
-        },
-        {
-          "heading": "5. Abonnements",
-          "body": "Prodify setzt ein aktives Abonnement voraus. Die Zahlung wird bei Bestätigung des Kaufs deinem Apple-ID-Konto belastet. Abonnements verlängern sich automatisch, sofern sie nicht mindestens 24 Stunden vor Ende des aktuellen Abrechnungszeitraums gekündigt werden. Verwalten oder kündigen kannst du sie unter Einstellungen > Apple-ID > Abonnements. Nutze nach einer Neuinstallation oder einem Gerätewechsel in Prodify die Funktion „Käufe wiederherstellen“."
-        },
-        {
-          "heading": "6. Verfügbarkeit",
-          "body": "Wir streben eine hohe Verfügbarkeit an, können jedoch keinen unterbrechungsfreien Zugang garantieren – zum Beispiel während Wartungsarbeiten oder bei höherer Gewalt."
-        },
-        {
-          "heading": "7. Haftung",
-          "body": "Zwingende Verbraucherrechte bleiben unberührt. Soweit gesetzlich zulässig, haften wir für Vorsatz und grobe Fahrlässigkeit. Bei leichter Fahrlässigkeit haften wir nur für die Verletzung wesentlicher Vertragspflichten und begrenzt auf den typischen, vorhersehbaren Schaden."
-        },
-        {
-          "heading": "8. Änderungen",
-          "body": "Wir können diese Bedingungen aktualisieren. Über wesentliche Änderungen informieren wir dich in der App oder auf andere angemessene Weise. Die fortgesetzte Nutzung nach einer solchen Mitteilung kann, soweit gesetzlich zulässig, als Zustimmung gelten."
-        },
-        {
-          "heading": "9. Kontakt",
-          "body": "Fragen zu diesen Bedingungen oder eine Meldung: prodify@gmx.net. Angaben zum Anbieter findest du im Impressum."
-        }
-      ]
-    },
-    "imprint": {
-      "screenTitle": "Impressum",
-      "updated": "Zuletzt aktualisiert: Oktober 2026",
-      "intro": "Rechtliche Angaben für die mobile App Prodify und zugehörige Dienste.",
-      "blocks": [
-        {
-          "heading": "1. Diensteanbieter",
-          "body": "Eric Huber betreibt die mobile App Prodify und die zugehörigen Backend-Dienste als Einzelunternehmer."
-        },
-        {
-          "heading": "2. Anschrift",
-          "body": "Zürich, Schweiz"
-        },
-        {
-          "heading": "3. Kontakt",
-          "body": "E-Mail: prodify@gmx.net. Für Anfragen zu deinen Datenschutzrechten nutze bitte dieselbe Adresse."
-        },
-        {
-          "heading": "4. Verantwortlich für den Inhalt",
-          "body": "Eric Huber ist im Sinne der anwendbaren Kennzeichnungsvorschriften (einschließlich des Schweizer UWG und, soweit einschlägig, des deutschen TMG) für den Inhalt dieser App und der zugehörigen Support-Seiten verantwortlich."
-        },
-        {
-          "heading": "5. Streitbeilegung",
-          "body": "Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung bereit: https://ec.europa.eu/consumers/odr. Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen."
-        }
-      ]
     }
   },
   "profile": {

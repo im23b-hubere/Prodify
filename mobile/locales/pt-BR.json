@@ -315,8 +315,6 @@
     "linksPrivacy": "Privacidade",
     "linksTerms": "Termos de uso",
     "linksImprint": "Informações legais",
-    "sectionTitle": "Jurídico",
-    "documentBodyMissing": "As seções deste documento não estão disponíveis no idioma atual. Tente em inglês ou atualize o app.",
     "deleteAccount": {
       "button": "Excluir conta",
       "confirmTitle": "Excluir conta?",
@@ -324,123 +322,6 @@
       "confirmDelete": "Excluir permanentemente",
       "errorTitle": "Falha ao excluir",
       "errorFallback": "Tente novamente mais tarde ou fale com o suporte."
-    },
-    "privacy": {
-      "screenTitle": "Política de privacidade",
-      "updated": "Última atualização: outubro de 2026",
-      "intro": "Este aviso explica como o Prodify trata dados pessoais. Ele não constitui aconselhamento jurídico.",
-      "blocks": [
-        {
-          "heading": "1. Controlador",
-          "body": "Eric Huber (Zurique, Suíça) é o controlador dos dados pessoais tratados em conexão com o Prodify. Contato: prodify@gmx.net. Veja também as Informações legais."
-        },
-        {
-          "heading": "2. Dados que tratamos",
-          "body": "Tratamos dados da conta (e-mail, nome de usuário, foto de perfil opcional), dados de autenticação quando você usa Entrar com a Apple ou com o Google, dados técnicos necessários para operar e proteger o serviço, o conteúdo das sessões de estúdio que você cria (horários, tipos, notas opcionais, humor e tags), dados de sequências e amizades, comentários e atividade social, denúncias e bloqueios, status de assinatura e de direitos de acesso, tokens de push quando as notificações estão ativadas e diagnósticos de falhas/desempenho."
-        },
-        {
-          "heading": "3. Finalidades e bases legais",
-          "body": "Usamos esses dados para prestar o serviço, autenticar você, manter a segurança da conta, prevenir abusos, moderar o conteúdo da comunidade, processar assinaturas, enviar as notificações que você ativou e manter o app confiável. O tratamento é necessário para a execução do contrato (art. 6(1)(b) do RGPD), para proteger a segurança e prevenir abusos (interesses legítimos, art. 6(1)(f)) e — quando você consentiu — para mensagens push (art. 6(1)(a))."
-        },
-        {
-          "heading": "4. Provedores de login",
-          "body": "Se você escolher Entrar com a Apple ou com o Google, o provedor verifica sua identidade e compartilha com o Prodify um identificador e, dependendo das suas configurações, seu endereço de e-mail, para que possamos criar sua conta ou permitir que você entre nela. A Apple e o Google tratam dados de acordo com suas próprias políticas de privacidade."
-        },
-        {
-          "heading": "5. Lembretes personalizados",
-          "body": "O Prodify usa seus padrões de atividade para personalizar lembretes e ajudar você a manter sua rotina de produção. Para isso, usamos apenas dados próprios provenientes do seu uso do Prodify: quando e por quanto tempo você produz, suas sequências, desafios e atividade de amigos no Prodify, e se um lembrete foi aberto ou seguido de uma sessão. Não usamos sua localização, Wi-Fi, contatos ou dados de outros apps, e não fazemos fingerprinting do seu dispositivo. Você pode desativar as notificações inteligentes ou categorias específicas a qualquer momento nos ajustes de notificações."
-        },
-        {
-          "heading": "6. Segurança e moderação",
-          "body": "Quando você denuncia ou bloqueia alguém, armazenamos a denúncia (motivo, nota opcional, o usuário ou comentário denunciado e sua conta) e o bloqueio. Os moderadores usam denúncias e bloqueios apenas para analisar denúncias, remover conteúdo que viole as regras e suspender contas. O usuário denunciado nunca fica sabendo quem o denunciou."
-        },
-        {
-          "heading": "7. Prestadores de serviço",
-          "body": "Usamos operadores especializados apenas na medida necessária para operar o Prodify: Render (hospedagem e banco de dados PostgreSQL, região da UE quando configurado), Cloudflare R2 (armazenamento de fotos de perfil), RevenueCat (status de assinatura e validação de recibos de compra da App Store), Apple e Google (login e compras no app), Sentry (diagnósticos de falhas e desempenho, com campos sensíveis removidos) e Expo Push / serviços de push das plataformas (entrega das notificações que você ativa)."
-        },
-        {
-          "heading": "8. Retenção",
-          "body": "Armazenamos os dados enquanto sua conta existir. Você pode excluir sua conta permanentemente no app (Perfil → Ajustes → Excluir conta). Após a exclusão, removemos os dados pessoais associados, a menos que se aplique uma obrigação legal de retenção."
-        },
-        {
-          "heading": "9. Seus direitos",
-          "body": "Você tem direito de acesso, retificação, eliminação, limitação, portabilidade e oposição quando o tratamento se basear em interesses legítimos. Você pode retirar seu consentimento a qualquer momento, com efeito para o futuro. Você pode apresentar uma reclamação a uma autoridade de controle."
-        },
-        {
-          "heading": "10. Contato",
-          "body": "Para exercer seus direitos ou tirar dúvidas, entre em contato pelo prodify@gmx.net."
-        }
-      ]
-    },
-    "terms": {
-      "screenTitle": "Termos de uso",
-      "updated": "Última atualização: outubro de 2026",
-      "intro": "Ao usar o Prodify, você concorda com estes termos. Leia-os com atenção.",
-      "blocks": [
-        {
-          "heading": "1. Serviço",
-          "body": "O Prodify ajuda você a registrar e analisar sessões de estúdio, sequências e recursos sociais entre amigos. O Prodify exige uma assinatura ativa. Os recursos e a disponibilidade podem mudar."
-        },
-        {
-          "heading": "2. Conta",
-          "body": "Você é responsável por manter sua senha segura. O conteúdo que você envia não pode violar direitos de terceiros nem a legislação aplicável."
-        },
-        {
-          "heading": "3. Diretrizes da comunidade",
-          "body": "O Prodify tem tolerância zero com conteúdo ofensivo e usuários abusivos. Não publique nem envie conteúdo que assedie, ameace ou intimide outras pessoas, promova ódio ou discriminação, seja sexual, violento ou ilegal, ou que seja spam ou falsificação de identidade. Comentários com linguagem proibida são filtrados automaticamente."
-        },
-        {
-          "heading": "4. Denúncias e bloqueios",
-          "body": "Você pode denunciar usuários e comentários e bloquear usuários diretamente no app. Analisamos cada denúncia em até 24 horas, removemos o conteúdo que viola estes termos e suspendemos ou banimos permanentemente as contas responsáveis. Usuários bloqueados não podem mais encontrar você, te adicionar nem ver sua atividade."
-        },
-        {
-          "heading": "5. Assinaturas",
-          "body": "O Prodify exige uma assinatura ativa. O pagamento é cobrado na sua conta do ID Apple na confirmação da compra. As assinaturas são renovadas automaticamente, a menos que sejam canceladas pelo menos 24 horas antes do fim do período de cobrança atual. Gerencie ou cancele em Ajustes > ID Apple > Assinaturas. Use Restaurar compras no Prodify depois de reinstalar o app ou trocar de dispositivo."
-        },
-        {
-          "heading": "6. Disponibilidade",
-          "body": "Buscamos alta disponibilidade, mas não podemos garantir acesso ininterrupto — por exemplo, durante manutenções ou em casos de força maior."
-        },
-        {
-          "heading": "7. Responsabilidade",
-          "body": "Os direitos obrigatórios do consumidor não são afetados. Na medida permitida por lei, respondemos por dolo e culpa grave. Em caso de culpa leve, respondemos apenas pela violação de obrigações contratuais essenciais, limitados aos danos típicos e previsíveis."
-        },
-        {
-          "heading": "8. Alterações",
-          "body": "Podemos atualizar estes termos. Avisaremos você sobre alterações relevantes no app ou por outro meio adequado. O uso contínuo após o aviso pode constituir aceitação, quando permitido por lei."
-        },
-        {
-          "heading": "9. Contato",
-          "body": "Dúvidas sobre estes termos ou uma denúncia: prodify@gmx.net. Os dados do provedor estão nas Informações legais."
-        }
-      ]
-    },
-    "imprint": {
-      "screenTitle": "Informações legais",
-      "updated": "Última atualização: outubro de 2026",
-      "intro": "Aviso legal do aplicativo móvel Prodify e dos serviços relacionados.",
-      "blocks": [
-        {
-          "heading": "1. Prestador do serviço",
-          "body": "Eric Huber opera o aplicativo móvel Prodify e os serviços de backend relacionados como empresário individual."
-        },
-        {
-          "heading": "2. Endereço",
-          "body": "Zurique, Suíça"
-        },
-        {
-          "heading": "3. Contato",
-          "body": "E-mail: prodify@gmx.net. Para solicitações relacionadas a direitos de privacidade, use o mesmo endereço."
-        },
-        {
-          "heading": "4. Responsável pelo conteúdo",
-          "body": "Eric Huber é o responsável pelo conteúdo deste app e das páginas de suporte associadas, nos termos das regras de identificação aplicáveis (incluindo a UWG suíça e, quando relevante, a TMG alemã)."
-        },
-        {
-          "heading": "5. Resolução de litígios",
-          "body": "A Comissão Europeia disponibiliza uma plataforma de resolução de litígios online em https://ec.europa.eu/consumers/odr. Não somos obrigados nem estamos dispostos a participar de procedimentos de resolução de litígios perante uma entidade de arbitragem de consumo."
-        }
-      ]
     }
   },
   "profile": {

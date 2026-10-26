@@ -91,7 +91,6 @@ export default function RootLayout() {
                 options={rootStackScreenOptions("engagement-debug")}
               />
               <Stack.Screen name="weekly-recap" options={rootStackScreenOptions("weekly-recap")} />
-              <Stack.Screen name="legal" options={rootStackScreenOptions("legal")} />
               <Stack.Screen
                 name="challenge/new"
                 options={rootStackScreenOptions("challenge/new")}

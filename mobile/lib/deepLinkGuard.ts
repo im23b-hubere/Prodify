@@ -4,8 +4,6 @@ const PUBLIC_PATH_PATTERNS: RegExp[] = [
   /^login$/,
   /^register$/,
   /^onboarding$/,
-  /^legal\/privacy$/,
-  /^legal\/terms$/,
 ];
 
 const ALLOWED_PATH_PATTERNS: RegExp[] = [
