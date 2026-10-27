@@ -29,7 +29,7 @@ WHAT TO TRY
 1. Dashboard: tap "Start session", stop it after a minute and see the summary, XP and streak. After the session, a card offers streak reminders; the system permission prompt appears only if you tap "Turn on reminders".
 2. Stats and Skill Tree: weekly goal, activity calendar and skill progress.
 3. Friends tab: accept the friend request from @kai.loops, accept or decline the duel invite from @ines.synth, see your buddy @mila.waves and the running duel. To send a friend request, search the username @noah.strings.
-4. User-generated content: open your most recent session; friends commented on it. Press and hold a comment to report it or block its author. Profiles of other users also offer Report and Block. Blocked users are listed under Profile > Settings > Blocked users. Everything other producers can read is filtered for objectionable language: usernames, comments, challenge titles and the notes, tags and track titles of sessions shared with friends.
+4. User-generated content: open your most recent session; friends commented on it. Press and hold a comment to report it or block its author. Profiles of other users also offer Report and Block, and a friend request can be reported from its Decline menu. Blocked users are listed under Profile > Settings > Blocked users. Everything other producers can read is filtered for objectionable language: usernames, comments, challenge titles and the notes, tags and track titles of sessions shared with friends.
 5. Subscription: Profile > Settings > Manage subscription opens the App Store subscription sheet.
 6. Account deletion: Profile > Settings > Delete account. It is also available on the paywall, so an account without a subscription can be deleted too.
 
