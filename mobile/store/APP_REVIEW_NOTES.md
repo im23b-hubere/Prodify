@@ -26,12 +26,13 @@ On the first screen, tap "Sign in".
 The account contains sample data: a 64-day streak, level 12, sessions over the last two months, 6 friends with activity, a running duel, a duel invite, a buddy and comments from friends. All other profiles are demo accounts.
 
 WHAT TO TRY
-1. Dashboard: tap "Start session", stop it after a minute and see the summary, XP and streak. After the session, a card offers streak reminders; the system permission prompt appears only if you tap "Turn on reminders".
-2. Stats and Skill Tree: weekly goal, activity calendar and skill progress.
-3. Friends tab: accept the friend request from @kai.loops, accept or decline the duel invite from @ines.synth, see your buddy @mila.waves and the running duel. To send a friend request, search the username @noah.strings.
-4. User-generated content: open your most recent session; friends commented on it. Press and hold a comment to report it or block its author. Profiles of other users also offer Report and Block, and a friend request can be reported from its Decline menu. Blocked users are listed under Profile > Settings > Blocked users. Everything other producers can read is filtered for objectionable language: usernames, comments, challenge titles and the notes, tags and track titles of sessions shared with friends.
-5. Subscription: Profile > Settings > Manage subscription opens the App Store subscription sheet.
+1. Dashboard: tap "Start session", let it run for at least 5 minutes, then stop it to see the summary, XP and streak (sessions under 5 minutes do not count toward XP or goals). After the session, a card offers streak reminders; the system permission prompt appears only if you tap "Turn on reminders".
+2. Stats and Skill Tree: weekly goal, studio days, trends, personal records and skill progress. The 90-day activity heatmap is on the Profile tab.
+3. Friends tab: under "Waiting for you", accept the friend request from kai.loops and accept or decline the duel invite from ines.synth. Switch to the "Challenges" segment to see your buddy mila.waves and the running duel. To send a friend request, tap "Add friend" and enter the exact username noah.strings (without @).
+4. User-generated content: on the Dashboard under "Recent sessions", open the session from earlier today that you did not record yourself (if you already recorded one, it is the second entry); mila.waves and juna.mixes commented on it. Press and hold a comment to report it or block its author. Profiles of other users also offer Report and Block, and a friend request can be reported from its Decline menu. Blocked users are listed under Profile > Settings > Blocked users. Everything other producers can read is filtered for objectionable language: usernames, comments, challenge titles and the notes, tags and track titles of sessions shared with friends.
+5. Subscription: Profile > Settings > Manage subscription opens the App Store subscription sheet. The demo account's access is granted on our server, so that sheet shows no Prodify subscription for your Apple ID.
 6. Account deletion: Profile > Settings > Delete account. It is also available on the paywall, so an account without a subscription can be deleted too.
+7. Weekly recap: on Sunday evening a notification opens the weekly recap (requires notification permission).
 
 IN-APP PURCHASE
 The demo account already has access, so it never sees the paywall. To test the purchase, sign in with an account without a subscription:
