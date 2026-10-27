@@ -19,6 +19,7 @@ type Props = {
   onAcceptRequest: (id: number) => void;
   onDeclineRequest: (id: number) => void;
   onDeclineAndBlock: (request: FriendIncomingDto) => void;
+  onReportRequest: (request: FriendIncomingDto) => void;
   duelActions: DuelInviteActions;
 };
 
@@ -31,6 +32,7 @@ export function FriendsInboxSection({
   onAcceptRequest,
   onDeclineRequest,
   onDeclineAndBlock,
+  onReportRequest,
   duelActions,
 }: Props) {
   const chooseDecline = (request: FriendIncomingDto) =>
@@ -39,6 +41,7 @@ export function FriendsInboxSection({
       cancelLabel: t("common.cancel"),
       items: [
         { label: t("safety.menu.decline"), onSelect: () => onDeclineRequest(request.id) },
+        { label: t("safety.menu.report"), onSelect: () => onReportRequest(request) },
         { label: t("safety.menu.declineAndBlock"), destructive: true, onSelect: () => onDeclineAndBlock(request) },
       ],
     });

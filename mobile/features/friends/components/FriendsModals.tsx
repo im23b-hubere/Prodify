@@ -1,10 +1,12 @@
+import { ReportSheet } from "../../safety/components/ReportSheet";
 import type { FriendsScreenController } from "../hooks/useFriendsScreenController";
 import { AddFriendModal } from "./AddFriendModal";
 import { BuddyPickerModal } from "./BuddyPickerModal";
 import { ReactionUsersModal } from "./ReactionUsersModal";
 
 export function FriendsModals({ controller }: { controller: FriendsScreenController }) {
-  const { t, state, actions } = controller;
+  const { t, state, actions, requestReport } = controller;
+  const { report } = requestReport;
   const openAddFriend = () => {
     state.setBuddyPickerOpen(false);
     state.setAddOpen(true);
@@ -36,6 +38,16 @@ export function FriendsModals({ controller }: { controller: FriendsScreenControl
         onUsernameChange={state.setAddName}
         busy={state.addBusy}
         onSend={actions.sendRequest}
+      />
+      <ReportSheet
+        visible={report.target !== null}
+        kind="user"
+        targetName={report.target?.name ?? ""}
+        phase={report.phase}
+        error={report.error}
+        onSubmit={(draft) => void report.submit(draft)}
+        onBlock={requestReport.blockAfterReport}
+        onClose={report.close}
       />
     </>
   );

@@ -175,7 +175,7 @@ describe("useFriendRelationshipActions", () => {
     mockApiJson.mockResolvedValue(null);
     const { result } = renderActions();
 
-    act(() => result.current.actions.declineAndBlock({ id: 42, user_id: 3, username: "carol" }));
+    act(() => result.current.actions.declineAndBlock({ user_id: 3, username: "carol" }));
 
     await waitFor(() =>
       expect(mockApiJson).toHaveBeenCalledWith("/users/3/block", { token: "token", method: "POST" }),

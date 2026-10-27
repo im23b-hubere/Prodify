@@ -134,7 +134,7 @@ export function useFriendRelationshipActions({ token, t, load, state }: ActionCo
 
   const requestBlock = useBlockUser(token, t);
   const declineAndBlock = useCallback(
-    (request: Pick<FriendIncomingDto, "id" | "user_id" | "username">) => {
+    (request: Pick<FriendIncomingDto, "user_id" | "username">) => {
       // Blocking removes the pending request on the server as well.
       requestBlock({ userId: request.user_id, name: request.username }, () => void load({ force: true }));
     },

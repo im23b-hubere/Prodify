@@ -9,6 +9,7 @@ import { liveFriends, pastActivity } from "../activity/friendsActivityFeed";
 import { subscribeFriendsSync } from "../sync/friendsSync";
 import { useFriendsActivityRenderer } from "./useFriendsActivityRenderer";
 import { useFriendsDashboardData } from "./useFriendsDashboardData";
+import { useFriendRequestReport } from "./useFriendRequestReport";
 import { useFriendsNotifications } from "./useFriendsNotifications";
 import { useFriendsScreenActions } from "./useFriendsScreenActions";
 import { useFriendsScreenState } from "./useFriendsScreenState";
@@ -55,6 +56,7 @@ export function useFriendsScreenController() {
     load,
     state,
   });
+  const requestReport = useFriendRequestReport(token, t, actions.declineAndBlock);
   const friendActivity = useMemo(
     () => state.activity.filter((item) => item.user_id !== user?.id),
     [state.activity, user?.id],
@@ -113,6 +115,7 @@ export function useFriendsScreenController() {
     userId: user?.id,
     state,
     actions,
+    requestReport,
     load,
     onRefresh,
     liveActivity,
