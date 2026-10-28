@@ -117,6 +117,9 @@ class Settings(BaseSettings):
     kpi_admin_user_ids: list[int] = []
     # Comma-separated user IDs who receive report pushes and may use the /moderation endpoints.
     moderator_user_ids: list[int] = []
+    # Header the edge proxy overwrites with the real client IP (Render runs behind Cloudflare,
+    # which rejects client-supplied CF-Connecting-IP). Empty disables it, e.g. without an edge proxy.
+    client_ip_header: str = "cf-connecting-ip"
     # Comma-separated trusted reverse-proxy IPs/CIDRs for x-forwarded-for.
     trusted_proxy_ips: list[str] = []
     # Push async dispatch backend:

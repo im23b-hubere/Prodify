@@ -7,7 +7,22 @@ from starlette.requests import Request
 from app.config import settings
 
 
+def _edge_client_ip(request: Request) -> str | None:
+    header_name = settings.client_ip_header.strip()
+    if not header_name:
+        return None
+    candidate = (request.headers.get(header_name) or "").strip()
+    try:
+        ip_address(candidate)
+    except ValueError:
+        return None
+    return candidate
+
+
 def _client_ip(request: Request) -> str:
+    edge_ip = _edge_client_ip(request)
+    if edge_ip:
+        return edge_ip
     remote = get_remote_address(request)
     if not remote:
         return "unknown"

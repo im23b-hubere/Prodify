@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
@@ -144,17 +144,7 @@ app.include_router(engagement_router.router, dependencies=_subscriber)
 
 
 @app.get("/health")
-def health(request: Request):
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if "203.0.113.77" in forwarded:
-        logger.warning(
-            "proxy-diagnostic xff=%r client=%r true_client_ip=%r cf_connecting_ip=%r x_real_ip=%r",
-            forwarded,
-            request.client,
-            request.headers.get("true-client-ip"),
-            request.headers.get("cf-connecting-ip"),
-            request.headers.get("x-real-ip"),
-        )
+def health():
     ready = database_is_ready()
     return {
         "status": "ok" if ready else "degraded",
