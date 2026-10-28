@@ -18,8 +18,7 @@ module.exports = ({ config }) => {
     process.env.EXPO_PUBLIC_E2E_TEST_EMAIL?.trim() ||
     process.env.E2E_TEST_EMAIL?.trim() ||
     (e2eMode ? "test@prodify.app" : "");
-  const e2eTestPassword =
-    process.env.EXPO_PUBLIC_E2E_TEST_PASSWORD || process.env.E2E_TEST_PASSWORD || "";
+  const e2eTestPassword = process.env.EXPO_PUBLIC_E2E_TEST_PASSWORD || "";
   const invalidSentryDsn =
     !sentryDsn ||
     sentryDsn.startsWith("@") ||
