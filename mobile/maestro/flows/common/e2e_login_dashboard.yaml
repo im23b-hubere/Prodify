@@ -5,6 +5,10 @@ appId: com.prodify.app
     timeout: 90000
 # Credentials arrive at runtime so they are never baked into the uploaded simulator build.
 - openLink: "prodify://e2e/bootstrap?email=${TEST_EMAIL}&password=${TEST_PASSWORD}"
+# iOS can still ask "Open in Prodify?" although the workflow pre-approves the scheme.
+- tapOn:
+    text: "Open"
+    optional: true
 - extendedWaitUntil:
     visible: "App access|Skip for now \\(dev\\)|Start session|START SESSION"
     timeout: 180000
