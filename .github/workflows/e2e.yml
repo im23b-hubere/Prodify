@@ -12,9 +12,8 @@ on:
         required: false
         default: test@prodify.app
       test_password:
-        description: E2E login password
+        description: E2E login password (defaults to the E2E_TEST_PASSWORD secret)
         required: false
-        default: Test1234!
       test_username:
         description: E2E register username
         required: false
@@ -52,14 +51,14 @@ env:
   MAESTRO_INSTALLER_SHA256: "40115b628eb491f29d02275bc7e3db5334024ba4fdff7210a334fd3cf4a8f306"
   E2E_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
   E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
-  E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || 'Test1234!' }}
+  E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || secrets.E2E_TEST_PASSWORD }}
   E2E_TEST_USERNAME: ${{ github.event.inputs.test_username || 'e2euser' }}
   EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || 'https://prodify-api-46b1.onrender.com' }}
   EXPO_PUBLIC_APP_ENV: development
   EXPO_PUBLIC_ENV: development
   EXPO_PUBLIC_E2E_MODE: "true"
   EXPO_PUBLIC_E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
-  EXPO_PUBLIC_E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || 'Test1234!' }}
+  EXPO_PUBLIC_E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || secrets.E2E_TEST_PASSWORD }}
   EXPO_PUBLIC_REVENUECAT_API_KEY: appl_mnYqBJcSBBUEyNRCfULPzxMqpmX
   EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID: app_access
   EX_UPDATES_NATIVE_DEBUG: "1"

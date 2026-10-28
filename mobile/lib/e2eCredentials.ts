@@ -8,7 +8,6 @@ export type E2eTestCredentials = {
 };
 
 const DEFAULT_E2E_EMAIL = "test@prodify.app";
-const DEFAULT_E2E_PASSWORD = "Test1234!";
 
 function readExtraString(key: string): string {
   const extra = Constants.expoConfig?.extra as Record<string, unknown> | undefined;
@@ -26,9 +25,7 @@ export function getE2eTestCredentials(): E2eTestCredentials | null {
     DEFAULT_E2E_EMAIL
   ).trim();
   const password =
-    readExtraString("e2eTestPassword") ||
-    process.env.EXPO_PUBLIC_E2E_TEST_PASSWORD ||
-    DEFAULT_E2E_PASSWORD;
+    readExtraString("e2eTestPassword") || process.env.EXPO_PUBLIC_E2E_TEST_PASSWORD || "";
 
   if (!email || !password) return null;
   return { email, password };

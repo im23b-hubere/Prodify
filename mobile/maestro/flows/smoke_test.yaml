@@ -1,7 +1,6 @@
 appId: com.prodify.app
 env:
   TEST_EMAIL: test@prodify.app
-  TEST_PASSWORD: Test1234!
 ---
 # Full smoke: login → session → tabs (optimized for CI testIDs).
 - launchApp:

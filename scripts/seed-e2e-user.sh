@@ -4,7 +4,7 @@ set -euo pipefail
 
 API_URL="${E2E_API_URL:-https://prodify-api-46b1.onrender.com}"
 EMAIL="${E2E_TEST_EMAIL:-test@prodify.app}"
-PASSWORD="${E2E_TEST_PASSWORD:-Test1234!}"
+PASSWORD="${E2E_TEST_PASSWORD:?Set E2E_TEST_PASSWORD (GitHub secret or local env)}"
 USERNAME="${E2E_TEST_USERNAME:-e2euser}"
 
 API_URL="${API_URL%/}"

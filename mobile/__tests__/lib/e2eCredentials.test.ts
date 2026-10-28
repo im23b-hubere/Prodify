@@ -45,12 +45,17 @@ describe("e2eCredentials", () => {
     });
   });
 
-  it("falls back to E2E defaults when nothing is baked in", () => {
-    (Constants.expoConfig as { extra: Record<string, unknown> }).extra = { e2eMode: true };
+  it("falls back to the default E2E email when only a password is provided", () => {
+    process.env.EXPO_PUBLIC_E2E_TEST_PASSWORD = "from-env";
     expect(getE2eTestCredentials()).toEqual({
       email: "test@prodify.app",
-      password: "Test1234!",
+      password: "from-env",
     });
+  });
+
+  it("returns null when no password is baked in", () => {
+    (Constants.expoConfig as { extra: Record<string, unknown> }).extra = { e2eMode: true };
+    expect(getE2eTestCredentials()).toBeNull();
   });
 
   it("returns null outside E2E mode", () => {

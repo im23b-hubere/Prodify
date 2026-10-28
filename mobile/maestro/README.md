@@ -21,7 +21,7 @@ Automated iOS smoke tests for release candidates.
    ./scripts/seed-e2e-user.sh
    ```
 
-   Override defaults with `E2E_API_URL`, `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, `E2E_TEST_USERNAME`.
+   `E2E_TEST_PASSWORD` is required (CI reads the `E2E_TEST_PASSWORD` repository secret). Override the other defaults with `E2E_API_URL`, `E2E_TEST_EMAIL`, `E2E_TEST_USERNAME`.
 
    The script also stops any leftover **active session** on the E2E account so the dashboard shows `Start session`.
 
@@ -44,7 +44,7 @@ cd ios && pod install && cd ..
 
 maestro test \
   -e TEST_EMAIL=test@prodify.app \
-  -e TEST_PASSWORD='Test1234!' \
+  -e TEST_PASSWORD="$E2E_TEST_PASSWORD" \
   maestro/flows/smoke_test.yaml
 ```
 
@@ -70,7 +70,7 @@ cd mobile
 # After one simulator install/build:
 maestro test \
   -e TEST_EMAIL=test@prodify.app \
-  -e TEST_PASSWORD='Test1234!' \
+  -e TEST_PASSWORD="$E2E_TEST_PASSWORD" \
   maestro/flows/e2e_login_smoke.yaml
 ```
 
