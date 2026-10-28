@@ -3,11 +3,8 @@ appId: com.prodify.app
 - extendedWaitUntil:
     visible: "Welcome back"
     timeout: 90000
-- extendedWaitUntil:
-    visible: "test@prodify.app"
-    timeout: 30000
-- tapOn:
-    id: "sign-in-button"
+# Credentials arrive at runtime so they are never baked into the uploaded simulator build.
+- openLink: "prodify://e2e/bootstrap?email=${TEST_EMAIL}&password=${TEST_PASSWORD}"
 - extendedWaitUntil:
     visible: "App access|Skip for now \\(dev\\)|Start session|START SESSION"
     timeout: 180000

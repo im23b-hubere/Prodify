@@ -58,7 +58,6 @@ env:
   EXPO_PUBLIC_ENV: development
   EXPO_PUBLIC_E2E_MODE: "true"
   EXPO_PUBLIC_E2E_TEST_EMAIL: ${{ github.event.inputs.test_email || 'test@prodify.app' }}
-  EXPO_PUBLIC_E2E_TEST_PASSWORD: ${{ github.event.inputs.test_password || secrets.E2E_TEST_PASSWORD }}
   EXPO_PUBLIC_REVENUECAT_API_KEY: appl_mnYqBJcSBBUEyNRCfULPzxMqpmX
   EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID: app_access
   EX_UPDATES_NATIVE_DEBUG: "1"
@@ -131,9 +130,9 @@ jobs:
         working-directory: mobile
         run: |
           set -euo pipefail
+          # The password is passed to Maestro at runtime; the simulator build is a public artifact.
           cat > .env <<EOF
           EXPO_PUBLIC_E2E_TEST_EMAIL=${E2E_TEST_EMAIL}
-          EXPO_PUBLIC_E2E_TEST_PASSWORD=${E2E_TEST_PASSWORD}
           EOF
           npx expo prebuild --platform ios --clean
 
@@ -370,6 +369,28 @@ jobs:
               print("Maestro timed out after 25 minutes.", file=sys.stderr)
               sys.exit(124)
           sys.exit(completed.returncode)
+          PY
+
+      - name: Redact E2E password from Maestro output
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          password = os.environ.get("E2E_TEST_PASSWORD", "")
+          root = Path.home() / ".maestro"
+          if password and root.exists():
+              for path in root.rglob("*"):
+                  if not path.is_file() or path.suffix.lower() in {".png", ".jpg", ".mp4"}:
+                      continue
+                  try:
+                      text = path.read_text(encoding="utf-8")
+                  except (UnicodeDecodeError, OSError):
+                      continue
+                  if password in text:
+                      path.write_text(text.replace(password, "***"), encoding="utf-8")
           PY
 
       - name: Upload Maestro screenshots / reports
